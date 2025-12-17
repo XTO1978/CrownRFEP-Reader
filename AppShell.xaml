@@ -3,12 +3,42 @@
     x:Class="CrownRFEP_Reader.AppShell"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-    xmlns:local="clr-namespace:CrownRFEP_Reader"
-    Title="CrownRFEP_Reader">
+    xmlns:views="clr-namespace:CrownRFEP_Reader.Views"
+    Shell.FlyoutBehavior="Locked"
+    FlyoutWidth="220"
+    Title="CrownRFEP Reader"
+    FlyoutBackgroundColor="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource Gray900}}">
 
-    <ShellContent
-        Title="Home"
-        ContentTemplate="{DataTemplate local:MainPage}"
-        Route="MainPage" />
+    <Shell.FlyoutHeader>
+        <Grid HeightRequest="150" BackgroundColor="{StaticResource Primary}" Padding="20">
+            <VerticalStackLayout VerticalOptions="End">
+                <Label Text="🏆" FontSize="40"/>
+                <Label Text="CrownRFEP Reader" 
+                       FontSize="20" 
+                       FontAttributes="Bold" 
+                       TextColor="White"/>
+                <Label Text="Análisis de entrenamientos" 
+                       FontSize="12" 
+                       TextColor="White" 
+                       Opacity="0.8"/>
+            </VerticalStackLayout>
+        </Grid>
+    </Shell.FlyoutHeader>
+
+    <FlyoutItem Title="Dashboard" Icon="home">
+        <ShellContent ContentTemplate="{DataTemplate views:DashboardPage}" Route="DashboardPage"/>
+    </FlyoutItem>
+
+    <FlyoutItem Title="Sesiones" Icon="calendar">
+        <ShellContent ContentTemplate="{DataTemplate views:SessionsPage}" Route="SessionsPage"/>
+    </FlyoutItem>
+
+    <FlyoutItem Title="Atletas" Icon="person">
+        <ShellContent ContentTemplate="{DataTemplate views:AthletesPage}" Route="AthletesPage"/>
+    </FlyoutItem>
+
+    <FlyoutItem Title="Estadísticas" Icon="chart">
+        <ShellContent ContentTemplate="{DataTemplate views:StatisticsPage}" Route="StatisticsPage"/>
+    </FlyoutItem>
 
 </Shell>

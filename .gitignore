@@ -16,3 +16,6 @@ obj/
 # Windows
 Thumbs.db
 
+# Archivos de ejemplo grandes (importar manualmente)
+*.crown
+Resources/CrownApp.db

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:CrownRFEP_Reader.ViewModels"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+             x:Class="CrownRFEP_Reader.Views.VideoPlayerPage"
+             x:DataType="vm:VideoPlayerViewModel"
+             Title="{Binding VideoTitle}"
+             Shell.NavBarIsVisible="True">
+
+    <Grid RowDefinitions="*,Auto" BackgroundColor="Black">
+        
+        <!-- Área del video -->
+        <Grid Grid.Row="0">
+            <!-- MediaElement para reproducir el video -->
+            <toolkit:MediaElement x:Name="mediaElement"
+                                  Source="{Binding VideoPath}"
+                                  ShouldAutoPlay="True"
+                                  ShouldShowPlaybackControls="True"
+                                  Aspect="AspectFit"
+                                  BackgroundColor="Black"/>
+        </Grid>
+
+        <!-- Controles personalizados (opcional, ya que MediaElement tiene los suyos) -->
+        <Frame Grid.Row="1" 
+               BackgroundColor="#E0000000" 
+               Padding="15" 
+               CornerRadius="0"
+               HasShadow="False">
+            <VerticalStackLayout Spacing="10">
+                <Label Text="{Binding VideoTitle}" 
+                       FontSize="16" 
+                       FontAttributes="Bold" 
+                       TextColor="White"
+                       HorizontalOptions="Center"/>
+                
+                <HorizontalStackLayout HorizontalOptions="Center" Spacing="10">
+                    <Label Text="{Binding CurrentPositionFormatted}" 
+                           TextColor="White" 
+                           FontSize="12"/>
+                    <Label Text="/" TextColor="White" FontSize="12"/>
+                    <Label Text="{Binding DurationFormatted}" 
+                           TextColor="White" 
+                           FontSize="12"/>
+                </HorizontalStackLayout>
+            </VerticalStackLayout>
+        </Frame>
+    </Grid>
+</ContentPage>

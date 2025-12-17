@@ -6,6 +6,9 @@
         <!-- App Sandbox must be enabled to distribute a MacCatalyst app through the Mac App Store. -->
         <key>com.apple.security.app-sandbox</key>
         <true/>
+        <!-- Allow access to user-selected files via open/save panels (required for file pickers under sandbox). -->
+        <key>com.apple.security.files.user-selected.read-only</key>
+        <true/>
         <!-- When App Sandbox is enabled, this value is required to open outgoing network connections. -->
         <key>com.apple.security.network.client</key>
         <true/>

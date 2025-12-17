@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:CrownRFEP_Reader.ViewModels"
+             xmlns:services="clr-namespace:CrownRFEP_Reader.Services"
+             x:Class="CrownRFEP_Reader.Views.StatisticsPage"
+             x:DataType="vm:StatisticsViewModel"
+             Title="{Binding Title}">
+
+    <RefreshView Command="{Binding RefreshCommand}" IsRefreshing="{Binding IsBusy}">
+        <ScrollView Padding="15">
+            <VerticalStackLayout Spacing="20">
+
+                <!-- Selector de año -->
+                <Frame Padding="15" CornerRadius="12" HasShadow="True">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="Estadísticas por Año" 
+                               FontSize="18" 
+                               FontAttributes="Bold" 
+                               VerticalOptions="Center"/>
+                        <Picker Grid.Column="1" 
+                                ItemsSource="{Binding AvailableYears}"
+                                SelectedItem="{Binding SelectedYear}"
+                                Title="Año"/>
+                    </Grid>
+                </Frame>
+
+                <!-- Estadísticas mensuales -->
+                <Label Text="Sesiones por Mes" FontSize="18" FontAttributes="Bold"/>
+                
+                <CollectionView ItemsSource="{Binding MonthlyStats}" HeightRequest="200">
+                    <CollectionView.ItemsLayout>
+                        <LinearItemsLayout Orientation="Horizontal" ItemSpacing="10"/>
+                    </CollectionView.ItemsLayout>
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="services:MonthlyStats">
+                            <Frame Padding="15" CornerRadius="10" HasShadow="True" WidthRequest="100">
+                                <VerticalStackLayout Spacing="5" VerticalOptions="Center">
+                                    <Label Text="{Binding MonthName}" 
+                                           FontSize="12" 
+                                           FontAttributes="Bold"
+                                           HorizontalOptions="Center"/>
+                                    <Frame BackgroundColor="{StaticResource Primary}" 
+                                           CornerRadius="8" 
+                                           Padding="10"
+                                           HasShadow="False">
+                                        <Label Text="{Binding SessionCount}" 
+                                               FontSize="24" 
+                                               FontAttributes="Bold" 
+                                               TextColor="White"
+                                               HorizontalOptions="Center"/>
+                                    </Frame>
+                                    <Label Text="sesiones" FontSize="10" TextColor="Gray" HorizontalOptions="Center"/>
+                                    <Label FontSize="10" TextColor="Gray" HorizontalOptions="Center">
+                                        <Label.FormattedText>
+                                            <FormattedString>
+                                                <Span Text="{Binding VideoCount}"/>
+                                                <Span Text=" videos"/>
+                                            </FormattedString>
+                                        </Label.FormattedText>
+                                    </Label>
+                                </VerticalStackLayout>
+                            </Frame>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                    <CollectionView.EmptyView>
+                        <Label Text="No hay datos para este año" 
+                               TextColor="Gray" 
+                               HorizontalOptions="Center"/>
+                    </CollectionView.EmptyView>
+                </CollectionView>
+
+                <!-- Estadísticas por atleta -->
+                <Label Text="Videos por Atleta" FontSize="18" FontAttributes="Bold" Margin="0,10,0,0"/>
+                
+                <CollectionView ItemsSource="{Binding AthleteStats}">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="services:AthleteVideoStats">
+                            <Frame Margin="0,5" Padding="15" CornerRadius="10" HasShadow="True">
+                                <Grid ColumnDefinitions="*,Auto,Auto" RowDefinitions="Auto,Auto">
+                                    <Label Text="{Binding Athlete.NombreCompleto}" 
+                                           FontSize="16" 
+                                           FontAttributes="Bold"/>
+                                    <Label Grid.Row="1" 
+                                           Text="{Binding Athlete.CategoriaNombre}" 
+                                           FontSize="12" 
+                                           TextColor="Gray"/>
+                                    
+                                    <VerticalStackLayout Grid.Column="1" Grid.RowSpan="2" Margin="15,0">
+                                        <Label Text="{Binding VideoCount}" 
+                                               FontSize="20" 
+                                               FontAttributes="Bold" 
+                                               TextColor="{StaticResource Primary}"
+                                               HorizontalOptions="Center"/>
+                                        <Label Text="videos" FontSize="10" TextColor="Gray"/>
+                                    </VerticalStackLayout>
+                                    
+                                    <VerticalStackLayout Grid.Column="2" Grid.RowSpan="2">
+                                        <Label Text="{Binding TotalDurationFormatted}" 
+                                               FontSize="16" 
+                                               FontAttributes="Bold"
+                                               HorizontalOptions="Center"/>
+                                        <Label Text="duración" FontSize="10" TextColor="Gray"/>
+                                    </VerticalStackLayout>
+                                </Grid>
+                            </Frame>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                    <CollectionView.EmptyView>
+                        <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center" Padding="40">
+                            <Label Text="📊" FontSize="48" HorizontalOptions="Center"/>
+                            <Label Text="No hay estadísticas disponibles" 
+                                   FontSize="16" 
+                                   HorizontalOptions="Center" 
+                                   TextColor="Gray"/>
+                        </VerticalStackLayout>
+                    </CollectionView.EmptyView>
+                </CollectionView>
+
+            </VerticalStackLayout>
+        </ScrollView>
+    </RefreshView>
+</ContentPage>

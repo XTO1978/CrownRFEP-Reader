@@ -1,0 +1,403 @@
+using System.IO.Compression;
+using System.Text.Json;
+using CrownRFEP_Reader.Models;
+
+#if MACCATALYST
+using CrownRFEP_Reader.Platforms.MacCatalyst;
+#endif
+
+namespace CrownRFEP_Reader.Services;
+
+/// <summary>
+/// Servicio para importar archivos .crown
+/// </summary>
+public class CrownFileService
+{
+    private readonly DatabaseService _databaseService;
+    private readonly string _mediaStoragePath;
+
+    public CrownFileService(DatabaseService databaseService)
+    {
+        _databaseService = databaseService;
+        _mediaStoragePath = Path.Combine(FileSystem.AppDataDirectory, "Media");
+        
+        // Asegurar que el directorio de medios existe
+        if (!Directory.Exists(_mediaStoragePath))
+        {
+            Directory.CreateDirectory(_mediaStoragePath);
+        }
+    }
+
+    /// <summary>
+    /// Importa un archivo .crown y almacena sus datos en la base de datos local
+    /// </summary>
+    public async Task<ImportResult> ImportCrownFileAsync(string filePath, IProgress<ImportProgress>? progress = null)
+    {
+        var result = new ImportResult();
+        
+        // Ejecutar la importación en un hilo de fondo para no bloquear la UI
+        return await Task.Run(async () =>
+        {
+            try
+            {
+                ReportProgress(progress, "Abriendo archivo...", 0);
+
+                if (!File.Exists(filePath))
+                {
+                    result.Success = false;
+                    result.ErrorMessage = "El archivo no existe";
+                    return result;
+                }
+
+                // El archivo .crown es un ZIP
+                using var archive = ZipFile.OpenRead(filePath);
+                
+                // Buscar el session_data.json
+                var sessionDataEntry = archive.GetEntry("session_data.json");
+                if (sessionDataEntry == null)
+                {
+                    result.Success = false;
+                    result.ErrorMessage = "El archivo .crown no contiene datos de sesión válidos";
+                    return result;
+                }
+
+                ReportProgress(progress, "Leyendo datos de sesión...", 10);
+
+                // Leer y deserializar el JSON
+                CrownFileData? crownData;
+                using (var stream = sessionDataEntry.Open())
+                using (var reader = new StreamReader(stream))
+                {
+                    var json = await reader.ReadToEndAsync();
+                    crownData = JsonSerializer.Deserialize<CrownFileData>(json);
+                }
+
+                if (crownData?.Session == null)
+                {
+                    result.Success = false;
+                    result.ErrorMessage = "No se pudieron leer los datos de la sesión";
+                    return result;
+                }
+
+                ReportProgress(progress, "Guardando categorías...", 20);
+
+                // Guardar categorías
+                if (crownData.Categories != null)
+                {
+                    foreach (var cat in crownData.Categories)
+                    {
+                        var category = new Category
+                        {
+                            Id = cat.Id,
+                            NombreCategoria = cat.NombreCategoria,
+                            IsSystemDefault = cat.IsSystemDefault ? 1 : 0
+                        };
+                        await _databaseService.SaveCategoryAsync(category);
+                    }
+                }
+
+                ReportProgress(progress, "Guardando atletas...", 30);
+
+            // Guardar atletas
+            if (crownData.Athletes != null)
+            {
+                foreach (var ath in crownData.Athletes)
+                {
+                    var athlete = new Athlete
+                    {
+                        Id = ath.Id,
+                        Nombre = ath.Nombre,
+                        Apellido = ath.Apellido,
+                        Category = ath.Categoria,
+                        CategoriaId = ath.CategoriaId,
+                        Favorite = ath.Favorite,
+                        IsSystemDefault = ath.IsSystemDefault ? 1 : 0,
+                        CategoriaNombre = ath.CategoriaNombre
+                    };
+                    await _databaseService.SaveAthleteAsync(athlete);
+                    result.AthletesImported++;
+                }
+            }
+
+            ReportProgress(progress, "Guardando sesión...", 40);
+
+            // Crear carpeta para esta sesión
+            var sessionFolderName = SanitizeFolderName($"{crownData.Session.NombreSesion}_{crownData.Session.Lugar}_{crownData.Session.Fecha:yyyyMMdd}");
+            var sessionMediaPath = Path.Combine(_mediaStoragePath, sessionFolderName);
+            
+            if (!Directory.Exists(sessionMediaPath))
+            {
+                Directory.CreateDirectory(sessionMediaPath);
+            }
+
+            var videosPath = Path.Combine(sessionMediaPath, "videos");
+            var thumbnailsPath = Path.Combine(sessionMediaPath, "thumbnails");
+            
+            Directory.CreateDirectory(videosPath);
+            Directory.CreateDirectory(thumbnailsPath);
+
+            // Guardar la sesión
+            var session = new Session
+            {
+                Fecha = new DateTimeOffset(crownData.Session.Fecha).ToUnixTimeSeconds(),
+                Lugar = crownData.Session.Lugar,
+                TipoSesion = crownData.Session.TipoSesion,
+                NombreSesion = crownData.Session.NombreSesion,
+                PathSesion = sessionMediaPath,
+                Participantes = crownData.Session.Participantes,
+                Coach = crownData.Session.Coach,
+                IsMerged = crownData.Session.IsMerged ? 1 : 0
+            };
+
+            var sessionId = await _databaseService.SaveSessionAsync(session);
+            result.SessionId = sessionId;
+
+            ReportProgress(progress, "Extrayendo videos...", 50);
+
+            // Extraer y guardar videos
+            if (crownData.VideoClips != null)
+            {
+                var totalClips = crownData.VideoClips.Count;
+                var processedClips = 0;
+
+                foreach (var clipJson in crownData.VideoClips)
+                {
+                    var clipFileName = Path.GetFileName(clipJson.ClipPath ?? $"CROWN{clipJson.Id}.mp4");
+                    var thumbFileName = Path.GetFileName(clipJson.ThumbnailPath ?? $"CROWN{clipJson.Id}_thumb.jpg");
+
+                    var localClipPath = Path.Combine(videosPath, clipFileName);
+                    var localThumbPath = Path.Combine(thumbnailsPath, thumbFileName);
+
+                    // Extraer video del ZIP
+                    var videoEntry = archive.GetEntry($"videos/{clipFileName}");
+                    if (videoEntry != null)
+                    {
+                        await ExtractEntryToFileAsync(videoEntry, localClipPath);
+                    }
+
+                    // Extraer thumbnail del ZIP
+                    var thumbEntry = archive.GetEntry($"thumbnails/{thumbFileName}");
+                    if (thumbEntry != null)
+                    {
+                        await ExtractEntryToFileAsync(thumbEntry, localThumbPath);
+                    }
+
+                    // Guardar en base de datos
+                    var clip = new VideoClip
+                    {
+                        Id = clipJson.Id,
+                        SessionId = sessionId,
+                        AtletaId = clipJson.AtletaId,
+                        Section = clipJson.Section,
+                        CreationDate = clipJson.CreationDate,
+                        ClipPath = clipJson.ClipPath,
+                        ThumbnailPath = clipJson.ThumbnailPath,
+                        ComparisonName = clipJson.ComparisonName,
+                        ClipDuration = clipJson.ClipDuration,
+                        ClipSize = clipJson.ClipSize,
+                        LocalClipPath = localClipPath,
+                        LocalThumbnailPath = localThumbPath,
+                        IsComparisonVideo = clipJson.IsComparisonVideo,
+                        BadgeText = clipJson.BadgeText,
+                        BadgeBackgroundColor = clipJson.BadgeBackgroundColor
+                    };
+
+                    await _databaseService.SaveVideoClipAsync(clip);
+                    result.VideosImported++;
+
+                    processedClips++;
+                    var percentage = 50 + (int)((processedClips / (double)totalClips) * 45);
+                    ReportProgress(progress, $"Extrayendo video {processedClips}/{totalClips}...", percentage);
+                }
+            }
+
+            // Guardar inputs si existen
+            if (crownData.Inputs != null)
+            {
+                foreach (var inputJson in crownData.Inputs)
+                {
+                    var input = new Input
+                    {
+                        SessionId = sessionId,
+                        VideoId = inputJson.VideoId,
+                        AthleteId = inputJson.AthleteId,
+                        CategoriaId = inputJson.CategoriaId,
+                        InputTypeId = inputJson.InputTypeId,
+                        InputDateTime = inputJson.InputDateTime,
+                        InputValue = inputJson.InputValue,
+                        TimeStamp = inputJson.TimeStamp
+                    };
+                    await _databaseService.SaveInputAsync(input);
+                }
+            }
+
+            // Guardar valoraciones si existen
+            if (crownData.Valoraciones != null)
+            {
+                foreach (var valJson in crownData.Valoraciones)
+                {
+                    var valoracion = new Valoracion
+                    {
+                        SessionId = sessionId,
+                        AthleteId = valJson.AthleteId,
+                        InputTypeId = valJson.InputTypeId,
+                        InputDateTime = valJson.InputDateTime,
+                        InputValue = valJson.InputValue,
+                        TimeStamp = valJson.TimeStamp
+                    };
+                    await _databaseService.SaveValoracionAsync(valoracion);
+                }
+            }
+
+            ReportProgress(progress, "Importación completada", 100);
+
+            result.Success = true;
+            result.SessionName = crownData.Session.NombreSesion;
+        }
+        catch (Exception ex)
+        {
+            result.Success = false;
+            result.ErrorMessage = $"Error al importar: {ex.Message}";
+        }
+
+        return result;
+        });
+    }
+
+    private void ReportProgress(IProgress<ImportProgress>? progress, string message, int percentage)
+    {
+        if (progress == null) return;
+        
+        // Usar MainThread para reportar progreso de forma segura a la UI
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            progress.Report(new ImportProgress { Message = message, Percentage = percentage });
+        });
+    }
+
+    private async Task ExtractEntryToFileAsync(ZipArchiveEntry entry, string destinationPath)
+    {
+        // Usar buffer más grande para mejor rendimiento
+        const int bufferSize = 81920; // 80KB buffer
+        using var entryStream = entry.Open();
+        using var fileStream = new FileStream(
+            destinationPath, 
+            FileMode.Create, 
+            FileAccess.Write, 
+            FileShare.None, 
+            bufferSize, 
+            FileOptions.Asynchronous | FileOptions.SequentialScan);
+        await entryStream.CopyToAsync(fileStream, bufferSize);
+    }
+
+    private string SanitizeFolderName(string name)
+    {
+        var invalidChars = Path.GetInvalidFileNameChars();
+        var sanitized = new string(name.Where(c => !invalidChars.Contains(c)).ToArray());
+        return sanitized.Replace(" ", "_");
+    }
+
+    /// <summary>
+    /// Permite al usuario seleccionar un archivo .crown para importar
+    /// </summary>
+    public async Task<FileResult?> PickCrownFileAsync()
+    {
+        try
+        {
+            // En MacCatalyst, establecer FileTypes puede provocar cuelgues del picker.
+            // Preferimos abrir el selector sin filtros y validar después.
+            if (DeviceInfo.Platform == DevicePlatform.MacCatalyst)
+            {
+                // En algunas versiones de MAUI, PickAsync(PickOptions) puede colgarse en MacCatalyst.
+                // Usar PickAsync() sin opciones es lo más robusto.
+                return await FilePicker.Default.PickAsync();
+            }
+
+            // En el resto de plataformas, mantenemos filtros razonables.
+            var customFileType = new FilePickerFileType(
+                new Dictionary<DevicePlatform, IEnumerable<string>>
+                {
+                    { DevicePlatform.iOS, new[] { "public.data", "public.item", "public.content", "public.archive" } },
+                    { DevicePlatform.Android, new[] { "application/octet-stream", "application/zip", "*/*" } },
+                    { DevicePlatform.WinUI, new[] { ".crown", ".zip" } },
+                });
+
+            var filteredOptions = new PickOptions
+            {
+                PickerTitle = "Seleccionar archivo .crown",
+                FileTypes = customFileType
+            };
+
+            return await FilePicker.Default.PickAsync(filteredOptions);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error en FilePicker: {ex}");
+            return null;
+        }
+    }
+
+    public async Task<string?> PickCrownFilePathAsync()
+    {
+#if MACCATALYST
+        // FilePicker en MacCatalyst puede colgarse; usamos un picker nativo.
+        var macPath = await MacCrownFilePicker.PickToCacheAsync();
+        if (!string.IsNullOrWhiteSpace(macPath) && File.Exists(macPath))
+        {
+            return macPath;
+        }
+#endif
+
+        var file = await PickCrownFileAsync();
+        if (file == null)
+        {
+            return null;
+        }
+
+        if (!string.IsNullOrWhiteSpace(file.FullPath) && File.Exists(file.FullPath))
+        {
+            return file.FullPath;
+        }
+
+        // Fallback: en iOS/MacCatalyst a veces FullPath no es accesible; copiamos a Cache.
+        try
+        {
+            await using var input = await file.OpenReadAsync();
+            var fileName = string.IsNullOrWhiteSpace(file.FileName) ? "import.crown" : file.FileName;
+            var safeFileName = fileName.Replace(Path.DirectorySeparatorChar, '_').Replace(Path.AltDirectorySeparatorChar, '_');
+            var destPath = Path.Combine(FileSystem.CacheDirectory, $"import_{DateTime.UtcNow:yyyyMMdd_HHmmss}_{safeFileName}");
+
+            await using var output = File.Create(destPath);
+            await input.CopyToAsync(output);
+
+            return destPath;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error copiando archivo seleccionado a cache: {ex}");
+            return null;
+        }
+    }
+}
+
+/// <summary>
+/// Resultado de una importación de archivo .crown
+/// </summary>
+public class ImportResult
+{
+    public bool Success { get; set; }
+    public string? ErrorMessage { get; set; }
+    public int SessionId { get; set; }
+    public string? SessionName { get; set; }
+    public int VideosImported { get; set; }
+    public int AthletesImported { get; set; }
+}
+
+/// <summary>
+/// Progreso de importación
+/// </summary>
+public class ImportProgress
+{
+    public string Message { get; set; } = "";
+    public int Percentage { get; set; }
+}

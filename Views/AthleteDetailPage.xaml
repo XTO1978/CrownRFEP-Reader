@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:CrownRFEP_Reader.ViewModels"
+             xmlns:models="clr-namespace:CrownRFEP_Reader.Models"
+             x:Class="CrownRFEP_Reader.Views.AthleteDetailPage"
+             x:DataType="vm:AthleteDetailViewModel"
+             Title="{Binding Title}">
+
+    <Grid RowDefinitions="Auto,*" Padding="15">
+        
+        <!-- Info del atleta -->
+        <Frame Grid.Row="0" Padding="20" CornerRadius="12" HasShadow="True" Margin="0,0,0,15">
+            <Grid ColumnDefinitions="80,*">
+                <!-- Avatar grande -->
+                <Frame WidthRequest="80" 
+                       HeightRequest="80" 
+                       CornerRadius="40" 
+                       Padding="0"
+                       HasShadow="False"
+                       BackgroundColor="{StaticResource Primary}">
+                    <Label Text="🏃" 
+                           FontSize="40" 
+                           HorizontalOptions="Center" 
+                           VerticalOptions="Center"/>
+                </Frame>
+                
+                <!-- Info -->
+                <VerticalStackLayout Grid.Column="1" Margin="20,0,0,0" VerticalOptions="Center">
+                    <Label Text="{Binding Athlete.NombreCompleto}" 
+                           FontSize="22" 
+                           FontAttributes="Bold"/>
+                    <Label Text="{Binding Athlete.CategoriaNombre}" 
+                           FontSize="16" 
+                           TextColor="Gray"/>
+                    
+                    <HorizontalStackLayout Spacing="20" Margin="0,10,0,0">
+                        <VerticalStackLayout>
+                            <Label Text="{Binding TotalVideos}" 
+                                   FontSize="20" 
+                                   FontAttributes="Bold" 
+                                   HorizontalOptions="Center"/>
+                            <Label Text="Videos" FontSize="12" TextColor="Gray"/>
+                        </VerticalStackLayout>
+                        <VerticalStackLayout>
+                            <Label Text="{Binding TotalDurationFormatted}" 
+                                   FontSize="20" 
+                                   FontAttributes="Bold" 
+                                   HorizontalOptions="Center"/>
+                            <Label Text="Duración" FontSize="12" TextColor="Gray"/>
+                        </VerticalStackLayout>
+                    </HorizontalStackLayout>
+                </VerticalStackLayout>
+            </Grid>
+        </Frame>
+
+        <!-- Videos del atleta -->
+        <RefreshView Grid.Row="1" 
+                     Command="{Binding RefreshCommand}" 
+                     IsRefreshing="{Binding IsBusy}">
+            <CollectionView ItemsSource="{Binding Videos}"
+                            SelectionMode="None">
+                <CollectionView.ItemsLayout>
+                    <GridItemsLayout Orientation="Vertical" 
+                                     Span="3" 
+                                     HorizontalItemSpacing="10" 
+                                     VerticalItemSpacing="10"/>
+                </CollectionView.ItemsLayout>
+                <CollectionView.Header>
+                    <Label Text="Videos" FontSize="18" FontAttributes="Bold" Margin="0,0,0,10"/>
+                </CollectionView.Header>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="models:VideoClip">
+                        <Frame Padding="0" CornerRadius="10" HasShadow="True" IsClippedToBounds="True">
+                            <Frame.GestureRecognizers>
+                                <TapGestureRecognizer 
+                                    Command="{Binding Source={RelativeSource AncestorType={x:Type vm:AthleteDetailViewModel}}, Path=PlayVideoCommand}"
+                                    CommandParameter="{Binding .}"/>
+                            </Frame.GestureRecognizers>
+                            
+                            <Grid RowDefinitions="100,Auto">
+                                <!-- Thumbnail -->
+                                <Image Source="{Binding LocalThumbnailPath}"
+                                       Aspect="AspectFill"
+                                       BackgroundColor="{StaticResource Gray300}"/>
+                                
+                                <!-- Play overlay -->
+                                <Frame BackgroundColor="#80000000" 
+                                       HasShadow="False" 
+                                       CornerRadius="20"
+                                       WidthRequest="40"
+                                       HeightRequest="40"
+                                       Padding="0"
+                                       HorizontalOptions="Center"
+                                       VerticalOptions="Center">
+                                    <Label Text="▶" 
+                                           FontSize="16" 
+                                           TextColor="White"
+                                           HorizontalOptions="Center"
+                                           VerticalOptions="Center"/>
+                                </Frame>
+                                
+                                <!-- Duración -->
+                                <Frame BackgroundColor="#CC000000" 
+                                       HasShadow="False" 
+                                       CornerRadius="5"
+                                       Padding="5,2"
+                                       Margin="5"
+                                       HorizontalOptions="End"
+                                       VerticalOptions="End">
+                                    <Label Text="{Binding DurationFormatted}" 
+                                           FontSize="10" 
+                                           TextColor="White"/>
+                                </Frame>
+                                
+                                <!-- Info -->
+                                <VerticalStackLayout Grid.Row="1" Padding="8" Spacing="2">
+                                    <Label Text="{Binding CreationDateTime, StringFormat='{0:dd/MM/yyyy}'}" 
+                                           FontSize="11" 
+                                           FontAttributes="Bold"/>
+                                    <Label Text="{Binding CreationDateTime, StringFormat='{0:HH:mm}'}" 
+                                           FontSize="10" 
+                                           TextColor="Gray"/>
+                                </VerticalStackLayout>
+                            </Grid>
+                        </Frame>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+                
+                <CollectionView.EmptyView>
+                    <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center" Padding="40">
+                        <Label Text="🎬" FontSize="48" HorizontalOptions="Center"/>
+                        <Label Text="No hay videos para este atleta" 
+                               FontSize="18" 
+                               HorizontalOptions="Center" 
+                               TextColor="Gray"/>
+                    </VerticalStackLayout>
+                </CollectionView.EmptyView>
+            </CollectionView>
+        </RefreshView>
+
+        <!-- Indicador de carga -->
+        <ActivityIndicator Grid.RowSpan="2" 
+                           IsRunning="{Binding IsBusy}" 
+                           IsVisible="{Binding IsBusy}"
+                           Color="{StaticResource Primary}"
+                           VerticalOptions="Center"
+                           HorizontalOptions="Center"/>
+    </Grid>
+</ContentPage>
