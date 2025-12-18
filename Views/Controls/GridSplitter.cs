@@ -1,0 +1,282 @@
+using Microsoft.Maui.Controls;
+
+namespace CrownRFEP_Reader.Views.Controls;
+
+/// <summary>
+/// Control que permite redimensionar columnas de un Grid arrastrando.
+/// Muestra una previsualización mientras se arrastra y aplica los cambios al soltar.
+/// </summary>
+public class GridSplitter : ContentView
+{
+    private double _leftColumnStartWidth;
+    private double _rightColumnStartWidth;
+    private double _pendingLeftWidth;
+    private double _pendingRightWidth;
+    private Grid? _parentGrid;
+    private BoxView? _previewLine;
+    private readonly BoxView _visualIndicator;
+
+    public static readonly BindableProperty LeftColumnIndexProperty =
+        BindableProperty.Create(nameof(LeftColumnIndex), typeof(int), typeof(GridSplitter), -1);
+
+    public static readonly BindableProperty RightColumnIndexProperty =
+        BindableProperty.Create(nameof(RightColumnIndex), typeof(int), typeof(GridSplitter), -1);
+
+    public static readonly BindableProperty MinLeftWidthProperty =
+        BindableProperty.Create(nameof(MinLeftWidth), typeof(double), typeof(GridSplitter), 100.0);
+
+    public static readonly BindableProperty MinRightWidthProperty =
+        BindableProperty.Create(nameof(MinRightWidth), typeof(double), typeof(GridSplitter), 100.0);
+
+    /// <summary>
+    /// Índice de la columna a la izquierda del splitter
+    /// </summary>
+    public int LeftColumnIndex
+    {
+        get => (int)GetValue(LeftColumnIndexProperty);
+        set => SetValue(LeftColumnIndexProperty, value);
+    }
+
+    /// <summary>
+    /// Índice de la columna a la derecha del splitter
+    /// </summary>
+    public int RightColumnIndex
+    {
+        get => (int)GetValue(RightColumnIndexProperty);
+        set => SetValue(RightColumnIndexProperty, value);
+    }
+
+    /// <summary>
+    /// Ancho mínimo de la columna izquierda
+    /// </summary>
+    public double MinLeftWidth
+    {
+        get => (double)GetValue(MinLeftWidthProperty);
+        set => SetValue(MinLeftWidthProperty, value);
+    }
+
+    /// <summary>
+    /// Ancho mínimo de la columna derecha
+    /// </summary>
+    public double MinRightWidth
+    {
+        get => (double)GetValue(MinRightWidthProperty);
+        set => SetValue(MinRightWidthProperty, value);
+    }
+
+    public GridSplitter()
+    {
+        WidthRequest = 10;
+        HorizontalOptions = LayoutOptions.Fill;
+        VerticalOptions = LayoutOptions.Fill;
+        BackgroundColor = Colors.Transparent;
+
+        // Indicador visual - línea visible en el centro
+        _visualIndicator = new BoxView
+        {
+            BackgroundColor = Color.FromArgb("#FF4A4A4A"),
+            WidthRequest = 0.8,
+            HorizontalOptions = LayoutOptions.Center,
+            VerticalOptions = LayoutOptions.Fill
+        };
+        Content = _visualIndicator;
+
+        // PanGestureRecognizer para el arrastre
+        var panGesture = new PanGestureRecognizer();
+        panGesture.PanUpdated += OnPanUpdated;
+        GestureRecognizers.Add(panGesture);
+
+        // PointerGestureRecognizer para feedback visual (hover)
+        var pointerGesture = new PointerGestureRecognizer();
+        pointerGesture.PointerEntered += OnPointerEntered;
+        pointerGesture.PointerExited += OnPointerExited;
+        GestureRecognizers.Add(pointerGesture);
+    }
+
+    private void OnPointerEntered(object? sender, PointerEventArgs e)
+    {
+        _visualIndicator.BackgroundColor = Color.FromArgb("#FF8A8A8A");
+        _visualIndicator.WidthRequest = 4;
+    }
+
+    private void OnPointerExited(object? sender, PointerEventArgs e)
+    {
+        _visualIndicator.BackgroundColor = Color.FromArgb("#FF4A4A4A");
+        _visualIndicator.WidthRequest = 0.8;
+    }
+
+    private void ShowPreviewLine(double xPosition)
+    {
+        if (_parentGrid == null) return;
+
+        if (_previewLine == null)
+        {
+            _previewLine = new BoxView
+            {
+                BackgroundColor = Color.FromArgb("#AA00AAFF"), // Azul semitransparente
+                WidthRequest = 3,
+                VerticalOptions = LayoutOptions.Fill,
+                HorizontalOptions = LayoutOptions.Start,
+                InputTransparent = true,
+                ZIndex = 1000
+            };
+            
+            // Añadir a todas las filas del grid
+            Grid.SetRow(_previewLine, 1);
+            Grid.SetColumnSpan(_previewLine, _parentGrid.ColumnDefinitions.Count);
+            _parentGrid.Children.Add(_previewLine);
+        }
+
+        // Posicionar la línea de previsualización usando Margin
+        _previewLine.Margin = new Thickness(xPosition - 1.5, 0, 0, 0);
+        _previewLine.IsVisible = true;
+    }
+
+    private void HidePreviewLine()
+    {
+        if (_previewLine != null)
+        {
+            _previewLine.IsVisible = false;
+            if (_parentGrid != null && _parentGrid.Children.Contains(_previewLine))
+            {
+                _parentGrid.Children.Remove(_previewLine);
+            }
+            _previewLine = null;
+        }
+    }
+
+    private void OnPanUpdated(object? sender, PanUpdatedEventArgs e)
+    {
+        switch (e.StatusType)
+        {
+            case GestureStatus.Started:
+                _parentGrid = Parent as Grid;
+                if (_parentGrid == null) return;
+
+                _visualIndicator.BackgroundColor = Color.FromArgb("#FFAAAAAA");
+                _visualIndicator.WidthRequest = 6;
+
+                // Capturar anchos actuales de las columnas
+                var leftIdx = LeftColumnIndex;
+                var rightIdx = RightColumnIndex;
+
+                if (leftIdx >= 0 && leftIdx < _parentGrid.ColumnDefinitions.Count)
+                {
+                    _leftColumnStartWidth = GetColumnActualWidth(_parentGrid, leftIdx);
+                }
+
+                if (rightIdx >= 0 && rightIdx < _parentGrid.ColumnDefinitions.Count)
+                {
+                    _rightColumnStartWidth = GetColumnActualWidth(_parentGrid, rightIdx);
+                }
+
+                _pendingLeftWidth = _leftColumnStartWidth;
+                _pendingRightWidth = _rightColumnStartWidth;
+                break;
+
+            case GestureStatus.Running:
+                if (_parentGrid == null) return;
+
+                var deltaX = e.TotalX;
+                var leftIndex = LeftColumnIndex;
+                var rightIndex = RightColumnIndex;
+
+                if (leftIndex < 0 || rightIndex >= _parentGrid.ColumnDefinitions.Count)
+                    return;
+
+                var newLeftWidth = _leftColumnStartWidth + deltaX;
+                var newRightWidth = _rightColumnStartWidth - deltaX;
+
+                // Aplicar límites mínimos
+                if (newLeftWidth < MinLeftWidth)
+                {
+                    newLeftWidth = MinLeftWidth;
+                    newRightWidth = _leftColumnStartWidth + _rightColumnStartWidth - MinLeftWidth;
+                }
+                if (newRightWidth < MinRightWidth)
+                {
+                    newRightWidth = MinRightWidth;
+                    newLeftWidth = _leftColumnStartWidth + _rightColumnStartWidth - MinRightWidth;
+                }
+
+                _pendingLeftWidth = newLeftWidth;
+                _pendingRightWidth = newRightWidth;
+
+                // Calcular la posición X donde irá la nueva línea
+                double previewX = 0;
+                for (int i = 0; i < leftIndex; i++)
+                {
+                    previewX += GetColumnActualWidth(_parentGrid, i);
+                }
+                previewX += newLeftWidth;
+                // Añadir el ancho del splitter
+                previewX += WidthRequest / 2;
+
+                ShowPreviewLine(previewX);
+                break;
+
+            case GestureStatus.Completed:
+                // Aplicar los cambios finales
+                if (_parentGrid != null && _pendingLeftWidth > 0 && _pendingRightWidth > 0)
+                {
+                    var lIdx = LeftColumnIndex;
+                    var rIdx = RightColumnIndex;
+                    
+                    if (lIdx >= 0 && rIdx < _parentGrid.ColumnDefinitions.Count)
+                    {
+                        _parentGrid.ColumnDefinitions[lIdx].Width = new GridLength(_pendingLeftWidth, GridUnitType.Absolute);
+                        _parentGrid.ColumnDefinitions[rIdx].Width = new GridLength(_pendingRightWidth, GridUnitType.Absolute);
+                    }
+                }
+
+                HidePreviewLine();
+                _visualIndicator.BackgroundColor = Color.FromArgb("#FF4A4A4A");
+                _visualIndicator.WidthRequest = 0.8;
+                _parentGrid = null;
+                break;
+
+            case GestureStatus.Canceled:
+                HidePreviewLine();
+                _visualIndicator.BackgroundColor = Color.FromArgb("#FF4A4A4A");
+                _visualIndicator.WidthRequest = 0.8;
+                _parentGrid = null;
+                break;
+        }
+    }
+
+    private static double GetColumnActualWidth(Grid grid, int columnIndex)
+    {
+        if (columnIndex < 0 || columnIndex >= grid.ColumnDefinitions.Count)
+            return 0;
+
+        var col = grid.ColumnDefinitions[columnIndex];
+        
+        // Si es absoluto, devolver el valor
+        if (col.Width.IsAbsolute)
+            return col.Width.Value;
+
+        // Estimar el ancho basado en proporciones
+        double totalWidth = grid.Width;
+        if (double.IsNaN(totalWidth) || totalWidth <= 0)
+            totalWidth = 1400; // Valor por defecto
+
+        var definitions = grid.ColumnDefinitions;
+        double totalStars = 0;
+        double totalAbsolute = 0;
+
+        foreach (var c in definitions)
+        {
+            if (c.Width.IsStar)
+                totalStars += c.Width.Value;
+            else if (c.Width.IsAbsolute)
+                totalAbsolute += c.Width.Value;
+        }
+
+        var remainingWidth = totalWidth - totalAbsolute;
+        
+        if (col.Width.IsStar && totalStars > 0)
+            return remainingWidth * (col.Width.Value / totalStars);
+        
+        return col.Width.IsAuto ? 100 : 0;
+    }
+}

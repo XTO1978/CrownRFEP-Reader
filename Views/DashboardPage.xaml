@@ -13,39 +13,43 @@
 
     <Grid
         Padding="0"
-        ColumnDefinitions="340,3,2*,*"
+        ColumnDefinitions="340,8,2*,8,*"
         RowDefinitions="Auto,*">
         <controls:TopTabsBar
             Grid.Row="0"
-            Grid.ColumnSpan="4"
+            Grid.ColumnSpan="5"
             HorizontalOptions="Center"
             BackgroundColor="#FF1B1B1B" />
 
         <!-- Línea horizontal separadora entre fila 0 y fila 1 -->
         <BoxView
             Grid.Row="0"
-            Grid.ColumnSpan="4"
+            Grid.ColumnSpan="5"
             BackgroundColor="#FF3A3A3A"
             HeightRequest="1"
             HorizontalOptions="Fill"
             VerticalOptions="End"
             Margin="0" />
-        <BoxView
+        
+        <!-- GridSplitter entre columna 0 y 2 -->
+        <controls:GridSplitter
             Grid.Row="1"
             Grid.Column="1"
-            BackgroundColor="#FF3A3A3A"
-            HorizontalOptions="Fill"
-            VerticalOptions="Fill"
-            WidthRequest="0.8" />
+            LeftColumnIndex="0"
+            RightColumnIndex="2"
+            MinLeftWidth="200"
+            MinRightWidth="300"
+            WidthRequest="8" />
 
-        <!-- Línea vertical separadora entre columna 2 y 3 -->
-        <BoxView
+        <!-- GridSplitter entre columna 2 y 4 -->
+        <controls:GridSplitter
             Grid.Row="1"
-            Grid.Column="2"
-            BackgroundColor="#FF3A3A3A"
-            HorizontalOptions="End"
-            VerticalOptions="Fill"
-            WidthRequest="0.8" />
+            Grid.Column="3"
+            LeftColumnIndex="2"
+            RightColumnIndex="4"
+            MinLeftWidth="300"
+            MinRightWidth="200"
+            WidthRequest="8" />
 
         <!--  Lista de sesiones recientes + barra superior  -->
         <Grid Grid.Row="1" Grid.Column="0" Padding="20,0" RowDefinitions="Auto,*">
@@ -237,8 +241,8 @@
             </CollectionView>
         </Grid>
 
-        <!-- Columna 3 (cuarta): estadísticas de la sesión seleccionada -->
-        <ScrollView Grid.Row="1" Grid.Column="3" Padding="20">
+        <!-- Columna 4 (quinta): estadísticas de la sesión seleccionada -->
+        <ScrollView Grid.Row="1" Grid.Column="4" Padding="20">
             <VerticalStackLayout Spacing="12">
                 <Label Text="Estadísticas" FontSize="18" TextColor="White" />
 
