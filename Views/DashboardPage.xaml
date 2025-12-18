@@ -13,7 +13,7 @@
 
     <Grid
         Padding="0"
-        ColumnDefinitions="340,8,2*,8,*"
+        ColumnDefinitions="*,8,2.5*,8,1.5*"
         RowDefinitions="Auto,*">
         <controls:TopTabsBar
             Grid.Row="0"
@@ -57,7 +57,7 @@
                 <Button
                     Text="Importar"
                     Command="{Binding ImportCommand}"
-                    BackgroundColor="{StaticResource Primary}"
+                    BackgroundColor="#FF1B1B1B"
                     TextColor="White"
                     CornerRadius="6"
                     Padding="12,10" />
@@ -65,7 +65,7 @@
                 <Button
                     Text="Eliminar"
                     Command="{Binding DeleteSelectedSessionCommand}"
-                    BackgroundColor="{StaticResource Gray600}"
+                    BackgroundColor="#FF1B1B1B"
                     TextColor="White"
                     CornerRadius="6"
                     Padding="12,10" />
@@ -191,27 +191,31 @@
                                     CommandParameter="{Binding .}" />
                             </Border.GestureRecognizers>
 
-                            <Grid RowDefinitions="220,Auto">
-                                <Image
-                                    Source="{Binding LocalThumbnailPath}"
-                                    Aspect="AspectFill"
-                                    HeightRequest="220"
-                                    BackgroundColor="{StaticResource Gray300}" />
+                            <Grid RowDefinitions="Auto,Auto">
+                                <!-- Thumbnail con aspect ratio 16:9 -->
+                                <controls:AspectRatioContainer AspectRatio="1.777">
+                                    <Grid>
+                                        <Image
+                                            Source="{Binding LocalThumbnailPath}"
+                                            Aspect="AspectFill"
+                                            BackgroundColor="{StaticResource Gray300}" />
 
-                                <Border
-                                    BackgroundColor="#80000000"
-                                    StrokeShape="RoundRectangle 25"
-                                    WidthRequest="50"
-                                    HeightRequest="50"
-                                    HorizontalOptions="Center"
-                                    VerticalOptions="Center">
-                                    <Label
-                                        Text="▶"
-                                        FontSize="20"
-                                        TextColor="White"
-                                        HorizontalOptions="Center"
-                                        VerticalOptions="Center" />
-                                </Border>
+                                        <Border
+                                            BackgroundColor="#80000000"
+                                            StrokeShape="RoundRectangle 25"
+                                            WidthRequest="50"
+                                            HeightRequest="50"
+                                            HorizontalOptions="Center"
+                                            VerticalOptions="Center">
+                                            <Label
+                                                Text="▶"
+                                                FontSize="20"
+                                                TextColor="White"
+                                                HorizontalOptions="Center"
+                                                VerticalOptions="Center" />
+                                        </Border>
+                                    </Grid>
+                                </controls:AspectRatioContainer>
 
                                 <VerticalStackLayout Grid.Row="1" Padding="8" Spacing="2">
                                     <Label
