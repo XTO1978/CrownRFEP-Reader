@@ -79,3 +79,48 @@ public class BoolToVisibilityConverter : IValueConverter
         throw new NotImplementedException();
     }
 }
+
+/// <summary>
+/// Convierte una duración en segundos (double/int/TimeSpan) a texto mm:ss o h:mm:ss.
+/// </summary>
+public class DurationToMinutesConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is null) return "0:00";
+
+        TimeSpan ts;
+        switch (value)
+        {
+            case TimeSpan span:
+                ts = span;
+                break;
+            case double d:
+                ts = TimeSpan.FromSeconds(d);
+                break;
+            case float f:
+                ts = TimeSpan.FromSeconds(f);
+                break;
+            case int i:
+                ts = TimeSpan.FromSeconds(i);
+                break;
+            case long l:
+                ts = TimeSpan.FromSeconds(l);
+                break;
+            default:
+                return "0:00";
+        }
+
+        if (ts.TotalHours >= 1)
+            return $"{(int)ts.TotalHours}:{ts.Minutes:D2}:{ts.Seconds:D2}";
+
+        return ts.TotalMinutes >= 1
+            ? $"{(int)ts.TotalMinutes}:{ts.Seconds:D2}"
+            : $"0:{ts.Seconds:D2}";
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}

@@ -98,24 +98,42 @@ public class CrownFileService
 
                 ReportProgress(progress, "Guardando atletas...", 30);
 
-            // Guardar atletas
+            // Mapeo: JSON AthleteId → Local AthleteId
+            // Cada archivo .crown puede venir de un usuario distinto con IDs propios,
+            // así que resolvemos por nombre/apellido y asignamos un ID local.
+            var athleteIdMap = new Dictionary<int, int>(); // jsonId → localId
+
             if (crownData.Athletes != null)
             {
                 foreach (var ath in crownData.Athletes)
                 {
-                    var athlete = new Athlete
+                    // Buscar si ya existe un atleta con el mismo nombre y apellido
+                    var existing = await _databaseService.FindAthleteByNameAsync(ath.Nombre, ath.Apellido);
+
+                    int localId;
+                    if (existing != null)
                     {
-                        Id = ath.Id,
-                        Nombre = ath.Nombre,
-                        Apellido = ath.Apellido,
-                        Category = ath.Categoria,
-                        CategoriaId = ath.CategoriaId,
-                        Favorite = ath.Favorite,
-                        IsSystemDefault = ath.IsSystemDefault ? 1 : 0,
-                        CategoriaNombre = ath.CategoriaNombre
-                    };
-                    await _databaseService.SaveAthleteAsync(athlete);
-                    result.AthletesImported++;
+                        // Atleta ya existe: usar su ID local
+                        localId = existing.Id;
+                    }
+                    else
+                    {
+                        // Atleta nuevo: insertar y obtener ID autogenerado
+                        var newAthlete = new Athlete
+                        {
+                            Nombre = ath.Nombre,
+                            Apellido = ath.Apellido,
+                            Category = ath.Categoria,
+                            CategoriaId = ath.CategoriaId,
+                            Favorite = ath.Favorite,
+                            IsSystemDefault = ath.IsSystemDefault ? 1 : 0,
+                            CategoriaNombre = ath.CategoriaNombre
+                        };
+                        localId = await _databaseService.InsertAthleteAsync(newAthlete);
+                        result.AthletesImported++;
+                    }
+
+                    athleteIdMap[ath.Id] = localId;
                 }
             }
 
@@ -186,12 +204,15 @@ public class CrownFileService
                         extractedThumbPath = localThumbPath;
                     }
 
+                    // Resolver AtletaId usando el mapeo local
+                    var localAtletaId = athleteIdMap.TryGetValue(clipJson.AtletaId, out var mappedId) ? mappedId : 0;
+
                     // Guardar en base de datos
                     var clip = new VideoClip
                     {
                         Id = clipJson.Id,
                         SessionId = sessionId,
-                        AtletaId = clipJson.AtletaId,
+                        AtletaId = localAtletaId,
                         Section = clipJson.Section,
                         CreationDate = clipJson.CreationDate,
                         ClipPath = clipJson.ClipPath,
@@ -220,11 +241,13 @@ public class CrownFileService
             {
                 foreach (var inputJson in crownData.Inputs)
                 {
+                    var localInputAthleteId = athleteIdMap.TryGetValue(inputJson.AthleteId, out var mappedInputId) ? mappedInputId : 0;
+
                     var input = new Input
                     {
                         SessionId = sessionId,
                         VideoId = inputJson.VideoId,
-                        AthleteId = inputJson.AthleteId,
+                        AthleteId = localInputAthleteId,
                         CategoriaId = inputJson.CategoriaId,
                         InputTypeId = inputJson.InputTypeId,
                         InputDateTime = inputJson.InputDateTime,
@@ -240,10 +263,12 @@ public class CrownFileService
             {
                 foreach (var valJson in crownData.Valoraciones)
                 {
+                    var localValAthleteId = athleteIdMap.TryGetValue(valJson.AthleteId, out var mappedValId) ? mappedValId : 0;
+
                     var valoracion = new Valoracion
                     {
                         SessionId = sessionId,
-                        AthleteId = valJson.AthleteId,
+                        AthleteId = localValAthleteId,
                         InputTypeId = valJson.InputTypeId,
                         InputDateTime = valJson.InputDateTime,
                         InputValue = valJson.InputValue,

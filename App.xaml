@@ -16,6 +16,7 @@
             <converters:ProgressConverter x:Key="ProgressConverter"/>
             <converters:FavoriteConverter x:Key="FavoriteConverter"/>
             <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+            <converters:DurationToMinutesConverter x:Key="DurationToMinutesConverter"/>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

@@ -17,9 +17,12 @@ public class DashboardViewModel : BaseViewModel
 
     private DashboardStats? _stats;
     private Session? _selectedSession;
+    private bool _isLoadingSelectedSessionVideos;
     private string _importProgressText = "";
     private int _importProgressValue;
     private bool _isImporting;
+
+    private CancellationTokenSource? _selectedSessionVideosCts;
 
     public DashboardStats? Stats
     {
@@ -30,7 +33,22 @@ public class DashboardViewModel : BaseViewModel
     public Session? SelectedSession
     {
         get => _selectedSession;
-        set => SetProperty(ref _selectedSession, value);
+        set
+        {
+            if (SetProperty(ref _selectedSession, value))
+            {
+                OnPropertyChanged(nameof(SelectedSessionTitle));
+                _ = LoadSelectedSessionVideosAsync(value);
+            }
+        }
+    }
+
+    public string SelectedSessionTitle => SelectedSession?.DisplayName ?? "Selecciona una sesión";
+
+    public bool IsLoadingSelectedSessionVideos
+    {
+        get => _isLoadingSelectedSessionVideos;
+        private set => SetProperty(ref _isLoadingSelectedSessionVideos, value);
     }
 
     public string ImportProgressText
@@ -52,12 +70,44 @@ public class DashboardViewModel : BaseViewModel
     }
 
     public ObservableCollection<Session> RecentSessions { get; } = new();
+    public ObservableCollection<VideoClip> SelectedSessionVideos { get; } = new();
+
+    public ObservableCollection<SectionStats> SelectedSessionSectionStats { get; } = new();
+    public ObservableCollection<SessionAthleteTimeRow> SelectedSessionAthleteTimes { get; } = new();
+
+    // Datos (DB) de la sesión seleccionada
+    public ObservableCollection<Input> SelectedSessionInputs { get; } = new();
+    public ObservableCollection<Valoracion> SelectedSessionValoraciones { get; } = new();
+
+    // Series para gráfico (duración total por sección, en minutos)
+    public ObservableCollection<double> SelectedSessionSectionDurationMinutes { get; } = new();
+    public ObservableCollection<string> SelectedSessionSectionLabels { get; } = new();
+
+    // Etiquetas (tags): vídeos etiquetados por TagId
+    public ObservableCollection<double> SelectedSessionTagVideoCounts { get; } = new();
+    public ObservableCollection<string> SelectedSessionTagLabels { get; } = new();
+
+    // Penalizaciones: conteo de tags 2 y 50
+    public ObservableCollection<double> SelectedSessionPenaltyCounts { get; } = new();
+    public ObservableCollection<string> SelectedSessionPenaltyLabels { get; } = new();
+
+    public double SelectedSessionTotalDurationSeconds => SelectedSessionVideos.Sum(v => v.ClipDuration);
+    public string SelectedSessionTotalDurationFormatted
+    {
+        get
+        {
+            var ts = TimeSpan.FromSeconds(SelectedSessionTotalDurationSeconds);
+            return ts.TotalHours >= 1 ? $"{(int)ts.TotalHours}h {ts.Minutes}m" : $"{ts.Minutes}m {ts.Seconds}s";
+        }
+    }
 
     public ICommand ImportCommand { get; }
     public ICommand RefreshCommand { get; }
     public ICommand ViewSessionCommand { get; }
     public ICommand ViewAllSessionsCommand { get; }
     public ICommand ViewAthletesCommand { get; }
+    public ICommand PlaySelectedVideoCommand { get; }
+    public ICommand DeleteSelectedSessionCommand { get; }
 
     public DashboardViewModel(
         DatabaseService databaseService,
@@ -75,6 +125,49 @@ public class DashboardViewModel : BaseViewModel
         ViewSessionCommand = new AsyncRelayCommand<Session>(ViewSessionAsync);
         ViewAllSessionsCommand = new AsyncRelayCommand(ViewAllSessionsAsync);
         ViewAthletesCommand = new AsyncRelayCommand(ViewAthletesAsync);
+        PlaySelectedVideoCommand = new AsyncRelayCommand<VideoClip>(PlaySelectedVideoAsync);
+        DeleteSelectedSessionCommand = new AsyncRelayCommand(DeleteSelectedSessionAsync);
+    }
+
+    private async Task DeleteSelectedSessionAsync()
+    {
+        var session = SelectedSession;
+        if (session == null)
+        {
+            await Shell.Current.DisplayAlert("Eliminar", "Selecciona una sesión primero.", "OK");
+            return;
+        }
+
+        var confirm = await Shell.Current.DisplayAlert(
+            "Eliminar sesión",
+            $"¿Seguro que quieres eliminar la sesión '{session.DisplayName}'?\n\nSe borrarán sus vídeos, inputs y valoraciones.",
+            "Eliminar",
+            "Cancelar");
+
+        if (!confirm)
+            return;
+
+        var deleted = false;
+        try
+        {
+            IsBusy = true;
+            await _databaseService.DeleteSessionCascadeAsync(session.Id, deleteSessionFiles: true);
+            SelectedSession = null;
+            deleted = true;
+        }
+        catch (Exception ex)
+        {
+            await Shell.Current.DisplayAlert("Error", $"No se pudo eliminar la sesión: {ex.Message}", "OK");
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+
+        // Refrescar la lista de sesiones (LoadDataAsync se auto-gestiona con IsBusy,
+        // así que debe llamarse cuando IsBusy ya esté a false).
+        if (deleted)
+            await LoadDataAsync();
     }
 
     public async Task LoadDataAsync()
@@ -91,6 +184,12 @@ public class DashboardViewModel : BaseViewModel
             {
                 RecentSessions.Add(session);
             }
+
+            // Si la sesión seleccionada ya no existe (p.ej. tras borrar), limpiar panel derecho.
+            if (SelectedSession != null && !RecentSessions.Any(s => s.Id == SelectedSession.Id))
+            {
+                SelectedSession = null;
+            }
         }
         catch (Exception ex)
         {
@@ -100,6 +199,180 @@ public class DashboardViewModel : BaseViewModel
         {
             IsBusy = false;
         }
+    }
+
+    private async Task LoadSelectedSessionVideosAsync(Session? session)
+    {
+        _selectedSessionVideosCts?.Cancel();
+        _selectedSessionVideosCts?.Dispose();
+        _selectedSessionVideosCts = new CancellationTokenSource();
+        var ct = _selectedSessionVideosCts.Token;
+
+        SelectedSessionVideos.Clear();
+        SelectedSessionSectionStats.Clear();
+        SelectedSessionAthleteTimes.Clear();
+        SelectedSessionSectionDurationMinutes.Clear();
+        SelectedSessionSectionLabels.Clear();
+        SelectedSessionTagVideoCounts.Clear();
+        SelectedSessionTagLabels.Clear();
+        SelectedSessionPenaltyCounts.Clear();
+        SelectedSessionPenaltyLabels.Clear();
+        SelectedSessionInputs.Clear();
+        SelectedSessionValoraciones.Clear();
+
+        OnPropertyChanged(nameof(SelectedSessionTotalDurationSeconds));
+        OnPropertyChanged(nameof(SelectedSessionTotalDurationFormatted));
+        if (session == null) return;
+
+        try
+        {
+            IsLoadingSelectedSessionVideos = true;
+            var clips = await _databaseService.GetVideoClipsBySessionAsync(session.Id);
+            if (ct.IsCancellationRequested) return;
+
+            foreach (var clip in clips)
+            {
+                SelectedSessionVideos.Add(clip);
+            }
+
+            // Estadísticas por sección (tabla + gráfico)
+            var sectionStats = await _statisticsService.GetVideosBySectionAsync(session.Id);
+            if (ct.IsCancellationRequested) return;
+
+            foreach (var s in sectionStats)
+            {
+                SelectedSessionSectionStats.Add(s);
+
+                // Para gráfico: minutos, y etiqueta corta
+                SelectedSessionSectionDurationMinutes.Add(Math.Round(s.TotalDuration / 60.0, 1));
+                SelectedSessionSectionLabels.Add(s.Section.ToString());
+            }
+
+            // Tabla de tiempos por atleta
+            var byAthlete = clips
+                .Where(v => v.AtletaId != 0)
+                .GroupBy(v => v.AtletaId)
+                .Select(g => new
+                {
+                    AthleteName = g.FirstOrDefault()?.Atleta?.NombreCompleto ?? $"Atleta {g.Key}",
+                    VideoCount = g.Count(),
+                    TotalSeconds = g.Sum(v => v.ClipDuration),
+                    AvgSeconds = g.Any() ? g.Average(v => v.ClipDuration) : 0
+                })
+                .OrderByDescending(x => x.TotalSeconds)
+                .ToList();
+
+            foreach (var row in byAthlete)
+            {
+                SelectedSessionAthleteTimes.Add(new SessionAthleteTimeRow(
+                    row.AthleteName,
+                    row.VideoCount,
+                    row.TotalSeconds,
+                    row.AvgSeconds));
+            }
+
+            // Etiquetas (tags) y penalizaciones: usando Inputs de la sesión.
+            // Asunción: InputTypeId representa el TagId.
+            var inputs = await _databaseService.GetInputsBySessionAsync(session.Id);
+            if (ct.IsCancellationRequested) return;
+
+            foreach (var input in inputs.OrderBy(i => i.InputDateTime))
+            {
+                SelectedSessionInputs.Add(input);
+            }
+
+            var tagStats = inputs
+                .GroupBy(i => i.InputTypeId)
+                .Select(g => new
+                {
+                    TagId = g.Key,
+                    Assignments = g.Count(),
+                    VideoCount = g.Select(x => x.VideoId).Distinct().Count()
+                })
+                .OrderByDescending(x => x.VideoCount)
+                .ThenBy(x => x.TagId)
+                .Take(12)
+                .ToList();
+
+            foreach (var t in tagStats)
+            {
+                SelectedSessionTagLabels.Add(t.TagId.ToString());
+                SelectedSessionTagVideoCounts.Add(t.VideoCount);
+            }
+
+            // Penalizaciones (tags 2 y 50): por número de asignaciones
+            var penalty2 = inputs.Count(i => i.InputTypeId == 2);
+            var penalty50 = inputs.Count(i => i.InputTypeId == 50);
+            SelectedSessionPenaltyLabels.Add("2");
+            SelectedSessionPenaltyLabels.Add("50");
+            SelectedSessionPenaltyCounts.Add(penalty2);
+            SelectedSessionPenaltyCounts.Add(penalty50);
+
+            // Valoraciones (tabla valoracion)
+            var valoraciones = await _databaseService.GetValoracionesBySessionAsync(session.Id);
+            if (ct.IsCancellationRequested) return;
+
+            foreach (var v in valoraciones.OrderBy(v => v.InputDateTime))
+            {
+                SelectedSessionValoraciones.Add(v);
+            }
+
+            OnPropertyChanged(nameof(SelectedSessionTotalDurationSeconds));
+            OnPropertyChanged(nameof(SelectedSessionTotalDurationFormatted));
+        }
+        catch (Exception ex)
+        {
+            if (!ct.IsCancellationRequested)
+                await Shell.Current.DisplayAlert("Error", $"No se pudieron cargar los vídeos: {ex.Message}", "OK");
+        }
+        finally
+        {
+            if (!ct.IsCancellationRequested)
+                IsLoadingSelectedSessionVideos = false;
+        }
+    }
+
+    private async Task PlaySelectedVideoAsync(VideoClip? video)
+    {
+        if (video == null) return;
+
+        var videoPath = video.LocalClipPath;
+
+        // Fallback: construir ruta local desde la carpeta de la sesión
+        if (string.IsNullOrWhiteSpace(videoPath) || !File.Exists(videoPath))
+        {
+            try
+            {
+                var session = SelectedSession ?? await _databaseService.GetSessionByIdAsync(video.SessionId);
+                if (!string.IsNullOrWhiteSpace(session?.PathSesion))
+                {
+                    var normalized = (video.ClipPath ?? "").Replace('\\', '/');
+                    var fileName = Path.GetFileName(normalized);
+                    if (string.IsNullOrWhiteSpace(fileName))
+                        fileName = $"CROWN{video.Id}.mp4";
+
+                    var candidate = Path.Combine(session.PathSesion, "videos", fileName);
+                    if (File.Exists(candidate))
+                        videoPath = candidate;
+                }
+            }
+            catch
+            {
+                // Ignorar: si falla, se mostrará el error estándar
+            }
+        }
+
+        // Último recurso: usar ClipPath si fuera una ruta real
+        if (string.IsNullOrWhiteSpace(videoPath))
+            videoPath = video.ClipPath;
+
+        if (string.IsNullOrEmpty(videoPath) || !File.Exists(videoPath))
+        {
+            await Shell.Current.DisplayAlert("Error", "El archivo de video no existe", "OK");
+            return;
+        }
+
+        await Shell.Current.GoToAsync($"{nameof(VideoPlayerPage)}?videoPath={Uri.EscapeDataString(videoPath)}");
     }
 
     private async Task ImportCrownFileAsync()

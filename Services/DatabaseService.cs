@@ -161,6 +161,60 @@ public class DatabaseService
         return athletes;
     }
 
+    /// <summary>
+    /// Busca un atleta existente por nombre y apellido (case-insensitive).
+    /// Devuelve null si no lo encuentra; devuelve el primer match si hay varios.
+    /// </summary>
+    public async Task<Athlete?> FindAthleteByNameAsync(string? nombre, string? apellido)
+    {
+        if (string.IsNullOrWhiteSpace(nombre) && string.IsNullOrWhiteSpace(apellido))
+            return null;
+
+        var db = await GetConnectionAsync();
+        var athletes = await db.Table<Athlete>().ToListAsync();
+
+        // Buscar match exacto (case-insensitive)
+        var match = athletes.FirstOrDefault(a =>
+            string.Equals(a.Nombre?.Trim(), nombre?.Trim(), StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(a.Apellido?.Trim(), apellido?.Trim(), StringComparison.OrdinalIgnoreCase));
+
+        return match;
+    }
+
+    /// <summary>
+    /// Busca atletas cuyo nombre o apellido contengan el texto dado (para sugerencias).
+    /// </summary>
+    public async Task<List<Athlete>> SearchAthletesAsync(string searchText)
+    {
+        if (string.IsNullOrWhiteSpace(searchText))
+            return new List<Athlete>();
+
+        var db = await GetConnectionAsync();
+        var athletes = await db.Table<Athlete>().ToListAsync();
+
+        var lowerSearch = searchText.ToLowerInvariant();
+        return athletes
+            .Where(a =>
+                (a.Nombre?.ToLowerInvariant().Contains(lowerSearch) ?? false) ||
+                (a.Apellido?.ToLowerInvariant().Contains(lowerSearch) ?? false) ||
+                (a.NombreCompleto?.ToLowerInvariant().Contains(lowerSearch) ?? false))
+            .OrderBy(a => a.Apellido)
+            .ThenBy(a => a.Nombre)
+            .ToList();
+    }
+
+    /// <summary>
+    /// Inserta un atleta nuevo (sin PK prefijada) y devuelve el ID autogenerado.
+    /// </summary>
+    public async Task<int> InsertAthleteAsync(Athlete athlete)
+    {
+        var db = await GetConnectionAsync();
+        // Forzar Id=0 para que SQLite asigne uno nuevo con AUTOINCREMENT
+        athlete.Id = 0;
+        await db.InsertAsync(athlete);
+        return athlete.Id;
+    }
+
     public async Task<Athlete?> GetAthleteByIdAsync(int id)
     {
         var db = await GetConnectionAsync();
@@ -338,6 +392,47 @@ public class DatabaseService
     {
         var db = await GetConnectionAsync();
         return await db.Table<VideoClip>().CountAsync();
+    }
+
+    // ==================== BORRADO ====================
+    public async Task DeleteSessionCascadeAsync(int sessionId, bool deleteSessionFiles)
+    {
+        var db = await GetConnectionAsync();
+
+        var session = await db.Table<Session>().FirstOrDefaultAsync(s => s.Id == sessionId);
+
+        // Borrar filas dependientes.
+        // Nota: usamos SQL explícito para asegurar que se usa el nombre real de tabla/columna,
+        // especialmente en tablas con nombres conflictivos como "input".
+        await db.ExecuteAsync("DELETE FROM videoClip WHERE SessionID = ?;", sessionId);
+        await db.ExecuteAsync("DELETE FROM \"input\" WHERE SessionID = ?;", sessionId);
+        await db.ExecuteAsync("DELETE FROM valoracion WHERE SessionID = ?;", sessionId);
+
+        // Borrar sesión (la tabla real es "sesion" y la PK es "id")
+        await db.ExecuteAsync("DELETE FROM sesion WHERE id = ?;", sessionId);
+
+        // Borrar archivos de la sesión (carpeta Media/<sesión>)
+        if (deleteSessionFiles && !string.IsNullOrWhiteSpace(session?.PathSesion))
+        {
+            try
+            {
+                var path = session.PathSesion;
+                var mediaRoot = Path.Combine(FileSystem.AppDataDirectory, "Media");
+
+                // Seguridad: solo borrar dentro de AppDataDirectory/Media
+                if (Directory.Exists(path))
+                {
+                    var fullPath = Path.GetFullPath(path);
+                    var fullRoot = Path.GetFullPath(mediaRoot);
+                    if (fullPath.StartsWith(fullRoot, StringComparison.OrdinalIgnoreCase))
+                        Directory.Delete(fullPath, recursive: true);
+                }
+            }
+            catch
+            {
+                // Si no se puede borrar, no bloqueamos el borrado en DB.
+            }
+        }
     }
 
     public async Task<int> GetTotalAthletesCountAsync()
