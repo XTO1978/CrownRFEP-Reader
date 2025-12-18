@@ -162,23 +162,124 @@ public class DatabaseService
     }
 
     /// <summary>
-    /// Busca un atleta existente por nombre y apellido (case-insensitive).
+    /// Busca un atleta existente por nombre y apellido (case-insensitive, normalizado).
     /// Devuelve null si no lo encuentra; devuelve el primer match si hay varios.
     /// </summary>
     public async Task<Athlete?> FindAthleteByNameAsync(string? nombre, string? apellido)
     {
-        if (string.IsNullOrWhiteSpace(nombre) && string.IsNullOrWhiteSpace(apellido))
+        var normalizedNombre = NormalizeString(nombre);
+        var normalizedApellido = NormalizeString(apellido);
+        
+        if (string.IsNullOrEmpty(normalizedNombre) && string.IsNullOrEmpty(normalizedApellido))
             return null;
 
         var db = await GetConnectionAsync();
         var athletes = await db.Table<Athlete>().ToListAsync();
 
-        // Buscar match exacto (case-insensitive)
+        // Buscar match exacto (normalizado, case-insensitive)
         var match = athletes.FirstOrDefault(a =>
-            string.Equals(a.Nombre?.Trim(), nombre?.Trim(), StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(a.Apellido?.Trim(), apellido?.Trim(), StringComparison.OrdinalIgnoreCase));
+            string.Equals(NormalizeString(a.Nombre), normalizedNombre, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(NormalizeString(a.Apellido), normalizedApellido, StringComparison.OrdinalIgnoreCase));
 
         return match;
+    }
+
+    /// <summary>
+    /// Normaliza un string: trim, colapsar espacios múltiples en uno.
+    /// </summary>
+    private static string NormalizeString(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return string.Empty;
+        
+        // Trim y colapsar espacios múltiples
+        return System.Text.RegularExpressions.Regex.Replace(value.Trim(), @"\s+", " ");
+    }
+
+    /// <summary>
+    /// Consolida atletas duplicados: mantiene el de menor ID y actualiza referencias.
+    /// Devuelve el número de duplicados eliminados.
+    /// </summary>
+    public async Task<int> ConsolidateDuplicateAthletesAsync()
+    {
+        var db = await GetConnectionAsync();
+        var allAthletes = await db.Table<Athlete>().ToListAsync();
+        
+        // Agrupar por nombre+apellido normalizados
+        var groups = allAthletes
+            .GroupBy(a => (NormalizeString(a.Nombre).ToLowerInvariant(), NormalizeString(a.Apellido).ToLowerInvariant()))
+            .Where(g => g.Count() > 1)
+            .ToList();
+
+        int duplicatesRemoved = 0;
+
+        foreach (var group in groups)
+        {
+            // Mantener el atleta con menor ID (el primero que se importó)
+            var orderedAthletes = group.OrderBy(a => a.Id).ToList();
+            var keepAthlete = orderedAthletes.First();
+            var duplicatesToRemove = orderedAthletes.Skip(1).ToList();
+
+            foreach (var duplicate in duplicatesToRemove)
+            {
+                // Actualizar referencias en videoClip (columna: AtletaID)
+                await db.ExecuteAsync(
+                    "UPDATE videoClip SET AtletaID = ? WHERE AtletaID = ?",
+                    keepAthlete.Id, duplicate.Id);
+
+                // Actualizar referencias en input (columna: AthleteID)
+                await db.ExecuteAsync(
+                    "UPDATE \"input\" SET AthleteID = ? WHERE AthleteID = ?",
+                    keepAthlete.Id, duplicate.Id);
+
+                // Actualizar referencias en valoracion (columna: AthleteID)
+                await db.ExecuteAsync(
+                    "UPDATE valoracion SET AthleteID = ? WHERE AthleteID = ?",
+                    keepAthlete.Id, duplicate.Id);
+
+                // Eliminar el duplicado
+                await db.DeleteAsync(duplicate);
+                duplicatesRemoved++;
+            }
+        }
+
+        return duplicatesRemoved;
+    }
+
+    /// <summary>
+    /// Fusiona manualmente una lista de atletas en uno solo.
+    /// Actualiza todas las referencias y elimina los duplicados.
+    /// </summary>
+    public async Task<int> MergeAthletesAsync(int keepAthleteId, List<int> mergeAthleteIds)
+    {
+        var db = await GetConnectionAsync();
+        int merged = 0;
+
+        foreach (var duplicateId in mergeAthleteIds)
+        {
+            if (duplicateId == keepAthleteId) continue;
+
+            // Actualizar referencias en videoClip (columna: AtletaID)
+            await db.ExecuteAsync(
+                "UPDATE videoClip SET AtletaID = ? WHERE AtletaID = ?",
+                keepAthleteId, duplicateId);
+
+            // Actualizar referencias en input (columna: AthleteID)
+            await db.ExecuteAsync(
+                "UPDATE \"input\" SET AthleteID = ? WHERE AthleteID = ?",
+                keepAthleteId, duplicateId);
+
+            // Actualizar referencias en valoracion (columna: AthleteID)
+            await db.ExecuteAsync(
+                "UPDATE valoracion SET AthleteID = ? WHERE AthleteID = ?",
+                keepAthleteId, duplicateId);
+
+            // Eliminar el atleta duplicado
+            await db.ExecuteAsync("DELETE FROM Atleta WHERE id = ?", duplicateId);
+            merged++;
+        }
+
+        return merged;
     }
 
     /// <summary>

@@ -8,75 +8,159 @@
              x:DataType="vm:AthletesViewModel"
              Title="{Binding Title}">
 
-    <Grid RowDefinitions="Auto,Auto,*" Padding="15">
+    <Grid RowDefinitions="Auto,Auto,Auto,*" Padding="15">
 
         <controls:TopTabsBar Grid.Row="0" />
-        
-        <!-- Barra de búsqueda -->
-        <SearchBar Grid.Row="1"
-                   Placeholder="Buscar atletas..."
-                   Text="{Binding SearchText}"
-                   BackgroundColor="{AppThemeBinding Light={StaticResource Gray100}, Dark={StaticResource Gray900}}"
-                   CancelButtonColor="{StaticResource Primary}"/>
 
-        <RefreshView Grid.Row="2" 
-                     Command="{Binding RefreshCommand}" 
-                     IsRefreshing="{Binding IsBusy}">
-            <CollectionView ItemsSource="{Binding FilteredAthletes}"
-                            SelectionMode="None">
-                <CollectionView.ItemTemplate>
-                    <DataTemplate x:DataType="models:Athlete">
-                        <Frame Margin="0,8" Padding="15" CornerRadius="12" HasShadow="True">
-                            <Frame.GestureRecognizers>
-                                <TapGestureRecognizer 
-                                    Command="{Binding Source={RelativeSource AncestorType={x:Type vm:AthletesViewModel}}, Path=ViewAthleteCommand}"
-                                    CommandParameter="{Binding .}"/>
-                            </Frame.GestureRecognizers>
-                            
-                            <Grid ColumnDefinitions="50,*,Auto">
-                                <!-- Avatar -->
-                                <Frame WidthRequest="50" 
-                                       HeightRequest="50" 
-                                       CornerRadius="25" 
-                                       Padding="0"
-                                       HasShadow="False"
-                                       BackgroundColor="{StaticResource Primary}">
-                                    <Label Text="🏃" 
-                                           FontSize="24" 
-                                           HorizontalOptions="Center" 
-                                           VerticalOptions="Center"/>
-                                </Frame>
-                                
-                                <!-- Info -->
-                                <VerticalStackLayout Grid.Column="1" Margin="15,0,0,0" VerticalOptions="Center">
-                                    <Label Text="{Binding NombreCompleto}" 
-                                           FontSize="16" 
-                                           FontAttributes="Bold"/>
-                                    <Label Text="{Binding CategoriaNombre}" 
-                                           FontSize="14" 
-                                           TextColor="Gray"/>
-                                </VerticalStackLayout>
-                                
-                                <!-- Favorito -->
-                                <Label Grid.Column="2" 
-                                       Text="{Binding IsFavorite, Converter={StaticResource FavoriteConverter}}" 
-                                       FontSize="20" 
-                                       VerticalOptions="Center"/>
-                            </Grid>
-                        </Frame>
-                    </DataTemplate>
-                </CollectionView.ItemTemplate>
-                
-                <CollectionView.EmptyView>
-                    <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center" Padding="40">
-                        <Label Text="🏃" FontSize="48" HorizontalOptions="Center"/>
-                        <Label Text="No se encontraron atletas" 
-                               FontSize="18" 
-                               HorizontalOptions="Center" 
-                               TextColor="Gray"/>
-                    </VerticalStackLayout>
-                </CollectionView.EmptyView>
-            </CollectionView>
-        </RefreshView>
+        <!-- Título y contador -->
+        <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto" Margin="0,15,0,5">
+            <HorizontalStackLayout Spacing="10">
+                <Label Text="Diccionario de Atletas" 
+                       FontSize="18" 
+                       FontAttributes="Bold"
+                       VerticalOptions="Center"/>
+                <Border BackgroundColor="{StaticResource Primary}"
+                        StrokeThickness="0"
+                        StrokeShape="RoundRectangle 10"
+                        Padding="8,2">
+                    <Label Text="{Binding Athletes.Count, StringFormat='{0} registrados'}" 
+                           TextColor="White"
+                           FontSize="12"
+                           VerticalOptions="Center"/>
+                </Border>
+            </HorizontalStackLayout>
+            
+            <Button Grid.Column="1"
+                    Text="🔗 Son el mismo atleta"
+                    Command="{Binding MergeSelectedAthletesCommand}"
+                    IsEnabled="{Binding CanMerge}"
+                    BackgroundColor="#E65100"
+                    TextColor="White"
+                    FontSize="12"
+                    Padding="10,5"
+                    Margin="0,0,10,0"
+                    CornerRadius="5"/>
+            
+            <Button Grid.Column="2"
+                    Text="🔄 Consolidar automático"
+                    Command="{Binding ConsolidateDuplicatesCommand}"
+                    BackgroundColor="{StaticResource Secondary}"
+                    TextColor="White"
+                    FontSize="12"
+                    Padding="10,5"
+                    CornerRadius="5"/>
+        </Grid>
+
+        <!-- Info de selección -->
+        <HorizontalStackLayout Grid.Row="2" Margin="0,5,0,5" Spacing="8" IsVisible="{Binding CanMerge}">
+            <Label Text="📌" FontSize="14"/>
+            <Label Text="{Binding SelectedCount, StringFormat='{0} atletas seleccionados'}" 
+                   FontSize="13"
+                   TextColor="{StaticResource Primary}"
+                   FontAttributes="Italic"/>
+        </HorizontalStackLayout>
+
+        <!-- Tabla de atletas registrados -->
+        <Border Grid.Row="3" 
+                Margin="0,5,0,0"
+                Stroke="{AppThemeBinding Light={StaticResource Gray300}, Dark={StaticResource Gray600}}"
+                StrokeShape="RoundRectangle 8"
+                StrokeThickness="1">
+            <Grid RowDefinitions="Auto,*">
+                <!-- Encabezado -->
+                <Border BackgroundColor="{StaticResource Primary}"
+                        StrokeThickness="0"
+                        Padding="0">
+                    <Grid ColumnDefinitions="50,80,*,*" Padding="12,10">
+                        <Label Text="✓" 
+                               FontAttributes="Bold" 
+                               TextColor="White"
+                               HorizontalOptions="Center"
+                               VerticalOptions="Center"/>
+                        <Label Grid.Column="1"
+                               Text="ID" 
+                               FontAttributes="Bold" 
+                               TextColor="White"
+                               VerticalOptions="Center"/>
+                        <Label Grid.Column="2" 
+                               Text="Nombre" 
+                               FontAttributes="Bold" 
+                               TextColor="White"
+                               VerticalOptions="Center"/>
+                        <Label Grid.Column="3" 
+                               Text="Apellido" 
+                               FontAttributes="Bold" 
+                               TextColor="White"
+                               VerticalOptions="Center"/>
+                    </Grid>
+                </Border>
+
+                <!-- Lista de atletas -->
+                <RefreshView Grid.Row="1" 
+                             Command="{Binding RefreshCommand}" 
+                             IsRefreshing="{Binding IsBusy}">
+                    <CollectionView ItemsSource="{Binding Athletes}"
+                                    SelectionMode="None">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="models:Athlete">
+                                <Border StrokeThickness="0,0,0,1"
+                                        Stroke="{AppThemeBinding Light={StaticResource Gray200}, Dark={StaticResource Gray700}}"
+                                        BackgroundColor="{AppThemeBinding Light=White, Dark={StaticResource Gray900}}">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer 
+                                            Command="{Binding Source={RelativeSource AncestorType={x:Type vm:AthletesViewModel}}, Path=ToggleAthleteSelectionCommand}"
+                                            CommandParameter="{Binding .}"/>
+                                    </Border.GestureRecognizers>
+                                    <Grid ColumnDefinitions="50,80,*,*" Padding="12,10">
+                                        <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                                  CheckedChanged="OnAthleteCheckChanged"
+                                                  HorizontalOptions="Center"
+                                                  VerticalOptions="Center"
+                                                  Color="{StaticResource Primary}"/>
+                                        <Border Grid.Column="1"
+                                                BackgroundColor="{StaticResource Secondary}"
+                                                StrokeThickness="0"
+                                                StrokeShape="RoundRectangle 4"
+                                                WidthRequest="45"
+                                                HeightRequest="28"
+                                                HorizontalOptions="Start">
+                                            <Label Text="{Binding Id}" 
+                                                   TextColor="White"
+                                                   FontAttributes="Bold"
+                                                   HorizontalOptions="Center"
+                                                   VerticalOptions="Center"/>
+                                        </Border>
+                                        <Label Grid.Column="2" 
+                                               Text="{Binding Nombre}" 
+                                               VerticalOptions="Center"
+                                               FontSize="14"/>
+                                        <Label Grid.Column="3" 
+                                               Text="{Binding Apellido}" 
+                                               VerticalOptions="Center"
+                                               FontSize="14"
+                                               FontAttributes="Bold"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                        
+                        <CollectionView.EmptyView>
+                            <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center" Padding="40">
+                                <Label Text="🏃" FontSize="48" HorizontalOptions="Center"/>
+                                <Label Text="No hay atletas registrados" 
+                                       FontSize="16" 
+                                       HorizontalOptions="Center" 
+                                       TextColor="Gray"/>
+                                <Label Text="Importa una sesión para ver atletas aquí" 
+                                       FontSize="13" 
+                                       HorizontalOptions="Center" 
+                                       TextColor="Gray"
+                                       Margin="0,5,0,0"/>
+                            </VerticalStackLayout>
+                        </CollectionView.EmptyView>
+                    </CollectionView>
+                </RefreshView>
+            </Grid>
+        </Border>
     </Grid>
 </ContentPage>

@@ -1,3 +1,4 @@
+using CrownRFEP_Reader.Models;
 using CrownRFEP_Reader.ViewModels;
 
 namespace CrownRFEP_Reader.Views;
@@ -16,5 +17,10 @@ public partial class AthletesPage : ContentPage
     {
         base.OnAppearing();
         await _viewModel.LoadAthletesAsync();
+    }
+
+    private void OnAthleteCheckChanged(object? sender, CheckedChangedEventArgs e)
+    {
+        _viewModel.UpdateSelectedCount();
     }
 }
