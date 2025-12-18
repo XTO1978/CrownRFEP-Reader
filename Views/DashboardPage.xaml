@@ -13,62 +13,69 @@
 
     <Grid
         Padding="0"
-        ColumnDefinitions="*,8,2.5*,8,1.5*"
+        ColumnDefinitions="*,8,2.5*,8,*"
         RowDefinitions="Auto,*">
         <controls:TopTabsBar
             Grid.Row="0"
             Grid.ColumnSpan="5"
-            HorizontalOptions="Center"
-            BackgroundColor="#FF1B1B1B" />
+            BackgroundColor="#FF1B1B1B"
+            HorizontalOptions="Center" />
 
-        <!-- Línea horizontal separadora entre fila 0 y fila 1 -->
+        <!--  Línea horizontal separadora entre fila 0 y fila 1  -->
         <BoxView
             Grid.Row="0"
             Grid.ColumnSpan="5"
+            Margin="0"
             BackgroundColor="#FF3A3A3A"
             HeightRequest="1"
             HorizontalOptions="Fill"
-            VerticalOptions="End"
-            Margin="0" />
-        
-        <!-- GridSplitter entre columna 0 y 2 -->
+            VerticalOptions="End" />
+
+        <!--  GridSplitter entre columna 0 y 2  -->
         <controls:GridSplitter
             Grid.Row="1"
             Grid.Column="1"
             LeftColumnIndex="0"
-            RightColumnIndex="2"
             MinLeftWidth="200"
             MinRightWidth="300"
+            RightColumnIndex="2"
             WidthRequest="8" />
 
-        <!-- GridSplitter entre columna 2 y 4 -->
+        <!--  GridSplitter entre columna 2 y 4  -->
         <controls:GridSplitter
             Grid.Row="1"
             Grid.Column="3"
             LeftColumnIndex="2"
-            RightColumnIndex="4"
             MinLeftWidth="300"
             MinRightWidth="200"
+            RightColumnIndex="4"
             WidthRequest="8" />
 
         <!--  Lista de sesiones recientes + barra superior  -->
-        <Grid Grid.Row="1" Grid.Column="0" Padding="20,0" RowDefinitions="Auto,*">
-            <HorizontalStackLayout Grid.Row="0" Spacing="10" Padding="0,12,0,0">
+        <Grid
+            Grid.Row="1"
+            Grid.Column="0"
+            Padding="20,0"
+            RowDefinitions="Auto,*">
+            <HorizontalStackLayout
+                Grid.Row="0"
+                Padding="0,12,0,0"
+                Spacing="10">
                 <Button
-                    Text="Importar"
-                    Command="{Binding ImportCommand}"
+                    Padding="12,10"
                     BackgroundColor="#FF1B1B1B"
-                    TextColor="White"
+                    Command="{Binding ImportCommand}"
                     CornerRadius="6"
-                    Padding="12,10" />
+                    Text="Importar"
+                    TextColor="White" />
 
                 <Button
-                    Text="Eliminar"
-                    Command="{Binding DeleteSelectedSessionCommand}"
+                    Padding="12,10"
                     BackgroundColor="#FF1B1B1B"
-                    TextColor="White"
+                    Command="{Binding DeleteSelectedSessionCommand}"
                     CornerRadius="6"
-                    Padding="12,10" />
+                    Text="Eliminar"
+                    TextColor="White" />
             </HorizontalStackLayout>
 
             <CollectionView
@@ -78,52 +85,103 @@
                 ItemsSource="{Binding RecentSessions}"
                 SelectedItem="{Binding SelectedSession, Mode=TwoWay}"
                 SelectionMode="Single">
-                <CollectionView.ItemsLayout>
-                    <LinearItemsLayout ItemSpacing="4" Orientation="Vertical" />
-                </CollectionView.ItemsLayout>
-                <CollectionView.ItemTemplate>
-                    <DataTemplate x:DataType="models:Session">
+
+                <!--  Item fijo: Galería General  -->
+                <CollectionView.Header>
+                    <Border
+                        Margin="0,0,0,8"
+                        BackgroundColor="{Binding IsAllGallerySelected, Converter={StaticResource BoolToColorConverter}}"
+                        Stroke="Transparent"
+                        StrokeShape="RoundRectangle 4">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding SelectAllGalleryCommand}" />
+                        </Border.GestureRecognizers>
                         <HorizontalStackLayout
-                            Padding="16,8"
+                            Padding="16,10"
                             Spacing="8"
                             VerticalOptions="Center">
                             <controls:SymbolIcon
                                 HeightRequest="24"
-                                SymbolName="oar.2.crossed"
+                                SymbolName="photo.on.rectangle.angled"
                                 TintColor="#FF6DDDFF"
                                 VerticalOptions="Center"
                                 WidthRequest="24" />
                             <Label
                                 FontFamily="SF Pro Text"
-                                FontSize="18"
-                                LineBreakMode="TailTruncation"
-                                TextColor="White">
-                                <Label.FormattedText>
-                                    <FormattedString>
-                                        <Span
-                                            FontSize="16"
-                                            Text="{Binding FechaDateTime, StringFormat='{0:dd/MM/yyyy}'}"
-                                            TextColor="White" />
-                                        <Span
-                                            FontSize="16"
-                                            Text=" en "
-                                            TextColor="White" />
-                                        <Span
-                                            FontSize="16"
-                                            Text="{Binding Lugar}"
-                                            TextColor="White" />
-                                        <Span
-                                            FontSize="16"
-                                            Text=" - "
-                                            TextColor="White" />
-                                        <Span
-                                            FontSize="16"
-                                            Text="{Binding DisplayName}"
-                                            TextColor="White" />
-                                    </FormattedString>
-                                </Label.FormattedText>
-                            </Label>
+                                FontSize="16"
+                                Text="Galería General"
+                                TextColor="White"
+                                VerticalOptions="Center" />
                         </HorizontalStackLayout>
+                    </Border>
+                </CollectionView.Header>
+
+                <CollectionView.ItemsLayout>
+                    <LinearItemsLayout ItemSpacing="4" Orientation="Vertical" />
+                </CollectionView.ItemsLayout>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="models:Session">
+                        <Border
+                            Margin="0"
+                            BackgroundColor="Transparent"
+                            Stroke="Transparent"
+                            StrokeShape="RoundRectangle 4">
+                            <HorizontalStackLayout
+                                Padding="16,10"
+                                Spacing="8"
+                                VerticalOptions="Center">
+                                <controls:SymbolIcon
+                                    HeightRequest="24"
+                                    SymbolName="oar.2.crossed"
+                                    TintColor="#FF6DDDFF"
+                                    VerticalOptions="Center"
+                                    WidthRequest="24" />
+                                <Label
+                                    FontFamily="SF Pro Text"
+                                    FontSize="16"
+                                    LineBreakMode="TailTruncation"
+                                    TextColor="White">
+                                    <Label.FormattedText>
+                                        <FormattedString>
+                                            <Span
+                                                FontSize="16"
+                                                Text="{Binding FechaDateTime, StringFormat='{0:dd/MM/yyyy}'}"
+                                                TextColor="White" />
+                                            <Span
+                                                FontSize="16"
+                                                Text=" en "
+                                                TextColor="White" />
+                                            <Span
+                                                FontSize="16"
+                                                Text="{Binding Lugar}"
+                                                TextColor="White" />
+                                            <Span
+                                                FontSize="16"
+                                                Text=" - "
+                                                TextColor="White" />
+                                            <Span
+                                                FontSize="16"
+                                                Text="{Binding DisplayName}"
+                                                TextColor="White" />
+                                        </FormattedString>
+                                    </Label.FormattedText>
+                                </Label>
+                            </HorizontalStackLayout>
+                            <VisualStateManager.VisualStateGroups>
+                                <VisualStateGroup Name="CommonStates">
+                                    <VisualState Name="Normal">
+                                        <VisualState.Setters>
+                                            <Setter Property="BackgroundColor" Value="Transparent" />
+                                        </VisualState.Setters>
+                                    </VisualState>
+                                    <VisualState Name="Selected">
+                                        <VisualState.Setters>
+                                            <Setter Property="BackgroundColor" Value="#FF3A3A3A" />
+                                        </VisualState.Setters>
+                                    </VisualState>
+                                </VisualStateGroup>
+                            </VisualStateManager.VisualStateGroups>
+                        </Border>
                     </DataTemplate>
                 </CollectionView.ItemTemplate>
 
@@ -147,84 +205,98 @@
             </CollectionView>
         </Grid>
 
-        <!-- Panel derecho: vídeos de la sesión seleccionada -->
-        <Grid Grid.Row="1" Grid.Column="2" Padding="20" RowDefinitions="Auto,Auto,*">
+        <!--  Panel derecho: vídeos de la sesión seleccionada  -->
+        <Grid
+            Grid.Row="1"
+            Grid.Column="2"
+            Padding="20"
+            RowDefinitions="Auto,Auto,*">
             <Label
                 Grid.Row="0"
-                Text="{Binding SelectedSessionTitle}"
                 FontSize="18"
-                TextColor="White"
-                LineBreakMode="TailTruncation" />
+                LineBreakMode="TailTruncation"
+                Text="{Binding SelectedSessionTitle}"
+                TextColor="White" />
 
-            <HorizontalStackLayout Grid.Row="1" Spacing="10" VerticalOptions="Center">
+            <HorizontalStackLayout
+                Grid.Row="1"
+                Spacing="10"
+                VerticalOptions="Center">
                 <Label
-                    Text="{Binding SelectedSessionVideos.Count, StringFormat='{0} vídeos'}"
                     FontSize="14"
+                    Text="{Binding SelectedSessionVideos.Count, StringFormat='{0} vídeos'}"
                     TextColor="#FFB1B1B1" />
                 <ActivityIndicator
+                    HeightRequest="16"
                     IsRunning="{Binding IsLoadingSelectedSessionVideos}"
                     IsVisible="{Binding IsLoadingSelectedSessionVideos}"
                     WidthRequest="16"
-                    HeightRequest="16"
                     Color="{StaticResource Primary}" />
             </HorizontalStackLayout>
 
-            <CollectionView Grid.Row="2" ItemsSource="{Binding SelectedSessionVideos}" SelectionMode="None">
+            <CollectionView
+                Grid.Row="2"
+                ItemsSource="{Binding SelectedSessionVideos}"
+                RemainingItemsThreshold="10"
+                RemainingItemsThresholdReachedCommand="{Binding LoadMoreVideosCommand}"
+                SelectionMode="None">
                 <CollectionView.ItemsLayout>
                     <GridItemsLayout
+                        HorizontalItemSpacing="4"
                         Orientation="Vertical"
                         Span="4"
-                        HorizontalItemSpacing="4"
                         VerticalItemSpacing="10" />
                 </CollectionView.ItemsLayout>
 
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="models:VideoClip">
                         <Border
-                            StrokeShape="RoundRectangle 4"
+                            BackgroundColor="#FF2A2A2A"
                             Stroke="Transparent"
-                            StrokeThickness="0"
-                            BackgroundColor="#FF2A2A2A">
+                            StrokeShape="RoundRectangle 4"
+                            StrokeThickness="0">
                             <Border.GestureRecognizers>
-                                <TapGestureRecognizer
-                                    Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=PlaySelectedVideoCommand}"
-                                    CommandParameter="{Binding .}" />
+                                <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=PlaySelectedVideoCommand}" CommandParameter="{Binding .}" />
                             </Border.GestureRecognizers>
 
                             <Grid RowDefinitions="Auto,Auto">
-                                <!-- Thumbnail con aspect ratio 16:9 -->
+                                <!--  Thumbnail con aspect ratio 16:9  -->
                                 <controls:AspectRatioContainer AspectRatio="1.777">
                                     <Grid>
                                         <Image
-                                            Source="{Binding LocalThumbnailPath}"
                                             Aspect="AspectFill"
-                                            BackgroundColor="{StaticResource Gray300}" />
+                                            BackgroundColor="{StaticResource Gray300}"
+                                            Source="{Binding LocalThumbnailPath}" />
 
                                         <Border
                                             BackgroundColor="#80000000"
-                                            StrokeShape="RoundRectangle 25"
-                                            WidthRequest="50"
                                             HeightRequest="50"
                                             HorizontalOptions="Center"
-                                            VerticalOptions="Center">
+                                            StrokeShape="RoundRectangle 25"
+                                            VerticalOptions="Center"
+                                            WidthRequest="50">
                                             <Label
-                                                Text="▶"
                                                 FontSize="20"
-                                                TextColor="White"
                                                 HorizontalOptions="Center"
+                                                Text="▶"
+                                                TextColor="White"
                                                 VerticalOptions="Center" />
                                         </Border>
                                     </Grid>
                                 </controls:AspectRatioContainer>
 
-                                <VerticalStackLayout Grid.Row="1" Padding="8" Spacing="2">
+                                <VerticalStackLayout
+                                    Grid.Row="1"
+                                    Padding="8"
+                                    Spacing="2">
                                     <Label
+                                        FontSize="12"
+                                        LineBreakMode="TailTruncation"
                                         Text="{Binding Atleta.NombreCompleto}"
-                                        FontSize="12"
-                                        LineBreakMode="TailTruncation" TextColor="White" />
+                                        TextColor="White" />
                                     <Label
-                                        Text="{Binding CreationDateTime, StringFormat='{0:HH:mm}'}"
                                         FontSize="12"
+                                        Text="{Binding CreationDateTime, StringFormat='{0:HH:mm}'}"
                                         TextColor="White" />
                                 </VerticalStackLayout>
                             </Grid>
@@ -233,145 +305,631 @@
                 </CollectionView.ItemTemplate>
 
                 <CollectionView.EmptyView>
-                    <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center" Padding="40">
-                        <Label Text="🎬" FontSize="48" HorizontalOptions="Center" />
+                    <VerticalStackLayout
+                        Padding="40"
+                        HorizontalOptions="Center"
+                        VerticalOptions="Center">
                         <Label
-                            Text="Selecciona una sesión"
+                            FontSize="48"
+                            HorizontalOptions="Center"
+                            Text="🎬" />
+                        <Label
                             FontSize="18"
                             HorizontalOptions="Center"
+                            Text="Selecciona una sesión"
                             TextColor="Gray" />
                     </VerticalStackLayout>
                 </CollectionView.EmptyView>
+
+                <CollectionView.Footer>
+                    <VerticalStackLayout
+                        Padding="20"
+                        HorizontalOptions="Center"
+                        IsVisible="{Binding HasMoreVideos}">
+                        <ActivityIndicator
+                            HeightRequest="24"
+                            IsRunning="{Binding IsLoadingMore}"
+                            IsVisible="{Binding IsLoadingMore}"
+                            WidthRequest="24"
+                            Color="{StaticResource Primary}" />
+                        <Label
+                            FontSize="12"
+                            HorizontalOptions="Center"
+                            IsVisible="{Binding HasMoreVideos}"
+                            Text="Desplázate para cargar más..."
+                            TextColor="Gray" />
+                    </VerticalStackLayout>
+                </CollectionView.Footer>
             </CollectionView>
         </Grid>
 
-        <!-- Columna 4 (quinta): estadísticas de la sesión seleccionada -->
-        <ScrollView Grid.Row="1" Grid.Column="4" Padding="20">
+        <!--  Columna 4 (quinta): estadísticas de la sesión seleccionada  -->
+        <ScrollView
+            Grid.Row="1"
+            Grid.Column="4"
+            Padding="20">
             <VerticalStackLayout Spacing="12">
-                <Label Text="Estadísticas" FontSize="18" TextColor="White" />
 
-                <Label
-                    Text="{Binding SelectedSessionTitle}"
-                    FontSize="14"
-                    TextColor="#FFB1B1B1"
-                    LineBreakMode="TailTruncation" />
 
-                <HorizontalStackLayout Spacing="12">
-                    <Label Text="{Binding SelectedSessionVideos.Count, StringFormat='Vídeos: {0}'}" FontSize="14" TextColor="White" />
-                    <Label Text="{Binding SelectedSessionTotalDurationFormatted, StringFormat='Tiempo: {0}'}" FontSize="14" TextColor="White" />
+                <!--  Filtros para Galería General  -->
+                <Border
+                    Margin="0,8,0,8"
+                    Padding="12"
+                    BackgroundColor="#FF2A2A2A"
+                    IsVisible="{Binding IsAllGallerySelected}"
+                    Stroke="Transparent"
+                    StrokeShape="RoundRectangle 8">
+                    <Grid>
+                        <!--  Capa principal con los headers de filtros  -->
+                        <VerticalStackLayout Spacing="10" ZIndex="1">
+                            <HorizontalStackLayout Spacing="8" VerticalOptions="Center">
+
+                                <controls:SymbolIcon
+                                    HeightRequest="24"
+                                    SymbolName="line.3.horizontal.circle"
+                                    TintColor="#FF6DDDFF"
+                                    VerticalOptions="Center"
+                                    WidthRequest="24" />
+                                <Label
+                                    FontSize="24"
+                                    Text="Filtros"
+                                    TextColor="White" VerticalOptions="Center" />
+                                <Button
+                                    Padding="8,4"
+                                    BackgroundColor="Transparent"
+                                    Command="{Binding ClearFiltersCommand}"
+                                    FontSize="14"
+                                    Text="Limpiar"
+                                    TextColor="#FF6DDDFF"
+                                    VerticalOptions="Center" />
+                            </HorizontalStackLayout>
+
+                            <!--  Header Lugar  -->
+                            <Border
+                                x:Name="PlacesHeader"
+                                Padding="10,8"
+                                BackgroundColor="#FF3A3A3A"
+                                Stroke="Transparent"
+                                StrokeShape="RoundRectangle 4">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding TogglePlacesExpandedCommand}" />
+                                </Border.GestureRecognizers>
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <VerticalStackLayout Grid.Column="0">
+                                        <Label
+                                            FontSize="16"
+                                            Text="Lugar"
+                                            TextColor="#FFB1B1B1" />
+                                        <Label
+                                            FontSize="16"
+                                            Text="{Binding SelectedPlacesSummary}"
+                                            TextColor="White" />
+                                    </VerticalStackLayout>
+                                    <Label
+                                        Grid.Column="1"
+                                        FontSize="16"
+                                        Text="{Binding IsPlacesExpanded, Converter={StaticResource BoolToExpandIconConverter}}"
+                                        TextColor="Gray"
+                                        VerticalOptions="Center" />
+                                </Grid>
+                            </Border>
+
+                            <!--  Header Deportista  -->
+                            <Border
+                                x:Name="AthletesHeader"
+                                Padding="10,8"
+                                BackgroundColor="#FF3A3A3A"
+                                Stroke="Transparent"
+                                StrokeShape="RoundRectangle 4">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding ToggleAthletesExpandedCommand}" />
+                                </Border.GestureRecognizers>
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <VerticalStackLayout Grid.Column="0">
+                                        <Label
+                                            FontSize="16"
+                                            Text="Deportista"
+                                            TextColor="#FFB1B1B1" />
+                                        <Label
+                                            FontSize="16"
+                                            Text="{Binding SelectedAthletesSummary}"
+                                            TextColor="White" />
+                                    </VerticalStackLayout>
+                                    <Label
+                                        Grid.Column="1"
+                                        FontSize="16"
+                                        Text="{Binding IsAthletesExpanded, Converter={StaticResource BoolToExpandIconConverter}}"
+                                        TextColor="Gray"
+                                        VerticalOptions="Center" />
+                                </Grid>
+                            </Border>
+
+                            <!--  Header Sección  -->
+                            <Border
+                                x:Name="SectionsHeader"
+                                Padding="10,8"
+                                BackgroundColor="#FF3A3A3A"
+                                Stroke="Transparent"
+                                StrokeShape="RoundRectangle 4">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding ToggleSectionsExpandedCommand}" />
+                                </Border.GestureRecognizers>
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <VerticalStackLayout Grid.Column="0">
+                                        <Label
+                                            FontSize="16"
+                                            Text="Sección"
+                                            TextColor="#FFB1B1B1" />
+                                        <Label
+                                            FontSize="16"
+                                            Text="{Binding SelectedSectionsSummary}"
+                                            TextColor="White" />
+                                    </VerticalStackLayout>
+                                    <Label
+                                        Grid.Column="1"
+                                        FontSize="16"
+                                        Text="{Binding IsSectionsExpanded, Converter={StaticResource BoolToExpandIconConverter}}"
+                                        TextColor="Gray"
+                                        VerticalOptions="Center" />
+                                </Grid>
+                            </Border>
+
+                            <!--  Header Tag  -->
+                            <Border
+                                x:Name="TagsHeader"
+                                Padding="10,8"
+                                BackgroundColor="#FF3A3A3A"
+                                Stroke="Transparent"
+                                StrokeShape="RoundRectangle 4">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding ToggleTagsExpandedCommand}" />
+                                </Border.GestureRecognizers>
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <VerticalStackLayout Grid.Column="0">
+                                        <Label
+                                            FontFamily="SF Pro Text"
+                                            FontSize="16"
+                                            Text="Tag"
+                                            TextColor="#FFB1B1B1" />
+                                        <Label
+                                            FontFamily="SF Pro Text"
+                                            FontSize="16"
+                                            Text="{Binding SelectedTagsSummary}"
+                                            TextColor="White" />
+                                    </VerticalStackLayout>
+                                    <Label
+                                        Grid.Column="1"
+                                        FontSize="16"
+                                        Text="{Binding IsTagsExpanded, Converter={StaticResource BoolToExpandIconConverter}}"
+                                        TextColor="Gray"
+                                        VerticalOptions="Center" />
+                                </Grid>
+                            </Border>
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                                <!--  Fecha desde  -->
+                                <VerticalStackLayout Grid.Column="0" Spacing="4">
+                                    <Label
+                                        FontSize="16"
+                                        Text="Fecha desde"
+                                        TextColor="#FFB1B1B1" />
+                                    <Border
+                                        BackgroundColor="#FF3A3A3A"
+                                        StrokeShape="RoundRectangle 4"
+                                        Stroke="Transparent"
+                                        Padding="12,12,0,-6"
+                                        HorizontalOptions="Fill">
+                                        <DatePicker
+                                            Date="{Binding SelectedFilterDateFrom}"
+                                            TextColor="White"
+                                            BackgroundColor="Transparent"
+                                            HorizontalOptions="Fill"
+                                            VerticalOptions="Fill" />
+                                    </Border>
+                                </VerticalStackLayout>
+
+                                <!--  Fecha hasta  -->
+                                <VerticalStackLayout Grid.Column="1" Spacing="4">
+                                    <Label
+                                        FontSize="16"
+                                        Text="Fecha hasta"
+                                        TextColor="#FFB1B1B1" />
+                                    <Border
+                                        BackgroundColor="#FF3A3A3A"
+                                        StrokeShape="RoundRectangle 4"
+                                        Stroke="Transparent"
+                                        Padding="12,12,0,-6"
+                                        HorizontalOptions="Fill">
+                                        <DatePicker
+                                            Date="{Binding SelectedFilterDateTo}"
+                                            TextColor="White"
+                                            BackgroundColor="Transparent"
+                                            HorizontalOptions="Fill"
+                                            VerticalOptions="Center" />
+                                    </Border>
+                                </VerticalStackLayout>
+                            </Grid>
+                        </VerticalStackLayout>
+
+                        <!--  Capa de overlay para dropdowns flotantes  -->
+                        <!--  Dropdown Lugar  -->
+                        <Border
+                            Margin="0,114,0,0"
+                            Padding="8"
+                            BackgroundColor="#FF3A3A3A"
+                            HorizontalOptions="Fill"
+                            IsVisible="{Binding IsPlacesExpanded}"
+                            Stroke="#FF555555"
+                            StrokeShape="RoundRectangle 4"
+                            StrokeThickness="1"
+                            VerticalOptions="Start"
+                            ZIndex="100">
+                            <ScrollView HeightRequest="160">
+                                <VerticalStackLayout BindableLayout.ItemsSource="{Binding FilterPlaces}" Spacing="2">
+                                    <BindableLayout.ItemTemplate>
+                                        <DataTemplate x:DataType="models:PlaceFilterItem">
+                                            <HorizontalStackLayout Spacing="4">
+                                                <CheckBox IsChecked="{Binding IsSelected}" Color="#FF6DDDFF" />
+                                                <Label
+                                                    FontFamily="SF Pro Text"
+                                                    FontSize="16"
+                                                    Text="{Binding DisplayName}"
+                                                    TextColor="White"
+                                                    VerticalOptions="Center" />
+                                            </HorizontalStackLayout>
+                                        </DataTemplate>
+                                    </BindableLayout.ItemTemplate>
+                                </VerticalStackLayout>
+                            </ScrollView>
+                        </Border>
+
+                        <!--  Dropdown Deportista  -->
+                        <Border
+                            Margin="0,162,0,0"
+                            Padding="8"
+                            BackgroundColor="#FF3A3A3A"
+                            HorizontalOptions="Fill"
+                            IsVisible="{Binding IsAthletesExpanded}"
+                            Stroke="#FF555555"
+                            StrokeShape="RoundRectangle 4"
+                            StrokeThickness="1"
+                            VerticalOptions="Start"
+                            ZIndex="100">
+                            <ScrollView HeightRequest="150">
+                                <VerticalStackLayout BindableLayout.ItemsSource="{Binding FilterAthletes}" Spacing="2">
+                                    <BindableLayout.ItemTemplate>
+                                        <DataTemplate x:DataType="models:AthleteFilterItem">
+                                            <HorizontalStackLayout Spacing="4">
+                                                <CheckBox IsChecked="{Binding IsSelected}" Color="#FF6DDDFF" />
+                                                <Label
+                                                    FontFamily="SF Pro Text"
+                                                    FontSize="16"
+                                                    Text="{Binding DisplayName}"
+                                                    TextColor="White"
+                                                    VerticalOptions="Center" />
+                                            </HorizontalStackLayout>
+                                        </DataTemplate>
+                                    </BindableLayout.ItemTemplate>
+                                </VerticalStackLayout>
+                            </ScrollView>
+                        </Border>
+
+                        <!--  Dropdown Sección  -->
+                        <Border
+                            Margin="0,210,0,0"
+                            Padding="8"
+                            BackgroundColor="#FF3A3A3A"
+                            HorizontalOptions="Fill"
+                            IsVisible="{Binding IsSectionsExpanded}"
+                            Stroke="#FF555555"
+                            StrokeShape="RoundRectangle 4"
+                            StrokeThickness="1"
+                            VerticalOptions="Start"
+                            ZIndex="100">
+                            <ScrollView HeightRequest="120">
+                                <VerticalStackLayout BindableLayout.ItemsSource="{Binding FilterSections}" Spacing="2">
+                                    <BindableLayout.ItemTemplate>
+                                        <DataTemplate x:DataType="models:SectionFilterItem">
+                                            <HorizontalStackLayout Spacing="4">
+                                                <CheckBox IsChecked="{Binding IsSelected}" Color="#FF6DDDFF" />
+                                                <Label
+                                                    FontFamily="SF Pro Text"
+                                                    FontSize="16"
+                                                    Text="{Binding DisplayName}"
+                                                    TextColor="White"
+                                                    VerticalOptions="Center" />
+                                            </HorizontalStackLayout>
+                                        </DataTemplate>
+                                    </BindableLayout.ItemTemplate>
+                                </VerticalStackLayout>
+                            </ScrollView>
+                        </Border>
+
+                        <!--  Dropdown Tag  -->
+                        <Border
+                            Margin="0,258,0,0"
+                            Padding="8"
+                            BackgroundColor="#FF3A3A3A"
+                            HorizontalOptions="Fill"
+                            IsVisible="{Binding IsTagsExpanded}"
+                            Stroke="#FF555555"
+                            StrokeShape="RoundRectangle 4"
+                            StrokeThickness="1"
+                            VerticalOptions="Start"
+                            ZIndex="100">
+                            <ScrollView HeightRequest="120">
+                                <VerticalStackLayout BindableLayout.ItemsSource="{Binding FilterTagItems}" Spacing="2">
+                                    <BindableLayout.ItemTemplate>
+                                        <DataTemplate x:DataType="models:TagFilterItem">
+                                            <HorizontalStackLayout Spacing="4">
+                                                <CheckBox IsChecked="{Binding IsSelected}" Color="#FF6DDDFF" />
+                                                <Label
+                                                    FontFamily="SF Pro Text"
+                                                    FontSize="16"
+                                                    Text="{Binding DisplayName}"
+                                                    TextColor="White"
+                                                    VerticalOptions="Center" />
+                                            </HorizontalStackLayout>
+                                        </DataTemplate>
+                                    </BindableLayout.ItemTemplate>
+                                </VerticalStackLayout>
+                            </ScrollView>
+                        </Border>
+                    </Grid>
+                </Border>
+                <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                    <controls:SymbolIcon
+                        HeightRequest="24"
+                        SymbolName="chart.pie"
+                        TintColor="#FF6DDDFF"
+                        VerticalOptions="Center"
+                        WidthRequest="24" />
+                    <Label
+                        FontSize="24"
+                        Text="Estadísticas"
+                        TextColor="White" />
                 </HorizontalStackLayout>
 
-                <!-- Gráfica: duración por sección (minutos) -->
+                <Label
+                    FontSize="14"
+                    LineBreakMode="TailTruncation"
+                    Text="{Binding SelectedSessionTitle}"
+                    TextColor="#FFB1B1B1" />
+
+                <HorizontalStackLayout Spacing="12">
+                    <Label
+                        FontSize="14"
+                        Text="{Binding TotalFilteredVideoCount, StringFormat='Vídeos: {0}'}"
+                        TextColor="White" />
+                    <Label
+                        FontSize="14"
+                        Text="{Binding SelectedSessionTotalDurationFormatted, StringFormat='Tiempo: {0}'}"
+                        TextColor="White" />
+                </HorizontalStackLayout>
+
+                <!--  Gráfica: duración por sección (minutos)  -->
                 <controls:SimpleBarChart
-                    Values="{Binding SelectedSessionSectionDurationMinutes}"
-                    Labels="{Binding SelectedSessionSectionLabels}"
                     BarColor="#FFA1A1A1"
+                    HeightRequest="180"
+                    Labels="{Binding SelectedSessionSectionLabels}"
                     TextColor="White"
-                    HeightRequest="180" />
+                    Values="{Binding SelectedSessionSectionDurationMinutes}" />
 
-                <Label Text="Etiquetas (tags)" FontSize="14" TextColor="#FFB1B1B1" />
+                <Label
+                    FontSize="14"
+                    Text="Etiquetas (tags)"
+                    TextColor="#FFB1B1B1" />
                 <controls:SimpleBarChart
-                    Values="{Binding SelectedSessionTagVideoCounts}"
-                    Labels="{Binding SelectedSessionTagLabels}"
                     BarColor="#FF797979"
+                    HeightRequest="160"
+                    Labels="{Binding SelectedSessionTagLabels}"
                     TextColor="White"
-                    HeightRequest="160" />
+                    Values="{Binding SelectedSessionTagVideoCounts}" />
 
-                <Label Text="Penalizaciones (tags 2 y 50)" FontSize="14" TextColor="#FFB1B1B1" />
+                <Label
+                    FontSize="14"
+                    Text="Penalizaciones (tags 2 y 50)"
+                    TextColor="#FFB1B1B1" />
                 <controls:SimpleBarChart
-                    Values="{Binding SelectedSessionPenaltyCounts}"
-                    Labels="{Binding SelectedSessionPenaltyLabels}"
                     BarColor="#FF414141"
+                    HeightRequest="140"
+                    Labels="{Binding SelectedSessionPenaltyLabels}"
                     TextColor="White"
-                    HeightRequest="140" />
+                    Values="{Binding SelectedSessionPenaltyCounts}" />
 
-                <Label Text="Tiempos por sección" FontSize="14" TextColor="#FFB1B1B1" />
-                <CollectionView ItemsSource="{Binding SelectedSessionSectionStats}" SelectionMode="None" HeightRequest="220">
+                <Label
+                    FontSize="14"
+                    Text="Tiempos por sección"
+                    TextColor="#FFB1B1B1" />
+                <CollectionView
+                    HeightRequest="220"
+                    ItemsSource="{Binding SelectedSessionSectionStats}"
+                    SelectionMode="None">
                     <CollectionView.ItemTemplate>
                         <DataTemplate x:DataType="services:SectionStats">
-                            <Grid ColumnDefinitions="*,Auto,Auto" Padding="0,6">
-                                <Label Text="{Binding SectionName}" TextColor="White" LineBreakMode="TailTruncation" />
-                                <Label Grid.Column="1" Text="{Binding VideoCount, StringFormat='{0}'}" TextColor="#FFB1B1B1" Margin="10,0,0,0" />
-                                <Label Grid.Column="2" Text="{Binding TotalDuration, Converter={StaticResource DurationToMinutesConverter}}" TextColor="#FFB1B1B1" Margin="10,0,0,0" />
+                            <Grid Padding="0,6" ColumnDefinitions="*,Auto,Auto">
+                                <Label
+                                    LineBreakMode="TailTruncation"
+                                    Text="{Binding SectionName}"
+                                    TextColor="White" />
+                                <Label
+                                    Grid.Column="1"
+                                    Margin="10,0,0,0"
+                                    Text="{Binding VideoCount, StringFormat='{0}'}"
+                                    TextColor="#FFB1B1B1" />
+                                <Label
+                                    Grid.Column="2"
+                                    Margin="10,0,0,0"
+                                    Text="{Binding TotalDuration, Converter={StaticResource DurationToMinutesConverter}}"
+                                    TextColor="#FFB1B1B1" />
                             </Grid>
                         </DataTemplate>
                     </CollectionView.ItemTemplate>
 
                     <CollectionView.EmptyView>
-                        <Label Text="Selecciona una sesión" FontSize="14" TextColor="Gray" />
+                        <Label
+                            FontSize="14"
+                            Text="Selecciona una sesión"
+                            TextColor="Gray" />
                     </CollectionView.EmptyView>
                 </CollectionView>
 
-                <Label Text="Tiempos por atleta" FontSize="14" TextColor="#FFB1B1B1" />
-                <CollectionView ItemsSource="{Binding SelectedSessionAthleteTimes}" SelectionMode="None" HeightRequest="220">
+                <Label
+                    FontSize="14"
+                    Text="Tiempos por atleta"
+                    TextColor="#FFB1B1B1" />
+                <CollectionView
+                    HeightRequest="220"
+                    ItemsSource="{Binding SelectedSessionAthleteTimes}"
+                    SelectionMode="None">
                     <CollectionView.ItemTemplate>
                         <DataTemplate x:DataType="vm:SessionAthleteTimeRow">
-                            <Grid ColumnDefinitions="*,Auto,Auto" Padding="0,6">
-                                <Label Text="{Binding AthleteName}" TextColor="White" LineBreakMode="TailTruncation" />
-                                <Label Grid.Column="1" Text="{Binding VideoCount, StringFormat='{0}'}" TextColor="#FFB1B1B1" Margin="10,0,0,0" />
-                                <Label Grid.Column="2" Text="{Binding TotalFormatted}" TextColor="#FFB1B1B1" Margin="10,0,0,0" />
+                            <Grid Padding="0,6" ColumnDefinitions="*,Auto,Auto">
+                                <Label
+                                    LineBreakMode="TailTruncation"
+                                    Text="{Binding AthleteName}"
+                                    TextColor="White" />
+                                <Label
+                                    Grid.Column="1"
+                                    Margin="10,0,0,0"
+                                    Text="{Binding VideoCount, StringFormat='{0}'}"
+                                    TextColor="#FFB1B1B1" />
+                                <Label
+                                    Grid.Column="2"
+                                    Margin="10,0,0,0"
+                                    Text="{Binding TotalFormatted}"
+                                    TextColor="#FFB1B1B1" />
                             </Grid>
                         </DataTemplate>
                     </CollectionView.ItemTemplate>
 
                     <CollectionView.EmptyView>
-                        <Label Text="Selecciona una sesión" FontSize="14" TextColor="Gray" />
+                        <Label
+                            FontSize="14"
+                            Text="Selecciona una sesión"
+                            TextColor="Gray" />
                     </CollectionView.EmptyView>
                 </CollectionView>
 
-                <Label Text="Datos (DB)" FontSize="14" TextColor="#FFB1B1B1" />
+                <Label
+                    FontSize="14"
+                    Text="Datos (DB)"
+                    TextColor="#FFB1B1B1" />
 
-                <Label Text="videoClip" FontSize="12" TextColor="#FFB1B1B1" />
-                <CollectionView ItemsSource="{Binding SelectedSessionVideos}" SelectionMode="None" HeightRequest="220">
+                <Label
+                    FontSize="12"
+                    Text="videoClip"
+                    TextColor="#FFB1B1B1" />
+                <CollectionView
+                    HeightRequest="220"
+                    ItemsSource="{Binding SelectedSessionVideos}"
+                    SelectionMode="None">
                     <CollectionView.ItemTemplate>
                         <DataTemplate x:DataType="models:VideoClip">
-                            <Grid ColumnDefinitions="Auto,Auto,Auto,*" Padding="0,6" ColumnSpacing="10">
+                            <Grid
+                                Padding="0,6"
+                                ColumnDefinitions="Auto,Auto,Auto,*"
+                                ColumnSpacing="10">
                                 <Label Text="{Binding Id}" TextColor="#FFB1B1B1" />
-                                <Label Grid.Column="1" Text="{Binding AtletaId}" TextColor="#FFB1B1B1" />
-                                <Label Grid.Column="2" Text="{Binding Section}" TextColor="#FFB1B1B1" />
-                                <Label Grid.Column="3" Text="{Binding DurationFormatted}" TextColor="White" />
+                                <Label
+                                    Grid.Column="1"
+                                    Text="{Binding AtletaId}"
+                                    TextColor="#FFB1B1B1" />
+                                <Label
+                                    Grid.Column="2"
+                                    Text="{Binding Section}"
+                                    TextColor="#FFB1B1B1" />
+                                <Label
+                                    Grid.Column="3"
+                                    Text="{Binding DurationFormatted}"
+                                    TextColor="White" />
                             </Grid>
                         </DataTemplate>
                     </CollectionView.ItemTemplate>
 
                     <CollectionView.EmptyView>
-                        <Label Text="(vacío)" FontSize="12" TextColor="Gray" />
+                        <Label
+                            FontSize="12"
+                            Text="(vacío)"
+                            TextColor="Gray" />
                     </CollectionView.EmptyView>
                 </CollectionView>
 
-                <Label Text="input" FontSize="12" TextColor="#FFB1B1B1" />
-                <CollectionView ItemsSource="{Binding SelectedSessionInputs}" SelectionMode="None" HeightRequest="220">
+                <Label
+                    FontSize="12"
+                    Text="input"
+                    TextColor="#FFB1B1B1" />
+                <CollectionView
+                    HeightRequest="220"
+                    ItemsSource="{Binding SelectedSessionInputs}"
+                    SelectionMode="None">
                     <CollectionView.ItemTemplate>
                         <DataTemplate x:DataType="models:Input">
-                            <Grid ColumnDefinitions="Auto,Auto,Auto,*" Padding="0,6" ColumnSpacing="10">
+                            <Grid
+                                Padding="0,6"
+                                ColumnDefinitions="Auto,Auto,Auto,*"
+                                ColumnSpacing="10">
                                 <Label Text="{Binding Id}" TextColor="#FFB1B1B1" />
-                                <Label Grid.Column="1" Text="{Binding VideoId}" TextColor="#FFB1B1B1" />
-                                <Label Grid.Column="2" Text="{Binding InputTypeId}" TextColor="#FFB1B1B1" />
-                                <Label Grid.Column="3" Text="{Binding InputValue}" TextColor="White" LineBreakMode="TailTruncation" />
+                                <Label
+                                    Grid.Column="1"
+                                    Text="{Binding VideoId}"
+                                    TextColor="#FFB1B1B1" />
+                                <Label
+                                    Grid.Column="2"
+                                    Text="{Binding InputTypeId}"
+                                    TextColor="#FFB1B1B1" />
+                                <Label
+                                    Grid.Column="3"
+                                    LineBreakMode="TailTruncation"
+                                    Text="{Binding InputValue}"
+                                    TextColor="White" />
                             </Grid>
                         </DataTemplate>
                     </CollectionView.ItemTemplate>
 
                     <CollectionView.EmptyView>
-                        <Label Text="(vacío)" FontSize="12" TextColor="Gray" />
+                        <Label
+                            FontSize="12"
+                            Text="(vacío)"
+                            TextColor="Gray" />
                     </CollectionView.EmptyView>
                 </CollectionView>
 
-                <Label Text="valoracion" FontSize="12" TextColor="#FFB1B1B1" />
-                <CollectionView ItemsSource="{Binding SelectedSessionValoraciones}" SelectionMode="None" HeightRequest="220">
+                <Label
+                    FontSize="12"
+                    Text="valoracion"
+                    TextColor="#FFB1B1B1" />
+                <CollectionView
+                    HeightRequest="220"
+                    ItemsSource="{Binding SelectedSessionValoraciones}"
+                    SelectionMode="None">
                     <CollectionView.ItemTemplate>
                         <DataTemplate x:DataType="models:Valoracion">
-                            <Grid ColumnDefinitions="Auto,Auto,Auto,Auto" Padding="0,6" ColumnSpacing="10">
+                            <Grid
+                                Padding="0,6"
+                                ColumnDefinitions="Auto,Auto,Auto,Auto"
+                                ColumnSpacing="10">
                                 <Label Text="{Binding Id}" TextColor="#FFB1B1B1" />
-                                <Label Grid.Column="1" Text="{Binding AthleteId}" TextColor="#FFB1B1B1" />
-                                <Label Grid.Column="2" Text="{Binding InputTypeId}" TextColor="#FFB1B1B1" />
-                                <Label Grid.Column="3" Text="{Binding InputValue}" TextColor="White" />
+                                <Label
+                                    Grid.Column="1"
+                                    Text="{Binding AthleteId}"
+                                    TextColor="#FFB1B1B1" />
+                                <Label
+                                    Grid.Column="2"
+                                    Text="{Binding InputTypeId}"
+                                    TextColor="#FFB1B1B1" />
+                                <Label
+                                    Grid.Column="3"
+                                    Text="{Binding InputValue}"
+                                    TextColor="White" />
                             </Grid>
                         </DataTemplate>
                     </CollectionView.ItemTemplate>
 
                     <CollectionView.EmptyView>
-                        <Label Text="(vacío)" FontSize="12" TextColor="Gray" />
+                        <Label
+                            FontSize="12"
+                            Text="(vacío)"
+                            TextColor="Gray" />
                     </CollectionView.EmptyView>
                 </CollectionView>
             </VerticalStackLayout>

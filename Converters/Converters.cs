@@ -124,3 +124,39 @@ public class DurationToMinutesConverter : IValueConverter
         throw new NotImplementedException();
     }
 }
+
+/// <summary>
+/// Convierte un booleano a Color para indicar selección
+/// </summary>
+public class BoolToColorConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is bool boolValue && boolValue)
+            return Color.FromArgb("#FF3A3A3A"); // Color de selección
+        return Colors.Transparent;
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+/// <summary>
+/// Convierte un booleano a icono de expandir/colapsar
+/// </summary>
+public class BoolToExpandIconConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is bool boolValue && boolValue)
+            return "▲"; // Colapsado (flecha arriba)
+        return "▼"; // Expandir (flecha abajo)
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}

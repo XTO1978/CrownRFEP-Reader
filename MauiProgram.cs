@@ -5,6 +5,11 @@ using CrownRFEP_Reader.Views;
 using CrownRFEP_Reader.Views.Controls;
 using CrownRFEP_Reader.Handlers;
 using Microsoft.Extensions.Logging;
+using Microsoft.Maui.Handlers;
+#if MACCATALYST
+using UIKit;
+using Foundation;
+#endif
 
 namespace CrownRFEP_Reader;
 
@@ -20,6 +25,21 @@ public static class MauiProgram
 			.ConfigureMauiHandlers(handlers =>
 			{
 				handlers.AddHandler(typeof(SymbolIcon), typeof(SymbolIconHandler));
+				
+#if MACCATALYST
+				// Forzar texto blanco en DatePicker para MacCatalyst
+				DatePickerHandler.Mapper.AppendToMapping("WhiteTextColor", (handler, view) =>
+				{
+					if (handler.PlatformView is UIDatePicker picker)
+					{
+						picker.TintColor = UIColor.White;
+						// Forzar estilo compacto con texto visible
+						picker.PreferredDatePickerStyle = UIDatePickerStyle.Compact;
+						// Intentar establecer el color del texto mediante el trait
+						picker.OverrideUserInterfaceStyle = UIUserInterfaceStyle.Dark;
+					}
+				});
+#endif
 			})
 			.ConfigureFonts(fonts =>
 			{

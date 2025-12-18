@@ -397,6 +397,42 @@ public class DatabaseService
         return clips;
     }
 
+    /// <summary>
+    /// Obtiene todos los video clips de todas las sesiones
+    /// </summary>
+    public async Task<List<VideoClip>> GetAllVideoClipsAsync()
+    {
+        var db = await GetConnectionAsync();
+        var clips = await db.Table<VideoClip>()
+            .OrderByDescending(v => v.CreationDate)
+            .ToListAsync();
+
+        // Hidratar rutas locales por sesión
+        var sessions = await db.Table<Session>().ToListAsync();
+        var sessionById = sessions.ToDictionary(s => s.Id, s => s);
+        foreach (var clip in clips)
+        {
+            sessionById.TryGetValue(clip.SessionId, out var session);
+            HydrateLocalMediaPaths(clip, session?.PathSesion);
+        }
+
+        // Cargar atletas
+        var athletes = await db.Table<Athlete>().ToListAsync();
+        var categories = await db.Table<Category>().ToListAsync();
+        
+        foreach (var clip in clips)
+        {
+            var athlete = athletes.FirstOrDefault(a => a.Id == clip.AtletaId);
+            if (athlete != null)
+            {
+                athlete.CategoriaNombre = categories.FirstOrDefault(c => c.Id == athlete.CategoriaId)?.NombreCategoria;
+                clip.Atleta = athlete;
+            }
+        }
+
+        return clips;
+    }
+
     public async Task<int> SaveVideoClipAsync(VideoClip clip)
     {
         var db = await GetConnectionAsync();
@@ -480,6 +516,20 @@ public class DatabaseService
             await db.InsertAsync(valoracion);
             return valoracion.Id;
         }
+    }
+
+    // ==================== TAGS ====================
+    public async Task<List<Tag>> GetAllTagsAsync()
+    {
+        var db = await GetConnectionAsync();
+        return await db.Table<Tag>().ToListAsync();
+    }
+
+    // ==================== ALL INPUTS ====================
+    public async Task<List<Input>> GetAllInputsAsync()
+    {
+        var db = await GetConnectionAsync();
+        return await db.Table<Input>().ToListAsync();
     }
 
     // ==================== ESTADÍSTICAS ====================

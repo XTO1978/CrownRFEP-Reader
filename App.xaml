@@ -17,6 +17,8 @@
             <converters:FavoriteConverter x:Key="FavoriteConverter"/>
             <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
             <converters:DurationToMinutesConverter x:Key="DurationToMinutesConverter"/>
+            <converters:BoolToColorConverter x:Key="BoolToColorConverter"/>
+            <converters:BoolToExpandIconConverter x:Key="BoolToExpandIconConverter"/>
         </ResourceDictionary>
     </Application.Resources>
 </Application>
