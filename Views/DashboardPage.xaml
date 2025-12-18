@@ -90,9 +90,17 @@
                 <CollectionView.Header>
                     <Border
                         Margin="0,0,0,8"
-                        BackgroundColor="{Binding IsAllGallerySelected, Converter={StaticResource BoolToColorConverter}}"
+                        BackgroundColor="Transparent"
                         Stroke="Transparent"
                         StrokeShape="RoundRectangle 4">
+                        <Border.Triggers>
+                            <DataTrigger
+                                TargetType="Border"
+                                Binding="{Binding IsAllGallerySelected}"
+                                Value="True">
+                                <Setter Property="BackgroundColor" Value="#FF3A3A3A" />
+                            </DataTrigger>
+                        </Border.Triggers>
                         <Border.GestureRecognizers>
                             <TapGestureRecognizer Command="{Binding SelectAllGalleryCommand}" />
                         </Border.GestureRecognizers>
@@ -940,6 +948,6 @@
             IsRunning="{Binding IsBusy}"
             IsVisible="{Binding IsBusy}"
             VerticalOptions="Center"
-            Color="{StaticResource Primary}" />
+            Color="#FF6DDDFF" />
     </Grid>
 </ContentPage>

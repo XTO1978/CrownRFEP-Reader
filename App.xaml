@@ -19,6 +19,7 @@
             <converters:DurationToMinutesConverter x:Key="DurationToMinutesConverter"/>
             <converters:BoolToColorConverter x:Key="BoolToColorConverter"/>
             <converters:BoolToExpandIconConverter x:Key="BoolToExpandIconConverter"/>
+            <converters:SelectedItemColorConverter x:Key="SelectedItemColorConverter"/>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

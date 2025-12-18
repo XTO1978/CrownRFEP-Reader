@@ -1,0 +1,461 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="CrownRFEP_Reader.Views.UserProfilePage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:controls="clr-namespace:CrownRFEP_Reader.Views.Controls"
+    xmlns:models="clr-namespace:CrownRFEP_Reader.Models"
+    xmlns:vm="clr-namespace:CrownRFEP_Reader.ViewModels"
+    Title="{Binding Title}"
+    x:DataType="vm:UserProfileViewModel"
+    BackgroundColor="#FF1B1B1B">
+
+    <Grid
+        Padding="0"
+        RowDefinitions="Auto,*">
+        
+        <!-- Header con botón cerrar -->
+        <Grid
+            Grid.Row="0"
+            Padding="20,16"
+            BackgroundColor="#FF252525"
+            ColumnDefinitions="Auto,*,Auto">
+
+            <Button
+                Grid.Column="0"
+                Padding="12,8"
+                BackgroundColor="Transparent"
+                Clicked="OnCloseClicked"
+                FontSize="16"
+                Text="✕ Cerrar"
+                TextColor="#FF6DDDFF" />
+            
+            <HorizontalStackLayout Grid.Column="1" HorizontalOptions="Center" Spacing="12">
+                <controls:SymbolIcon
+                    HeightRequest="24"
+                    SymbolName="person.circle"
+                    TintColor="#FF6DDDFF"
+                    VerticalOptions="Center"
+                    WidthRequest="24" />
+                <Label
+                    FontSize="20"
+                    Text="Mi Perfil"
+                    TextColor="White"
+                    VerticalOptions="Center" />
+            </HorizontalStackLayout>
+            
+            <Button
+                Grid.Column="2"
+                Padding="16,8"
+                BackgroundColor="#FF6DDDFF"
+                Command="{Binding SaveCommand}"
+                CornerRadius="6"
+                FontSize="14"
+                IsEnabled="{Binding HasChanges}"
+                Text="Guardar"
+                TextColor="#FF1B1B1B" />
+        </Grid>
+
+        <!-- Línea horizontal separadora -->
+        <BoxView
+            Grid.Row="0"
+            Margin="0"
+            BackgroundColor="#FF3A3A3A"
+            HeightRequest="1"
+            HorizontalOptions="Fill"
+            VerticalOptions="End" />
+
+        <ScrollView Grid.Row="1" Padding="40,20">
+            <Grid
+                ColumnDefinitions="300,*"
+                ColumnSpacing="40"
+                MaximumWidthRequest="900"
+                HorizontalOptions="Center">
+                
+                <!-- Columna izquierda: Foto de perfil -->
+                <VerticalStackLayout Grid.Column="0" Spacing="16">
+
+                    <!-- Foto de perfil -->
+                    <Border
+                        BackgroundColor="#FF2A2A2A"
+                        HeightRequest="200"
+                        HorizontalOptions="Center"
+                        StrokeShape="RoundRectangle 100"
+                        Stroke="#FF3A3A3A"
+                        StrokeThickness="3"
+                        WidthRequest="200">
+                        <Grid>
+                            <!-- Placeholder si no hay foto -->
+                            <controls:SymbolIcon
+                                HeightRequest="80"
+                                HorizontalOptions="Center"
+                                IsVisible="{Binding HasFoto, Converter={StaticResource InvertedBoolConverter}}"
+                                SymbolName="person.fill"
+                                TintColor="#FF555555"
+                                VerticalOptions="Center"
+                                WidthRequest="80" />
+                            
+                            <!-- Foto del usuario -->
+                            <Image
+                                Aspect="AspectFill"
+                                IsVisible="{Binding HasFoto}"
+                                Source="{Binding FotoPath}" />
+                        </Grid>
+                    </Border>
+
+                    <!-- Botones de foto -->
+                    <HorizontalStackLayout HorizontalOptions="Center" Spacing="8">
+                        <Button
+                            Padding="12,8"
+                            BackgroundColor="#FF3A3A3A"
+                            Command="{Binding SelectPhotoCommand}"
+                            CornerRadius="6"
+                            FontSize="14"
+                            Text="Elegir Imagen"
+                            TextColor="White" />
+                        <Button
+                            Padding="12,8"
+                            BackgroundColor="#FF3A3A3A"
+                            Command="{Binding RemovePhotoCommand}"
+                            CornerRadius="6"
+                            FontSize="12"
+                            IsVisible="{Binding HasFoto}"
+                            Text="Quitar"
+                            TextColor="#FFFF6B6B" />
+                    </HorizontalStackLayout>
+
+                    <!-- Datos calculados -->
+                    <Border
+                        Margin="0,16,0,0"
+                        Padding="16"
+                        BackgroundColor="#FF2A2A2A"
+                        Stroke="Transparent"
+                        StrokeShape="RoundRectangle 8">
+                        <VerticalStackLayout Spacing="12">
+                            <Label
+                                FontAttributes="Bold"
+                                FontSize="14"
+                                Text="Datos calculados"
+                                TextColor="#FFB1B1B1" />
+                            
+                            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+                                <Label
+                                    Grid.Row="0"
+                                    FontSize="14"
+                                    Text="Edad:"
+                                    TextColor="#FFB1B1B1" />
+                                <Label
+                                    Grid.Row="0"
+                                    Grid.Column="1"
+                                    FontSize="14"
+                                    Text="{Binding EdadTexto}"
+                                    TextColor="White" />
+                                
+                                <Label
+                                    Grid.Row="1"
+                                    FontSize="14"
+                                    Text="IMC:"
+                                    TextColor="#FFB1B1B1" />
+                                <Label
+                                    Grid.Row="1"
+                                    Grid.Column="1"
+                                    FontSize="14"
+                                    Text="{Binding IMCTexto}"
+                                    TextColor="White" />
+                            </Grid>
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <!-- Mensaje de estado -->
+                    <Label
+                        FontSize="12"
+                        HorizontalOptions="Center"
+                        IsVisible="{Binding HasStatusMessage}"
+                        Text="{Binding StatusMessage}"
+                        TextColor="#FF6DDDFF" />
+                </VerticalStackLayout>
+
+                <!-- Columna derecha: Formulario -->
+                <VerticalStackLayout Grid.Column="1" Spacing="16">
+                    
+                    <!-- Datos personales -->
+                    <Border
+                        Padding="20"
+                        BackgroundColor="#FF2A2A2A"
+                        Stroke="Transparent"
+                        StrokeShape="RoundRectangle 8">
+                        <VerticalStackLayout Spacing="16">
+                            <Label
+                                FontAttributes="Bold"
+                                FontSize="16"
+                                Text="Datos personales"
+                                TextColor="White" />
+
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="16" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="12">
+                                <!-- Nombre -->
+                                <VerticalStackLayout Grid.Row="0" Grid.Column="0" Spacing="4">
+                                    <Label FontSize="12" Text="Nombre" TextColor="#FFB1B1B1" />
+                                    <Entry
+                                        BackgroundColor="#FF3A3A3A"
+                                        Placeholder="Tu nombre"
+                                        PlaceholderColor="#FF666666"
+                                        Text="{Binding Nombre}"
+                                        TextColor="White" />
+                                </VerticalStackLayout>
+
+                                <!-- Apellidos -->
+                                <VerticalStackLayout Grid.Row="0" Grid.Column="1" Spacing="4">
+                                    <Label FontSize="12" Text="Apellidos" TextColor="#FFB1B1B1" />
+                                    <Entry
+                                        BackgroundColor="#FF3A3A3A"
+                                        Placeholder="Tus apellidos"
+                                        PlaceholderColor="#FF666666"
+                                        Text="{Binding Apellidos}"
+                                        TextColor="White" />
+                                </VerticalStackLayout>
+
+                                <!-- Fecha de nacimiento -->
+                                <VerticalStackLayout Grid.Row="1" Grid.Column="0" Spacing="4">
+                                    <Label FontSize="12" Text="Fecha de nacimiento" TextColor="#FFB1B1B1" />
+                                    <Border
+                                        BackgroundColor="#FF3A3A3A"
+                                        Padding="8,4"
+                                        Stroke="Transparent"
+                                        StrokeShape="RoundRectangle 4">
+                                        <DatePicker
+                                            BackgroundColor="Transparent"
+                                            Date="{Binding FechaNacimientoDate}"
+                                            TextColor="White" />
+                                    </Border>
+                                </VerticalStackLayout>
+
+                                <!-- Sexo -->
+                                <VerticalStackLayout Grid.Row="1" Grid.Column="1" Spacing="4">
+                                    <Label FontSize="12" Text="Sexo" TextColor="#FFB1B1B1" />
+                                    <FlexLayout
+                                        BindableLayout.ItemsSource="{Binding SexoOptions}"
+                                        Wrap="Wrap"
+                                        Direction="Row"
+                                        JustifyContent="Start"
+                                        AlignItems="Start">
+                                        <BindableLayout.ItemTemplate>
+                                            <DataTemplate x:DataType="models:SelectableOption">
+                                                <Border
+                                                    Margin="0,0,6,6"
+                                                    Padding="12,8"
+                                                    BackgroundColor="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}}"
+                                                    Stroke="#FF555555"
+                                                    StrokeShape="RoundRectangle 6"
+                                                    StrokeThickness="1">
+                                                    <Border.GestureRecognizers>
+                                                        <TapGestureRecognizer
+                                                            Command="{Binding Source={RelativeSource AncestorType={x:Type vm:UserProfileViewModel}}, Path=SelectSexoCommand}"
+                                                            CommandParameter="{Binding .}" />
+                                                    </Border.GestureRecognizers>
+                                                    <Label
+                                                        FontSize="13"
+                                                        Text="{Binding Value}"
+                                                        TextColor="White" />
+                                                </Border>
+                                            </DataTemplate>
+                                        </BindableLayout.ItemTemplate>
+                                    </FlexLayout>
+                                </VerticalStackLayout>
+
+                                <!-- Peso -->
+                                <VerticalStackLayout Grid.Row="2" Grid.Column="0" Spacing="4">
+                                    <Label FontSize="12" Text="Peso (kg)" TextColor="#FFB1B1B1" />
+                                    <Entry
+                                        BackgroundColor="#FF3A3A3A"
+                                        Keyboard="Numeric"
+                                        Placeholder="70.5"
+                                        PlaceholderColor="#FF666666"
+                                        Text="{Binding Peso}"
+                                        TextColor="White" />
+                                </VerticalStackLayout>
+
+                                <!-- Altura -->
+                                <VerticalStackLayout Grid.Row="2" Grid.Column="1" Spacing="4">
+                                    <Label FontSize="12" Text="Altura (cm)" TextColor="#FFB1B1B1" />
+                                    <Entry
+                                        BackgroundColor="#FF3A3A3A"
+                                        Keyboard="Numeric"
+                                        Placeholder="175"
+                                        PlaceholderColor="#FF666666"
+                                        Text="{Binding Altura}"
+                                        TextColor="White" />
+                                </VerticalStackLayout>
+
+                                <!-- Mano hábil -->
+                                <VerticalStackLayout Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" Spacing="4">
+                                    <Label FontSize="12" Text="Mano hábil" TextColor="#FFB1B1B1" />
+                                    <FlexLayout
+                                        BindableLayout.ItemsSource="{Binding ManoHabilOptions}"
+                                        Wrap="Wrap"
+                                        Direction="Row"
+                                        JustifyContent="Start"
+                                        AlignItems="Start">
+                                        <BindableLayout.ItemTemplate>
+                                            <DataTemplate x:DataType="models:SelectableOption">
+                                                <Border
+                                                    Margin="0,0,6,6"
+                                                    Padding="12,8"
+                                                    BackgroundColor="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}}"
+                                                    Stroke="#FF555555"
+                                                    StrokeShape="RoundRectangle 6"
+                                                    StrokeThickness="1">
+                                                    <Border.GestureRecognizers>
+                                                        <TapGestureRecognizer
+                                                            Command="{Binding Source={RelativeSource AncestorType={x:Type vm:UserProfileViewModel}}, Path=SelectManoHabilCommand}"
+                                                            CommandParameter="{Binding .}" />
+                                                    </Border.GestureRecognizers>
+                                                    <Label
+                                                        FontSize="13"
+                                                        Text="{Binding Value}"
+                                                        TextColor="White" />
+                                                </Border>
+                                            </DataTemplate>
+                                        </BindableLayout.ItemTemplate>
+                                    </FlexLayout>
+                                </VerticalStackLayout>
+
+                            </Grid>
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <!-- Datos deportivos -->
+                    <Border
+                        Padding="20"
+                        BackgroundColor="#FF2A2A2A"
+                        Stroke="Transparent"
+                        StrokeShape="RoundRectangle 8" HeightRequest="180">
+                        <VerticalStackLayout Spacing="16">
+                            <Label
+                                FontAttributes="Bold"
+                                FontSize="16"
+                                Text="Datos deportivos"
+                                TextColor="White" />
+
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="16" RowDefinitions="Auto" RowSpacing="12">
+                                <!-- Categoría -->
+                                <VerticalStackLayout Grid.Row="0" Grid.Column="0" Spacing="4">
+                                    <Label FontSize="12" Text="Categoría / Embarcación" TextColor="#FFB1B1B1" />
+                                    <FlexLayout
+                                        BindableLayout.ItemsSource="{Binding CategoriaOptions}"
+                                        Wrap="Wrap"
+                                        Direction="Row"
+                                        JustifyContent="Start"
+                                        AlignItems="Start">
+                                        <BindableLayout.ItemTemplate>
+                                            <DataTemplate x:DataType="models:SelectableOption">
+                                                <Border
+                                                    Margin="0,0,6,6"
+                                                    Padding="12,8"
+                                                    BackgroundColor="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}}"
+                                                    Stroke="#FF555555"
+                                                    StrokeShape="RoundRectangle 6"
+                                                    StrokeThickness="1">
+                                                    <Border.GestureRecognizers>
+                                                        <TapGestureRecognizer
+                                                            Command="{Binding Source={RelativeSource AncestorType={x:Type vm:UserProfileViewModel}}, Path=SelectCategoriaCommand}"
+                                                            CommandParameter="{Binding .}" />
+                                                    </Border.GestureRecognizers>
+                                                    <Label
+                                                        FontSize="13"
+                                                        Text="{Binding Value}"
+                                                        TextColor="White" />
+                                                </Border>
+                                            </DataTemplate>
+                                        </BindableLayout.ItemTemplate>
+                                    </FlexLayout>
+                                </VerticalStackLayout>
+
+                                <!-- Club -->
+                                <VerticalStackLayout Grid.Row="0" Grid.Column="1" Spacing="4">
+                                    <Label FontSize="12" Text="Club" TextColor="#FFB1B1B1" />
+                                    <Entry
+                                        BackgroundColor="#FF3A3A3A"
+                                        Placeholder="Nombre del club"
+                                        PlaceholderColor="#FF666666"
+                                        Text="{Binding Club}"
+                                        TextColor="White" />
+                                </VerticalStackLayout>
+                            </Grid>
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <!-- Selector: atleta de referencia (Yo) -->
+                    <Border
+                        Padding="20"
+                        BackgroundColor="#FF2A2A2A"
+                        Stroke="Transparent"
+                        StrokeShape="RoundRectangle 8">
+                        <VerticalStackLayout Spacing="6">
+                            <Label
+                                FontSize="12"
+                                Text="¿Cuál de estos atletas eres tú?"
+                                TextColor="#FFB1B1B1" />
+
+                            <Border
+                                Padding="12,10"
+                                BackgroundColor="#FF3A3A3A"
+                                Stroke="#FF555555"
+                                StrokeShape="RoundRectangle 6"
+                                StrokeThickness="1">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding SelectReferenceAthleteCommand}" />
+                                </Border.GestureRecognizers>
+
+                                <Grid ColumnDefinitions="*,Auto" VerticalOptions="Center">
+                                    <Label
+                                        FontSize="14"
+                                        Text="{Binding ReferenceAthleteDisplay}"
+                                        TextColor="White"
+                                        LineBreakMode="TailTruncation" />
+                                    <Label
+                                        Grid.Column="1"
+                                        FontSize="14"
+                                        Text="▾"
+                                        TextColor="#FFB1B1B1"
+                                        VerticalOptions="Center" />
+                                </Grid>
+                            </Border>
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <!-- Notas -->
+                    <Border
+                        Padding="20"
+                        BackgroundColor="#FF2A2A2A"
+                        Stroke="Transparent"
+                        StrokeShape="RoundRectangle 8">
+                        <VerticalStackLayout Spacing="8">
+                            <Label
+                                FontAttributes="Bold"
+                                FontSize="16"
+                                Text="Notas"
+                                TextColor="White" />
+                            <Editor
+                                AutoSize="TextChanges"
+                                BackgroundColor="#FF3A3A3A"
+                                HeightRequest="100"
+                                Placeholder="Notas adicionales sobre ti..."
+                                PlaceholderColor="#FF666666"
+                                Text="{Binding Notas}"
+                                TextColor="White" />
+                        </VerticalStackLayout>
+                    </Border>
+                </VerticalStackLayout>
+            </Grid>
+        </ScrollView>
+
+        <!-- Loading indicator -->
+        <ActivityIndicator
+            Grid.Row="1"
+            HorizontalOptions="Center"
+            IsRunning="{Binding IsBusy}"
+            IsVisible="{Binding IsBusy}"
+            VerticalOptions="Center"
+            Color="{StaticResource Primary}" />
+    </Grid>
+</ContentPage>

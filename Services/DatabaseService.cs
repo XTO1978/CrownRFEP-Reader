@@ -50,10 +50,14 @@ public class DatabaseService
         await _database.CreateTableAsync<Tag>();
         await _database.CreateTableAsync<WorkGroup>();
         await _database.CreateTableAsync<AthleteWorkGroup>();
+        await _database.CreateTableAsync<UserProfile>();
 
         // Migraciones ligeras: columnas nuevas en videoClip
         await EnsureColumnExistsAsync(_database, "videoClip", "localClipPath", "TEXT");
         await EnsureColumnExistsAsync(_database, "videoClip", "localThumbnailPath", "TEXT");
+
+        // Migraciones ligeras: columnas nuevas en userProfile
+        await EnsureColumnExistsAsync(_database, "userProfile", "referenceAthleteId", "INTEGER");
     }
 
     private sealed class SqliteTableInfoRow
@@ -159,6 +163,33 @@ public class DatabaseService
         }
         
         return athletes;
+    }
+
+    /// <summary>
+    /// Devuelve una lista de atletas únicos (deduplicados por nombre+apellido normalizados),
+    /// manteniendo el atleta con menor ID en cada grupo.
+    /// </summary>
+    public async Task<List<Athlete>> GetUniqueAthletesAsync()
+    {
+        var db = await GetConnectionAsync();
+        var allAthletes = await db.Table<Athlete>().ToListAsync();
+
+        var unique = allAthletes
+            .GroupBy(a => (NormalizeString(a.Nombre).ToLowerInvariant(), NormalizeString(a.Apellido).ToLowerInvariant()))
+            .Select(g => g.OrderBy(a => a.Id).First())
+            .OrderBy(a => a.Apellido)
+            .ThenBy(a => a.Nombre)
+            .ToList();
+
+        // Cargar las categorías igual que en GetAllAthletesAsync
+        var categories = await db.Table<Category>().ToListAsync();
+        foreach (var athlete in unique)
+        {
+            var category = categories.FirstOrDefault(c => c.Id == athlete.CategoriaId);
+            athlete.CategoriaNombre = category?.NombreCategoria;
+        }
+
+        return unique;
     }
 
     /// <summary>
@@ -597,5 +628,36 @@ public class DatabaseService
         var db = await GetConnectionAsync();
         var clips = await db.Table<VideoClip>().ToListAsync();
         return clips.Sum(c => c.ClipDuration);
+    }
+
+    // ======================= USER PROFILE =======================
+
+    /// <summary>
+    /// Obtiene el perfil del usuario. Solo existe un perfil (el del usuario de la app).
+    /// </summary>
+    public async Task<UserProfile?> GetUserProfileAsync()
+    {
+        var db = await GetConnectionAsync();
+        var profiles = await db.Table<UserProfile>().ToListAsync();
+        return profiles.FirstOrDefault();
+    }
+
+    /// <summary>
+    /// Guarda o actualiza el perfil del usuario.
+    /// </summary>
+    public async Task SaveUserProfileAsync(UserProfile profile)
+    {
+        var db = await GetConnectionAsync();
+        profile.UpdatedAt = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+
+        if (profile.Id == 0)
+        {
+            profile.CreatedAt = profile.UpdatedAt;
+            await db.InsertAsync(profile);
+        }
+        else
+        {
+            await db.UpdateAsync(profile);
+        }
     }
 }
