@@ -84,10 +84,10 @@ public class VideoClip
         }
     }
 
-    [Ignore]
+    [Column("localClipPath")]
     public string? LocalClipPath { get; set; }
 
-    [Ignore]
+    [Column("localThumbnailPath")]
     public string? LocalThumbnailPath { get; set; }
 
     [Ignore]

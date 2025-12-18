@@ -50,6 +50,54 @@ public class DatabaseService
         await _database.CreateTableAsync<Tag>();
         await _database.CreateTableAsync<WorkGroup>();
         await _database.CreateTableAsync<AthleteWorkGroup>();
+
+        // Migraciones ligeras: columnas nuevas en videoClip
+        await EnsureColumnExistsAsync(_database, "videoClip", "localClipPath", "TEXT");
+        await EnsureColumnExistsAsync(_database, "videoClip", "localThumbnailPath", "TEXT");
+    }
+
+    private sealed class SqliteTableInfoRow
+    {
+        // PRAGMA table_info devuelve: cid, name, type, notnull, dflt_value, pk
+        // Solo nos interesa 'name'.
+        public string name { get; set; } = "";
+    }
+
+    private static async Task EnsureColumnExistsAsync(SQLiteAsyncConnection db, string tableName, string columnName, string sqliteType)
+    {
+        var rows = await db.QueryAsync<SqliteTableInfoRow>($"PRAGMA table_info({tableName});");
+        var exists = rows.Any(r => string.Equals(r.name, columnName, StringComparison.OrdinalIgnoreCase));
+        if (exists) return;
+
+        await db.ExecuteAsync($"ALTER TABLE {tableName} ADD COLUMN {columnName} {sqliteType};");
+    }
+
+    private static string GetNormalizedFileName(string? pathOrName, string fallbackFileName)
+    {
+        if (string.IsNullOrWhiteSpace(pathOrName))
+            return fallbackFileName;
+
+        // Los .crown pueden venir de Windows con backslashes.
+        var normalized = pathOrName.Replace('\\', '/');
+        var fileName = Path.GetFileName(normalized);
+        return string.IsNullOrWhiteSpace(fileName) ? fallbackFileName : fileName;
+    }
+
+    private static void HydrateLocalMediaPaths(VideoClip clip, string? sessionPath)
+    {
+        if (string.IsNullOrWhiteSpace(sessionPath)) return;
+
+        var clipFileName = GetNormalizedFileName(clip.ClipPath, $"CROWN{clip.Id}.mp4");
+        var thumbFileName = GetNormalizedFileName(clip.ThumbnailPath, $"CROWN{clip.Id}_thumb.jpg");
+
+        var candidateClipPath = Path.Combine(sessionPath, "videos", clipFileName);
+        var candidateThumbPath = Path.Combine(sessionPath, "thumbnails", thumbFileName);
+
+        if (string.IsNullOrWhiteSpace(clip.LocalClipPath) || !File.Exists(clip.LocalClipPath))
+            clip.LocalClipPath = candidateClipPath;
+
+        if (string.IsNullOrWhiteSpace(clip.LocalThumbnailPath) || !File.Exists(clip.LocalThumbnailPath))
+            clip.LocalThumbnailPath = candidateThumbPath;
     }
 
     // ==================== SESSIONS ====================
@@ -150,6 +198,13 @@ public class DatabaseService
             .OrderByDescending(v => v.CreationDate)
             .ToListAsync();
 
+        // Asegurar rutas locales para reproducción/miniaturas (compatibilidad con imports antiguos)
+        var session = await db.Table<Session>().FirstOrDefaultAsync(s => s.Id == sessionId);
+        foreach (var clip in clips)
+        {
+            HydrateLocalMediaPaths(clip, session?.PathSesion);
+        }
+
         // Cargar atletas
         var athletes = await db.Table<Athlete>().ToListAsync();
         var categories = await db.Table<Category>().ToListAsync();
@@ -170,10 +225,21 @@ public class DatabaseService
     public async Task<List<VideoClip>> GetVideoClipsByAthleteAsync(int athleteId)
     {
         var db = await GetConnectionAsync();
-        return await db.Table<VideoClip>()
+        var clips = await db.Table<VideoClip>()
             .Where(v => v.AtletaId == athleteId)
             .OrderByDescending(v => v.CreationDate)
             .ToListAsync();
+
+        // Hidratar rutas locales por sesión (para que el reproductor encuentre los archivos)
+        var sessions = await db.Table<Session>().ToListAsync();
+        var sessionById = sessions.ToDictionary(s => s.Id, s => s);
+        foreach (var clip in clips)
+        {
+            sessionById.TryGetValue(clip.SessionId, out var session);
+            HydrateLocalMediaPaths(clip, session?.PathSesion);
+        }
+
+        return clips;
     }
 
     public async Task<int> SaveVideoClipAsync(VideoClip clip)

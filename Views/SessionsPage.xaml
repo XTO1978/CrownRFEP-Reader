@@ -3,20 +3,23 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:CrownRFEP_Reader.ViewModels"
              xmlns:models="clr-namespace:CrownRFEP_Reader.Models"
+             xmlns:controls="clr-namespace:CrownRFEP_Reader.Views.Controls"
              x:Class="CrownRFEP_Reader.Views.SessionsPage"
              x:DataType="vm:SessionsViewModel"
              Title="{Binding Title}">
 
-    <Grid RowDefinitions="Auto,*" Padding="15">
+    <Grid RowDefinitions="Auto,Auto,*" Padding="15">
+
+        <controls:TopTabsBar Grid.Row="0" />
         
         <!-- Barra de búsqueda -->
-        <SearchBar Grid.Row="0"
+        <SearchBar Grid.Row="1"
                    Placeholder="Buscar sesiones..."
                    Text="{Binding SearchText}"
                    BackgroundColor="{AppThemeBinding Light={StaticResource Gray100}, Dark={StaticResource Gray900}}"
                    CancelButtonColor="{StaticResource Primary}"/>
 
-        <RefreshView Grid.Row="1" 
+        <RefreshView Grid.Row="2" 
                      Command="{Binding RefreshCommand}" 
                      IsRefreshing="{Binding IsBusy}">
             <CollectionView ItemsSource="{Binding FilteredSessions}"
@@ -40,47 +43,20 @@
                                         CommandParameter="{Binding .}"/>
                                 </Frame.GestureRecognizers>
                                 
-                                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto">
-                                    <Label Grid.Row="0" 
-                                           Text="{Binding DisplayName}" 
-                                           FontSize="18" 
-                                           FontAttributes="Bold"/>
-                                    
-                                    <HorizontalStackLayout Grid.Row="1" Spacing="10">
-                                        <Label Text="📍" FontSize="14"/>
-                                        <Label Text="{Binding Lugar}" FontSize="14" TextColor="Gray"/>
-                                    </HorizontalStackLayout>
-                                    
-                                    <HorizontalStackLayout Grid.Row="2" Spacing="15">
-                                        <HorizontalStackLayout Spacing="5">
-                                            <Label Text="📅" FontSize="12"/>
-                                            <Label Text="{Binding FechaDateTime, StringFormat='{0:dd/MM/yyyy}'}" 
-                                                   FontSize="12" 
-                                                   TextColor="Gray"/>
-                                        </HorizontalStackLayout>
-                                        <HorizontalStackLayout Spacing="5">
-                                            <Label Text="🎬" FontSize="12"/>
-                                            <Label FontSize="12" TextColor="Gray">
-                                                <Label.FormattedText>
-                                                    <FormattedString>
-                                                        <Span Text="{Binding VideoCount}" />
-                                                        <Span Text=" videos" />
-                                                    </FormattedString>
-                                                </Label.FormattedText>
-                                            </Label>
-                                        </HorizontalStackLayout>
-                                        <HorizontalStackLayout Spacing="5">
-                                            <Label Text="👤" FontSize="12"/>
-                                            <Label Text="{Binding Coach}" FontSize="12" TextColor="Gray"/>
-                                        </HorizontalStackLayout>
-                                    </HorizontalStackLayout>
-                                    
-                                    <Label Grid.RowSpan="3" 
-                                           Grid.Column="1" 
-                                           Text="›" 
-                                           FontSize="28" 
-                                           TextColor="Gray"
-                                           VerticalOptions="Center"/>
+                                <Grid Padding="0">
+                                    <Label FontSize="16"
+                                           TextColor="{AppThemeBinding Light={StaticResource PrimaryTextColor}, Dark={StaticResource PrimaryTextColor}}"
+                                           LineBreakMode="TailTruncation">
+                                        <Label.FormattedText>
+                                            <FormattedString>
+                                                <Span Text="{Binding FechaDateTime, StringFormat='{0:dd/MM/yyyy}'}" />
+                                                <Span Text="  ·  " />
+                                                <Span Text="{Binding Lugar}" />
+                                                <Span Text="  ·  " />
+                                                <Span Text="{Binding DisplayName}" />
+                                            </FormattedString>
+                                        </Label.FormattedText>
+                                    </Label>
                                 </Grid>
                             </Frame>
                         </SwipeView>

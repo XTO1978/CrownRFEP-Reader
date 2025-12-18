@@ -2,6 +2,8 @@
 using CrownRFEP_Reader.Services;
 using CrownRFEP_Reader.ViewModels;
 using CrownRFEP_Reader.Views;
+using CrownRFEP_Reader.Views.Controls;
+using CrownRFEP_Reader.Handlers;
 using Microsoft.Extensions.Logging;
 
 namespace CrownRFEP_Reader;
@@ -15,6 +17,10 @@ public static class MauiProgram
 			.UseMauiApp<App>()
 			.UseMauiCommunityToolkit()
 			.UseMauiCommunityToolkitMediaElement()
+			.ConfigureMauiHandlers(handlers =>
+			{
+				handlers.AddHandler(typeof(SymbolIcon), typeof(SymbolIconHandler));
+			})
 			.ConfigureFonts(fonts =>
 			{
 				fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
@@ -37,6 +43,7 @@ public static class MauiProgram
 
 		// Páginas
 		builder.Services.AddSingleton<DashboardPage>();
+		builder.Services.AddSingleton<ImportPage>();
 		builder.Services.AddSingleton<SessionsPage>();
 		builder.Services.AddTransient<SessionDetailPage>();
 		builder.Services.AddSingleton<AthletesPage>();

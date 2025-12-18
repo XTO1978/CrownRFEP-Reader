@@ -1,186 +1,92 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             xmlns:vm="clr-namespace:CrownRFEP_Reader.ViewModels"
-             xmlns:models="clr-namespace:CrownRFEP_Reader.Models"
-             x:Class="CrownRFEP_Reader.Views.DashboardPage"
-             x:DataType="vm:DashboardViewModel"
-             Title="{Binding Title}">
+<ContentPage
+    x:Class="CrownRFEP_Reader.Views.DashboardPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:models="clr-namespace:CrownRFEP_Reader.Models"
+    xmlns:controls="clr-namespace:CrownRFEP_Reader.Views.Controls"
+    xmlns:vm="clr-namespace:CrownRFEP_Reader.ViewModels"
+    Title="{Binding Title}"
+    x:DataType="vm:DashboardViewModel"
+    BackgroundColor="#FF1B1B1B">
 
-    <Grid RowDefinitions="Auto,*" Padding="20">
-        
-        <!-- Header con botón de importar -->
-        <VerticalStackLayout Grid.Row="0" Spacing="15">
-            <Label Text="CrownRFEP Reader" 
-                   FontSize="28" 
-                   FontAttributes="Bold" 
-                   TextColor="{StaticResource Primary}"
-                   HorizontalOptions="Center"/>
-            
-            <Button Text="📂 Importar archivo .crown"
-                    Command="{Binding ImportCommand}"
-                    IsEnabled="{Binding IsImporting, Converter={StaticResource InvertedBoolConverter}}"
-                    BackgroundColor="{StaticResource Primary}"
-                    TextColor="White"
-                    FontSize="16"
-                    Padding="20,12"
-                    CornerRadius="8"
-                    HorizontalOptions="Center"/>
+    <Grid Padding="0" RowDefinitions="Auto,*">
+        <controls:TopTabsBar Grid.Row="0" HorizontalOptions="Center" BackgroundColor="#FF1B1B1B"/>
 
-            <!-- Barra de progreso de importación -->
-            <VerticalStackLayout IsVisible="{Binding IsImporting}" Spacing="5">
-                <Label Text="{Binding ImportProgressText}" 
-                       HorizontalOptions="Center"
-                       FontSize="14"/>
-                <ProgressBar Progress="{Binding ImportProgressValue, Converter={StaticResource ProgressConverter}}"
-                             ProgressColor="{StaticResource Primary}"
-                             HeightRequest="8"/>
-            </VerticalStackLayout>
-        </VerticalStackLayout>
-
-        <ScrollView Grid.Row="1" Margin="0,20,0,0">
+        <!-- Lista de sesiones recientes -->
+        <ScrollView Grid.Row="1" Padding="0" >
             <VerticalStackLayout Spacing="20">
-                
-                <!-- Tarjetas de estadísticas -->
-                <Label Text="Resumen" FontSize="20" FontAttributes="Bold"/>
-                
-                <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="15" RowSpacing="15">
-                    
-                    <!-- Total Sesiones -->
-                    <Frame Grid.Row="0" Grid.Column="0" 
-                           BackgroundColor="{StaticResource Primary}" 
-                           CornerRadius="12" 
-                           Padding="15"
-                           HasShadow="True">
-                        <VerticalStackLayout>
-                            <Label Text="📅" FontSize="24"/>
-                            <Label Text="{Binding Stats.TotalSessions}" 
-                                   FontSize="32" 
-                                   FontAttributes="Bold" 
-                                   TextColor="White"/>
-                            <Label Text="Sesiones" TextColor="White" FontSize="14"/>
-                        </VerticalStackLayout>
-                    </Frame>
+                <Grid ColumnDefinitions="340,3,*" >
+                    <CollectionView
+                        Grid.Row="1"
+                        Grid.Column="0" Margin="0,20,0,0"
+                        BackgroundColor="#00BBBABA"
+                        ItemsSource="{Binding RecentSessions}"
+                        SelectedItem="{Binding SelectedSession, Mode=TwoWay}"
+                        SelectionMode="Single" >
+                        <CollectionView.ItemsLayout>
+                            <LinearItemsLayout Orientation="Vertical" ItemSpacing="4" />
+                        </CollectionView.ItemsLayout>
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="models:Session">
+                                <HorizontalStackLayout Padding="16,8" Spacing="8" VerticalOptions="Center" >
+                                    <controls:SymbolIcon
+                                        WidthRequest="24"
+                                        HeightRequest="24"
+                                        VerticalOptions="Center"
+                                        SymbolName="oar.2.crossed"
+                                        TintColor="#FF6DDDFF" />
+                                    <Label FontSize="18" FontFamily="SF Pro Text"
+                                           TextColor="White"
+                                           LineBreakMode="TailTruncation">
+                                        <Label.FormattedText>
+                                            <FormattedString>
+                                                <Span Text="{Binding FechaDateTime, StringFormat='{0:dd/MM/yyyy}'}" TextColor="White" FontSize="16"/>
+                                                <Span Text=" en " TextColor="White" FontSize="16"/>
+                                                <Span Text="{Binding Lugar}" TextColor="White" FontSize="16"/>
+                                                <Span Text=" - " TextColor="White" FontSize="16"/>
+                                                <Span Text="{Binding DisplayName}" TextColor="White" FontSize="16"/>
+                                            </FormattedString>
+                                        </Label.FormattedText>
+                                    </Label>
+                                </HorizontalStackLayout>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
 
-                    <!-- Total Videos -->
-                    <Frame Grid.Row="0" Grid.Column="1" 
-                           BackgroundColor="#4CAF50" 
-                           CornerRadius="12" 
-                           Padding="15"
-                           HasShadow="True">
-                        <VerticalStackLayout>
-                            <Label Text="🎬" FontSize="24"/>
-                            <Label Text="{Binding Stats.TotalVideos}" 
-                                   FontSize="32" 
-                                   FontAttributes="Bold" 
-                                   TextColor="White"/>
-                            <Label Text="Videos" TextColor="White" FontSize="14"/>
-                        </VerticalStackLayout>
-                    </Frame>
-
-                    <!-- Total Atletas -->
-                    <Frame Grid.Row="1" Grid.Column="0" 
-                           BackgroundColor="#FF9800" 
-                           CornerRadius="12" 
-                           Padding="15"
-                           HasShadow="True">
-                        <VerticalStackLayout>
-                            <Label Text="🏃" FontSize="24"/>
-                            <Label Text="{Binding Stats.TotalAthletes}" 
-                                   FontSize="32" 
-                                   FontAttributes="Bold" 
-                                   TextColor="White"/>
-                            <Label Text="Atletas" TextColor="White" FontSize="14"/>
-                        </VerticalStackLayout>
-                    </Frame>
-
-                    <!-- Duración Total -->
-                    <Frame Grid.Row="1" Grid.Column="1" 
-                           BackgroundColor="#9C27B0" 
-                           CornerRadius="12" 
-                           Padding="15"
-                           HasShadow="True">
-                        <VerticalStackLayout>
-                            <Label Text="⏱️" FontSize="24"/>
-                            <Label Text="{Binding Stats.TotalDurationFormatted}" 
-                                   FontSize="24" 
-                                   FontAttributes="Bold" 
-                                   TextColor="White"/>
-                            <Label Text="Duración total" TextColor="White" FontSize="14"/>
-                        </VerticalStackLayout>
-                    </Frame>
+                        <CollectionView.EmptyView>
+                            <VerticalStackLayout
+                                Padding="40"
+                                HorizontalOptions="Center"
+                                VerticalOptions="Center">
+                                <Label
+                                    FontSize="18"
+                                    HorizontalOptions="Center"
+                                    Text="No hay sesiones"
+                                    TextColor="Gray" />
+                                <Label
+                                    FontSize="14"
+                                    HorizontalOptions="Center"
+                                    Text="Importa un archivo .crown para comenzar"
+                                    TextColor="Gray" />
+                            </VerticalStackLayout>
+                        </CollectionView.EmptyView>
+                    </CollectionView>
+                    <BoxView
+                        Grid.Row="1"
+                        Grid.RowSpan="2"
+                        Grid.Column="1"
+                        BackgroundColor="#FF585858" Margin="10,0"
+                        VerticalOptions="Fill"
+                        WidthRequest="0.8" />
                 </Grid>
-
-                <!-- Sesiones recientes -->
-                <Grid ColumnDefinitions="*,Auto">
-                    <Label Text="Sesiones Recientes" FontSize="20" FontAttributes="Bold"/>
-                    <Button Grid.Column="1" 
-                            Text="Ver todas →" 
-                            Command="{Binding ViewAllSessionsCommand}"
-                            BackgroundColor="Transparent"
-                            TextColor="{StaticResource Primary}"
-                            FontSize="14"/>
-                </Grid>
-
-                <CollectionView ItemsSource="{Binding RecentSessions}"
-                                SelectionMode="Single"
-                                SelectionChangedCommand="{Binding ViewSessionCommand}"
-                                SelectionChangedCommandParameter="{Binding SelectedItem, Source={RelativeSource Self}}">
-                    <CollectionView.ItemTemplate>
-                        <DataTemplate x:DataType="models:Session">
-                            <Frame Margin="0,0,0,10" Padding="15" CornerRadius="10" HasShadow="True">
-                                <Grid ColumnDefinitions="*,Auto">
-                                    <VerticalStackLayout>
-                                        <Label Text="{Binding DisplayName}" 
-                                               FontSize="16" 
-                                               FontAttributes="Bold"/>
-                                        <Label Text="{Binding Lugar}" 
-                                               FontSize="14" 
-                                               TextColor="Gray"/>
-                                        <Label FontSize="12" TextColor="Gray">
-                                            <Label.FormattedText>
-                                                <FormattedString>
-                                                    <Span Text="{Binding FechaDateTime, StringFormat='{0:dd/MM/yyyy}'}" />
-                                                    <Span Text=" • " />
-                                                    <Span Text="{Binding VideoCount}" />
-                                                    <Span Text=" videos" />
-                                                </FormattedString>
-                                            </Label.FormattedText>
-                                        </Label>
-                                    </VerticalStackLayout>
-                                    <Label Grid.Column="1" 
-                                           Text="→" 
-                                           FontSize="20" 
-                                           VerticalOptions="Center"
-                                           TextColor="Gray"/>
-                                </Grid>
-                            </Frame>
-                        </DataTemplate>
-                    </CollectionView.ItemTemplate>
-                    <CollectionView.EmptyView>
-                        <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center" Padding="40">
-                            <Label Text="📭" FontSize="48" HorizontalOptions="Center"/>
-                            <Label Text="No hay sesiones" 
-                                   FontSize="18" 
-                                   HorizontalOptions="Center" 
-                                   TextColor="Gray"/>
-                            <Label Text="Importa un archivo .crown para comenzar" 
-                                   FontSize="14" 
-                                   HorizontalOptions="Center" 
-                                   TextColor="Gray"/>
-                        </VerticalStackLayout>
-                    </CollectionView.EmptyView>
-                </CollectionView>
-
             </VerticalStackLayout>
         </ScrollView>
 
-        <!-- Indicador de carga -->
-        <ActivityIndicator Grid.RowSpan="2" 
-                           IsRunning="{Binding IsBusy}" 
-                           IsVisible="{Binding IsBusy}"
-                           Color="{StaticResource Primary}"
-                           VerticalOptions="Center"
-                           HorizontalOptions="Center"/>
+        <ActivityIndicator
+            HorizontalOptions="Center"
+            IsRunning="{Binding IsBusy}"
+            IsVisible="{Binding IsBusy}"
+            VerticalOptions="Center"
+            Color="{StaticResource Primary}" />
     </Grid>
 </ContentPage>

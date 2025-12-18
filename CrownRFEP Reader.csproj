@@ -20,6 +20,9 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 
+		<!-- Hot Reload -->
+		<MauiEnableHotReload>true</MauiEnableHotReload>
+
 		<!-- Display name -->
 		<ApplicationTitle>CrownRFEP Reader</ApplicationTitle>
 

@@ -3,6 +3,13 @@
     "Windows Machine": {
       "commandName": "Project",
       "nativeDebugging": false
+    },
+    "MacCatalyst": {
+      "commandName": "Project",
+      "nativeDebugging": false,
+      "environmentVariables": {
+        "DOTNET_WATCH_SUPPRESS_LAUNCH_BROWSER": "true"
+      }
     }
   }
 }

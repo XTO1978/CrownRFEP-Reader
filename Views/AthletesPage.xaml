@@ -3,20 +3,23 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:CrownRFEP_Reader.ViewModels"
              xmlns:models="clr-namespace:CrownRFEP_Reader.Models"
+             xmlns:controls="clr-namespace:CrownRFEP_Reader.Views.Controls"
              x:Class="CrownRFEP_Reader.Views.AthletesPage"
              x:DataType="vm:AthletesViewModel"
              Title="{Binding Title}">
 
-    <Grid RowDefinitions="Auto,*" Padding="15">
+    <Grid RowDefinitions="Auto,Auto,*" Padding="15">
+
+        <controls:TopTabsBar Grid.Row="0" />
         
         <!-- Barra de búsqueda -->
-        <SearchBar Grid.Row="0"
+        <SearchBar Grid.Row="1"
                    Placeholder="Buscar atletas..."
                    Text="{Binding SearchText}"
                    BackgroundColor="{AppThemeBinding Light={StaticResource Gray100}, Dark={StaticResource Gray900}}"
                    CancelButtonColor="{StaticResource Primary}"/>
 
-        <RefreshView Grid.Row="1" 
+        <RefreshView Grid.Row="2" 
                      Command="{Binding RefreshCommand}" 
                      IsRefreshing="{Binding IsBusy}">
             <CollectionView ItemsSource="{Binding FilteredAthletes}"

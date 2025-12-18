@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="CrownRFEP_Reader.Views.ImportPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:controls="clr-namespace:CrownRFEP_Reader.Views.Controls"
+    xmlns:vm="clr-namespace:CrownRFEP_Reader.ViewModels"
+    x:DataType="vm:DashboardViewModel"
+    BackgroundColor="#FF1B1B1B">
+
+    <Grid RowDefinitions="Auto,*">
+        <controls:TopTabsBar Grid.Row="0" />
+
+        <Grid Grid.Row="1" Padding="20">
+            <VerticalStackLayout Spacing="15">
+            <Button Text="Importar archivo .crown"
+                    Command="{Binding ImportCommand}"
+                    IsEnabled="{Binding IsImporting, Converter={StaticResource InvertedBoolConverter}}"
+                    BackgroundColor="#FF3B3B3B"
+                    TextColor="White"
+                    FontFamily="{StaticResource AppFontBody}"
+                    FontSize="18"
+                    Padding="40,12"
+                    HeightRequest="70"
+                    CornerRadius="8"
+                    HorizontalOptions="Center"/>
+
+            <VerticalStackLayout IsVisible="{Binding IsImporting}" Spacing="5">
+                <Label Text="{Binding ImportProgressText}"
+                       HorizontalOptions="Center"
+                       FontSize="14"
+                       TextColor="White"/>
+                <ProgressBar Progress="{Binding ImportProgressValue, Converter={StaticResource ProgressConverter}}"
+                             ProgressColor="#FF878787"
+                             HeightRequest="24"/>
+            </VerticalStackLayout>
+            </VerticalStackLayout>
+
+            <ActivityIndicator IsRunning="{Binding IsBusy}"
+                               IsVisible="{Binding IsBusy}"
+                               Color="{StaticResource Primary}"
+                               VerticalOptions="Center"
+                               HorizontalOptions="Center"/>
+        </Grid>
+    </Grid>
+</ContentPage>

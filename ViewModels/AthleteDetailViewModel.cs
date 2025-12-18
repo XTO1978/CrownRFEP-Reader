@@ -112,7 +112,36 @@ public class AthleteDetailViewModel : BaseViewModel
     {
         if (video == null) return;
 
-        var videoPath = video.LocalClipPath ?? video.ClipPath;
+        var videoPath = video.LocalClipPath;
+
+        // Fallback: construir ruta local desde la carpeta de la sesión
+        if (string.IsNullOrWhiteSpace(videoPath) || !File.Exists(videoPath))
+        {
+            try
+            {
+                var session = await _databaseService.GetSessionByIdAsync(video.SessionId);
+                if (!string.IsNullOrWhiteSpace(session?.PathSesion))
+                {
+                    var normalized = (video.ClipPath ?? "").Replace('\\', '/');
+                    var fileName = Path.GetFileName(normalized);
+                    if (string.IsNullOrWhiteSpace(fileName))
+                        fileName = $"CROWN{video.Id}.mp4";
+
+                    var candidate = Path.Combine(session.PathSesion, "videos", fileName);
+                    if (File.Exists(candidate))
+                        videoPath = candidate;
+                }
+            }
+            catch
+            {
+                // Ignorar: si falla, se mostrará el error estándar
+            }
+        }
+
+        // Último recurso: usar ClipPath si fuera una ruta real
+        if (string.IsNullOrWhiteSpace(videoPath))
+            videoPath = video.ClipPath;
+
         if (string.IsNullOrEmpty(videoPath) || !File.Exists(videoPath))
         {
             await Shell.Current.DisplayAlert("Error", "El archivo de video no existe", "OK");

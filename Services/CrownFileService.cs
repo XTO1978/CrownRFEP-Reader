@@ -162,24 +162,28 @@ public class CrownFileService
 
                 foreach (var clipJson in crownData.VideoClips)
                 {
-                    var clipFileName = Path.GetFileName(clipJson.ClipPath ?? $"CROWN{clipJson.Id}.mp4");
-                    var thumbFileName = Path.GetFileName(clipJson.ThumbnailPath ?? $"CROWN{clipJson.Id}_thumb.jpg");
+                    var clipFileName = GetNormalizedFileName(clipJson.ClipPath, $"CROWN{clipJson.Id}.mp4");
+                    var thumbFileName = GetNormalizedFileName(clipJson.ThumbnailPath, $"CROWN{clipJson.Id}_thumb.jpg");
 
                     var localClipPath = Path.Combine(videosPath, clipFileName);
                     var localThumbPath = Path.Combine(thumbnailsPath, thumbFileName);
 
                     // Extraer video del ZIP
-                    var videoEntry = archive.GetEntry($"videos/{clipFileName}");
+                    var videoEntry = FindEntry(archive, "videos", clipFileName);
+                    var extractedClipPath = (string?)null;
                     if (videoEntry != null)
                     {
                         await ExtractEntryToFileAsync(videoEntry, localClipPath);
+                        extractedClipPath = localClipPath;
                     }
 
                     // Extraer thumbnail del ZIP
-                    var thumbEntry = archive.GetEntry($"thumbnails/{thumbFileName}");
+                    var thumbEntry = FindEntry(archive, "thumbnails", thumbFileName);
+                    var extractedThumbPath = (string?)null;
                     if (thumbEntry != null)
                     {
                         await ExtractEntryToFileAsync(thumbEntry, localThumbPath);
+                        extractedThumbPath = localThumbPath;
                     }
 
                     // Guardar en base de datos
@@ -195,8 +199,8 @@ public class CrownFileService
                         ComparisonName = clipJson.ComparisonName,
                         ClipDuration = clipJson.ClipDuration,
                         ClipSize = clipJson.ClipSize,
-                        LocalClipPath = localClipPath,
-                        LocalThumbnailPath = localThumbPath,
+                        LocalClipPath = extractedClipPath,
+                        LocalThumbnailPath = extractedThumbPath,
                         IsComparisonVideo = clipJson.IsComparisonVideo,
                         BadgeText = clipJson.BadgeText,
                         BadgeBackgroundColor = clipJson.BadgeBackgroundColor
@@ -288,6 +292,34 @@ public class CrownFileService
             bufferSize, 
             FileOptions.Asynchronous | FileOptions.SequentialScan);
         await entryStream.CopyToAsync(fileStream, bufferSize);
+    }
+
+    private static string GetNormalizedFileName(string? pathOrName, string fallbackFileName)
+    {
+        if (string.IsNullOrWhiteSpace(pathOrName))
+            return fallbackFileName;
+
+        // En exports de Windows es común que vengan rutas con backslashes.
+        var normalized = pathOrName.Replace('\\', '/');
+        var fileName = Path.GetFileName(normalized);
+        return string.IsNullOrWhiteSpace(fileName) ? fallbackFileName : fileName;
+    }
+
+    private static ZipArchiveEntry? FindEntry(ZipArchive archive, string folder, string fileName)
+    {
+        // Intento rápido: ruta exacta
+        var direct = archive.GetEntry($"{folder}/{fileName}");
+        if (direct != null) return direct;
+
+        // Búsqueda robusta: ignorar mayúsculas/minúsculas y posibles subcarpetas
+        return archive.Entries.FirstOrDefault(e =>
+        {
+            if (string.IsNullOrWhiteSpace(e.FullName)) return false;
+            var full = e.FullName.Replace('\\', '/');
+            if (!full.StartsWith(folder + "/", StringComparison.OrdinalIgnoreCase)) return false;
+            var entryFileName = Path.GetFileName(full);
+            return string.Equals(entryFileName, fileName, StringComparison.OrdinalIgnoreCase);
+        });
     }
 
     private string SanitizeFolderName(string name)

@@ -6,36 +6,36 @@
              xmlns:services="clr-namespace:CrownRFEP_Reader.Services"
              x:Class="CrownRFEP_Reader.Views.SessionDetailPage"
              x:DataType="vm:SessionDetailViewModel"
-             Title="{Binding Title}">
+             Title="{Binding Title}" BackgroundColor="#FF1B1B1B">
 
     <Grid RowDefinitions="Auto,Auto,*" Padding="15">
         
         <!-- Info de la sesión -->
-        <Frame Grid.Row="0" Padding="15" CornerRadius="12" HasShadow="True" Margin="0,0,0,10">
+        <Frame Grid.Row="0" Padding="15" CornerRadius="12" HasShadow="False" Margin="0,0,0,10" BackgroundColor="#FF2F2F2F" BorderColor="Transparent">
             <Grid RowDefinitions="Auto,Auto,Auto,Auto" ColumnDefinitions="*,*">
                 <Label Grid.ColumnSpan="2" 
                        Text="{Binding Session.DisplayName}" 
                        FontSize="22" 
-                       FontAttributes="Bold"/>
+                       FontAttributes="Bold" TextColor="White"/>
                 
                 <HorizontalStackLayout Grid.Row="1" Spacing="8" Margin="0,8,0,0">
                     <Label Text="📍" FontSize="14"/>
-                    <Label Text="{Binding Session.Lugar}" FontSize="14"/>
+                    <Label Text="{Binding Session.Lugar}" FontSize="14" TextColor="White"/>
                 </HorizontalStackLayout>
                 
                 <HorizontalStackLayout Grid.Row="1" Grid.Column="1" Spacing="8" Margin="0,8,0,0">
                     <Label Text="📅" FontSize="14"/>
-                    <Label Text="{Binding Session.FechaDateTime, StringFormat='{0:dd/MM/yyyy HH:mm}'}" FontSize="14"/>
+                    <Label Text="{Binding Session.FechaDateTime, StringFormat='{0:dd/MM/yyyy HH:mm}'}" TextColor="White" FontSize="14"/>
                 </HorizontalStackLayout>
                 
                 <HorizontalStackLayout Grid.Row="2" Spacing="8" Margin="0,5,0,0">
                     <Label Text="👤" FontSize="14"/>
-                    <Label Text="{Binding Session.Coach}" FontSize="14"/>
+                    <Label Text="{Binding Session.Coach}" FontSize="14" TextColor="White"/>
                 </HorizontalStackLayout>
                 
                 <HorizontalStackLayout Grid.Row="2" Grid.Column="1" Spacing="8" Margin="0,5,0,0">
                     <Label Text="🎬" FontSize="14"/>
-                    <Label FontSize="14">
+                    <Label FontSize="14" TextColor="White">
                         <Label.FormattedText>
                             <FormattedString>
                                 <Span Text="{Binding FilteredVideos.Count}" />
@@ -49,8 +49,8 @@
                 
                 <Label Grid.Row="3" Grid.ColumnSpan="2" 
                        Text="{Binding Session.Participantes}" 
-                       FontSize="12" 
-                       TextColor="Gray"
+                       FontSize="14" 
+                       TextColor="White"
                        Margin="0,8,0,0"
                        LineBreakMode="WordWrap"/>
             </Grid>
@@ -59,11 +59,11 @@
         <!-- Filtros -->
         <ScrollView Grid.Row="1" Orientation="Horizontal" HorizontalScrollBarVisibility="Never" Margin="0,0,0,10">
             <HorizontalStackLayout Spacing="10">
-                <Button Text="🔄 Limpiar filtros" 
+                <Button Text="Limpiar filtros" 
                         Command="{Binding ClearFiltersCommand}"
-                        BackgroundColor="Transparent"
-                        TextColor="{StaticResource Primary}"
-                        FontSize="12"
+                        BackgroundColor="#FF343434"
+                        TextColor="#FFB1B1B1"
+                        FontSize="16"
                         Padding="10,5"/>
                 
                 <!-- Filtros por atleta -->
@@ -104,23 +104,23 @@
                             SelectionMode="None">
                 <CollectionView.ItemsLayout>
                     <GridItemsLayout Orientation="Vertical" 
-                                     Span="3" 
-                                     HorizontalItemSpacing="10" 
+                                     Span="5"
+                                     HorizontalItemSpacing="4" 
                                      VerticalItemSpacing="10"/>
                 </CollectionView.ItemsLayout>
                 <CollectionView.ItemTemplate>
-                    <DataTemplate x:DataType="models:VideoClip">
-                        <Frame Padding="0" CornerRadius="10" HasShadow="True" IsClippedToBounds="True">
+                    <DataTemplate x:DataType="models:VideoClip" >
+                        <Frame Padding="0" CornerRadius="4" HasShadow="False" IsClippedToBounds="True" BackgroundColor="#FF2A2A2A" BorderColor="Transparent">
                             <Frame.GestureRecognizers>
                                 <TapGestureRecognizer 
                                     Command="{Binding Source={RelativeSource AncestorType={x:Type vm:SessionDetailViewModel}}, Path=PlayVideoCommand}"
                                     CommandParameter="{Binding .}"/>
                             </Frame.GestureRecognizers>
                             
-                            <Grid RowDefinitions="120,Auto">
+                            <Grid RowDefinitions="220,Auto">
                                 <!-- Thumbnail -->
                                 <Image Source="{Binding LocalThumbnailPath}"
-                                       Aspect="AspectFill"
+                                       Aspect="AspectFill" HeightRequest="220"
                                        BackgroundColor="{StaticResource Gray300}"/>
                                 
                                 <!-- Play overlay -->

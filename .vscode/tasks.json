@@ -1,0 +1,72 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "MAUI: Run with Hot Reload (MacCatalyst)",
+			"type": "shell",
+			"command": "DOTNET_WATCH_RESTART_ON_RUDE_EDIT=true dotnet watch --project '${workspaceFolder}/CrownRFEP Reader.csproj' run -f net9.0-maccatalyst -r maccatalyst-arm64 --launch-profile MacCatalyst --property:EnableHotReload=true --verbose",
+			"args": [],
+			"isBackground": true,
+			"problemMatcher": {
+				"pattern": {
+					"regexp": "^(.*):(\\d+):(\\d+): (error|warning) (.*)$",
+					"file": 1,
+					"line": 2,
+					"column": 3,
+					"severity": 4,
+					"message": 5
+				},
+				"background": {
+					"activeOnStart": true,
+					"beginsPattern": "^dotnet watch ⌚",
+					"endsPattern": "^dotnet watch (🔨|❌|⏳)"
+				}
+			},
+			"group": "build",
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"focus": true,
+				"clear": false,
+				"showReuseMessage": false
+			},
+			"runOptions": {
+				"instanceLimit": 1
+			}
+		},
+		{
+			"label": "MAUI: Build MacCatalyst",
+			"type": "shell",
+			"command": "dotnet build -f net9.0-maccatalyst",
+			"problemMatcher": "$msCompile",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared",
+				"focus": true
+			}
+		},
+		{
+			"label": "MAUI: Clean",
+			"type": "shell",
+			"command": "dotnet clean",
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always"
+			}
+		},
+		{
+			"label": "MAUI: Run with Hot Reload (MacCatalyst)",
+			"type": "shell",
+			"command": "DOTNET_WATCH_RESTART_ON_RUDE_EDIT=true dotnet watch --project '${workspaceFolder}/CrownRFEP Reader.csproj' run -f net9.0-maccatalyst -r maccatalyst-arm64 --launch-profile MacCatalyst --property:EnableHotReload=true --verbose",
+			"isBackground": true,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "build"
+		}
+	]
+}

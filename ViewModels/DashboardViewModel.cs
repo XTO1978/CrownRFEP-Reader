@@ -16,6 +16,7 @@ public class DashboardViewModel : BaseViewModel
     private readonly StatisticsService _statisticsService;
 
     private DashboardStats? _stats;
+    private Session? _selectedSession;
     private string _importProgressText = "";
     private int _importProgressValue;
     private bool _isImporting;
@@ -24,6 +25,12 @@ public class DashboardViewModel : BaseViewModel
     {
         get => _stats;
         set => SetProperty(ref _stats, value);
+    }
+
+    public Session? SelectedSession
+    {
+        get => _selectedSession;
+        set => SetProperty(ref _selectedSession, value);
     }
 
     public string ImportProgressText
