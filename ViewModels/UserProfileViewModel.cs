@@ -13,6 +13,7 @@ namespace CrownRFEP_Reader.ViewModels;
 public class UserProfileViewModel : BaseViewModel
 {
     private readonly DatabaseService _databaseService;
+    private readonly UserProfileNotifier _userProfileNotifier;
     private UserProfile? _profile;
     private bool _isEditing;
     private string? _statusMessage;
@@ -192,9 +193,10 @@ public class UserProfileViewModel : BaseViewModel
     public ICommand SelectManoHabilCommand { get; }
     public ICommand SelectReferenceAthleteCommand { get; }
 
-    public UserProfileViewModel(DatabaseService databaseService)
+    public UserProfileViewModel(DatabaseService databaseService, UserProfileNotifier userProfileNotifier)
     {
         _databaseService = databaseService;
+        _userProfileNotifier = userProfileNotifier;
         Title = "Mi Perfil";
 
         // Inicializar opciones
@@ -456,6 +458,8 @@ public class UserProfileViewModel : BaseViewModel
             
             HasChanges = false;
             StatusMessage = "Perfil guardado correctamente";
+
+            _userProfileNotifier.NotifyProfileSaved();
         }
         catch (Exception ex)
         {

@@ -1,5 +1,7 @@
 using Microsoft.Maui.Controls;
 using System.Linq;
+using CrownRFEP_Reader.Services;
+using CrownRFEP_Reader.ViewModels;
 #if MACCATALYST
 using CoreGraphics;
 using Microsoft.Maui.Handlers;
@@ -10,15 +12,98 @@ namespace CrownRFEP_Reader.Views.Controls;
 
 public partial class TopTabsBar : Microsoft.Maui.Controls.ContentView
 {
+    private UserProfileNotifier? _userProfileNotifier;
+
     public TopTabsBar()
     {
         InitializeComponent();
+
+        Loaded += OnLoaded;
+        Unloaded += OnUnloaded;
+    }
+
+    private void OnUnloaded(object? sender, EventArgs e)
+    {
+        if (_userProfileNotifier != null)
+            _userProfileNotifier.ProfileSaved -= OnUserProfileSaved;
+        _userProfileNotifier = null;
+    }
+
+    private async void OnUserProfileSaved(object? sender, EventArgs e)
+    {
+        await RefreshProfileButtonTextAsync();
+    }
+
+    private async void OnLoaded(object? sender, EventArgs e)
+    {
+        var services = Microsoft.Maui.Controls.Application.Current?.Handler?.MauiContext?.Services;
+        _userProfileNotifier = services?.GetService<UserProfileNotifier>();
+        if (_userProfileNotifier != null)
+        {
+            _userProfileNotifier.ProfileSaved -= OnUserProfileSaved;
+            _userProfileNotifier.ProfileSaved += OnUserProfileSaved;
+        }
+
+        await RefreshProfileButtonTextAsync();
+    }
+
+    private async Task RefreshProfileButtonTextAsync()
+    {
+        try
+        {
+            var services = Microsoft.Maui.Controls.Application.Current?.Handler?.MauiContext?.Services;
+            var databaseService = services?.GetService<DatabaseService>();
+            if (databaseService == null)
+            {
+                if (ProfileNameLabel != null)
+                    ProfileNameLabel.Text = "Yo";
+                if (ProfilePhotoImage != null)
+                    ProfilePhotoImage.IsVisible = false;
+                return;
+            }
+
+            var profile = await databaseService.GetUserProfileAsync();
+
+            var nombre = profile?.Nombre?.Trim();
+            var apellidos = profile?.Apellidos?.Trim();
+
+            // Formato pedido: Nombre Apellido
+            string fullName = $"{nombre ?? string.Empty} {apellidos ?? string.Empty}".Trim();
+            var text = string.IsNullOrWhiteSpace(fullName) ? "Yo" : fullName;
+            if (ProfileNameLabel != null)
+                ProfileNameLabel.Text = text;
+
+            var fotoPath = profile?.FotoPath;
+            if (ProfilePhotoImage != null)
+            {
+                if (!string.IsNullOrWhiteSpace(fotoPath))
+                {
+                    ProfilePhotoImage.Source = ImageSource.FromFile(fotoPath);
+                    ProfilePhotoImage.IsVisible = true;
+                }
+                else
+                {
+                    ProfilePhotoImage.Source = null;
+                    ProfilePhotoImage.IsVisible = false;
+                }
+            }
+        }
+        catch
+        {
+            if (ProfileNameLabel != null)
+                ProfileNameLabel.Text = "Yo";
+            if (ProfilePhotoImage != null)
+            {
+                ProfilePhotoImage.Source = null;
+                ProfilePhotoImage.IsVisible = false;
+            }
+        }
     }
 
     private static Task GoToRootAsync(string rootRoute)
     {
         // Navegación absoluta al root de cada sección.
-        return Shell.Current.GoToAsync($"//{rootRoute}");
+        return Shell.Current?.GoToAsync($"//{rootRoute}") ?? Task.CompletedTask;
     }
 
     private async void OnDashboardClicked(object sender, EventArgs e) => await GoToRootAsync("dashboard");
@@ -27,20 +112,29 @@ public partial class TopTabsBar : Microsoft.Maui.Controls.ContentView
     private async void OnStatsClicked(object sender, EventArgs e) => await GoToRootAsync("stats");
     private async void OnImportClicked(object sender, EventArgs e) => await GoToRootAsync("import");
     
-    private async void OnProfileClicked(object sender, EventArgs e)
+    private async void OnProfileTapped(object sender, TappedEventArgs e)
     {
+        await ShowProfileAsync();
+    }
+
+    private async Task ShowProfileAsync()
+    {
+        await RefreshProfileButtonTextAsync();
+
         var profilePage = Microsoft.Maui.Controls.Application.Current?.Handler?.MauiContext?.Services.GetService<UserProfilePage>();
         if (profilePage == null) return;
 
         // Asegurar que SIEMPRE se muestran los datos persistidos al abrir el modal.
-        if (profilePage.BindingContext is CrownRFEP_Reader.ViewModels.UserProfileViewModel vm)
+        if (profilePage.BindingContext is UserProfileViewModel vm)
             await vm.LoadProfileAsync();
 
 #if MACCATALYST
         var mauiContext = Microsoft.Maui.Controls.Application.Current?.Handler?.MauiContext;
         if (mauiContext == null)
         {
-            await Shell.Current.Navigation.PushModalAsync(profilePage);
+            var nav = Shell.Current?.Navigation;
+            if (nav != null)
+                await nav.PushModalAsync(profilePage);
             return;
         }
 
@@ -53,7 +147,9 @@ public partial class TopTabsBar : Microsoft.Maui.Controls.ContentView
 
         if (root == null)
         {
-            await Shell.Current.Navigation.PushModalAsync(profilePage);
+            var nav = Shell.Current?.Navigation;
+            if (nav != null)
+                await nav.PushModalAsync(profilePage);
             return;
         }
 
@@ -64,14 +160,18 @@ public partial class TopTabsBar : Microsoft.Maui.Controls.ContentView
         var handler = profilePage.Handler ?? Microsoft.Maui.Platform.ElementExtensions.ToHandler(profilePage, mauiContext);
         if (handler is not PageHandler pageHandler)
         {
-            await Shell.Current.Navigation.PushModalAsync(profilePage);
+            var nav = Shell.Current?.Navigation;
+            if (nav != null)
+                await nav.PushModalAsync(profilePage);
             return;
         }
 
         var vc = pageHandler.ViewController;
         if (vc == null)
         {
-            await Shell.Current.Navigation.PushModalAsync(profilePage);
+            var nav = Shell.Current?.Navigation;
+            if (nav != null)
+                await nav.PushModalAsync(profilePage);
             return;
         }
 
@@ -81,7 +181,9 @@ public partial class TopTabsBar : Microsoft.Maui.Controls.ContentView
         await presenter.PresentViewControllerAsync(vc, true);
 #else
         // Otras plataformas: navegación modal estándar de MAUI
-        await Shell.Current.Navigation.PushModalAsync(profilePage);
+    var nav = Shell.Current?.Navigation;
+    if (nav != null)
+        await nav.PushModalAsync(profilePage);
 #endif
     }
 }

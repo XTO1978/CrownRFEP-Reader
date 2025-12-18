@@ -3,6 +3,7 @@
     x:Class="CrownRFEP_Reader.Views.Controls.TopTabsBar"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:shapes="clr-namespace:Microsoft.Maui.Controls.Shapes;assembly=Microsoft.Maui.Controls"
     BackgroundColor="#FF303030">
 
     <Grid Padding="10,0" ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="0" HeightRequest="50">
@@ -56,14 +57,51 @@
                 Padding="16,5"
                 CornerRadius="0" />
                 
-                <Button Grid.Column="5"
-                Text="Yo"
-                Clicked="OnProfileClicked"
+                
+                <Border
+                Grid.Column="5"
+                x:Name="ProfileButton"
                 BackgroundColor="Transparent"
-                TextColor="White"
-                FontFamily="{StaticResource AppFontBody}"
-                FontSize="16"
-                Padding="16,5"
-                CornerRadius="0" />
+                Stroke="Transparent"
+                StrokeThickness="0"
+                Padding="16,5">
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnProfileTapped" />
+                </Border.GestureRecognizers>
+
+                <HorizontalStackLayout Spacing="8" VerticalOptions="Center">
+                    <Border WidthRequest="0.6" Margin="0,0,18,0" BackgroundColor="#FF232323" Stroke="#FF757575"/>
+                    <Border
+                        x:Name="ProfilePhotoBorder"
+                        HeightRequest="26"
+                        WidthRequest="26"
+                        Padding="0"
+                        BackgroundColor="#FF3A3A3A"
+                        Stroke="#FF555555"
+                        StrokeThickness="1"
+                        StrokeShape="RoundRectangle 999"
+                        VerticalOptions="Center">
+                        <Grid>
+                            <Image
+                                x:Name="ProfilePhotoImage"
+                                Aspect="AspectFill"
+                                IsVisible="False">
+                                <Image.Clip>
+                                    <shapes:EllipseGeometry Center="13,13" RadiusX="13" RadiusY="13" />
+                                </Image.Clip>
+                            </Image>
+                        </Grid>
+                    </Border>
+
+                    <Label
+                        x:Name="ProfileNameLabel"
+                        Text="Yo"
+                        TextColor="White"
+                        FontFamily="{StaticResource AppFontBody}"
+                        FontSize="16"
+                        LineBreakMode="TailTruncation"
+                        VerticalOptions="Center" />
+                </HorizontalStackLayout>
+            </Border>
     </Grid>
 </ContentView>

@@ -49,6 +49,7 @@ public static class MauiProgram
 
 		// Servicios
 		builder.Services.AddSingleton<DatabaseService>();
+		builder.Services.AddSingleton<UserProfileNotifier>();
 		builder.Services.AddSingleton<CrownFileService>();
 		builder.Services.AddSingleton<StatisticsService>();
 
