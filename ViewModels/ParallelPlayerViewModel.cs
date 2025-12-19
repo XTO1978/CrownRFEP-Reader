@@ -130,7 +130,7 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
 
     public bool IsIndividualMode => !_isSimultaneousMode;
     public string ModeIcon => IsSimultaneousMode ? "link.badge.plus" : "link";
-    public string ModeText => IsSimultaneousMode ? "Individual" : "Sincronizar";
+    public string ModeText => IsSimultaneousMode ? "Desincronizar" : "Sincronizar";
 
     #endregion
 
