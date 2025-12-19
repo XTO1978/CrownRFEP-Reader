@@ -562,7 +562,7 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
         Stop1();
         Stop2();
         CloseRequested?.Invoke(this, EventArgs.Empty);
-        await Shell.Current.Navigation.PopModalAsync();
+        await Shell.Current.Navigation.PopAsync();
     }
 
     private void ResetAllStates()

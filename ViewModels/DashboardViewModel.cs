@@ -570,7 +570,7 @@ public class DashboardViewModel : BaseViewModel
         if (page?.BindingContext is ParallelPlayerViewModel vm)
         {
             vm.Initialize(ParallelVideo1, ParallelVideo2, IsHorizontalOrientation);
-            await Shell.Current.Navigation.PushModalAsync(page);
+            await Shell.Current.Navigation.PushAsync(page);
         }
     }
 

@@ -24,6 +24,7 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
     private bool _isSeekingFromBinding;
     private bool _isSeeking; // Flag para evitar seeks simultáneos
     private TimeSpan _pendingSeekPosition; // Posición pendiente si hay seek en progreso
+    private bool _isDisconnected; // Flag para evitar acceso a VirtualView después de desconexión
 
     public static IPropertyMapper<Controls.PrecisionVideoPlayer, PrecisionVideoPlayerHandler> Mapper =
         new PropertyMapper<Controls.PrecisionVideoPlayer, PrecisionVideoPlayerHandler>(ViewHandler.ViewMapper)
@@ -68,6 +69,8 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
 
     protected override void DisconnectHandler(UIView platformView)
     {
+        _isDisconnected = true;
+        
         // Desuscribirse de eventos
         VirtualView.PlayRequested -= OnPlayRequested;
         VirtualView.PauseRequested -= OnPauseRequested;
@@ -208,16 +211,18 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
         var interval = CMTime.FromSeconds(1.0 / 60.0, 600);
         _timeObserver = _player.AddPeriodicTimeObserver(interval, null, (time) =>
         {
-            if (_isUpdatingPosition || _isSeekingFromBinding)
+            if (_isUpdatingPosition || _isSeekingFromBinding || _isDisconnected)
                 return;
 
             MainThread.BeginInvokeOnMainThread(() =>
             {
-                if (VirtualView != null)
+                if (_isDisconnected) return;
+                
+                try
                 {
-                    var position = TimeSpan.FromSeconds(time.Seconds);
-                    VirtualView.UpdatePosition(position);
+                    VirtualView?.UpdatePosition(TimeSpan.FromSeconds(time.Seconds));
                 }
+                catch { /* Handler ya desconectado */ }
             });
         });
     }
@@ -229,7 +234,7 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
         {
             await Task.Delay(100);
             
-            if (_playerItem == null) return;
+            if (_isDisconnected || _playerItem == null) return;
             
             if (_playerItem.Status == AVPlayerItemStatus.ReadyToPlay)
             {
@@ -241,28 +246,39 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
 
     private void OnPlayerItemReady(NSNotification notification)
     {
+        if (_isDisconnected) return;
         OnPlayerReady();
     }
 
     private void OnPlayerReady()
     {
+        if (_isDisconnected) return;
+        
         MainThread.BeginInvokeOnMainThread(() =>
         {
-            if (VirtualView != null && _playerItem != null && _playerItem.Duration.IsNumeric)
+            if (_isDisconnected) return;
+            
+            try
             {
-                var duration = TimeSpan.FromSeconds(_playerItem.Duration.Seconds);
-                VirtualView.UpdateDuration(duration);
+                if (VirtualView != null && _playerItem != null && _playerItem.Duration.IsNumeric)
+                {
+                    var duration = TimeSpan.FromSeconds(_playerItem.Duration.Seconds);
+                    VirtualView.UpdateDuration(duration);
 
-                // Detectar frame rate del vídeo
-                DetectFrameRate();
+                    // Detectar frame rate del vídeo
+                    DetectFrameRate();
 
-                VirtualView.RaiseMediaOpened();
+                    VirtualView.RaiseMediaOpened();
+                }
             }
+            catch { /* Handler ya desconectado */ }
         });
     }
 
     private void DetectFrameRate()
     {
+        if (_isDisconnected) return;
+        
         if (_playerItem?.Asset is AVAsset asset)
         {
             var videoTracks = asset.GetTracks(AVMediaTypes.Video);
@@ -272,7 +288,7 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
                 var frameRate = track.NominalFrameRate;
                 if (frameRate > 0)
                 {
-                    VirtualView?.UpdateFrameRate(frameRate);
+                    try { VirtualView?.UpdateFrameRate(frameRate); } catch { }
                 }
             }
         }
@@ -280,9 +296,12 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
 
     private void OnPlaybackEnded(NSNotification notification)
     {
+        if (_isDisconnected) return;
+        
         MainThread.BeginInvokeOnMainThread(() =>
         {
-            VirtualView?.RaiseMediaEnded();
+            if (_isDisconnected) return;
+            try { VirtualView?.RaiseMediaEnded(); } catch { }
         });
     }
 
@@ -369,7 +388,7 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
     /// </summary>
     private void SeekToTime(TimeSpan position, Action? completion = null)
     {
-        if (_player == null) return;
+        if (_player == null || _isDisconnected) return;
 
         _isUpdatingPosition = true;
         _isSeeking = true;
@@ -382,16 +401,32 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
         {
             _isUpdatingPosition = false;
             
+            // Verificar si el handler fue desconectado durante el seek asíncrono
+            if (_isDisconnected) 
+            {
+                _isSeeking = false;
+                return;
+            }
+            
             MainThread.BeginInvokeOnMainThread(() =>
             {
-                if (VirtualView != null)
+                // Doble verificación en el hilo principal
+                if (_isDisconnected) 
                 {
-                    VirtualView.UpdatePosition(position);
+                    _isSeeking = false;
+                    return;
                 }
+                
+                try
+                {
+                    VirtualView?.UpdatePosition(position);
+                }
+                catch { /* Handler ya desconectado */ }
+                
                 completion?.Invoke();
                 
                 // Procesar posición pendiente si hay alguna
-                if (_pendingSeekPosition != TimeSpan.MinValue)
+                if (!_isDisconnected && _pendingSeekPosition != TimeSpan.MinValue)
                 {
                     var pendingPos = _pendingSeekPosition;
                     _isSeeking = false;
