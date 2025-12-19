@@ -33,7 +33,12 @@ public class DashboardViewModel : BaseViewModel
     private readonly HashSet<int> _selectedVideoIds = new();
 
     // Orientación análisis paralelo
-    private bool _isHorizontalOrientation = true;
+    private bool _isHorizontalOrientation = false;
+
+    // Vídeos para análisis paralelo
+    private VideoClip? _parallelVideo1;
+    private VideoClip? _parallelVideo2;
+    private bool _isPreviewMode;
 
     // Lazy loading
     private const int PageSize = 40;
@@ -207,6 +212,39 @@ public class DashboardViewModel : BaseViewModel
     }
 
     public bool IsVideoSelected(int videoId) => _selectedVideoIds.Contains(videoId);
+
+    public VideoClip? ParallelVideo1
+    {
+        get => _parallelVideo1;
+        set
+        {
+            if (SetProperty(ref _parallelVideo1, value))
+            {
+                OnPropertyChanged(nameof(HasParallelVideo1));
+            }
+        }
+    }
+
+    public VideoClip? ParallelVideo2
+    {
+        get => _parallelVideo2;
+        set
+        {
+            if (SetProperty(ref _parallelVideo2, value))
+            {
+                OnPropertyChanged(nameof(HasParallelVideo2));
+            }
+        }
+    }
+
+    public bool HasParallelVideo1 => _parallelVideo1 != null;
+    public bool HasParallelVideo2 => _parallelVideo2 != null;
+
+    public bool IsPreviewMode
+    {
+        get => _isPreviewMode;
+        set => SetProperty(ref _isPreviewMode, value);
+    }
 
     private void ToggleVideoSelection(VideoClip? video)
     {
@@ -424,7 +462,10 @@ public class DashboardViewModel : BaseViewModel
     public ICommand EditVideoDetailsCommand { get; }
     public ICommand DeleteSelectedVideosCommand { get; }
     public ICommand PlayParallelAnalysisCommand { get; }
+    public ICommand PreviewParallelAnalysisCommand { get; }
     public ICommand ClearParallelAnalysisCommand { get; }
+    public ICommand DropOnScreen1Command { get; }
+    public ICommand DropOnScreen2Command { get; }
 
     public DashboardViewModel(
         DatabaseService databaseService,
@@ -472,7 +513,10 @@ public class DashboardViewModel : BaseViewModel
         EditVideoDetailsCommand = new AsyncRelayCommand(EditVideoDetailsAsync);
         DeleteSelectedVideosCommand = new AsyncRelayCommand(DeleteSelectedVideosAsync);
         PlayParallelAnalysisCommand = new AsyncRelayCommand(PlayParallelAnalysisAsync);
+        PreviewParallelAnalysisCommand = new AsyncRelayCommand(PreviewParallelAnalysisAsync);
         ClearParallelAnalysisCommand = new RelayCommand(ClearParallelAnalysis);
+        DropOnScreen1Command = new RelayCommand<VideoClip>(video => ParallelVideo1 = video);
+        DropOnScreen2Command = new RelayCommand<VideoClip>(video => ParallelVideo2 = video);
     }
 
     private async Task PlayAsPlaylistAsync()
@@ -499,9 +543,18 @@ public class DashboardViewModel : BaseViewModel
         await Task.CompletedTask;
     }
 
+    private async Task PreviewParallelAnalysisAsync()
+    {
+        // Toggle del modo preview
+        IsPreviewMode = !IsPreviewMode;
+        await Task.CompletedTask;
+    }
+
     private void ClearParallelAnalysis()
     {
-        // TODO: Implementar limpieza de análisis paralelo
+        IsPreviewMode = false;
+        ParallelVideo1 = null;
+        ParallelVideo2 = null;
     }
 
     private async Task OnVideoTappedAsync(VideoClip? video)

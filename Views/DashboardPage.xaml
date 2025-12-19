@@ -7,6 +7,7 @@
     xmlns:controls="clr-namespace:CrownRFEP_Reader.Views.Controls"
     xmlns:models="clr-namespace:CrownRFEP_Reader.Models"
     xmlns:services="clr-namespace:CrownRFEP_Reader.Services"
+    xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
     xmlns:vm="clr-namespace:CrownRFEP_Reader.ViewModels"
     Title="{Binding Title}"
     x:DataType="vm:DashboardViewModel"
@@ -276,6 +277,7 @@
                             </Border.Behaviors>
                             <Border.GestureRecognizers>
                                 <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=VideoTapCommand}" CommandParameter="{Binding .}" />
+                                <DragGestureRecognizer CanDrag="True" DragStarting="OnDragStarting" />
                             </Border.GestureRecognizers>
                             <Border.Triggers>
                                 <DataTrigger TargetType="Border" Binding="{Binding IsSelected}" Value="True">
@@ -625,13 +627,50 @@
                                 BackgroundColor="#FF2A2A2A"
                                 Stroke="Transparent"
                                 StrokeShape="RoundRectangle 6">
-                                <Label
-                                    HorizontalOptions="Center"
-                                    VerticalOptions="Center"
-                                    Text="1"
-                                    TextColor="#FF666666"
-                                    FontSize="24"
-                                    FontAttributes="Bold" />
+                                <Border.GestureRecognizers>
+                                    <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen1" />
+                                </Border.GestureRecognizers>
+                                <Grid>
+                                    <!--  Placeholder cuando no hay vídeo  -->
+                                    <Label
+                                        HorizontalOptions="Center"
+                                        VerticalOptions="Center"
+                                        Text="1"
+                                        TextColor="#FF666666"
+                                        FontSize="24"
+                                        FontAttributes="Bold"
+                                        IsVisible="{Binding HasParallelVideo1, Converter={StaticResource InvertedBoolConverter}}" />
+                                    <!--  Miniatura del vídeo (cuando no está en preview)  -->
+                                    <Image
+                                        Aspect="AspectFill"
+                                        Source="{Binding ParallelVideo1.LocalThumbnailPath}"
+                                        IsVisible="{Binding HasParallelVideo1}">
+                                        <Image.Triggers>
+                                            <DataTrigger TargetType="Image" Binding="{Binding IsPreviewMode}" Value="True">
+                                                <Setter Property="IsVisible" Value="False" />
+                                            </DataTrigger>
+                                        </Image.Triggers>
+                                    </Image>
+                                    <!--  MediaElement para preview  -->
+                                    <toolkit:MediaElement
+                                        x:Name="PreviewMedia1H"
+                                        Aspect="AspectFill"
+                                        ShouldAutoPlay="True"
+                                        ShouldLoopPlayback="True"
+                                        ShouldShowPlaybackControls="False"
+                                        Source="{Binding ParallelVideo1.LocalClipPath}"
+                                        IsVisible="False">
+                                        <toolkit:MediaElement.Triggers>
+                                            <MultiTrigger TargetType="toolkit:MediaElement">
+                                                <MultiTrigger.Conditions>
+                                                    <BindingCondition Binding="{Binding HasParallelVideo1}" Value="True" />
+                                                    <BindingCondition Binding="{Binding IsPreviewMode}" Value="True" />
+                                                </MultiTrigger.Conditions>
+                                                <Setter Property="IsVisible" Value="True" />
+                                            </MultiTrigger>
+                                        </toolkit:MediaElement.Triggers>
+                                    </toolkit:MediaElement>
+                                </Grid>
                             </Border>
                         </controls:AspectRatioContainer>
                         <controls:AspectRatioContainer Grid.Column="1" AspectRatio="1.777">
@@ -639,13 +678,50 @@
                                 BackgroundColor="#FF2A2A2A"
                                 Stroke="Transparent"
                                 StrokeShape="RoundRectangle 6">
-                                <Label
-                                    HorizontalOptions="Center"
-                                    VerticalOptions="Center"
-                                    Text="2"
-                                    TextColor="#FF666666"
-                                    FontSize="24"
-                                    FontAttributes="Bold" />
+                                <Border.GestureRecognizers>
+                                    <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen2" />
+                                </Border.GestureRecognizers>
+                                <Grid>
+                                    <!--  Placeholder cuando no hay vídeo  -->
+                                    <Label
+                                        HorizontalOptions="Center"
+                                        VerticalOptions="Center"
+                                        Text="2"
+                                        TextColor="#FF666666"
+                                        FontSize="24"
+                                        FontAttributes="Bold"
+                                        IsVisible="{Binding HasParallelVideo2, Converter={StaticResource InvertedBoolConverter}}" />
+                                    <!--  Miniatura del vídeo (cuando no está en preview)  -->
+                                    <Image
+                                        Aspect="AspectFill"
+                                        Source="{Binding ParallelVideo2.LocalThumbnailPath}"
+                                        IsVisible="{Binding HasParallelVideo2}">
+                                        <Image.Triggers>
+                                            <DataTrigger TargetType="Image" Binding="{Binding IsPreviewMode}" Value="True">
+                                                <Setter Property="IsVisible" Value="False" />
+                                            </DataTrigger>
+                                        </Image.Triggers>
+                                    </Image>
+                                    <!--  MediaElement para preview  -->
+                                    <toolkit:MediaElement
+                                        x:Name="PreviewMedia2H"
+                                        Aspect="AspectFill"
+                                        ShouldAutoPlay="True"
+                                        ShouldLoopPlayback="True"
+                                        ShouldShowPlaybackControls="False"
+                                        Source="{Binding ParallelVideo2.LocalClipPath}"
+                                        IsVisible="False">
+                                        <toolkit:MediaElement.Triggers>
+                                            <MultiTrigger TargetType="toolkit:MediaElement">
+                                                <MultiTrigger.Conditions>
+                                                    <BindingCondition Binding="{Binding HasParallelVideo2}" Value="True" />
+                                                    <BindingCondition Binding="{Binding IsPreviewMode}" Value="True" />
+                                                </MultiTrigger.Conditions>
+                                                <Setter Property="IsVisible" Value="True" />
+                                            </MultiTrigger>
+                                        </toolkit:MediaElement.Triggers>
+                                    </toolkit:MediaElement>
+                                </Grid>
                             </Border>
                         </controls:AspectRatioContainer>
                     </Grid>
@@ -657,13 +733,50 @@
                                 BackgroundColor="#FF2A2A2A"
                                 Stroke="Transparent"
                                 StrokeShape="RoundRectangle 6">
-                                <Label
-                                    HorizontalOptions="Center"
-                                    VerticalOptions="Center"
-                                    Text="1"
-                                    TextColor="#FF666666"
-                                    FontSize="24"
-                                    FontAttributes="Bold" />
+                                <Border.GestureRecognizers>
+                                    <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen1" />
+                                </Border.GestureRecognizers>
+                                <Grid>
+                                    <!--  Placeholder cuando no hay vídeo  -->
+                                    <Label
+                                        HorizontalOptions="Center"
+                                        VerticalOptions="Center"
+                                        Text="1"
+                                        TextColor="#FF666666"
+                                        FontSize="24"
+                                        FontAttributes="Bold"
+                                        IsVisible="{Binding HasParallelVideo1, Converter={StaticResource InvertedBoolConverter}}" />
+                                    <!--  Miniatura del vídeo (cuando no está en preview)  -->
+                                    <Image
+                                        Aspect="AspectFill"
+                                        Source="{Binding ParallelVideo1.LocalThumbnailPath}"
+                                        IsVisible="{Binding HasParallelVideo1}">
+                                        <Image.Triggers>
+                                            <DataTrigger TargetType="Image" Binding="{Binding IsPreviewMode}" Value="True">
+                                                <Setter Property="IsVisible" Value="False" />
+                                            </DataTrigger>
+                                        </Image.Triggers>
+                                    </Image>
+                                    <!--  MediaElement para preview  -->
+                                    <toolkit:MediaElement
+                                        x:Name="PreviewMedia1V"
+                                        Aspect="AspectFill"
+                                        ShouldAutoPlay="True"
+                                        ShouldLoopPlayback="True"
+                                        ShouldShowPlaybackControls="False"
+                                        Source="{Binding ParallelVideo1.LocalClipPath}"
+                                        IsVisible="False">
+                                        <toolkit:MediaElement.Triggers>
+                                            <MultiTrigger TargetType="toolkit:MediaElement">
+                                                <MultiTrigger.Conditions>
+                                                    <BindingCondition Binding="{Binding HasParallelVideo1}" Value="True" />
+                                                    <BindingCondition Binding="{Binding IsPreviewMode}" Value="True" />
+                                                </MultiTrigger.Conditions>
+                                                <Setter Property="IsVisible" Value="True" />
+                                            </MultiTrigger>
+                                        </toolkit:MediaElement.Triggers>
+                                    </toolkit:MediaElement>
+                                </Grid>
                             </Border>
                         </controls:AspectRatioContainer>
                         <controls:AspectRatioContainer Grid.Row="1" AspectRatio="1.777">
@@ -671,13 +784,50 @@
                                 BackgroundColor="#FF2A2A2A"
                                 Stroke="Transparent"
                                 StrokeShape="RoundRectangle 6">
-                                <Label
-                                    HorizontalOptions="Center"
-                                    VerticalOptions="Center"
-                                    Text="2"
-                                    TextColor="#FF666666"
-                                    FontSize="24"
-                                    FontAttributes="Bold" />
+                                <Border.GestureRecognizers>
+                                    <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen2" />
+                                </Border.GestureRecognizers>
+                                <Grid>
+                                    <!--  Placeholder cuando no hay vídeo  -->
+                                    <Label
+                                        HorizontalOptions="Center"
+                                        VerticalOptions="Center"
+                                        Text="2"
+                                        TextColor="#FF666666"
+                                        FontSize="24"
+                                        FontAttributes="Bold"
+                                        IsVisible="{Binding HasParallelVideo2, Converter={StaticResource InvertedBoolConverter}}" />
+                                    <!--  Miniatura del vídeo (cuando no está en preview)  -->
+                                    <Image
+                                        Aspect="AspectFill"
+                                        Source="{Binding ParallelVideo2.LocalThumbnailPath}"
+                                        IsVisible="{Binding HasParallelVideo2}">
+                                        <Image.Triggers>
+                                            <DataTrigger TargetType="Image" Binding="{Binding IsPreviewMode}" Value="True">
+                                                <Setter Property="IsVisible" Value="False" />
+                                            </DataTrigger>
+                                        </Image.Triggers>
+                                    </Image>
+                                    <!--  MediaElement para preview  -->
+                                    <toolkit:MediaElement
+                                        x:Name="PreviewMedia2V"
+                                        Aspect="AspectFill"
+                                        ShouldAutoPlay="True"
+                                        ShouldLoopPlayback="True"
+                                        ShouldShowPlaybackControls="False"
+                                        Source="{Binding ParallelVideo2.LocalClipPath}"
+                                        IsVisible="False">
+                                        <toolkit:MediaElement.Triggers>
+                                            <MultiTrigger TargetType="toolkit:MediaElement">
+                                                <MultiTrigger.Conditions>
+                                                    <BindingCondition Binding="{Binding HasParallelVideo2}" Value="True" />
+                                                    <BindingCondition Binding="{Binding IsPreviewMode}" Value="True" />
+                                                </MultiTrigger.Conditions>
+                                                <Setter Property="IsVisible" Value="True" />
+                                            </MultiTrigger>
+                                        </toolkit:MediaElement.Triggers>
+                                    </toolkit:MediaElement>
+                                </Grid>
                             </Border>
                         </controls:AspectRatioContainer>
                     </Grid>
@@ -742,9 +892,29 @@
                         </HorizontalStackLayout>
                     </HorizontalStackLayout>
 
-                    <!--  Botones Reproducir y Limpiar  -->
-                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                    <!--  Botones Vista previa, Reproducir y Limpiar  -->
+                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
                         <Border
+                            Padding="10,8"
+                            BackgroundColor="#FF2A2A2A"
+                            Stroke="Transparent"
+                            StrokeShape="RoundRectangle 6">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding PreviewParallelAnalysisCommand}" />
+                            </Border.GestureRecognizers>
+                            <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
+                                <controls:SymbolIcon
+                                    HeightRequest="16"
+                                    SymbolName="eye"
+                                    TintColor="White"
+                                    WidthRequest="16"
+                                    VerticalOptions="Center" />
+                                <Label Text="Vista previa" TextColor="White" VerticalOptions="Center" />
+                            </HorizontalStackLayout>
+                        </Border>
+
+                        <Border
+                            Grid.Column="1"
                             Padding="10,8"
                             BackgroundColor="#FF2A2A2A"
                             Stroke="Transparent"
@@ -764,7 +934,7 @@
                         </Border>
 
                         <Border
-                            Grid.Column="1"
+                            Grid.Column="2"
                             Padding="10,8"
                             BackgroundColor="#FF2A2A2A"
                             Stroke="Transparent"
