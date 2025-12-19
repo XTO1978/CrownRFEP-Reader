@@ -246,6 +246,21 @@ public class DashboardViewModel : BaseViewModel
         set => SetProperty(ref _isPreviewMode, value);
     }
 
+    // Video en hover para preview
+    private VideoClip? _hoverVideo;
+    public VideoClip? HoverVideo
+    {
+        get => _hoverVideo;
+        set
+        {
+            if (SetProperty(ref _hoverVideo, value))
+            {
+                OnPropertyChanged(nameof(HasHoverVideo));
+            }
+        }
+    }
+    public bool HasHoverVideo => _hoverVideo != null;
+
     private void ToggleVideoSelection(VideoClip? video)
     {
         if (video == null || !IsMultiSelectMode) return;

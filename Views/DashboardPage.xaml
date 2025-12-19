@@ -252,6 +252,7 @@
             </HorizontalStackLayout>
 
             <CollectionView
+                x:Name="VideoGallery"
                 Grid.Row="2"
                 ItemsSource="{Binding SelectedSessionVideos}"
                 RemainingItemsThreshold="10"
@@ -337,20 +338,41 @@
                                     </Grid>
                                 </controls:AspectRatioContainer>
 
-                                <VerticalStackLayout
+                                <!--  Footer con info y botón de preview  -->
+                                <Grid
                                     Grid.Row="1"
                                     Padding="8"
-                                    Spacing="2">
-                                    <Label
-                                        FontSize="12"
-                                        LineBreakMode="TailTruncation"
-                                        Text="{Binding Atleta.NombreCompleto}"
-                                        TextColor="White" />
-                                    <Label
-                                        FontSize="12"
-                                        Text="{Binding CreationDateTime, StringFormat='{0:HH:mm}'}"
-                                        TextColor="White" />
-                                </VerticalStackLayout>
+                                    ColumnDefinitions="*,Auto">
+                                    <VerticalStackLayout Spacing="2">
+                                        <Label
+                                            FontSize="12"
+                                            LineBreakMode="TailTruncation"
+                                            Text="{Binding Atleta.NombreCompleto}"
+                                            TextColor="White" />
+                                        <Label
+                                            FontSize="12"
+                                            Text="{Binding CreationDateTime, StringFormat='{0:HH:mm}'}"
+                                            TextColor="White" />
+                                    </VerticalStackLayout>
+
+                                    <!--  Zona de vista previa (hover para mostrar preview)  -->
+                                    <Border
+                                        Grid.Column="1"
+                                        Padding="6"
+                                        BackgroundColor="Transparent"
+                                        StrokeShape="RoundRectangle 4"
+                                        StrokeThickness="0"
+                                        VerticalOptions="Center">
+                                        <Border.Behaviors>
+                                            <behaviors:HoverVideoPreviewBehavior />
+                                        </Border.Behaviors>
+                                        <controls:SymbolIcon
+                                            HeightRequest="20"
+                                            SymbolName="eye"
+                                            TintColor="#FF888888"
+                                            WidthRequest="20" />
+                                    </Border>
+                                </Grid>
                             </Grid>
                         </Border>
                     </DataTemplate>
@@ -1548,7 +1570,44 @@
             </VerticalStackLayout>
         </ScrollView>
 
+        <!--  MediaElement flotante para preview en hover (sobre todas las columnas)  -->
+        <Border
+            x:Name="HoverPreviewContainer"
+            Grid.Row="1"
+            Grid.Column="2"
+            Grid.ColumnSpan="3"
+            Margin="20"
+            BackgroundColor="#FF1B1B1B"
+            HorizontalOptions="End"
+            IsVisible="{Binding HasHoverVideo}"
+            Stroke="#FF3A3A3A"
+            StrokeShape="RoundRectangle 12"
+            StrokeThickness="1"
+            VerticalOptions="Start"
+            WidthRequest="480">
+            <Grid RowDefinitions="Auto,Auto">
+                <controls:AspectRatioContainer AspectRatio="1.777">
+                    <toolkit:MediaElement
+                        x:Name="HoverPreviewMedia"
+                        Aspect="AspectFill"
+                        ShouldAutoPlay="True"
+                        ShouldLoopPlayback="True"
+                        ShouldShowPlaybackControls="False"
+                        Source="{Binding HoverVideo.LocalClipPath}" />
+                </controls:AspectRatioContainer>
+                <Label
+                    Grid.Row="1"
+                    Padding="12,8"
+                    FontSize="14"
+                    LineBreakMode="TailTruncation"
+                    Text="{Binding HoverVideo.Atleta.NombreCompleto}"
+                    TextColor="White" />
+            </Grid>
+        </Border>
+
         <ActivityIndicator
+            Grid.Row="1"
+            Grid.ColumnSpan="5"
             HorizontalOptions="Center"
             IsRunning="{Binding IsBusy}"
             IsVisible="{Binding IsBusy}"
