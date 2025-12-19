@@ -554,8 +554,24 @@ public class DashboardViewModel : BaseViewModel
 
     private async Task PlayParallelAnalysisAsync()
     {
-        // TODO: Implementar reproducción de análisis paralelo
-        await Task.CompletedTask;
+        // Verificar que hay al menos un vídeo
+        if (!HasParallelVideo1 && !HasParallelVideo2)
+        {
+            await Shell.Current.DisplayAlert("Análisis paralelo", 
+                "Arrastra al menos un vídeo a las áreas de análisis.", "OK");
+            return;
+        }
+
+        // Desactivar el modo preview antes de abrir el reproductor
+        IsPreviewMode = false;
+
+        // Obtener la página del reproductor paralelo desde el contenedor de DI
+        var page = App.Current?.Handler?.MauiContext?.Services.GetService<Views.ParallelPlayerPage>();
+        if (page?.BindingContext is ParallelPlayerViewModel vm)
+        {
+            vm.Initialize(ParallelVideo1, ParallelVideo2, IsHorizontalOrientation);
+            await Shell.Current.Navigation.PushModalAsync(page);
+        }
     }
 
     private async Task PreviewParallelAnalysisAsync()

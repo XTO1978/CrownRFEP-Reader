@@ -1,4 +1,5 @@
 ﻿using CommunityToolkit.Maui;
+using CrownRFEP_Reader.Controls;
 using CrownRFEP_Reader.Services;
 using CrownRFEP_Reader.ViewModels;
 using CrownRFEP_Reader.Views;
@@ -26,7 +27,9 @@ public static class MauiProgram
 			{
 				handlers.AddHandler(typeof(SymbolIcon), typeof(SymbolIconHandler));
 				
-#if MACCATALYST
+#if MACCATALYST || IOS
+				handlers.AddHandler(typeof(PrecisionVideoPlayer), typeof(PrecisionVideoPlayerHandler));
+				
 				// Forzar texto blanco en DatePicker para MacCatalyst
 				DatePickerHandler.Mapper.AppendToMapping("WhiteTextColor", (handler, view) =>
 				{
@@ -60,6 +63,7 @@ public static class MauiProgram
 		builder.Services.AddSingleton<AthletesViewModel>();
 		builder.Services.AddTransient<AthleteDetailViewModel>();
 		builder.Services.AddTransient<VideoPlayerViewModel>();
+		builder.Services.AddTransient<ParallelPlayerViewModel>();
 		builder.Services.AddSingleton<StatisticsViewModel>();
 		builder.Services.AddSingleton<UserProfileViewModel>();
 
@@ -71,6 +75,7 @@ public static class MauiProgram
 		builder.Services.AddSingleton<AthletesPage>();
 		builder.Services.AddTransient<AthleteDetailPage>();
 		builder.Services.AddTransient<VideoPlayerPage>();
+		builder.Services.AddTransient<ParallelPlayerPage>();
 		builder.Services.AddSingleton<StatisticsPage>();
 		builder.Services.AddSingleton<UserProfilePage>();
 

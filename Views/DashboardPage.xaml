@@ -679,6 +679,7 @@
                                         Aspect="AspectFill"
                                         ShouldAutoPlay="True"
                                         ShouldLoopPlayback="True"
+                                        ShouldMute="True"
                                         ShouldShowPlaybackControls="False"
                                         Source="{Binding ParallelVideo1.LocalClipPath}"
                                         IsVisible="False">
@@ -730,6 +731,7 @@
                                         Aspect="AspectFill"
                                         ShouldAutoPlay="True"
                                         ShouldLoopPlayback="True"
+                                        ShouldMute="True"
                                         ShouldShowPlaybackControls="False"
                                         Source="{Binding ParallelVideo2.LocalClipPath}"
                                         IsVisible="False">
@@ -785,6 +787,7 @@
                                         Aspect="AspectFill"
                                         ShouldAutoPlay="True"
                                         ShouldLoopPlayback="True"
+                                        ShouldMute="True"
                                         ShouldShowPlaybackControls="False"
                                         Source="{Binding ParallelVideo1.LocalClipPath}"
                                         IsVisible="False">
@@ -836,6 +839,7 @@
                                         Aspect="AspectFill"
                                         ShouldAutoPlay="True"
                                         ShouldLoopPlayback="True"
+                                        ShouldMute="True"
                                         ShouldShowPlaybackControls="False"
                                         Source="{Binding ParallelVideo2.LocalClipPath}"
                                         IsVisible="False">
@@ -1592,6 +1596,7 @@
                         Aspect="AspectFill"
                         ShouldAutoPlay="True"
                         ShouldLoopPlayback="True"
+                        ShouldMute="True"
                         ShouldShowPlaybackControls="False"
                         Source="{Binding HoverVideo.LocalClipPath}" />
                 </controls:AspectRatioContainer>

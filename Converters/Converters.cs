@@ -126,13 +126,40 @@ public class DurationToMinutesConverter : IValueConverter
 }
 
 /// <summary>
-/// Convierte un booleano a Color para indicar selección
+/// Convierte un booleano a Color para indicar selección.
+/// Soporta parámetro con formato "trueColor|falseColor" (ej: "#FF6DDDFF|#FF2A2A2A" o "Black|White")
 /// </summary>
 public class BoolToColorConverter : IValueConverter
 {
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
-        if (value is bool boolValue && boolValue)
+        var boolValue = value is bool b && b;
+
+        // Si hay parámetro con formato "trueColor|falseColor"
+        if (parameter is string param && param.Contains('|'))
+        {
+            var colors = param.Split('|');
+            if (colors.Length == 2)
+            {
+                var colorStr = boolValue ? colors[0] : colors[1];
+                try
+                {
+                    return Color.FromArgb(colorStr);
+                }
+                catch
+                {
+                    // Intentar parsear como nombre de color
+                    if (colorStr.Equals("Black", StringComparison.OrdinalIgnoreCase))
+                        return Colors.Black;
+                    if (colorStr.Equals("White", StringComparison.OrdinalIgnoreCase))
+                        return Colors.White;
+                    return Color.FromArgb(colorStr.StartsWith("#") ? colorStr : "#" + colorStr);
+                }
+            }
+        }
+
+        // Comportamiento por defecto
+        if (boolValue)
             return Color.FromArgb("#FF6DDDFF"); // Color de selección activa (azul)
         return Color.FromArgb("#FF3A3A3A"); // Color por defecto
     }
