@@ -173,30 +173,26 @@ public partial class ParallelPlayerPage : ContentPage
             
             if (isSimultaneous)
             {
-                // Cambio a modo simultáneo: sincronizar posiciones al menor de los dos
-                var minPosition = TimeSpan.Zero;
-                if (_viewModel.CurrentPosition1 > TimeSpan.Zero || _viewModel.CurrentPosition2 > TimeSpan.Zero)
-                {
-                    minPosition = _viewModel.CurrentPosition1 < _viewModel.CurrentPosition2 
-                        ? _viewModel.CurrentPosition1 
-                        : _viewModel.CurrentPosition2;
-                }
+                // Cambio a modo sincronizado: los sync points ya están establecidos en el ViewModel
+                // Los reproductores se mantienen en sus posiciones actuales (los sync points)
+                // La posición global empieza en 0 (relativo al punto de sincronización)
                 
-                _viewModel.CurrentPosition = minPosition;
-                if (minPosition > TimeSpan.Zero)
-                    SeekBothToPosition(minPosition.TotalSeconds);
+                // Asegurar que cada reproductor está en su sync point
+                _activePlayer1?.SeekTo(_viewModel.SyncPoint1);
+                _activePlayer2?.SeekTo(_viewModel.SyncPoint2);
             }
             else
             {
-                // Cambio a modo individual: copiar posición global a ambos
-                _viewModel.CurrentPosition1 = _viewModel.CurrentPosition;
-                _viewModel.CurrentPosition2 = _viewModel.CurrentPosition;
+                // Cambio a modo individual: convertir posición global a posiciones absolutas
+                var absolutePos1 = _viewModel.SyncPoint1 + _viewModel.CurrentPosition;
+                var absolutePos2 = _viewModel.SyncPoint2 + _viewModel.CurrentPosition;
                 
-                if (_viewModel.CurrentPosition > TimeSpan.Zero)
-                {
-                    SeekPlayer1ToPosition(_viewModel.CurrentPosition.TotalSeconds);
-                    SeekPlayer2ToPosition(_viewModel.CurrentPosition.TotalSeconds);
-                }
+                _viewModel.CurrentPosition1 = absolutePos1;
+                _viewModel.CurrentPosition2 = absolutePos2;
+                
+                // Seek a las posiciones absolutas
+                _activePlayer1?.SeekTo(absolutePos1);
+                _activePlayer2?.SeekTo(absolutePos2);
             }
         });
     }
@@ -268,7 +264,11 @@ public partial class ParallelPlayerPage : ContentPage
         {
             if (_viewModel.IsSimultaneousMode)
             {
-                _viewModel.CurrentPosition = position;
+                // En modo sincronizado, la posición global es relativa al sync point
+                var relativePosition = position - _viewModel.SyncPoint1;
+                if (relativePosition < TimeSpan.Zero)
+                    relativePosition = TimeSpan.Zero;
+                _viewModel.CurrentPosition = relativePosition;
             }
             else
             {
@@ -326,6 +326,7 @@ public partial class ParallelPlayerPage : ContentPage
     private void OnStopRequested(object? sender, EventArgs e)
     {
         StopAllPlayers();
+        // Volver al inicio de la sincronización (posición relativa 0 = sync points)
         SeekBothToPosition(0);
     }
 
@@ -445,12 +446,16 @@ public partial class ParallelPlayerPage : ContentPage
 
     private void SeekBothToPosition(double seconds)
     {
-        var position = TimeSpan.FromSeconds(seconds);
+        var relativePosition = TimeSpan.FromSeconds(seconds);
+        
+        // En modo sincronizado, aplicar los sync points como offset
+        var absolutePos1 = _viewModel.SyncPoint1 + relativePosition;
+        var absolutePos2 = _viewModel.SyncPoint2 + relativePosition;
 
-        _activePlayer1?.SeekTo(position);
-        _activePlayer2?.SeekTo(position);
+        _activePlayer1?.SeekTo(absolutePos1);
+        _activePlayer2?.SeekTo(absolutePos2);
 
-        _viewModel.CurrentPosition = position;
+        _viewModel.CurrentPosition = relativePosition;
     }
 
     private void SeekPlayer1ToPosition(double seconds)
@@ -507,9 +512,15 @@ public partial class ParallelPlayerPage : ContentPage
         if (!_isDraggingSlider) return;
         
         // Seek en tiempo real mientras se arrastra (frame-by-frame scrubbing)
-        var position = TimeSpan.FromSeconds(e.NewValue * _viewModel.Duration.TotalSeconds);
-        _activePlayer1?.SeekTo(position);
-        _activePlayer2?.SeekTo(position);
+        // La posición es relativa a los sync points
+        var relativePosition = TimeSpan.FromSeconds(e.NewValue * _viewModel.Duration.TotalSeconds);
+        
+        // Aplicar los sync points como offset para cada reproductor
+        var absolutePos1 = _viewModel.SyncPoint1 + relativePosition;
+        var absolutePos2 = _viewModel.SyncPoint2 + relativePosition;
+        
+        _activePlayer1?.SeekTo(absolutePos1);
+        _activePlayer2?.SeekTo(absolutePos2);
         // No actualizamos CurrentPosition aquí para evitar un bucle de actualización
         // La posición se sincronizará completamente en OnSliderDragCompleted
     }
@@ -520,12 +531,8 @@ public partial class ParallelPlayerPage : ContentPage
         var newPosition = _viewModel.Progress * _viewModel.Duration.TotalSeconds;
         _viewModel.SeekToPosition(_viewModel.Progress);
         
-        // Restaurar reproducción si estaba reproduciéndose
-        if (_wasPlayingBeforeDrag)
-        {
-            PlayBoth();
-            _viewModel.IsPlaying = true;
-        }
+        // Mantener el reproductor en pausa mostrando el frame seleccionado
+        // El usuario debe pulsar play manualmente para reanudar
     }
 
     // --- Slider video 1 (modo individual) ---
@@ -557,11 +564,8 @@ public partial class ParallelPlayerPage : ContentPage
         var newPosition = _viewModel.Progress1 * _viewModel.Duration1.TotalSeconds;
         _viewModel.SeekToPosition1(_viewModel.Progress1);
         
-        if (_wasPlaying1BeforeDrag)
-        {
-            _activePlayer1?.Play();
-            _viewModel.IsPlaying1 = true;
-        }
+        // Mantener el reproductor en pausa mostrando el frame seleccionado
+        // El usuario debe pulsar play manualmente para reanudar
     }
 
     // --- Slider video 2 (modo individual) ---
@@ -592,11 +596,8 @@ public partial class ParallelPlayerPage : ContentPage
         var newPosition = _viewModel.Progress2 * _viewModel.Duration2.TotalSeconds;
         _viewModel.SeekToPosition2(_viewModel.Progress2);
         
-        if (_wasPlaying2BeforeDrag)
-        {
-            _activePlayer2?.Play();
-            _viewModel.IsPlaying2 = true;
-        }
+        // Mantener el reproductor en pausa mostrando el frame seleccionado
+        // El usuario debe pulsar play manualmente para reanudar
     }
 
     #endregion

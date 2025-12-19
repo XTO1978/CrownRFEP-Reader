@@ -39,6 +39,11 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
     private TimeSpan _duration2;
     private double _progress2;
 
+    // Puntos de sincronización (posiciones de referencia al sincronizar)
+    private TimeSpan _syncPoint1 = TimeSpan.Zero;
+    private TimeSpan _syncPoint2 = TimeSpan.Zero;
+    private TimeSpan _syncDuration = TimeSpan.Zero; // Duración efectiva en modo sincronizado
+
     public ParallelPlayerViewModel()
     {
         // Comandos globales (modo simultáneo)
@@ -348,6 +353,43 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
     public event EventHandler<double>? SpeedChangeRequested;
     public event EventHandler? CloseRequested;
     public event EventHandler<bool>? ModeChanged;
+    
+    /// <summary>
+    /// Se dispara cuando se establece la sincronización con los puntos de referencia.
+    /// Los argumentos son (SyncPoint1, SyncPoint2).
+    /// </summary>
+    public event EventHandler<(TimeSpan SyncPoint1, TimeSpan SyncPoint2)>? SyncPointsEstablished;
+
+    #endregion
+
+    #region Propiedades de sincronización
+
+    /// <summary>
+    /// Punto de referencia del vídeo 1 para sincronización
+    /// </summary>
+    public TimeSpan SyncPoint1
+    {
+        get => _syncPoint1;
+        private set { _syncPoint1 = value; OnPropertyChanged(); }
+    }
+
+    /// <summary>
+    /// Punto de referencia del vídeo 2 para sincronización
+    /// </summary>
+    public TimeSpan SyncPoint2
+    {
+        get => _syncPoint2;
+        private set { _syncPoint2 = value; OnPropertyChanged(); }
+    }
+
+    /// <summary>
+    /// Duración efectiva en modo sincronizado (la menor de las duraciones restantes)
+    /// </summary>
+    public TimeSpan SyncDuration
+    {
+        get => _syncDuration;
+        private set { _syncDuration = value; OnPropertyChanged(); }
+    }
 
     #endregion
 
@@ -358,7 +400,7 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
         Video1 = video1;
         Video2 = video2;
         IsHorizontalOrientation = isHorizontal;
-        IsSimultaneousMode = true;
+        IsSimultaneousMode = false; // Iniciar en modo individual
         ResetAllStates();
     }
 
@@ -545,12 +587,45 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
         // Pausar todo antes de cambiar de modo
         if (IsSimultaneousMode)
         {
+            // Saliendo del modo sincronizado → volver a individual
             if (IsPlaying) Stop();
+            
+            // Resetear los sync points
+            SyncPoint1 = TimeSpan.Zero;
+            SyncPoint2 = TimeSpan.Zero;
+            SyncDuration = TimeSpan.Zero;
         }
         else
         {
-            if (IsPlaying1) Stop1();
-            if (IsPlaying2) Stop2();
+            // Entrando al modo sincronizado → capturar posiciones actuales como puntos de referencia
+            if (IsPlaying1) 
+            {
+                PauseRequested1?.Invoke(this, EventArgs.Empty);
+                IsPlaying1 = false;
+            }
+            if (IsPlaying2) 
+            {
+                PauseRequested2?.Invoke(this, EventArgs.Empty);
+                IsPlaying2 = false;
+            }
+            
+            // Guardar las posiciones actuales como puntos de sincronización
+            SyncPoint1 = CurrentPosition1;
+            SyncPoint2 = CurrentPosition2;
+            
+            // Calcular la duración efectiva sincronizada
+            // Es el mínimo entre lo que queda de cada vídeo desde su punto de sync
+            var remaining1 = Duration1 - SyncPoint1;
+            var remaining2 = Duration2 - SyncPoint2;
+            SyncDuration = remaining1 < remaining2 ? remaining1 : remaining2;
+            
+            // Inicializar la posición global a 0 (inicio de la sincronización)
+            Duration = SyncDuration;
+            CurrentPosition = TimeSpan.Zero;
+            Progress = 0;
+            
+            // Notificar los puntos de sincronización establecidos
+            SyncPointsEstablished?.Invoke(this, (SyncPoint1, SyncPoint2));
         }
 
         IsSimultaneousMode = !IsSimultaneousMode;

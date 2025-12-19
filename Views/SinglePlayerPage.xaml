@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="CrownRFEP_Reader.Views.SinglePlayerPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:controls="clr-namespace:CrownRFEP_Reader.Views.Controls"
+    xmlns:precision="clr-namespace:CrownRFEP_Reader.Controls"
+    xmlns:vm="clr-namespace:CrownRFEP_Reader.ViewModels"
+    Title="{Binding VideoTitle}"
+    x:DataType="vm:SinglePlayerViewModel"
+    BackgroundColor="#FF1B1B1B"
+    Shell.BackgroundColor="#FF1B1B1B"
+    Shell.ForegroundColor="White"
+    Shell.NavBarIsVisible="True"
+    Shell.TitleColor="White">
+
+    <Grid Padding="0" RowDefinitions="*,Auto">
+
+        <!--  Área del vídeo  -->
+        <Border
+            Grid.Row="0"
+            Margin="0,0,0,0"
+            BackgroundColor="#FF1A1A1A"
+            Stroke="#FF3A3A3A"
+            StrokeShape="RoundRectangle 8"
+            StrokeThickness="0">
+            <Grid>
+                <precision:PrecisionVideoPlayer
+                    x:Name="MediaPlayer"
+                    Aspect="AspectFill"
+                    IsMuted="False"
+                    Source="{Binding VideoPath}" />
+            </Grid>
+        </Border>
+
+        <!--  Controles de reproducción  -->
+        <Border
+            Grid.Row="1"
+            Margin="16"
+            Padding="16"
+            BackgroundColor="#FF1A1A1A"
+            Stroke="#FF3A3A3A"
+            StrokeShape="RoundRectangle 8"
+            StrokeThickness="0">
+            <VerticalStackLayout Spacing="12">
+
+                <!--  Barra de progreso con tiempo  -->
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                    <Label
+                        Grid.Column="0"
+                        FontSize="12"
+                        Text="{Binding CurrentPositionText}"
+                        TextColor="#FFB1B1B1"
+                        VerticalOptions="Center" />
+                    <Slider
+                        x:Name="ProgressSlider"
+                        Grid.Column="1"
+                        DragCompleted="OnSliderDragCompleted"
+                        DragStarted="OnSliderDragStarted"
+                        Maximum="1"
+                        MaximumTrackColor="#FF3A3A3A"
+                        Minimum="0"
+                        MinimumTrackColor="#FF6DDDFF"
+                        ThumbColor="#FF6DDDFF"
+                        ValueChanged="OnSliderValueChanged"
+                        Value="{Binding Progress}" />
+                    <Label
+                        Grid.Column="2"
+                        FontSize="12"
+                        Text="{Binding DurationText}"
+                        TextColor="#FFB1B1B1"
+                        VerticalOptions="Center" />
+                </Grid>
+
+                <!--  Botones de control principales  -->
+                <HorizontalStackLayout HorizontalOptions="Center" Spacing="12">
+                    <!--  Frame anterior  -->
+                    <Border
+                        Padding="16,6"
+                        BackgroundColor="#FF2A2A2A"
+                        StrokeShape="RoundRectangle 4"
+                        StrokeThickness="0">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding FrameBackwardCommand}" />
+                        </Border.GestureRecognizers>
+                        <controls:SymbolIcon
+                            HeightRequest="20"
+                            SymbolName="backward.frame.fill"
+                            TintColor="White"
+                            WidthRequest="20" />
+                    </Border>
+
+                    <!--  Retroceso 5s  -->
+                    <Border
+                        Padding="16,6"
+                        BackgroundColor="#FF2A2A2A"
+                        StrokeShape="RoundRectangle 4"
+                        StrokeThickness="0">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding SeekBackwardCommand}" />
+                        </Border.GestureRecognizers>
+                        <controls:SymbolIcon
+                            HeightRequest="20"
+                            SymbolName="gobackward.5"
+                            TintColor="White"
+                            WidthRequest="20" />
+                    </Border>
+
+                    <!--  Play/Pause  -->
+                    <Border
+                        Padding="36,6"
+                        BackgroundColor="#FF6DDDFF"
+                        StrokeShape="RoundRectangle 4"
+                        StrokeThickness="0">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding PlayPauseCommand}" />
+                        </Border.GestureRecognizers>
+                        <controls:SymbolIcon
+                            HeightRequest="24"
+                            SymbolName="{Binding PlayPauseIcon}"
+                            TintColor="Black"
+                            WidthRequest="24" />
+                    </Border>
+
+                    <!--  Avance 5s  -->
+                    <Border
+                        Padding="16,6"
+                        BackgroundColor="#FF2A2A2A"
+                        StrokeShape="RoundRectangle 4"
+                        StrokeThickness="0">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding SeekForwardCommand}" />
+                        </Border.GestureRecognizers>
+                        <controls:SymbolIcon
+                            HeightRequest="20"
+                            SymbolName="goforward.5"
+                            TintColor="White"
+                            WidthRequest="20" />
+                    </Border>
+
+                    <!--  Frame siguiente  -->
+                    <Border
+                        Padding="16,6"
+                        BackgroundColor="#FF2A2A2A"
+                        StrokeShape="RoundRectangle 4"
+                        StrokeThickness="0">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding FrameForwardCommand}" />
+                        </Border.GestureRecognizers>
+                        <controls:SymbolIcon
+                            HeightRequest="20"
+                            SymbolName="forward.frame.fill"
+                            TintColor="White"
+                            WidthRequest="20" />
+                    </Border>
+
+                    <!--  Separador  -->
+                    <BoxView
+                        Margin="8,0"
+                        BackgroundColor="#FF3A3A3A"
+                        HeightRequest="30"
+                        WidthRequest="1" />
+
+                    <!--  Velocidad  -->
+                    <Border
+                        Padding="26,6"
+                        BackgroundColor="#FF2A2A2A"
+                        StrokeShape="RoundRectangle 4"
+                        StrokeThickness="0">
+                        <HorizontalStackLayout Spacing="8">
+                            <Label
+                                FontSize="14"
+                                Text="{Binding SpeedText}"
+                                TextColor="White"
+                                VerticalOptions="Center" />
+                            <HorizontalStackLayout Spacing="4">
+                                <Border
+                                    Padding="16,6"
+                                    BackgroundColor="#FF3A3A3A"
+                                    StrokeShape="RoundRectangle 4"
+                                    StrokeThickness="0">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Command="{Binding SetSpeedCommand}" CommandParameter="0.25" />
+                                    </Border.GestureRecognizers>
+                                    <Label
+                                        FontSize="14"
+                                        Text="0.25x"
+                                        TextColor="#FFB1B1B1" />
+                                </Border>
+                                <Border
+                                    Padding="16,6"
+                                    BackgroundColor="#FF3A3A3A"
+                                    StrokeShape="RoundRectangle 4"
+                                    StrokeThickness="0">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Command="{Binding SetSpeedCommand}" CommandParameter="0.5" />
+                                    </Border.GestureRecognizers>
+                                    <Label
+                                        FontSize="14"
+                                        Text="0.5x"
+                                        TextColor="#FFB1B1B1" />
+                                </Border>
+                                <Border
+                                    Padding="16,6"
+                                    BackgroundColor="#FF3A3A3A"
+                                    StrokeShape="RoundRectangle 4"
+                                    StrokeThickness="0">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Command="{Binding SetSpeedCommand}" CommandParameter="1" />
+                                    </Border.GestureRecognizers>
+                                    <Label
+                                        FontSize="14"
+                                        Text="1x"
+                                        TextColor="#FFB1B1B1" />
+                                </Border>
+                                <Border
+                                    Padding="16,6"
+                                    BackgroundColor="#FF3A3A3A"
+                                    StrokeShape="RoundRectangle 4"
+                                    StrokeThickness="0">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Command="{Binding SetSpeedCommand}" CommandParameter="2" />
+                                    </Border.GestureRecognizers>
+                                    <Label
+                                        FontSize="14"
+                                        Text="2x"
+                                        TextColor="#FFB1B1B1" />
+                                </Border>
+                            </HorizontalStackLayout>
+                        </HorizontalStackLayout>
+                    </Border>
+                </HorizontalStackLayout>
+
+            </VerticalStackLayout>
+        </Border>
+
+    </Grid>
+</ContentPage>
