@@ -11,7 +11,7 @@
     x:DataType="vm:ParallelPlayerViewModel"
     BackgroundColor="#FF0D0D0D"
     Shell.NavBarIsVisible="True"
-    Shell.BackgroundColor="#FF1A1A1A"
+    Shell.BackgroundColor="#FF121212"
     Shell.ForegroundColor="White"
     Shell.TitleColor="White">
 
@@ -26,7 +26,7 @@
                 <!--  Vídeo 1  -->
                 <Grid RowDefinitions="*,Auto">
                     <Border
-                        BackgroundColor="#FF1A1A1A"
+                        BackgroundColor="#FF121212"
                         Stroke="#FF3A3A3A"
                         StrokeShape="RoundRectangle 8"
                         StrokeThickness="1">
@@ -57,7 +57,7 @@
                         Grid.Row="1"
                         Margin="0,8,0,0"
                         Padding="12,8"
-                        BackgroundColor="#FF1A1A1A"
+                        BackgroundColor="#FF121212"
                         IsVisible="{Binding IsIndividualMode}"
                         Stroke="#FF3A3A3A"
                         StrokeShape="RoundRectangle 8"
@@ -128,7 +128,7 @@
                 <!--  Vídeo 2  -->
                 <Grid Grid.Column="1" RowDefinitions="*,Auto">
                     <Border
-                        BackgroundColor="#FF1A1A1A"
+                        BackgroundColor="#FF121212"
                         Stroke="#FF3A3A3A"
                         StrokeShape="RoundRectangle 8"
                         StrokeThickness="1">
@@ -159,7 +159,7 @@
                         Grid.Row="1"
                         Margin="0,8,0,0"
                         Padding="12,8"
-                        BackgroundColor="#FF1A1A1A"
+                        BackgroundColor="#FF121212"
                         IsVisible="{Binding IsIndividualMode}"
                         Stroke="#FF3A3A3A"
                         StrokeShape="RoundRectangle 8"
@@ -236,7 +236,7 @@
                 IsVisible="{Binding IsVerticalOrientation}">
                 <!--  Vídeo 1  -->
                 <Border
-                    BackgroundColor="#FF1A1A1A"
+                    BackgroundColor="#FF121212"
                     Stroke="#FF3A3A3A"
                     StrokeShape="RoundRectangle 8"
                     StrokeThickness="1">
@@ -266,7 +266,7 @@
                 <Border
                     Grid.Row="1"
                     Padding="12,6"
-                    BackgroundColor="#FF1A1A1A"
+                    BackgroundColor="#FF121212"
                     IsVisible="{Binding IsIndividualMode}"
                     Stroke="#FF3A3A3A"
                     StrokeShape="RoundRectangle 8"
@@ -321,7 +321,7 @@
                 <!--  Vídeo 2  -->
                 <Border
                     Grid.Row="2"
-                    BackgroundColor="#FF1A1A1A"
+                    BackgroundColor="#FF121212"
                     Stroke="#FF3A3A3A"
                     StrokeShape="RoundRectangle 8"
                     StrokeThickness="1">
@@ -351,7 +351,7 @@
                 <Border
                     Grid.Row="3"
                     Padding="12,6"
-                    BackgroundColor="#FF1A1A1A"
+                    BackgroundColor="#FF121212"
                     IsVisible="{Binding IsIndividualMode}"
                     Stroke="#FF3A3A3A"
                     StrokeShape="RoundRectangle 8"
@@ -411,7 +411,7 @@
             Grid.Row="1"
             Margin="20"
             Padding="16"
-            BackgroundColor="#FF1A1A1A"
+            BackgroundColor="#FF121212"
             IsVisible="{Binding IsSimultaneousMode}"
             Stroke="#FF3A3A3A"
             StrokeShape="RoundRectangle 12"
@@ -670,7 +670,7 @@
             Grid.Row="1"
             Margin="20"
             Padding="16,12"
-            BackgroundColor="#FF1A1A1A"
+            BackgroundColor="#FF121212"
             IsVisible="{Binding IsIndividualMode}"
             Stroke="#FF3A3A3A"
             StrokeShape="RoundRectangle 12"
