@@ -16,7 +16,7 @@
 
     <Grid
         Padding="0"
-        ColumnDefinitions="*,8,2.5*,8,*"
+        ColumnDefinitions="*,8,2.5*,8,1.2*"
         RowDefinitions="Auto,*">
         <controls:TopTabsBar
             Grid.Row="0"

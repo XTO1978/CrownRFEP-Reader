@@ -5,12 +5,12 @@
              xmlns:models="clr-namespace:CrownRFEP_Reader.Models"
              x:Class="CrownRFEP_Reader.Views.AthleteDetailPage"
              x:DataType="vm:AthleteDetailViewModel"
-             Title="{Binding Title}">
+             Title="{Binding Title}" BackgroundColor="#FF121212">
 
     <Grid RowDefinitions="Auto,*" Padding="15">
         
         <!-- Info del atleta -->
-        <Frame Grid.Row="0" Padding="20" CornerRadius="12" HasShadow="True" Margin="0,0,0,15">
+        <Frame Grid.Row="0" Padding="20" CornerRadius="12" HasShadow="True" Margin="0,0,0,15" BackgroundColor="#FF121212">
             <Grid ColumnDefinitions="80,*">
                 <!-- Avatar grande -->
                 <Frame WidthRequest="80" 

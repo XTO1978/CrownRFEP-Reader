@@ -5,55 +5,54 @@
              xmlns:models="clr-namespace:CrownRFEP_Reader.Models"
              xmlns:controls="clr-namespace:CrownRFEP_Reader.Views.Controls"
              x:Class="CrownRFEP_Reader.Views.AthletesPage"
-             x:DataType="vm:AthletesViewModel"
+             x:DataType="vm:AthletesViewModel" BackgroundColor="#FF121212"
              Title="{Binding Title}">
 
-    <Grid RowDefinitions="Auto,Auto,Auto,*" Padding="15">
+    <Grid RowDefinitions="Auto,Auto,Auto,*" Padding="0" BackgroundColor="#FF121212">
 
-        <controls:TopTabsBar Grid.Row="0" />
+        <controls:TopTabsBar Grid.Row="0" HorizontalOptions="Center" VerticalOptions="Start"/>
 
         <!-- Título y contador -->
         <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto" Margin="0,15,0,5">
             <HorizontalStackLayout Spacing="10">
                 <Label Text="Diccionario de Atletas" 
-                       FontSize="18" 
-                       FontAttributes="Bold"
-                       VerticalOptions="Center"/>
-                <Border BackgroundColor="{StaticResource Primary}"
+                       FontSize="24" Margin="30,0,0,0"
+                       VerticalOptions="Center" TextColor="White"/>
+                <Border BackgroundColor="#FF2A2A2A"
                         StrokeThickness="0"
-                        StrokeShape="RoundRectangle 10"
-                        Padding="8,2">
+                        StrokeShape="RoundRectangle 4"
+                        Padding="16,6">
                     <Label Text="{Binding Athletes.Count, StringFormat='{0} registrados'}" 
                            TextColor="White"
-                           FontSize="12"
+                           FontSize="14"
                            VerticalOptions="Center"/>
                 </Border>
             </HorizontalStackLayout>
             
             <Button Grid.Column="1"
-                    Text="🔗 Son el mismo atleta"
+                    Text="Son el mismo atleta"
                     Command="{Binding MergeSelectedAthletesCommand}"
                     IsEnabled="{Binding CanMerge}"
-                    BackgroundColor="#E65100"
+                    BackgroundColor="#FF2A2A2A"
                     TextColor="White"
-                    FontSize="12"
-                    Padding="10,5"
+                    FontSize="14"
+                    Padding="16,6"
                     Margin="0,0,10,0"
-                    CornerRadius="5"/>
+                    CornerRadius="4"/>
             
             <Button Grid.Column="2"
-                    Text="🔄 Consolidar automático"
+                    Text="Consolidar automático"
                     Command="{Binding ConsolidateDuplicatesCommand}"
-                    BackgroundColor="{StaticResource Secondary}"
+                    BackgroundColor="#FF2A2A2A"
                     TextColor="White"
-                    FontSize="12"
-                    Padding="10,5"
-                    CornerRadius="5"/>
+                    FontSize="14"
+                    Padding="16,6"
+                    CornerRadius="4"/>
         </Grid>
 
         <!-- Info de selección -->
         <HorizontalStackLayout Grid.Row="2" Margin="0,5,0,5" Spacing="8" IsVisible="{Binding CanMerge}">
-            <Label Text="📌" FontSize="14"/>
+           
             <Label Text="{Binding SelectedCount, StringFormat='{0} atletas seleccionados'}" 
                    FontSize="13"
                    TextColor="{StaticResource Primary}"
@@ -65,31 +64,27 @@
                 Margin="0,5,0,0"
                 Stroke="{AppThemeBinding Light={StaticResource Gray300}, Dark={StaticResource Gray600}}"
                 StrokeShape="RoundRectangle 8"
-                StrokeThickness="1">
+                StrokeThickness="0">
             <Grid RowDefinitions="Auto,*">
                 <!-- Encabezado -->
-                <Border BackgroundColor="{StaticResource Primary}"
+                <Border BackgroundColor="#FF121212"
                         StrokeThickness="0"
                         Padding="0">
-                    <Grid ColumnDefinitions="50,80,*,*" Padding="12,10">
-                        <Label Text="✓" 
-                               FontAttributes="Bold" 
+                    <Grid ColumnDefinitions="50,80,140,140" Padding="12,10">
+                        <Label Text="✓"  
                                TextColor="White"
                                HorizontalOptions="Center"
                                VerticalOptions="Center"/>
                         <Label Grid.Column="1"
                                Text="ID" 
-                               FontAttributes="Bold" 
                                TextColor="White"
                                VerticalOptions="Center"/>
                         <Label Grid.Column="2" 
                                Text="Nombre" 
-                               FontAttributes="Bold" 
                                TextColor="White"
                                VerticalOptions="Center"/>
                         <Label Grid.Column="3" 
                                Text="Apellido" 
-                               FontAttributes="Bold" 
                                TextColor="White"
                                VerticalOptions="Center"/>
                     </Grid>
@@ -103,22 +98,22 @@
                                     SelectionMode="None">
                         <CollectionView.ItemTemplate>
                             <DataTemplate x:DataType="models:Athlete">
-                                <Border StrokeThickness="0,0,0,1"
-                                        Stroke="{AppThemeBinding Light={StaticResource Gray200}, Dark={StaticResource Gray700}}"
-                                        BackgroundColor="{AppThemeBinding Light=White, Dark={StaticResource Gray900}}">
+                                <Border StrokeThickness="0,0,0,0.6"
+                                        Stroke="#FF393939"
+                                        BackgroundColor="#FF121212">
                                     <Border.GestureRecognizers>
                                         <TapGestureRecognizer 
                                             Command="{Binding Source={RelativeSource AncestorType={x:Type vm:AthletesViewModel}}, Path=ToggleAthleteSelectionCommand}"
                                             CommandParameter="{Binding .}"/>
                                     </Border.GestureRecognizers>
-                                    <Grid ColumnDefinitions="50,80,*,*" Padding="12,10">
+                                    <Grid ColumnDefinitions="50,80,140,140" Padding="12,10">
                                         <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}"
                                                   CheckedChanged="OnAthleteCheckChanged"
                                                   HorizontalOptions="Center"
                                                   VerticalOptions="Center"
-                                                  Color="{StaticResource Primary}"/>
+                                                  Color="#FF2A2A2A"/>
                                         <Border Grid.Column="1"
-                                                BackgroundColor="{StaticResource Secondary}"
+                                                BackgroundColor="#FF2A2A2A"
                                                 StrokeThickness="0"
                                                 StrokeShape="RoundRectangle 4"
                                                 WidthRequest="45"
@@ -126,19 +121,17 @@
                                                 HorizontalOptions="Start">
                                             <Label Text="{Binding Id}" 
                                                    TextColor="White"
-                                                   FontAttributes="Bold"
                                                    HorizontalOptions="Center"
                                                    VerticalOptions="Center"/>
                                         </Border>
                                         <Label Grid.Column="2" 
                                                Text="{Binding Nombre}" 
-                                               VerticalOptions="Center"
+                                               VerticalOptions="Center" TextColor="White"
                                                FontSize="14"/>
                                         <Label Grid.Column="3" 
                                                Text="{Binding Apellido}" 
                                                VerticalOptions="Center"
-                                               FontSize="14"
-                                               FontAttributes="Bold"/>
+                                               FontSize="14" TextColor="White"/>
                                     </Grid>
                                 </Border>
                             </DataTemplate>
@@ -146,7 +139,7 @@
                         
                         <CollectionView.EmptyView>
                             <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center" Padding="40">
-                                <Label Text="🏃" FontSize="48" HorizontalOptions="Center"/>
+                               
                                 <Label Text="No hay atletas registrados" 
                                        FontSize="16" 
                                        HorizontalOptions="Center" 

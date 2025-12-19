@@ -5,7 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:behaviors="clr-namespace:CrownRFEP_Reader.Behaviors"
     xmlns:shapes="clr-namespace:Microsoft.Maui.Controls.Shapes;assembly=Microsoft.Maui.Controls"
-    BackgroundColor="#FF303030">
+    BackgroundColor="#FF121212">
 
     <Grid Padding="10,0" ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="0" HeightRequest="50">
         <Button Grid.Column="0"
