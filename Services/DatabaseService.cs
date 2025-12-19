@@ -556,6 +556,25 @@ public class DatabaseService
         return await db.Table<Tag>().ToListAsync();
     }
 
+    /// <summary>
+    /// Obtiene los tags asociados a un video específico a través de la tabla inputs
+    /// </summary>
+    public async Task<List<Tag>> GetTagsForVideoAsync(int videoId)
+    {
+        var db = await GetConnectionAsync();
+        
+        // Obtener los InputTypeIds únicos de los inputs asociados al video
+        var inputs = await db.Table<Input>().Where(i => i.VideoId == videoId).ToListAsync();
+        var inputTypeIds = inputs.Select(i => i.InputTypeId).Distinct().ToHashSet();
+        
+        if (inputTypeIds.Count == 0)
+            return new List<Tag>();
+        
+        // Obtener los tags correspondientes
+        var allTags = await db.Table<Tag>().ToListAsync();
+        return allTags.Where(t => inputTypeIds.Contains(t.Id) && !string.IsNullOrEmpty(t.NombreTag)).ToList();
+    }
+
     // ==================== ALL INPUTS ====================
     public async Task<List<Input>> GetAllInputsAsync()
     {

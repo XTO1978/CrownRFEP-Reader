@@ -102,6 +102,12 @@ public class VideoClip : INotifyPropertyChanged
     public Session? Session { get; set; }
 
     /// <summary>
+    /// Tags asociados al video (cargados desde la tabla inputs)
+    /// </summary>
+    [Ignore]
+    public List<Tag>? Tags { get; set; }
+
+    /// <summary>
     /// Indica si el video está seleccionado (para selección múltiple en galería)
     /// </summary>
     [Ignore]

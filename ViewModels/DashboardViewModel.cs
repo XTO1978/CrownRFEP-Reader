@@ -1230,7 +1230,38 @@ public class DashboardViewModel : BaseViewModel
             return;
         }
 
-        await Shell.Current.GoToAsync($"{nameof(SinglePlayerPage)}?videoPath={Uri.EscapeDataString(videoPath)}");
+        // Obtener la página del contenedor DI para poder pasar el VideoClip completo
+        var playerPage = Microsoft.Maui.Controls.Application.Current?.Handler?.MauiContext?.Services.GetService<SinglePlayerPage>();
+        if (playerPage?.BindingContext is SinglePlayerViewModel vm)
+        {
+            // Asegurar que el video tiene la información de Session y Atleta cargada
+            if (video.Session == null && video.SessionId > 0)
+            {
+                video.Session = SelectedSession ?? await _databaseService.GetSessionByIdAsync(video.SessionId);
+            }
+            if (video.Atleta == null && video.AtletaId > 0)
+            {
+                video.Atleta = await _databaseService.GetAthleteByIdAsync(video.AtletaId);
+            }
+            // Cargar los tags del video
+            if (video.Tags == null && video.Id > 0)
+            {
+                video.Tags = await _databaseService.GetTagsForVideoAsync(video.Id);
+            }
+            
+            // Actualizar la ruta local si fue resuelta
+            video.LocalClipPath = videoPath;
+            
+            // Establecer el VideoClip con toda la información
+            vm.VideoClip = video;
+            
+            await Shell.Current.Navigation.PushAsync(playerPage);
+        }
+        else
+        {
+            // Fallback: navegación por URL
+            await Shell.Current.GoToAsync($"{nameof(SinglePlayerPage)}?videoPath={Uri.EscapeDataString(videoPath)}");
+        }
     }
 
     private async Task ImportCrownFileAsync()

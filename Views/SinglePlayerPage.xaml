@@ -5,6 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:controls="clr-namespace:CrownRFEP_Reader.Views.Controls"
     xmlns:precision="clr-namespace:CrownRFEP_Reader.Controls"
+    xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
     xmlns:vm="clr-namespace:CrownRFEP_Reader.ViewModels"
     Title="{Binding VideoTitle}"
     x:DataType="vm:SinglePlayerViewModel"
@@ -13,6 +14,10 @@
     Shell.ForegroundColor="White"
     Shell.NavBarIsVisible="True"
     Shell.TitleColor="White">
+
+    <ContentPage.Resources>
+        <toolkit:InvertedBoolConverter x:Key="InvertedBoolConverter" />
+    </ContentPage.Resources>
 
     <Grid Padding="0" RowDefinitions="*,Auto">
 
@@ -30,6 +35,123 @@
                     Aspect="AspectFill"
                     IsMuted="False"
                     Source="{Binding VideoPath}" />
+                
+                <!--  Overlay de información del video  -->
+                <Border
+                    Margin="16"
+                    Padding="12,10"
+                    BackgroundColor="#CC000000"
+                    HorizontalOptions="Start"
+                    IsVisible="{Binding ShowOverlay}"
+                    StrokeShape="RoundRectangle 8"
+                    StrokeThickness="0"
+                    VerticalOptions="Start">
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding ToggleOverlayCommand}" />
+                    </Border.GestureRecognizers>
+                    <VerticalStackLayout Spacing="4">
+                        <!--  Nombre del atleta  -->
+                        <Label
+                            FontAttributes="Bold"
+                            FontSize="16"
+                            Text="{Binding AthleteName}"
+                            TextColor="White" />
+                        
+                        <!--  Sesión  -->
+                        <HorizontalStackLayout Spacing="8">
+                            <Label
+                                FontSize="12"
+                                Text="{Binding SessionName}"
+                                TextColor="#FFAAAAAA" />
+                            <Label
+                                FontSize="12"
+                                Text="•"
+                                TextColor="#FF666666" />
+                            <Label
+                                FontSize="12"
+                                Text="{Binding SessionPlace}"
+                                TextColor="#FFAAAAAA" />
+                        </HorizontalStackLayout>
+                        
+                        <!--  Fecha y sección  -->
+                        <HorizontalStackLayout Spacing="8">
+                            <Label
+                                FontSize="11"
+                                Text="{Binding SessionDate}"
+                                TextColor="#FF888888" />
+                            <Label
+                                FontSize="11"
+                                Text="•"
+                                TextColor="#FF666666" />
+                            <Label
+                                FontSize="11"
+                                Text="{Binding SectionText}"
+                                TextColor="#FF888888" />
+                        </HorizontalStackLayout>
+                        
+                        <!--  Duración y tamaño  -->
+                        <HorizontalStackLayout Spacing="8">
+                            <Label
+                                FontSize="10"
+                                Text="{Binding VideoDurationText, StringFormat='Duración: {0}'}"
+                                TextColor="#FF666666" />
+                            <Label
+                                FontSize="10"
+                                Text="{Binding VideoSizeText, StringFormat='({0})'}"
+                                TextColor="#FF666666" />
+                        </HorizontalStackLayout>
+                        
+                        <!--  Tags si existen  -->
+                        <HorizontalStackLayout 
+                            IsVisible="{Binding HasTags}"
+                            Spacing="4">
+                            <controls:SymbolIcon
+                                HeightRequest="12"
+                                SymbolName="tag.fill"
+                                TintColor="#FF888888"
+                                VerticalOptions="Center"
+                                WidthRequest="12" />
+                            <Label
+                                FontSize="11"
+                                Text="{Binding TagsText}"
+                                TextColor="#FF888888" />
+                        </HorizontalStackLayout>
+                        
+                        <!--  Badge si existe  -->
+                        <Border
+                            Margin="0,4,0,0"
+                            Padding="8,4"
+                            BackgroundColor="{Binding BadgeColor}"
+                            IsVisible="{Binding HasBadge}"
+                            StrokeShape="RoundRectangle 4"
+                            StrokeThickness="0">
+                            <Label
+                                FontSize="11"
+                                Text="{Binding BadgeText}"
+                                TextColor="White" />
+                        </Border>
+                    </VerticalStackLayout>
+                </Border>
+                
+                <!--  Botón para mostrar overlay cuando está oculto  -->
+                <Border
+                    Margin="16"
+                    Padding="8"
+                    BackgroundColor="#99000000"
+                    HorizontalOptions="Start"
+                    IsVisible="{Binding ShowOverlay, Converter={StaticResource InvertedBoolConverter}}"
+                    StrokeShape="RoundRectangle 20"
+                    StrokeThickness="0"
+                    VerticalOptions="Start">
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding ToggleOverlayCommand}" />
+                    </Border.GestureRecognizers>
+                    <controls:SymbolIcon
+                        HeightRequest="20"
+                        SymbolName="info.circle"
+                        TintColor="White"
+                        WidthRequest="20" />
+                </Border>
             </Grid>
         </Border>
 
