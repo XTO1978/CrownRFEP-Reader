@@ -618,8 +618,8 @@
                         Text="Análisis paralelo"
                         TextColor="#FFB1B1B1" />
 
-                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
-                        <!--  Pantalla 1  -->
+                    <!--  Layout Horizontal  -->
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8" IsVisible="{Binding IsHorizontalOrientation}">
                         <controls:AspectRatioContainer AspectRatio="1.777">
                             <Border
                                 BackgroundColor="#FF2A2A2A"
@@ -634,9 +634,39 @@
                                     FontAttributes="Bold" />
                             </Border>
                         </controls:AspectRatioContainer>
-
-                        <!--  Pantalla 2  -->
                         <controls:AspectRatioContainer Grid.Column="1" AspectRatio="1.777">
+                            <Border
+                                BackgroundColor="#FF2A2A2A"
+                                Stroke="Transparent"
+                                StrokeShape="RoundRectangle 6">
+                                <Label
+                                    HorizontalOptions="Center"
+                                    VerticalOptions="Center"
+                                    Text="2"
+                                    TextColor="#FF666666"
+                                    FontSize="24"
+                                    FontAttributes="Bold" />
+                            </Border>
+                        </controls:AspectRatioContainer>
+                    </Grid>
+
+                    <!--  Layout Vertical  -->
+                    <Grid RowDefinitions="*,*" RowSpacing="8" IsVisible="{Binding IsVerticalOrientation}">
+                        <controls:AspectRatioContainer AspectRatio="1.777">
+                            <Border
+                                BackgroundColor="#FF2A2A2A"
+                                Stroke="Transparent"
+                                StrokeShape="RoundRectangle 6">
+                                <Label
+                                    HorizontalOptions="Center"
+                                    VerticalOptions="Center"
+                                    Text="1"
+                                    TextColor="#FF666666"
+                                    FontSize="24"
+                                    FontAttributes="Bold" />
+                            </Border>
+                        </controls:AspectRatioContainer>
+                        <controls:AspectRatioContainer Grid.Row="1" AspectRatio="1.777">
                             <Border
                                 BackgroundColor="#FF2A2A2A"
                                 Stroke="Transparent"
