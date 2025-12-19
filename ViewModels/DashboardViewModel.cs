@@ -32,6 +32,9 @@ public class DashboardViewModel : BaseViewModel
     private bool _isSelectAllActive;
     private readonly HashSet<int> _selectedVideoIds = new();
 
+    // Modo de análisis: único o paralelo (paralelo por defecto)
+    private bool _isSingleVideoMode = false;
+    
     // Orientación análisis paralelo
     private bool _isHorizontalOrientation = false;
 
@@ -211,6 +214,36 @@ public class DashboardViewModel : BaseViewModel
         }
     }
 
+    // Modo único (un solo video) vs paralelo (dos videos)
+    public bool IsSingleVideoMode
+    {
+        get => _isSingleVideoMode;
+        set
+        {
+            if (SetProperty(ref _isSingleVideoMode, value))
+            {
+                OnPropertyChanged(nameof(IsParallelVideoMode));
+                // Limpiar segundo slot si cambiamos a modo único
+                if (value && _parallelVideo2 != null)
+                {
+                    ParallelVideo2 = null;
+                }
+            }
+        }
+    }
+
+    public bool IsParallelVideoMode
+    {
+        get => !_isSingleVideoMode;
+        set
+        {
+            if (value != !_isSingleVideoMode)
+            {
+                IsSingleVideoMode = !value;
+            }
+        }
+    }
+
     public bool IsVideoSelected(int videoId) => _selectedVideoIds.Contains(videoId);
 
     public VideoClip? ParallelVideo1
@@ -221,6 +254,11 @@ public class DashboardViewModel : BaseViewModel
             if (SetProperty(ref _parallelVideo1, value))
             {
                 OnPropertyChanged(nameof(HasParallelVideo1));
+                // Activar preview automáticamente al soltar un video
+                if (value != null)
+                {
+                    IsPreviewMode = true;
+                }
             }
         }
     }
@@ -233,6 +271,11 @@ public class DashboardViewModel : BaseViewModel
             if (SetProperty(ref _parallelVideo2, value))
             {
                 OnPropertyChanged(nameof(HasParallelVideo2));
+                // Activar preview automáticamente al soltar un video
+                if (value != null)
+                {
+                    IsPreviewMode = true;
+                }
             }
         }
     }

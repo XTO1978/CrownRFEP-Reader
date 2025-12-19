@@ -5,6 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:behaviors="clr-namespace:CrownRFEP_Reader.Behaviors"
     xmlns:controls="clr-namespace:CrownRFEP_Reader.Views.Controls"
+    xmlns:appcontrols="clr-namespace:CrownRFEP_Reader.Controls"
     xmlns:models="clr-namespace:CrownRFEP_Reader.Models"
     xmlns:services="clr-namespace:CrownRFEP_Reader.Services"
     xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
@@ -635,15 +636,153 @@
                         </Border>
                     </VerticalStackLayout>
 
-                    <!--  Sección: Análisis paralelo  -->
+                    <!--  Sección: Análisis rápido  -->
                     <Label
                         Margin="0,12,0,0"
                         FontSize="14"
-                        Text="Análisis paralelo"
+                        Text="Análisis rápido"
                         TextColor="#FFB1B1B1" />
 
-                    <!--  Layout Horizontal  -->
-                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8" IsVisible="{Binding IsHorizontalOrientation}">
+                    <!--  Toggle: Único / Paralelo  -->
+                    <HorizontalStackLayout Spacing="16" HorizontalOptions="Center" Margin="0,8,0,8">
+                        <HorizontalStackLayout Spacing="6">
+                            <RadioButton
+                                GroupName="AnalysisMode"
+                                IsChecked="{Binding IsSingleVideoMode}"
+                                BackgroundColor="Transparent"
+                                VerticalOptions="Center">
+                                <RadioButton.ControlTemplate>
+                                    <ControlTemplate>
+                                        <Grid>
+                                            <Ellipse
+                                                WidthRequest="18"
+                                                HeightRequest="18"
+                                                Stroke="#FF888888"
+                                                StrokeThickness="2"
+                                                Fill="Transparent" />
+                                            <Ellipse
+                                                WidthRequest="10"
+                                                HeightRequest="10"
+                                                Fill="#FF6DDDFF"
+                                                HorizontalOptions="Center"
+                                                VerticalOptions="Center"
+                                                IsVisible="{TemplateBinding IsChecked}" />
+                                        </Grid>
+                                    </ControlTemplate>
+                                </RadioButton.ControlTemplate>
+                            </RadioButton>
+                            <Label Text="Único" TextColor="White" VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                        <HorizontalStackLayout Spacing="6">
+                            <RadioButton
+                                GroupName="AnalysisMode"
+                                IsChecked="{Binding IsParallelVideoMode}"
+                                BackgroundColor="Transparent"
+                                VerticalOptions="Center">
+                                <RadioButton.ControlTemplate>
+                                    <ControlTemplate>
+                                        <Grid>
+                                            <Ellipse
+                                                WidthRequest="18"
+                                                HeightRequest="18"
+                                                Stroke="#FF888888"
+                                                StrokeThickness="2"
+                                                Fill="Transparent" />
+                                            <Ellipse
+                                                WidthRequest="10"
+                                                HeightRequest="10"
+                                                Fill="#FF6DDDFF"
+                                                HorizontalOptions="Center"
+                                                VerticalOptions="Center"
+                                                IsVisible="{TemplateBinding IsChecked}" />
+                                        </Grid>
+                                    </ControlTemplate>
+                                </RadioButton.ControlTemplate>
+                            </RadioButton>
+                            <Label Text="Paralelo" TextColor="White" VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                    </HorizontalStackLayout>
+
+                    <!--  Layout Único (un solo video)  -->
+                    <controls:AspectRatioContainer 
+                        AspectRatio="1.777" 
+                        IsVisible="{Binding IsSingleVideoMode}"
+                        HorizontalOptions="Center"
+                        WidthRequest="400">
+                        <Border
+                            BackgroundColor="#FF2A2A2A"
+                            Stroke="Transparent"
+                            StrokeShape="RoundRectangle 6">
+                            <Border.GestureRecognizers>
+                                <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen1" />
+                            </Border.GestureRecognizers>
+                            <Grid>
+                                <!--  Placeholder cuando no hay vídeo  -->
+                                <Label
+                                    HorizontalOptions="Center"
+                                    VerticalOptions="Center"
+                                    Text="Arrastra un clip aquí"
+                                    TextColor="#FF666666"
+                                    FontSize="14"
+                                    IsVisible="{Binding HasParallelVideo1, Converter={StaticResource InvertedBoolConverter}}" />
+                                <!--  Miniatura del vídeo (cuando no está en preview)  -->
+                                <Image
+                                    Aspect="AspectFill"
+                                    Source="{Binding ParallelVideo1.LocalThumbnailPath}"
+                                    IsVisible="{Binding HasParallelVideo1}">
+                                    <Image.Triggers>
+                                        <DataTrigger TargetType="Image" Binding="{Binding IsPreviewMode}" Value="True">
+                                            <Setter Property="IsVisible" Value="False" />
+                                        </DataTrigger>
+                                    </Image.Triggers>
+                                </Image>
+                                <!--  PrecisionVideoPlayer para scrubbing preciso  -->
+                                <appcontrols:PrecisionVideoPlayer
+                                    x:Name="PreviewPlayerSingle"
+                                    Aspect="AspectFill"
+                                    IsMuted="True"
+                                    Source="{Binding ParallelVideo1.LocalClipPath}"
+                                    IsVisible="False">
+                                    <appcontrols:PrecisionVideoPlayer.Triggers>
+                                        <MultiTrigger TargetType="appcontrols:PrecisionVideoPlayer">
+                                            <MultiTrigger.Conditions>
+                                                <BindingCondition Binding="{Binding HasParallelVideo1}" Value="True" />
+                                                <BindingCondition Binding="{Binding IsPreviewMode}" Value="True" />
+                                                <BindingCondition Binding="{Binding IsSingleVideoMode}" Value="True" />
+                                            </MultiTrigger.Conditions>
+                                            <Setter Property="IsVisible" Value="True" />
+                                        </MultiTrigger>
+                                    </appcontrols:PrecisionVideoPlayer.Triggers>
+                                </appcontrols:PrecisionVideoPlayer>
+                                <!--  Overlay transparente para capturar gestos de scrubbing  -->
+                                <BoxView
+                                    x:Name="ScrubOverlaySingle"
+                                    BackgroundColor="Transparent"
+                                    IsVisible="{Binding HasParallelVideo1}">
+                                    <BoxView.Behaviors>
+                                        <behaviors:VideoScrubBehavior VideoIndex="0" />
+                                    </BoxView.Behaviors>
+                                </BoxView>
+                            </Grid>
+                        </Border>
+                    </controls:AspectRatioContainer>
+
+                    <!--  Layout Horizontal (paralelo)  -->
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                        <Grid.Triggers>
+                            <MultiTrigger TargetType="Grid">
+                                <MultiTrigger.Conditions>
+                                    <BindingCondition Binding="{Binding IsParallelVideoMode}" Value="True" />
+                                    <BindingCondition Binding="{Binding IsHorizontalOrientation}" Value="True" />
+                                </MultiTrigger.Conditions>
+                                <Setter Property="IsVisible" Value="True" />
+                            </MultiTrigger>
+                        </Grid.Triggers>
+                        <Grid.Style>
+                            <Style TargetType="Grid">
+                                <Setter Property="IsVisible" Value="False" />
+                            </Style>
+                        </Grid.Style>
                         <controls:AspectRatioContainer AspectRatio="1.777">
                             <Border
                                 BackgroundColor="#FF2A2A2A"
@@ -673,26 +812,31 @@
                                             </DataTrigger>
                                         </Image.Triggers>
                                     </Image>
-                                    <!--  MediaElement para preview  -->
-                                    <toolkit:MediaElement
-                                        x:Name="PreviewMedia1H"
+                                    <!--  PrecisionVideoPlayer para scrubbing preciso  -->
+                                    <appcontrols:PrecisionVideoPlayer
+                                        x:Name="PreviewPlayer1H"
                                         Aspect="AspectFill"
-                                        ShouldAutoPlay="True"
-                                        ShouldLoopPlayback="True"
-                                        ShouldMute="True"
-                                        ShouldShowPlaybackControls="False"
+                                        IsMuted="True"
                                         Source="{Binding ParallelVideo1.LocalClipPath}"
                                         IsVisible="False">
-                                        <toolkit:MediaElement.Triggers>
-                                            <MultiTrigger TargetType="toolkit:MediaElement">
+                                        <appcontrols:PrecisionVideoPlayer.Triggers>
+                                            <MultiTrigger TargetType="appcontrols:PrecisionVideoPlayer">
                                                 <MultiTrigger.Conditions>
                                                     <BindingCondition Binding="{Binding HasParallelVideo1}" Value="True" />
                                                     <BindingCondition Binding="{Binding IsPreviewMode}" Value="True" />
                                                 </MultiTrigger.Conditions>
                                                 <Setter Property="IsVisible" Value="True" />
                                             </MultiTrigger>
-                                        </toolkit:MediaElement.Triggers>
-                                    </toolkit:MediaElement>
+                                        </appcontrols:PrecisionVideoPlayer.Triggers>
+                                    </appcontrols:PrecisionVideoPlayer>
+                                    <!--  Overlay para scrubbing  -->
+                                    <BoxView
+                                        BackgroundColor="Transparent"
+                                        IsVisible="{Binding HasParallelVideo1}">
+                                        <BoxView.Behaviors>
+                                            <behaviors:VideoScrubBehavior VideoIndex="1" />
+                                        </BoxView.Behaviors>
+                                    </BoxView>
                                 </Grid>
                             </Border>
                         </controls:AspectRatioContainer>
@@ -725,33 +869,52 @@
                                             </DataTrigger>
                                         </Image.Triggers>
                                     </Image>
-                                    <!--  MediaElement para preview  -->
-                                    <toolkit:MediaElement
-                                        x:Name="PreviewMedia2H"
+                                    <!--  PrecisionVideoPlayer para scrubbing preciso  -->
+                                    <appcontrols:PrecisionVideoPlayer
+                                        x:Name="PreviewPlayer2H"
                                         Aspect="AspectFill"
-                                        ShouldAutoPlay="True"
-                                        ShouldLoopPlayback="True"
-                                        ShouldMute="True"
-                                        ShouldShowPlaybackControls="False"
+                                        IsMuted="True"
                                         Source="{Binding ParallelVideo2.LocalClipPath}"
                                         IsVisible="False">
-                                        <toolkit:MediaElement.Triggers>
-                                            <MultiTrigger TargetType="toolkit:MediaElement">
+                                        <appcontrols:PrecisionVideoPlayer.Triggers>
+                                            <MultiTrigger TargetType="appcontrols:PrecisionVideoPlayer">
                                                 <MultiTrigger.Conditions>
                                                     <BindingCondition Binding="{Binding HasParallelVideo2}" Value="True" />
                                                     <BindingCondition Binding="{Binding IsPreviewMode}" Value="True" />
                                                 </MultiTrigger.Conditions>
                                                 <Setter Property="IsVisible" Value="True" />
                                             </MultiTrigger>
-                                        </toolkit:MediaElement.Triggers>
-                                    </toolkit:MediaElement>
+                                        </appcontrols:PrecisionVideoPlayer.Triggers>
+                                    </appcontrols:PrecisionVideoPlayer>
+                                    <!--  Overlay para scrubbing  -->
+                                    <BoxView
+                                        BackgroundColor="Transparent"
+                                        IsVisible="{Binding HasParallelVideo2}">
+                                        <BoxView.Behaviors>
+                                            <behaviors:VideoScrubBehavior VideoIndex="2" />
+                                        </BoxView.Behaviors>
+                                    </BoxView>
                                 </Grid>
                             </Border>
                         </controls:AspectRatioContainer>
                     </Grid>
 
-                    <!--  Layout Vertical  -->
-                    <Grid RowDefinitions="*,*" RowSpacing="8" IsVisible="{Binding IsVerticalOrientation}">
+                    <!--  Layout Vertical (paralelo)  -->
+                    <Grid RowDefinitions="*,*" RowSpacing="8">
+                        <Grid.Triggers>
+                            <MultiTrigger TargetType="Grid">
+                                <MultiTrigger.Conditions>
+                                    <BindingCondition Binding="{Binding IsParallelVideoMode}" Value="True" />
+                                    <BindingCondition Binding="{Binding IsVerticalOrientation}" Value="True" />
+                                </MultiTrigger.Conditions>
+                                <Setter Property="IsVisible" Value="True" />
+                            </MultiTrigger>
+                        </Grid.Triggers>
+                        <Grid.Style>
+                            <Style TargetType="Grid">
+                                <Setter Property="IsVisible" Value="False" />
+                            </Style>
+                        </Grid.Style>
                         <controls:AspectRatioContainer AspectRatio="1.777">
                             <Border
                                 BackgroundColor="#FF2A2A2A"
@@ -781,26 +944,31 @@
                                             </DataTrigger>
                                         </Image.Triggers>
                                     </Image>
-                                    <!--  MediaElement para preview  -->
-                                    <toolkit:MediaElement
-                                        x:Name="PreviewMedia1V"
+                                    <!--  PrecisionVideoPlayer para scrubbing preciso  -->
+                                    <appcontrols:PrecisionVideoPlayer
+                                        x:Name="PreviewPlayer1V"
                                         Aspect="AspectFill"
-                                        ShouldAutoPlay="True"
-                                        ShouldLoopPlayback="True"
-                                        ShouldMute="True"
-                                        ShouldShowPlaybackControls="False"
+                                        IsMuted="True"
                                         Source="{Binding ParallelVideo1.LocalClipPath}"
                                         IsVisible="False">
-                                        <toolkit:MediaElement.Triggers>
-                                            <MultiTrigger TargetType="toolkit:MediaElement">
+                                        <appcontrols:PrecisionVideoPlayer.Triggers>
+                                            <MultiTrigger TargetType="appcontrols:PrecisionVideoPlayer">
                                                 <MultiTrigger.Conditions>
                                                     <BindingCondition Binding="{Binding HasParallelVideo1}" Value="True" />
                                                     <BindingCondition Binding="{Binding IsPreviewMode}" Value="True" />
                                                 </MultiTrigger.Conditions>
                                                 <Setter Property="IsVisible" Value="True" />
                                             </MultiTrigger>
-                                        </toolkit:MediaElement.Triggers>
-                                    </toolkit:MediaElement>
+                                        </appcontrols:PrecisionVideoPlayer.Triggers>
+                                    </appcontrols:PrecisionVideoPlayer>
+                                    <!--  Overlay para scrubbing  -->
+                                    <BoxView
+                                        BackgroundColor="Transparent"
+                                        IsVisible="{Binding HasParallelVideo1}">
+                                        <BoxView.Behaviors>
+                                            <behaviors:VideoScrubBehavior VideoIndex="1" />
+                                        </BoxView.Behaviors>
+                                    </BoxView>
                                 </Grid>
                             </Border>
                         </controls:AspectRatioContainer>
@@ -833,33 +1001,38 @@
                                             </DataTrigger>
                                         </Image.Triggers>
                                     </Image>
-                                    <!--  MediaElement para preview  -->
-                                    <toolkit:MediaElement
-                                        x:Name="PreviewMedia2V"
+                                    <!--  PrecisionVideoPlayer para scrubbing preciso  -->
+                                    <appcontrols:PrecisionVideoPlayer
+                                        x:Name="PreviewPlayer2V"
                                         Aspect="AspectFill"
-                                        ShouldAutoPlay="True"
-                                        ShouldLoopPlayback="True"
-                                        ShouldMute="True"
-                                        ShouldShowPlaybackControls="False"
+                                        IsMuted="True"
                                         Source="{Binding ParallelVideo2.LocalClipPath}"
                                         IsVisible="False">
-                                        <toolkit:MediaElement.Triggers>
-                                            <MultiTrigger TargetType="toolkit:MediaElement">
+                                        <appcontrols:PrecisionVideoPlayer.Triggers>
+                                            <MultiTrigger TargetType="appcontrols:PrecisionVideoPlayer">
                                                 <MultiTrigger.Conditions>
                                                     <BindingCondition Binding="{Binding HasParallelVideo2}" Value="True" />
                                                     <BindingCondition Binding="{Binding IsPreviewMode}" Value="True" />
                                                 </MultiTrigger.Conditions>
                                                 <Setter Property="IsVisible" Value="True" />
                                             </MultiTrigger>
-                                        </toolkit:MediaElement.Triggers>
-                                    </toolkit:MediaElement>
+                                        </appcontrols:PrecisionVideoPlayer.Triggers>
+                                    </appcontrols:PrecisionVideoPlayer>
+                                    <!--  Overlay para scrubbing  -->
+                                    <BoxView
+                                        BackgroundColor="Transparent"
+                                        IsVisible="{Binding HasParallelVideo2}">
+                                        <BoxView.Behaviors>
+                                            <behaviors:VideoScrubBehavior VideoIndex="2" />
+                                        </BoxView.Behaviors>
+                                    </BoxView>
                                 </Grid>
                             </Border>
                         </controls:AspectRatioContainer>
                     </Grid>
 
-                    <!--  Radio buttons orientación  -->
-                    <HorizontalStackLayout Spacing="16" HorizontalOptions="Center">
+                    <!--  Radio buttons orientación (solo en modo paralelo)  -->
+                    <HorizontalStackLayout Spacing="16" HorizontalOptions="Center" IsVisible="{Binding IsParallelVideoMode}">
                         <HorizontalStackLayout Spacing="6">
                             <RadioButton
                                 GroupName="ParallelOrientation"
@@ -918,29 +1091,9 @@
                         </HorizontalStackLayout>
                     </HorizontalStackLayout>
 
-                    <!--  Botones Vista previa, Reproducir y Limpiar  -->
-                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
+                    <!--  Botones Reproducir y Limpiar  -->
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
                         <Border
-                            Padding="10,8"
-                            BackgroundColor="#FF2A2A2A"
-                            Stroke="Transparent"
-                            StrokeShape="RoundRectangle 6">
-                            <Border.GestureRecognizers>
-                                <TapGestureRecognizer Command="{Binding PreviewParallelAnalysisCommand}" />
-                            </Border.GestureRecognizers>
-                            <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
-                                <controls:SymbolIcon
-                                    HeightRequest="16"
-                                    SymbolName="eye"
-                                    TintColor="White"
-                                    WidthRequest="16"
-                                    VerticalOptions="Center" />
-                                <Label Text="Vista previa" TextColor="White" VerticalOptions="Center" />
-                            </HorizontalStackLayout>
-                        </Border>
-
-                        <Border
-                            Grid.Column="1"
                             Padding="10,8"
                             BackgroundColor="#FF2A2A2A"
                             Stroke="Transparent"
@@ -960,7 +1113,7 @@
                         </Border>
 
                         <Border
-                            Grid.Column="2"
+                            Grid.Column="1"
                             Padding="10,8"
                             BackgroundColor="#FF2A2A2A"
                             Stroke="Transparent"
