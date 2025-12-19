@@ -707,8 +707,7 @@
                     <controls:AspectRatioContainer 
                         AspectRatio="1.777" 
                         IsVisible="{Binding IsSingleVideoMode}"
-                        HorizontalOptions="Center"
-                        WidthRequest="400">
+                        HorizontalOptions="Fill">
                         <Border
                             BackgroundColor="#FF2A2A2A"
                             Stroke="Transparent"
