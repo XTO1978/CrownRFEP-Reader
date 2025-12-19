@@ -3,6 +3,7 @@
     x:Class="CrownRFEP_Reader.Views.DashboardPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:behaviors="clr-namespace:CrownRFEP_Reader.Behaviors"
     xmlns:controls="clr-namespace:CrownRFEP_Reader.Views.Controls"
     xmlns:models="clr-namespace:CrownRFEP_Reader.Models"
     xmlns:services="clr-namespace:CrownRFEP_Reader.Services"
@@ -89,10 +90,14 @@
                 <!--  Item fijo: Galería General  -->
                 <CollectionView.Header>
                     <Border
+                        x:Name="AllGalleryHeaderBorder"
                         Margin="0,0,0,8"
                         BackgroundColor="Transparent"
                         Stroke="Transparent"
                         StrokeShape="RoundRectangle 4">
+                        <Border.Behaviors>
+                            <behaviors:DashboardAllGalleryHoverBehavior />
+                        </Border.Behaviors>
                         <Border.Triggers>
                             <DataTrigger
                                 TargetType="Border"
@@ -134,6 +139,9 @@
                             BackgroundColor="Transparent"
                             Stroke="Transparent"
                             StrokeShape="RoundRectangle 4">
+                            <Border.Behaviors>
+                                <behaviors:DashboardSessionItemHoverBehavior />
+                            </Border.Behaviors>
                             <HorizontalStackLayout
                                 Padding="16,10"
                                 Spacing="8"
@@ -263,6 +271,9 @@
                             Stroke="Transparent"
                             StrokeShape="RoundRectangle 4"
                             StrokeThickness="0">
+                            <Border.Behaviors>
+                                <behaviors:HoverBackgroundBehavior />
+                            </Border.Behaviors>
                             <Border.GestureRecognizers>
                                 <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=PlaySelectedVideoCommand}" CommandParameter="{Binding .}" />
                             </Border.GestureRecognizers>
@@ -358,332 +369,421 @@
             Padding="20">
             <VerticalStackLayout Spacing="12">
 
+                <!--  Pestañas: Acciones / Estadísticas  -->
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                    <Border
+                        Padding="10,8"
+                        BackgroundColor="#FF2A2A2A"
+                        Stroke="Transparent"
+                        StrokeShape="RoundRectangle 6">
+                        <Border.Triggers>
+                            <DataTrigger TargetType="Border" Binding="{Binding IsCrudTechTabSelected}" Value="True">
+                                <Setter Property="BackgroundColor" Value="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BackgroundColor}" />
+                            </DataTrigger>
+                        </Border.Triggers>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding SelectCrudTechTabCommand}" />
+                        </Border.GestureRecognizers>
+                        <Label Text="Acciones" TextColor="White" HorizontalOptions="Center">
+                            <Label.Triggers>
+                                <DataTrigger TargetType="Label" Binding="{Binding IsCrudTechTabSelected}" Value="True">
+                                    <Setter Property="FontAttributes" Value="Bold" />
+                                </DataTrigger>
+                                <DataTrigger TargetType="Label" Binding="{Binding IsCrudTechTabSelected}" Value="False">
+                                    <Setter Property="FontAttributes" Value="None" />
+                                </DataTrigger>
+                            </Label.Triggers>
+                        </Label>
+                    </Border>
 
-                <!--  Filtros para Galería General  -->
-                <Border
-                    Margin="0,8,0,8"
-                    Padding="12"
-                    BackgroundColor="#FF2A2A2A"
-                    IsVisible="{Binding IsAllGallerySelected}"
-                    Stroke="Transparent"
-                    StrokeShape="RoundRectangle 8">
-                    <Grid>
-                        <!--  Capa principal con los headers de filtros  -->
-                        <VerticalStackLayout Spacing="10" ZIndex="1">
-                            <HorizontalStackLayout Spacing="8" VerticalOptions="Center">
+                    <Border
+                        Grid.Column="1"
+                        Padding="10,8"
+                        BackgroundColor="#FF2A2A2A"
+                        Stroke="Transparent"
+                        StrokeShape="RoundRectangle 6">
+                        <Border.Triggers>
+                            <DataTrigger TargetType="Border" Binding="{Binding IsStatsTabSelected}" Value="True">
+                                <Setter Property="BackgroundColor" Value="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BackgroundColor}" />
+                            </DataTrigger>
+                        </Border.Triggers>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding SelectStatsTabCommand}" />
+                        </Border.GestureRecognizers>
+                        <Label Text="Estadísticas" TextColor="White" HorizontalOptions="Center">
+                            <Label.Triggers>
+                                <DataTrigger TargetType="Label" Binding="{Binding IsStatsTabSelected}" Value="True">
+                                    <Setter Property="FontAttributes" Value="Bold" />
+                                </DataTrigger>
+                                <DataTrigger TargetType="Label" Binding="{Binding IsStatsTabSelected}" Value="False">
+                                    <Setter Property="FontAttributes" Value="None" />
+                                </DataTrigger>
+                            </Label.Triggers>
+                        </Label>
+                    </Border>
 
-                                <controls:SymbolIcon
-                                    HeightRequest="24"
-                                    SymbolName="line.3.horizontal.circle"
-                                    TintColor="#FF6DDDFF"
-                                    VerticalOptions="Center"
-                                    WidthRequest="24" />
-                                <Label
-                                    FontSize="24"
-                                    Text="Filtros"
-                                    TextColor="White" VerticalOptions="Center" />
-                                <Button
-                                    Padding="8,4"
-                                    BackgroundColor="Transparent"
-                                    Command="{Binding ClearFiltersCommand}"
-                                    FontSize="14"
-                                    Text="Limpiar"
-                                    TextColor="#FF6DDDFF"
-                                    VerticalOptions="Center" />
-                            </HorizontalStackLayout>
+                </Grid>
 
-                            <!--  Header Lugar  -->
-                            <Border
-                                x:Name="PlacesHeader"
-                                Padding="10,8"
-                                BackgroundColor="#FF3A3A3A"
-                                Stroke="Transparent"
-                                StrokeShape="RoundRectangle 4">
-                                <Border.GestureRecognizers>
-                                    <TapGestureRecognizer Command="{Binding TogglePlacesExpandedCommand}" />
-                                </Border.GestureRecognizers>
-                                <Grid ColumnDefinitions="*,Auto">
-                                    <VerticalStackLayout Grid.Column="0">
-                                        <Label
-                                            FontSize="16"
-                                            Text="Lugar"
-                                            TextColor="#FFB1B1B1" />
-                                        <Label
-                                            FontSize="16"
-                                            Text="{Binding SelectedPlacesSummary}"
-                                            TextColor="White" />
-                                    </VerticalStackLayout>
+
+                <!--  Pestaña: Acciones CRUD + análisis técnico (no por defecto)  -->
+                <VerticalStackLayout IsVisible="{Binding IsCrudTechTabSelected}" Spacing="12">
+                    <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                        <controls:SymbolIcon
+                            HeightRequest="24"
+                            SymbolName="wrench.and.screwdriver"
+                            TintColor="#FF6DDDFF"
+                            VerticalOptions="Center"
+                            WidthRequest="24" />
+                        <Label
+                            FontSize="24"
+                            Text="Acciones"
+                            TextColor="White" />
+                    </HorizontalStackLayout>
+
+                    <Border
+                        Padding="12"
+                        BackgroundColor="#FF2A2A2A"
+                        Stroke="Transparent"
+                        StrokeShape="RoundRectangle 8">
+                        <Label
+                            FontSize="14"
+                            TextColor="#FFB1B1B1"
+                            Text="Aquí irán las acciones CRUD sobre la galería y controles de análisis técnico." />
+                    </Border>
+                </VerticalStackLayout>
+
+
+                <!--  Panel de filtros (ahora dentro de Estadísticas)  -->
+                <VerticalStackLayout IsVisible="{Binding IsStatsTabSelected}" Spacing="12">
+                    <!--  Filtros para Galería General  -->
+                    <Border
+                        Margin="0,8,0,8"
+                        Padding="12"
+                        BackgroundColor="Transparent"
+                        IsVisible="{Binding IsAllGallerySelected}"
+                        Stroke="Transparent"
+                        StrokeShape="RoundRectangle 8">
+                        <Grid>
+                            <!--  Capa principal con los headers de filtros  -->
+                            <VerticalStackLayout Spacing="10" ZIndex="1">
+                                <HorizontalStackLayout Spacing="8" VerticalOptions="Center">
+
+                                    <controls:SymbolIcon
+                                        HeightRequest="24"
+                                        SymbolName="line.3.horizontal.circle"
+                                        TintColor="#FF6DDDFF"
+                                        VerticalOptions="Center"
+                                        WidthRequest="24" />
                                     <Label
-                                        Grid.Column="1"
-                                        FontSize="16"
-                                        Text="{Binding IsPlacesExpanded, Converter={StaticResource BoolToExpandIconConverter}}"
-                                        TextColor="Gray"
+                                        FontSize="24"
+                                        Text="Filtros"
+                                        TextColor="White" VerticalOptions="Center" />
+                                    <Button
+                                        Padding="8,4"
+                                        BackgroundColor="Transparent"
+                                        Command="{Binding ClearFiltersCommand}"
+                                        FontSize="14"
+                                        Text="Limpiar"
+                                        TextColor="#FF6DDDFF"
                                         VerticalOptions="Center" />
-                                </Grid>
-                            </Border>
+                                </HorizontalStackLayout>
 
-                            <!--  Header Deportista  -->
-                            <Border
-                                x:Name="AthletesHeader"
-                                Padding="10,8"
-                                BackgroundColor="#FF3A3A3A"
-                                Stroke="Transparent"
-                                StrokeShape="RoundRectangle 4">
-                                <Border.GestureRecognizers>
-                                    <TapGestureRecognizer Command="{Binding ToggleAthletesExpandedCommand}" />
-                                </Border.GestureRecognizers>
-                                <Grid ColumnDefinitions="*,Auto">
-                                    <VerticalStackLayout Grid.Column="0">
+                                <!--  Header Lugar  -->
+                                <Border
+                                    x:Name="PlacesHeader"
+                                    Padding="10,8"
+                                    BackgroundColor="#FF2A2A2A"
+                                    Stroke="Transparent"
+                                    StrokeShape="RoundRectangle 4">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Command="{Binding TogglePlacesExpandedCommand}" />
+                                    </Border.GestureRecognizers>
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <VerticalStackLayout Grid.Column="0">
+                                            <Label
+                                                FontSize="16"
+                                                Text="Lugar"
+                                                TextColor="#FFB1B1B1" />
+                                            <Label
+                                                FontSize="16"
+                                                Text="{Binding SelectedPlacesSummary}"
+                                                TextColor="White" />
+                                        </VerticalStackLayout>
                                         <Label
+                                            Grid.Column="1"
                                             FontSize="16"
-                                            Text="Deportista"
-                                            TextColor="#FFB1B1B1" />
-                                        <Label
-                                            FontSize="16"
-                                            Text="{Binding SelectedAthletesSummary}"
-                                            TextColor="White" />
-                                    </VerticalStackLayout>
-                                    <Label
-                                        Grid.Column="1"
-                                        FontSize="16"
-                                        Text="{Binding IsAthletesExpanded, Converter={StaticResource BoolToExpandIconConverter}}"
-                                        TextColor="Gray"
-                                        VerticalOptions="Center" />
-                                </Grid>
-                            </Border>
-
-                            <!--  Header Sección  -->
-                            <Border
-                                x:Name="SectionsHeader"
-                                Padding="10,8"
-                                BackgroundColor="#FF3A3A3A"
-                                Stroke="Transparent"
-                                StrokeShape="RoundRectangle 4">
-                                <Border.GestureRecognizers>
-                                    <TapGestureRecognizer Command="{Binding ToggleSectionsExpandedCommand}" />
-                                </Border.GestureRecognizers>
-                                <Grid ColumnDefinitions="*,Auto">
-                                    <VerticalStackLayout Grid.Column="0">
-                                        <Label
-                                            FontSize="16"
-                                            Text="Sección"
-                                            TextColor="#FFB1B1B1" />
-                                        <Label
-                                            FontSize="16"
-                                            Text="{Binding SelectedSectionsSummary}"
-                                            TextColor="White" />
-                                    </VerticalStackLayout>
-                                    <Label
-                                        Grid.Column="1"
-                                        FontSize="16"
-                                        Text="{Binding IsSectionsExpanded, Converter={StaticResource BoolToExpandIconConverter}}"
-                                        TextColor="Gray"
-                                        VerticalOptions="Center" />
-                                </Grid>
-                            </Border>
-
-                            <!--  Header Tag  -->
-                            <Border
-                                x:Name="TagsHeader"
-                                Padding="10,8"
-                                BackgroundColor="#FF3A3A3A"
-                                Stroke="Transparent"
-                                StrokeShape="RoundRectangle 4">
-                                <Border.GestureRecognizers>
-                                    <TapGestureRecognizer Command="{Binding ToggleTagsExpandedCommand}" />
-                                </Border.GestureRecognizers>
-                                <Grid ColumnDefinitions="*,Auto">
-                                    <VerticalStackLayout Grid.Column="0">
-                                        <Label
-                                            FontFamily="SF Pro Text"
-                                            FontSize="16"
-                                            Text="Tag"
-                                            TextColor="#FFB1B1B1" />
-                                        <Label
-                                            FontFamily="SF Pro Text"
-                                            FontSize="16"
-                                            Text="{Binding SelectedTagsSummary}"
-                                            TextColor="White" />
-                                    </VerticalStackLayout>
-                                    <Label
-                                        Grid.Column="1"
-                                        FontSize="16"
-                                        Text="{Binding IsTagsExpanded, Converter={StaticResource BoolToExpandIconConverter}}"
-                                        TextColor="Gray"
-                                        VerticalOptions="Center" />
-                                </Grid>
-                            </Border>
-                            <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
-                                <!--  Fecha desde  -->
-                                <VerticalStackLayout Grid.Column="0" Spacing="4">
-                                    <Label
-                                        FontSize="16"
-                                        Text="Fecha desde"
-                                        TextColor="#FFB1B1B1" />
-                                    <Border
-                                        BackgroundColor="#FF3A3A3A"
-                                        StrokeShape="RoundRectangle 4"
-                                        Stroke="Transparent"
-                                        Padding="12,12,0,-6"
-                                        HorizontalOptions="Fill">
-                                        <DatePicker
-                                            Date="{Binding SelectedFilterDateFrom}"
-                                            TextColor="White"
-                                            BackgroundColor="Transparent"
-                                            HorizontalOptions="Fill"
-                                            VerticalOptions="Fill" />
-                                    </Border>
-                                </VerticalStackLayout>
-
-                                <!--  Fecha hasta  -->
-                                <VerticalStackLayout Grid.Column="1" Spacing="4">
-                                    <Label
-                                        FontSize="16"
-                                        Text="Fecha hasta"
-                                        TextColor="#FFB1B1B1" />
-                                    <Border
-                                        BackgroundColor="#FF3A3A3A"
-                                        StrokeShape="RoundRectangle 4"
-                                        Stroke="Transparent"
-                                        Padding="12,12,0,-6"
-                                        HorizontalOptions="Fill">
-                                        <DatePicker
-                                            Date="{Binding SelectedFilterDateTo}"
-                                            TextColor="White"
-                                            BackgroundColor="Transparent"
-                                            HorizontalOptions="Fill"
+                                            Text="{Binding IsPlacesExpanded, Converter={StaticResource BoolToExpandIconConverter}}"
+                                            TextColor="Gray"
                                             VerticalOptions="Center" />
-                                    </Border>
-                                </VerticalStackLayout>
-                            </Grid>
-                        </VerticalStackLayout>
+                                    </Grid>
+                                </Border>
 
-                        <!--  Capa de overlay para dropdowns flotantes  -->
-                        <!--  Dropdown Lugar  -->
-                        <Border
-                            Margin="0,114,0,0"
-                            Padding="8"
-                            BackgroundColor="#FF3A3A3A"
-                            HorizontalOptions="Fill"
-                            IsVisible="{Binding IsPlacesExpanded}"
-                            Stroke="#FF555555"
-                            StrokeShape="RoundRectangle 4"
-                            StrokeThickness="1"
-                            VerticalOptions="Start"
-                            ZIndex="100">
-                            <ScrollView HeightRequest="160">
-                                <VerticalStackLayout BindableLayout.ItemsSource="{Binding FilterPlaces}" Spacing="2">
-                                    <BindableLayout.ItemTemplate>
-                                        <DataTemplate x:DataType="models:PlaceFilterItem">
-                                            <HorizontalStackLayout Spacing="4">
-                                                <CheckBox IsChecked="{Binding IsSelected}" Color="#FF6DDDFF" />
-                                                <Label
-                                                    FontFamily="SF Pro Text"
-                                                    FontSize="16"
-                                                    Text="{Binding DisplayName}"
-                                                    TextColor="White"
-                                                    VerticalOptions="Center" />
-                                            </HorizontalStackLayout>
-                                        </DataTemplate>
-                                    </BindableLayout.ItemTemplate>
-                                </VerticalStackLayout>
-                            </ScrollView>
-                        </Border>
+                                <!--  Header Deportista  -->
+                                <Border
+                                    x:Name="AthletesHeader"
+                                    Padding="10,8"
+                                    BackgroundColor="#FF2A2A2A"
+                                    Stroke="Transparent"
+                                    StrokeShape="RoundRectangle 4">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Command="{Binding ToggleAthletesExpandedCommand}" />
+                                    </Border.GestureRecognizers>
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <VerticalStackLayout Grid.Column="0">
+                                            <Label
+                                                FontSize="16"
+                                                Text="Deportista"
+                                                TextColor="#FFB1B1B1" />
+                                            <Label
+                                                FontSize="16"
+                                                Text="{Binding SelectedAthletesSummary}"
+                                                TextColor="White" />
+                                        </VerticalStackLayout>
+                                        <Label
+                                            Grid.Column="1"
+                                            FontSize="16"
+                                            Text="{Binding IsAthletesExpanded, Converter={StaticResource BoolToExpandIconConverter}}"
+                                            TextColor="Gray"
+                                            VerticalOptions="Center" />
+                                    </Grid>
+                                </Border>
 
-                        <!--  Dropdown Deportista  -->
-                        <Border
-                            Margin="0,162,0,0"
-                            Padding="8"
-                            BackgroundColor="#FF3A3A3A"
-                            HorizontalOptions="Fill"
-                            IsVisible="{Binding IsAthletesExpanded}"
-                            Stroke="#FF555555"
-                            StrokeShape="RoundRectangle 4"
-                            StrokeThickness="1"
-                            VerticalOptions="Start"
-                            ZIndex="100">
-                            <ScrollView HeightRequest="150">
-                                <VerticalStackLayout BindableLayout.ItemsSource="{Binding FilterAthletes}" Spacing="2">
-                                    <BindableLayout.ItemTemplate>
-                                        <DataTemplate x:DataType="models:AthleteFilterItem">
-                                            <HorizontalStackLayout Spacing="4">
-                                                <CheckBox IsChecked="{Binding IsSelected}" Color="#FF6DDDFF" />
-                                                <Label
-                                                    FontFamily="SF Pro Text"
-                                                    FontSize="16"
-                                                    Text="{Binding DisplayName}"
-                                                    TextColor="White"
-                                                    VerticalOptions="Center" />
-                                            </HorizontalStackLayout>
-                                        </DataTemplate>
-                                    </BindableLayout.ItemTemplate>
-                                </VerticalStackLayout>
-                            </ScrollView>
-                        </Border>
+                                <!--  Header Sección  -->
+                                <Border
+                                    x:Name="SectionsHeader"
+                                    Padding="10,8"
+                                    BackgroundColor="#FF2A2A2A"
+                                    Stroke="Transparent"
+                                    StrokeShape="RoundRectangle 4">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Command="{Binding ToggleSectionsExpandedCommand}" />
+                                    </Border.GestureRecognizers>
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <VerticalStackLayout Grid.Column="0">
+                                            <Label
+                                                FontSize="16"
+                                                Text="Sección"
+                                                TextColor="#FFB1B1B1" />
+                                            <Label
+                                                FontSize="16"
+                                                Text="{Binding SelectedSectionsSummary}"
+                                                TextColor="White" />
+                                        </VerticalStackLayout>
+                                        <Label
+                                            Grid.Column="1"
+                                            FontSize="16"
+                                            Text="{Binding IsSectionsExpanded, Converter={StaticResource BoolToExpandIconConverter}}"
+                                            TextColor="Gray"
+                                            VerticalOptions="Center" />
+                                    </Grid>
+                                </Border>
 
-                        <!--  Dropdown Sección  -->
-                        <Border
-                            Margin="0,210,0,0"
-                            Padding="8"
-                            BackgroundColor="#FF3A3A3A"
-                            HorizontalOptions="Fill"
-                            IsVisible="{Binding IsSectionsExpanded}"
-                            Stroke="#FF555555"
-                            StrokeShape="RoundRectangle 4"
-                            StrokeThickness="1"
-                            VerticalOptions="Start"
-                            ZIndex="100">
-                            <ScrollView HeightRequest="120">
-                                <VerticalStackLayout BindableLayout.ItemsSource="{Binding FilterSections}" Spacing="2">
-                                    <BindableLayout.ItemTemplate>
-                                        <DataTemplate x:DataType="models:SectionFilterItem">
-                                            <HorizontalStackLayout Spacing="4">
-                                                <CheckBox IsChecked="{Binding IsSelected}" Color="#FF6DDDFF" />
-                                                <Label
-                                                    FontFamily="SF Pro Text"
-                                                    FontSize="16"
-                                                    Text="{Binding DisplayName}"
-                                                    TextColor="White"
-                                                    VerticalOptions="Center" />
-                                            </HorizontalStackLayout>
-                                        </DataTemplate>
-                                    </BindableLayout.ItemTemplate>
-                                </VerticalStackLayout>
-                            </ScrollView>
-                        </Border>
+                                <!--  Header Tag  -->
+                                <Border
+                                    x:Name="TagsHeader"
+                                    Padding="10,8"
+                                    BackgroundColor="#FF2A2A2A"
+                                    Stroke="Transparent"
+                                    StrokeShape="RoundRectangle 4">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Command="{Binding ToggleTagsExpandedCommand}" />
+                                    </Border.GestureRecognizers>
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <VerticalStackLayout Grid.Column="0">
+                                            <Label
+                                                FontFamily="SF Pro Text"
+                                                FontSize="16"
+                                                Text="Tag"
+                                                TextColor="#FFB1B1B1" />
+                                            <Label
+                                                FontFamily="SF Pro Text"
+                                                FontSize="16"
+                                                Text="{Binding SelectedTagsSummary}"
+                                                TextColor="White" />
+                                        </VerticalStackLayout>
+                                        <Label
+                                            Grid.Column="1"
+                                            FontSize="16"
+                                            Text="{Binding IsTagsExpanded, Converter={StaticResource BoolToExpandIconConverter}}"
+                                            TextColor="Gray"
+                                            VerticalOptions="Center" />
+                                    </Grid>
+                                </Border>
+                                <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                                    <!--  Fecha desde  -->
+                                    <VerticalStackLayout Grid.Column="0" Spacing="4">
+                                        <Label
+                                            FontSize="16"
+                                            Text="Fecha desde"
+                                            TextColor="#FFB1B1B1" />
+                                        <Border
+                                            BackgroundColor="#FF3A3A3A"
+                                            StrokeShape="RoundRectangle 4"
+                                            Stroke="Transparent"
+                                            Padding="12,12,0,-6"
+                                            HorizontalOptions="Fill">
+                                            <DatePicker
+                                                Date="{Binding SelectedFilterDateFrom}"
+                                                TextColor="White"
+                                                BackgroundColor="Transparent"
+                                                HorizontalOptions="Fill"
+                                                VerticalOptions="Fill" />
+                                        </Border>
+                                    </VerticalStackLayout>
 
-                        <!--  Dropdown Tag  -->
-                        <Border
-                            Margin="0,258,0,0"
-                            Padding="8"
-                            BackgroundColor="#FF3A3A3A"
-                            HorizontalOptions="Fill"
-                            IsVisible="{Binding IsTagsExpanded}"
-                            Stroke="#FF555555"
-                            StrokeShape="RoundRectangle 4"
-                            StrokeThickness="1"
-                            VerticalOptions="Start"
-                            ZIndex="100">
-                            <ScrollView HeightRequest="120">
-                                <VerticalStackLayout BindableLayout.ItemsSource="{Binding FilterTagItems}" Spacing="2">
-                                    <BindableLayout.ItemTemplate>
-                                        <DataTemplate x:DataType="models:TagFilterItem">
-                                            <HorizontalStackLayout Spacing="4">
-                                                <CheckBox IsChecked="{Binding IsSelected}" Color="#FF6DDDFF" />
-                                                <Label
-                                                    FontFamily="SF Pro Text"
-                                                    FontSize="16"
-                                                    Text="{Binding DisplayName}"
-                                                    TextColor="White"
-                                                    VerticalOptions="Center" />
-                                            </HorizontalStackLayout>
-                                        </DataTemplate>
-                                    </BindableLayout.ItemTemplate>
-                                </VerticalStackLayout>
-                            </ScrollView>
-                        </Border>
-                    </Grid>
-                </Border>
+                                    <!--  Fecha hasta  -->
+                                    <VerticalStackLayout Grid.Column="1" Spacing="4">
+                                        <Label
+                                            FontSize="16"
+                                            Text="Fecha hasta"
+                                            TextColor="#FFB1B1B1" />
+                                        <Border
+                                            BackgroundColor="#FF2A2A2A"
+                                            StrokeShape="RoundRectangle 4"
+                                            Stroke="Transparent"
+                                            Padding="12,12,0,-6"
+                                            HorizontalOptions="Fill">
+                                            <DatePicker
+                                                Date="{Binding SelectedFilterDateTo}"
+                                                TextColor="White"
+                                                BackgroundColor="Transparent"
+                                                HorizontalOptions="Fill"
+                                                VerticalOptions="Center" />
+                                        </Border>
+                                    </VerticalStackLayout>
+                                </Grid>
+                            </VerticalStackLayout>
+
+                            <!--  Capa de overlay para dropdowns flotantes  -->
+                            <!--  Dropdown Lugar  -->
+                            <Border
+                                Margin="0,114,0,0"
+                                Padding="8"
+                                BackgroundColor="#FF2A2A2A"
+                                HorizontalOptions="Fill"
+                                IsVisible="{Binding IsPlacesExpanded}"
+                                Stroke="Transparent"
+                                StrokeShape="RoundRectangle 4"
+                                StrokeThickness="1"
+                                VerticalOptions="Start"
+                                ZIndex="100" HeightRequest="280">
+                                <ScrollView HeightRequest="280">
+                                    <VerticalStackLayout BindableLayout.ItemsSource="{Binding FilterPlaces}" Spacing="2">
+                                        <BindableLayout.ItemTemplate>
+                                            <DataTemplate x:DataType="models:PlaceFilterItem">
+                                                <HorizontalStackLayout Spacing="4">
+                                                    <CheckBox IsChecked="{Binding IsSelected}" Color="#FF6DDDFF" />
+                                                    <Label
+                                                        FontFamily="SF Pro Text"
+                                                        FontSize="16"
+                                                        Text="{Binding DisplayName}"
+                                                        TextColor="White"
+                                                        VerticalOptions="Center" />
+                                                </HorizontalStackLayout>
+                                            </DataTemplate>
+                                        </BindableLayout.ItemTemplate>
+                                    </VerticalStackLayout>
+                                </ScrollView>
+                            </Border>
+
+                            <!--  Dropdown Deportista  -->
+                            <Border
+                                Margin="0,180,0,0"
+                                Padding="8"
+                                BackgroundColor="#FF2A2A2A"
+                                HorizontalOptions="Fill"
+                                IsVisible="{Binding IsAthletesExpanded}"
+                                Stroke="Transparent"
+                                StrokeShape="RoundRectangle 4"
+                                StrokeThickness="1"
+                                VerticalOptions="Start"
+                                ZIndex="100" HeightRequest="280">
+                                <ScrollView HeightRequest="280">
+                                    <VerticalStackLayout BindableLayout.ItemsSource="{Binding FilterAthletes}" Spacing="2">
+                                        <BindableLayout.ItemTemplate>
+                                            <DataTemplate x:DataType="models:AthleteFilterItem">
+                                                <HorizontalStackLayout Spacing="4">
+                                                    <CheckBox IsChecked="{Binding IsSelected}" Color="#FF6DDDFF" />
+                                                    <Label
+                                                        FontFamily="SF Pro Text"
+                                                        FontSize="16"
+                                                        Text="{Binding DisplayName}"
+                                                        TextColor="White"
+                                                        VerticalOptions="Center" />
+                                                </HorizontalStackLayout>
+                                            </DataTemplate>
+                                        </BindableLayout.ItemTemplate>
+                                    </VerticalStackLayout>
+                                </ScrollView>
+                            </Border>
+
+                            <!--  Dropdown Sección  -->
+                            <Border
+                                Margin="0,244,0,0"
+                                Padding="8"
+                                BackgroundColor="#FF2A2A2A"
+                                HorizontalOptions="Fill"
+                                IsVisible="{Binding IsSectionsExpanded}"
+                                Stroke="Transparent"
+                                StrokeShape="RoundRectangle 4"
+                                StrokeThickness="1"
+                                VerticalOptions="Start"
+                                ZIndex="100" HeightRequest="280">
+                                <ScrollView HeightRequest="280">
+                                    <VerticalStackLayout BindableLayout.ItemsSource="{Binding FilterSections}" Spacing="2">
+                                        <BindableLayout.ItemTemplate>
+                                            <DataTemplate x:DataType="models:SectionFilterItem">
+                                                <HorizontalStackLayout Spacing="4">
+                                                    <CheckBox IsChecked="{Binding IsSelected}" Color="#FF6DDDFF" />
+                                                    <Label
+                                                        FontFamily="SF Pro Text"
+                                                        FontSize="16"
+                                                        Text="{Binding DisplayName}"
+                                                        TextColor="White"
+                                                        VerticalOptions="Center" />
+                                                </HorizontalStackLayout>
+                                            </DataTemplate>
+                                        </BindableLayout.ItemTemplate>
+                                    </VerticalStackLayout>
+                                </ScrollView>
+                            </Border>
+
+                            <!--  Dropdown Tag  -->
+                            <Border
+                                Margin="0,310,0,0"
+                                Padding="8"
+                                BackgroundColor="#FF2A2A2A"
+                                HorizontalOptions="Fill"
+                                IsVisible="{Binding IsTagsExpanded}"
+                                Stroke="Transparent"
+                                StrokeShape="RoundRectangle 4"
+                                StrokeThickness="1"
+                                VerticalOptions="Start"
+                                ZIndex="100" HeightRequest="280">
+                                <ScrollView HeightRequest="280">
+                                    <VerticalStackLayout BindableLayout.ItemsSource="{Binding FilterTagItems}" Spacing="2">
+                                        <BindableLayout.ItemTemplate>
+                                            <DataTemplate x:DataType="models:TagFilterItem">
+                                                <HorizontalStackLayout Spacing="4">
+                                                    <CheckBox IsChecked="{Binding IsSelected}" Color="#FF6DDDFF" />
+                                                    <Label
+                                                        FontFamily="SF Pro Text"
+                                                        FontSize="16"
+                                                        Text="{Binding DisplayName}"
+                                                        TextColor="White"
+                                                        VerticalOptions="Center" />
+                                                </HorizontalStackLayout>
+                                            </DataTemplate>
+                                        </BindableLayout.ItemTemplate>
+                                    </VerticalStackLayout>
+                                </ScrollView>
+                            </Border>
+                        </Grid>
+                    </Border>
+                </VerticalStackLayout>
+
+                <!--  Vista actual de estadísticas  -->
+                <VerticalStackLayout IsVisible="{Binding IsStatsTabSelected}" Spacing="12">
                 <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
                     <controls:SymbolIcon
                         HeightRequest="24"
@@ -940,6 +1040,7 @@
                             TextColor="Gray" />
                     </CollectionView.EmptyView>
                 </CollectionView>
+                </VerticalStackLayout>
             </VerticalStackLayout>
         </ScrollView>
 

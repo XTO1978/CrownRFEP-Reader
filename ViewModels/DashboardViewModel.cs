@@ -23,6 +23,10 @@ public class DashboardViewModel : BaseViewModel
     private int _importProgressValue;
     private bool _isImporting;
 
+    // Pestañas columna derecha
+    private bool _isStatsTabSelected = true;
+    private bool _isCrudTechTabSelected;
+
     // Lazy loading
     private const int PageSize = 40;
     private int _currentPage;
@@ -100,6 +104,36 @@ public class DashboardViewModel : BaseViewModel
     {
         get => _isImporting;
         set => SetProperty(ref _isImporting, value);
+    }
+
+    public bool IsStatsTabSelected
+    {
+        get => _isStatsTabSelected;
+        set
+        {
+            if (SetProperty(ref _isStatsTabSelected, value))
+            {
+                if (value)
+                {
+                    IsCrudTechTabSelected = false;
+                }
+            }
+        }
+    }
+
+    public bool IsCrudTechTabSelected
+    {
+        get => _isCrudTechTabSelected;
+        set
+        {
+            if (SetProperty(ref _isCrudTechTabSelected, value))
+            {
+                if (value)
+                {
+                    IsStatsTabSelected = false;
+                }
+            }
+        }
     }
 
     public bool HasMoreVideos
@@ -260,6 +294,8 @@ public class DashboardViewModel : BaseViewModel
     public ICommand ToggleAthletesExpandedCommand { get; }
     public ICommand ToggleSectionsExpandedCommand { get; }
     public ICommand ToggleTagsExpandedCommand { get; }
+    public ICommand SelectStatsTabCommand { get; }
+    public ICommand SelectCrudTechTabCommand { get; }
 
     public DashboardViewModel(
         DatabaseService databaseService,
@@ -286,6 +322,9 @@ public class DashboardViewModel : BaseViewModel
         ToggleAthletesExpandedCommand = new RelayCommand(() => IsAthletesExpanded = !IsAthletesExpanded);
         ToggleSectionsExpandedCommand = new RelayCommand(() => IsSectionsExpanded = !IsSectionsExpanded);
         ToggleTagsExpandedCommand = new RelayCommand(() => IsTagsExpanded = !IsTagsExpanded);
+
+        SelectStatsTabCommand = new RelayCommand(() => IsStatsTabSelected = true);
+        SelectCrudTechTabCommand = new RelayCommand(() => IsCrudTechTabSelected = true);
     }
 
     private void ClearFilters()

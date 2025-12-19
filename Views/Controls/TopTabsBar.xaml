@@ -3,6 +3,7 @@
     x:Class="CrownRFEP_Reader.Views.Controls.TopTabsBar"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:behaviors="clr-namespace:CrownRFEP_Reader.Behaviors"
     xmlns:shapes="clr-namespace:Microsoft.Maui.Controls.Shapes;assembly=Microsoft.Maui.Controls"
     BackgroundColor="#FF303030">
 
@@ -14,8 +15,12 @@
                 TextColor="White"
                 FontFamily="{StaticResource AppFontBody}"
                 FontSize="16"
-                Padding="16,5"
-                CornerRadius="0" /> 
+                Padding="16,5" Margin="6"
+                CornerRadius="4">
+            <Button.Behaviors>
+                <behaviors:HoverBackgroundBehavior />
+            </Button.Behaviors>
+        </Button>
                 
                 <Button Grid.Column="1"
                 Text="Sesiones"
@@ -25,7 +30,12 @@
                 FontFamily="{StaticResource AppFontBody}"
                 FontSize="16"
                 Padding="16,5"
-                CornerRadius="0" />
+                Margin="6"
+                CornerRadius="4">
+            <Button.Behaviors>
+                <behaviors:HoverBackgroundBehavior />
+            </Button.Behaviors>
+        </Button>
 
                 <Button Grid.Column="2"
                 Text="Atletas"
@@ -35,7 +45,12 @@
                 FontFamily="{StaticResource AppFontBody}"
                 FontSize="16"
                 Padding="16,5"
-                CornerRadius="0" />
+                Margin="6"
+                CornerRadius="4">
+            <Button.Behaviors>
+                <behaviors:HoverBackgroundBehavior />
+            </Button.Behaviors>
+        </Button>
                 
                 <Button Grid.Column="3"
                 Text="Estadísticas"
@@ -45,7 +60,12 @@
                 FontFamily="{StaticResource AppFontBody}"
                 FontSize="16"
                 Padding="16,5"
-                CornerRadius="0" />
+                Margin="6"
+                CornerRadius="4">
+            <Button.Behaviors>
+                <behaviors:HoverBackgroundBehavior />
+            </Button.Behaviors>
+        </Button>
                 
                 <Button Grid.Column="4"
                 Text="Importar"
@@ -55,7 +75,12 @@
                 FontFamily="{StaticResource AppFontBody}"
                 FontSize="16"
                 Padding="16,5"
-                CornerRadius="0" />
+                Margin="6"
+                CornerRadius="4">
+            <Button.Behaviors>
+                <behaviors:HoverBackgroundBehavior />
+            </Button.Behaviors>
+        </Button>
                 
                 
                 <Border
@@ -64,10 +89,16 @@
                 BackgroundColor="Transparent"
                 Stroke="Transparent"
                 StrokeThickness="0"
-                Padding="16,5">
+                Padding="16,5" Margin="6">
                 <Border.GestureRecognizers>
                     <TapGestureRecognizer Tapped="OnProfileTapped" />
                 </Border.GestureRecognizers>
+                <Border.Behaviors>
+                    <behaviors:HoverBackgroundBehavior />
+                </Border.Behaviors>
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="4" />
+                </Border.StrokeShape>
 
                 <HorizontalStackLayout Spacing="8" VerticalOptions="Center">
                     <Border WidthRequest="0.6" Margin="0,0,18,0" BackgroundColor="#FF232323" Stroke="#FF757575"/>
