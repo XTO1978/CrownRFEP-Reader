@@ -1,4 +1,5 @@
 using CrownRFEP_Reader.Controls;
+using CrownRFEP_Reader.Models;
 using CrownRFEP_Reader.ViewModels;
 
 namespace CrownRFEP_Reader.Views;
@@ -24,6 +25,7 @@ public partial class SinglePlayerPage : ContentPage
         _viewModel.FrameForwardRequested += OnFrameForwardRequested;
         _viewModel.FrameBackwardRequested += OnFrameBackwardRequested;
         _viewModel.SpeedChangeRequested += OnSpeedChangeRequested;
+        _viewModel.VideoChanged += OnVideoChanged;
     }
 
     protected override void OnAppearing()
@@ -61,6 +63,7 @@ public partial class SinglePlayerPage : ContentPage
         _viewModel.FrameForwardRequested -= OnFrameForwardRequested;
         _viewModel.FrameBackwardRequested -= OnFrameBackwardRequested;
         _viewModel.SpeedChangeRequested -= OnSpeedChangeRequested;
+        _viewModel.VideoChanged -= OnVideoChanged;
 
         // Desuscribirse de eventos del reproductor
         if (MediaPlayer != null)
@@ -179,6 +182,91 @@ public partial class SinglePlayerPage : ContentPage
         
         // Mantener el reproductor en pausa mostrando el frame seleccionado
         // El usuario debe pulsar play manualmente para reanudar
+    }
+
+    #endregion
+
+    #region Navegación de playlist
+
+    private void OnVideoChanged(object? sender, VideoClip newVideo)
+    {
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            // Detener reproducción actual
+            _viewModel.IsPlaying = false;
+            MediaPlayer?.Stop();
+            
+            // Resetear posición
+            _viewModel.CurrentPosition = TimeSpan.Zero;
+            _viewModel.Duration = TimeSpan.Zero;
+            
+            // Cargar nuevo video (el binding de Source ya está actualizado)
+            if (!string.IsNullOrEmpty(newVideo.LocalClipPath) && MediaPlayer != null)
+            {
+                MediaPlayer.Source = newVideo.LocalClipPath;
+            }
+        });
+    }
+
+    #endregion
+
+    #region Dropdown handlers
+
+    private async void OnAthleteDropdownTapped(object? sender, TappedEventArgs e)
+    {
+        var options = _viewModel.AthleteOptions.ToArray();
+        if (options.Length == 0) return;
+        
+        var result = await DisplayActionSheet(
+            "Seleccionar atleta", 
+            "Cancelar", 
+            null, 
+            options.Select(o => o.DisplayName).ToArray());
+        
+        if (!string.IsNullOrEmpty(result) && result != "Cancelar")
+        {
+            var selected = options.FirstOrDefault(o => o.DisplayName == result);
+            if (selected != null)
+                _viewModel.SelectedAthlete = selected;
+        }
+    }
+
+    private async void OnSectionDropdownTapped(object? sender, TappedEventArgs e)
+    {
+        var options = _viewModel.SectionOptions.ToArray();
+        if (options.Length == 0) return;
+        
+        var result = await DisplayActionSheet(
+            "Seleccionar sección", 
+            "Cancelar", 
+            null, 
+            options.Select(o => o.DisplayName).ToArray());
+        
+        if (!string.IsNullOrEmpty(result) && result != "Cancelar")
+        {
+            var selected = options.FirstOrDefault(o => o.DisplayName == result);
+            if (selected != null)
+                _viewModel.SelectedSection = selected;
+        }
+    }
+
+    private async void OnCategoryDropdownTapped(object? sender, TappedEventArgs e)
+    {
+        var options = _viewModel.CategoryOptions.ToArray();
+        if (options.Length == 0) return;
+        
+        var result = await DisplayActionSheet(
+            "Seleccionar categoría", 
+            "Cancelar", 
+            null, 
+            options.Select(o => o.DisplayName).ToArray());
+        
+        if (!string.IsNullOrEmpty(result) && result != "Cancelar")
+        {
+            var selected = options.FirstOrDefault(o => o.DisplayName == result);
+            if (selected != null)
+                _viewModel.SelectedCategory = selected;
+        }
     }
 
     #endregion

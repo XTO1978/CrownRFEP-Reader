@@ -189,6 +189,43 @@ public class BoolToExpandIconConverter : IValueConverter
 }
 
 /// <summary>
+/// Convierte un booleano a opacidad (1.0 si true, 0.4 si false).
+/// Útil para indicar elementos deshabilitados visualmente.
+/// Soporta parámetro con formato "trueOpacity|falseOpacity" (ej: "1.0|0.3")
+/// </summary>
+public class BoolToOpacityConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        var boolValue = value is bool b && b;
+
+        // Si hay parámetro con formato "trueOpacity|falseOpacity"
+        if (parameter is string param && param.Contains('|'))
+        {
+            var opacities = param.Split('|');
+            if (opacities.Length == 2)
+            {
+                if (double.TryParse(boolValue ? opacities[0] : opacities[1], 
+                    System.Globalization.NumberStyles.Any, 
+                    System.Globalization.CultureInfo.InvariantCulture, 
+                    out var opacity))
+                {
+                    return opacity;
+                }
+            }
+        }
+
+        // Comportamiento por defecto
+        return boolValue ? 1.0 : 0.4;
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+/// <summary>
 /// Converter para resaltar el item seleccionado en una lista de opciones.
 /// Compara el valor del item con la propiedad del ViewModel indicada en ConverterParameter.
 /// </summary>

@@ -1252,8 +1252,8 @@ public class DashboardViewModel : BaseViewModel
             // Actualizar la ruta local si fue resuelta
             video.LocalClipPath = videoPath;
             
-            // Establecer el VideoClip con toda la información
-            vm.VideoClip = video;
+            // Inicializar el ViewModel con el video (carga datos de sesión y playlist)
+            await vm.InitializeWithVideoAsync(video);
             
             await Shell.Current.Navigation.PushAsync(playerPage);
         }
