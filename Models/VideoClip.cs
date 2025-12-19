@@ -1,4 +1,5 @@
 using SQLite;
+using System.ComponentModel;
 
 namespace CrownRFEP_Reader.Models;
 
@@ -6,8 +7,12 @@ namespace CrownRFEP_Reader.Models;
 /// Representa un clip de video de entrenamiento
 /// </summary>
 [Table("videoClip")]
-public class VideoClip
+public class VideoClip : INotifyPropertyChanged
 {
+    private bool _isSelected;
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
     [PrimaryKey, AutoIncrement]
     [Column("ID")]
     public int Id { get; set; }
@@ -95,4 +100,21 @@ public class VideoClip
 
     [Ignore]
     public Session? Session { get; set; }
+
+    /// <summary>
+    /// Indica si el video está seleccionado (para selección múltiple en galería)
+    /// </summary>
+    [Ignore]
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set
+        {
+            if (_isSelected != value)
+            {
+                _isSelected = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsSelected)));
+            }
+        }
+    }
 }

@@ -275,8 +275,14 @@
                                 <behaviors:HoverBackgroundBehavior />
                             </Border.Behaviors>
                             <Border.GestureRecognizers>
-                                <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=PlaySelectedVideoCommand}" CommandParameter="{Binding .}" />
+                                <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=VideoTapCommand}" CommandParameter="{Binding .}" />
                             </Border.GestureRecognizers>
+                            <Border.Triggers>
+                                <DataTrigger TargetType="Border" Binding="{Binding IsSelected}" Value="True">
+                                    <Setter Property="Stroke" Value="#FF6DDDFF" />
+                                    <Setter Property="StrokeThickness" Value="2" />
+                                </DataTrigger>
+                            </Border.Triggers>
 
                             <Grid RowDefinitions="Auto,Auto">
                                 <!--  Thumbnail con aspect ratio 16:9  -->
@@ -287,6 +293,7 @@
                                             BackgroundColor="{StaticResource Gray300}"
                                             Source="{Binding LocalThumbnailPath}" />
 
+                                        <!--  Overlay de play (oculto cuando está seleccionado en multiselect)  -->
                                         <Border
                                             BackgroundColor="#80000000"
                                             HeightRequest="50"
@@ -294,12 +301,36 @@
                                             StrokeShape="RoundRectangle 25"
                                             VerticalOptions="Center"
                                             WidthRequest="50">
+                                            <Border.Triggers>
+                                                <DataTrigger TargetType="Border" Binding="{Binding IsSelected}" Value="True">
+                                                    <Setter Property="IsVisible" Value="False" />
+                                                </DataTrigger>
+                                            </Border.Triggers>
                                             <Label
                                                 FontSize="20"
                                                 HorizontalOptions="Center"
                                                 Text="▶"
                                                 TextColor="White"
                                                 VerticalOptions="Center" />
+                                        </Border>
+
+                                        <!--  Checkmark de selección  -->
+                                        <Border
+                                            BackgroundColor="#34000000"
+                                            HeightRequest="32"
+                                            HorizontalOptions="End"
+                                            IsVisible="{Binding IsSelected}"
+                                            Margin="6"
+                                            StrokeShape="RoundRectangle 16"
+                                            VerticalOptions="Start"
+                                            WidthRequest="32">
+                                            <controls:SymbolIcon
+                                                HeightRequest="20"
+                                                HorizontalOptions="Center"
+                                                SymbolName="checkmark"
+                                                TintColor="LightGray"
+                                                VerticalOptions="Center"
+                                                WidthRequest="20" />
                                         </Border>
                                     </Grid>
                                 </controls:AspectRatioContainer>
@@ -410,7 +441,7 @@
                         <Border.GestureRecognizers>
                             <TapGestureRecognizer Command="{Binding SelectStatsTabCommand}" />
                         </Border.GestureRecognizers>
-                        <Label Text="Estadísticas" TextColor="White" HorizontalOptions="Center">
+                        <Label Text="Filtros y Estadísticas" TextColor="White" HorizontalOptions="Center">
                             <Label.Triggers>
                                 <DataTrigger TargetType="Label" Binding="{Binding IsStatsTabSelected}" Value="True">
                                     <Setter Property="FontAttributes" Value="Bold" />
@@ -440,16 +471,289 @@
                             TextColor="White" />
                     </HorizontalStackLayout>
 
-                    <Border
-                        Padding="12"
-                        BackgroundColor="#FF2A2A2A"
-                        Stroke="Transparent"
-                        StrokeShape="RoundRectangle 8">
-                        <Label
-                            FontSize="14"
-                            TextColor="#FFB1B1B1"
-                            Text="Aquí irán las acciones CRUD sobre la galería y controles de análisis técnico." />
-                    </Border>
+                    <!--  Toggles de selección  -->
+                    <Label
+                        FontSize="14"
+                        Text="Selección de vídeos"
+                        TextColor="#FFB1B1B1" />
+
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                        <!--  Toggle: Selección múltiple  -->
+                        <Border
+                            Padding="10,8"
+                            BackgroundColor="#FF2A2A2A"
+                            Stroke="Transparent"
+                            StrokeShape="RoundRectangle 6">
+                            <Border.Triggers>
+                                <DataTrigger TargetType="Border" Binding="{Binding IsMultiSelectMode}" Value="True">
+                                    <Setter Property="BackgroundColor" Value="#FF6DDDFF" />
+                                </DataTrigger>
+                            </Border.Triggers>
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding ToggleMultiSelectModeCommand}" />
+                            </Border.GestureRecognizers>
+                            <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
+                                <controls:SymbolIcon
+                                    HeightRequest="16"
+                                    SymbolName="checkmark.circle"
+                                    TintColor="White"
+                                    WidthRequest="16"
+                                    VerticalOptions="Center" />
+                                <Label Text="Seleccionar" TextColor="White" VerticalOptions="Center">
+                                    <Label.Triggers>
+                                        <DataTrigger TargetType="Label" Binding="{Binding IsMultiSelectMode}" Value="True">
+                                            <Setter Property="FontAttributes" Value="Bold" />
+                                        </DataTrigger>
+                                    </Label.Triggers>
+                                </Label>
+                            </HorizontalStackLayout>
+                        </Border>
+
+                        <!--  Toggle: Seleccionar todos  -->
+                        <Border
+                            Grid.Column="1"
+                            Padding="10,8"
+                            BackgroundColor="#FF2A2A2A"
+                            Stroke="Transparent"
+                            StrokeShape="RoundRectangle 6">
+                            <Border.Triggers>
+                                <DataTrigger TargetType="Border" Binding="{Binding IsSelectAllActive}" Value="True">
+                                    <Setter Property="BackgroundColor" Value="#FF6DDDFF" />
+                                </DataTrigger>
+                            </Border.Triggers>
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding ToggleSelectAllCommand}" />
+                            </Border.GestureRecognizers>
+                            <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
+                                <controls:SymbolIcon
+                                    HeightRequest="16"
+                                    SymbolName="checkmark.circle.fill"
+                                    TintColor="White"
+                                    WidthRequest="16"
+                                    VerticalOptions="Center" />
+                                <Label Text="Todos" TextColor="White" VerticalOptions="Center">
+                                    <Label.Triggers>
+                                        <DataTrigger TargetType="Label" Binding="{Binding IsSelectAllActive}" Value="True">
+                                            <Setter Property="FontAttributes" Value="Bold" />
+                                        </DataTrigger>
+                                    </Label.Triggers>
+                                </Label>
+                            </HorizontalStackLayout>
+                        </Border>
+                    </Grid>
+
+                    <!--  Sección: Acciones  -->
+                    <Label
+                        Margin="0,12,0,0"
+                        FontSize="14"
+                        Text="Acciones"
+                        TextColor="#FFB1B1B1" />
+
+                    <VerticalStackLayout Spacing="8">
+                        <!--  Botón: Reproducir como playlist  -->
+                        <Border
+                            Padding="10,8"
+                            BackgroundColor="#FF2A2A2A"
+                            Stroke="Transparent"
+                            StrokeShape="RoundRectangle 6">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding PlayAsPlaylistCommand}" />
+                            </Border.GestureRecognizers>
+                            <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
+                                <controls:SymbolIcon
+                                    HeightRequest="16"
+                                    SymbolName="play.rectangle.on.rectangle"
+                                    TintColor="White"
+                                    WidthRequest="16"
+                                    VerticalOptions="Center" />
+                                <Label Text="Reproducir como playlist" TextColor="White" VerticalOptions="Center" />
+                            </HorizontalStackLayout>
+                        </Border>
+
+                        <!--  Botón: Editar detalles  -->
+                        <Border
+                            Padding="10,8"
+                            BackgroundColor="#FF2A2A2A"
+                            Stroke="Transparent"
+                            StrokeShape="RoundRectangle 6">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding EditVideoDetailsCommand}" />
+                            </Border.GestureRecognizers>
+                            <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
+                                <controls:SymbolIcon
+                                    HeightRequest="16"
+                                    SymbolName="pencil.circle"
+                                    TintColor="White"
+                                    WidthRequest="16"
+                                    VerticalOptions="Center" />
+                                <Label Text="Editar detalles" TextColor="White" VerticalOptions="Center" />
+                            </HorizontalStackLayout>
+                        </Border>
+
+                        <!--  Botón: Eliminar selección  -->
+                        <Border
+                            Padding="10,8"
+                            BackgroundColor="#FF2A2A2A"
+                            Stroke="Transparent"
+                            StrokeShape="RoundRectangle 6">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding DeleteSelectedVideosCommand}" />
+                            </Border.GestureRecognizers>
+                            <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
+                                <controls:SymbolIcon
+                                    HeightRequest="16"
+                                    SymbolName="trash.circle"
+                                    TintColor="#FFFF6B6B"
+                                    WidthRequest="16"
+                                    VerticalOptions="Center" />
+                                <Label Text="Eliminar selección" TextColor="#FFFF6B6B" VerticalOptions="Center" />
+                            </HorizontalStackLayout>
+                        </Border>
+                    </VerticalStackLayout>
+
+                    <!--  Sección: Análisis paralelo  -->
+                    <Label
+                        Margin="0,12,0,0"
+                        FontSize="14"
+                        Text="Análisis paralelo"
+                        TextColor="#FFB1B1B1" />
+
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                        <!--  Pantalla 1  -->
+                        <controls:AspectRatioContainer AspectRatio="1.777">
+                            <Border
+                                BackgroundColor="#FF2A2A2A"
+                                Stroke="Transparent"
+                                StrokeShape="RoundRectangle 6">
+                                <Label
+                                    HorizontalOptions="Center"
+                                    VerticalOptions="Center"
+                                    Text="1"
+                                    TextColor="#FF666666"
+                                    FontSize="24"
+                                    FontAttributes="Bold" />
+                            </Border>
+                        </controls:AspectRatioContainer>
+
+                        <!--  Pantalla 2  -->
+                        <controls:AspectRatioContainer Grid.Column="1" AspectRatio="1.777">
+                            <Border
+                                BackgroundColor="#FF2A2A2A"
+                                Stroke="Transparent"
+                                StrokeShape="RoundRectangle 6">
+                                <Label
+                                    HorizontalOptions="Center"
+                                    VerticalOptions="Center"
+                                    Text="2"
+                                    TextColor="#FF666666"
+                                    FontSize="24"
+                                    FontAttributes="Bold" />
+                            </Border>
+                        </controls:AspectRatioContainer>
+                    </Grid>
+
+                    <!--  Radio buttons orientación  -->
+                    <HorizontalStackLayout Spacing="16" HorizontalOptions="Center">
+                        <HorizontalStackLayout Spacing="6">
+                            <RadioButton
+                                GroupName="ParallelOrientation"
+                                IsChecked="{Binding IsHorizontalOrientation}"
+                                BackgroundColor="Transparent"
+                                VerticalOptions="Center">
+                                <RadioButton.ControlTemplate>
+                                    <ControlTemplate>
+                                        <Grid>
+                                            <Ellipse
+                                                WidthRequest="18"
+                                                HeightRequest="18"
+                                                Stroke="#FF888888"
+                                                StrokeThickness="2"
+                                                Fill="Transparent" />
+                                            <Ellipse
+                                                WidthRequest="10"
+                                                HeightRequest="10"
+                                                Fill="#FF6DDDFF"
+                                                HorizontalOptions="Center"
+                                                VerticalOptions="Center"
+                                                IsVisible="{TemplateBinding IsChecked}" />
+                                        </Grid>
+                                    </ControlTemplate>
+                                </RadioButton.ControlTemplate>
+                            </RadioButton>
+                            <Label Text="Horizontal" TextColor="White" VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                        <HorizontalStackLayout Spacing="6">
+                            <RadioButton
+                                GroupName="ParallelOrientation"
+                                IsChecked="{Binding IsVerticalOrientation}"
+                                BackgroundColor="Transparent"
+                                VerticalOptions="Center">
+                                <RadioButton.ControlTemplate>
+                                    <ControlTemplate>
+                                        <Grid>
+                                            <Ellipse
+                                                WidthRequest="18"
+                                                HeightRequest="18"
+                                                Stroke="#FF888888"
+                                                StrokeThickness="2"
+                                                Fill="Transparent" />
+                                            <Ellipse
+                                                WidthRequest="10"
+                                                HeightRequest="10"
+                                                Fill="#FF6DDDFF"
+                                                HorizontalOptions="Center"
+                                                VerticalOptions="Center"
+                                                IsVisible="{TemplateBinding IsChecked}" />
+                                        </Grid>
+                                    </ControlTemplate>
+                                </RadioButton.ControlTemplate>
+                            </RadioButton>
+                            <Label Text="Vertical" TextColor="White" VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                    </HorizontalStackLayout>
+
+                    <!--  Botones Reproducir y Limpiar  -->
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                        <Border
+                            Padding="10,8"
+                            BackgroundColor="#FF2A2A2A"
+                            Stroke="Transparent"
+                            StrokeShape="RoundRectangle 6">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding PlayParallelAnalysisCommand}" />
+                            </Border.GestureRecognizers>
+                            <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
+                                <controls:SymbolIcon
+                                    HeightRequest="16"
+                                    SymbolName="play.fill"
+                                    TintColor="White"
+                                    WidthRequest="16"
+                                    VerticalOptions="Center" />
+                                <Label Text="Reproducir" TextColor="White" VerticalOptions="Center" />
+                            </HorizontalStackLayout>
+                        </Border>
+
+                        <Border
+                            Grid.Column="1"
+                            Padding="10,8"
+                            BackgroundColor="#FF2A2A2A"
+                            Stroke="Transparent"
+                            StrokeShape="RoundRectangle 6">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding ClearParallelAnalysisCommand}" />
+                            </Border.GestureRecognizers>
+                            <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
+                                <controls:SymbolIcon
+                                    HeightRequest="16"
+                                    SymbolName="xmark.circle"
+                                    TintColor="White"
+                                    WidthRequest="16"
+                                    VerticalOptions="Center" />
+                                <Label Text="Limpiar" TextColor="White" VerticalOptions="Center" />
+                            </HorizontalStackLayout>
+                        </Border>
+                    </Grid>
+
                 </VerticalStackLayout>
 
 
@@ -617,7 +921,7 @@
                                             Text="Fecha desde"
                                             TextColor="#FFB1B1B1" />
                                         <Border
-                                            BackgroundColor="#FF3A3A3A"
+                                            BackgroundColor="#FF2A2A2A"
                                             StrokeShape="RoundRectangle 4"
                                             Stroke="Transparent"
                                             Padding="12,12,0,-6"

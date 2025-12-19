@@ -27,6 +27,14 @@ public class DashboardViewModel : BaseViewModel
     private bool _isStatsTabSelected = true;
     private bool _isCrudTechTabSelected;
 
+    // Selección múltiple de videos
+    private bool _isMultiSelectMode;
+    private bool _isSelectAllActive;
+    private readonly HashSet<int> _selectedVideoIds = new();
+
+    // Orientación análisis paralelo
+    private bool _isHorizontalOrientation = true;
+
     // Lazy loading
     private const int PageSize = 40;
     private int _currentPage;
@@ -134,6 +142,117 @@ public class DashboardViewModel : BaseViewModel
                 }
             }
         }
+    }
+
+    public bool IsMultiSelectMode
+    {
+        get => _isMultiSelectMode;
+        set
+        {
+            if (SetProperty(ref _isMultiSelectMode, value))
+            {
+                if (!value)
+                {
+                    // Al desactivar, limpiar selección
+                    ClearVideoSelection();
+                }
+                OnPropertyChanged(nameof(SelectedVideoCount));
+            }
+        }
+    }
+
+    public bool IsSelectAllActive
+    {
+        get => _isSelectAllActive;
+        set
+        {
+            if (SetProperty(ref _isSelectAllActive, value))
+            {
+                if (value)
+                {
+                    SelectAllFilteredVideos();
+                }
+                else
+                {
+                    ClearVideoSelection();
+                }
+            }
+        }
+    }
+
+    public int SelectedVideoCount => _selectedVideoIds.Count;
+
+    public bool IsHorizontalOrientation
+    {
+        get => _isHorizontalOrientation;
+        set
+        {
+            if (SetProperty(ref _isHorizontalOrientation, value))
+            {
+                OnPropertyChanged(nameof(IsVerticalOrientation));
+            }
+        }
+    }
+
+    public bool IsVerticalOrientation
+    {
+        get => !_isHorizontalOrientation;
+        set
+        {
+            if (value != !_isHorizontalOrientation)
+            {
+                IsHorizontalOrientation = !value;
+            }
+        }
+    }
+
+    public bool IsVideoSelected(int videoId) => _selectedVideoIds.Contains(videoId);
+
+    private void ToggleVideoSelection(VideoClip? video)
+    {
+        if (video == null || !IsMultiSelectMode) return;
+
+        video.IsSelected = !video.IsSelected;
+
+        if (video.IsSelected)
+            _selectedVideoIds.Add(video.Id);
+        else
+            _selectedVideoIds.Remove(video.Id);
+
+        OnPropertyChanged(nameof(SelectedVideoCount));
+    }
+
+    private void SelectAllFilteredVideos()
+    {
+        var source = _filteredVideosCache ?? _allVideosCache;
+        if (source == null) return;
+
+        foreach (var v in source)
+        {
+            v.IsSelected = true;
+            _selectedVideoIds.Add(v.Id);
+        }
+
+        OnPropertyChanged(nameof(SelectedVideoCount));
+    }
+
+    private void ClearVideoSelection()
+    {
+        // Limpiar IsSelected en todos los videos visibles y cacheados
+        foreach (var v in SelectedSessionVideos)
+            v.IsSelected = false;
+
+        var source = _filteredVideosCache ?? _allVideosCache;
+        if (source != null)
+        {
+            foreach (var v in source)
+                v.IsSelected = false;
+        }
+
+        _selectedVideoIds.Clear();
+        _isSelectAllActive = false;
+        OnPropertyChanged(nameof(IsSelectAllActive));
+        OnPropertyChanged(nameof(SelectedVideoCount));
     }
 
     public bool HasMoreVideos
@@ -296,6 +415,16 @@ public class DashboardViewModel : BaseViewModel
     public ICommand ToggleTagsExpandedCommand { get; }
     public ICommand SelectStatsTabCommand { get; }
     public ICommand SelectCrudTechTabCommand { get; }
+    public ICommand ToggleMultiSelectModeCommand { get; }
+    public ICommand ToggleSelectAllCommand { get; }
+    public ICommand ToggleVideoSelectionCommand { get; }
+    public ICommand ClearVideoSelectionCommand { get; }
+    public ICommand VideoTapCommand { get; }
+    public ICommand PlayAsPlaylistCommand { get; }
+    public ICommand EditVideoDetailsCommand { get; }
+    public ICommand DeleteSelectedVideosCommand { get; }
+    public ICommand PlayParallelAnalysisCommand { get; }
+    public ICommand ClearParallelAnalysisCommand { get; }
 
     public DashboardViewModel(
         DatabaseService databaseService,
@@ -325,6 +454,68 @@ public class DashboardViewModel : BaseViewModel
 
         SelectStatsTabCommand = new RelayCommand(() => IsStatsTabSelected = true);
         SelectCrudTechTabCommand = new RelayCommand(() => IsCrudTechTabSelected = true);
+
+        ToggleMultiSelectModeCommand = new RelayCommand(() =>
+        {
+            IsMultiSelectMode = !IsMultiSelectMode;
+            if (IsMultiSelectMode) IsSelectAllActive = false;
+        });
+        ToggleSelectAllCommand = new RelayCommand(() =>
+        {
+            IsSelectAllActive = !IsSelectAllActive;
+            if (IsSelectAllActive) IsMultiSelectMode = false;
+        });
+        ToggleVideoSelectionCommand = new RelayCommand<VideoClip>(ToggleVideoSelection);
+        ClearVideoSelectionCommand = new RelayCommand(ClearVideoSelection);
+        VideoTapCommand = new AsyncRelayCommand<VideoClip>(OnVideoTappedAsync);
+        PlayAsPlaylistCommand = new AsyncRelayCommand(PlayAsPlaylistAsync);
+        EditVideoDetailsCommand = new AsyncRelayCommand(EditVideoDetailsAsync);
+        DeleteSelectedVideosCommand = new AsyncRelayCommand(DeleteSelectedVideosAsync);
+        PlayParallelAnalysisCommand = new AsyncRelayCommand(PlayParallelAnalysisAsync);
+        ClearParallelAnalysisCommand = new RelayCommand(ClearParallelAnalysis);
+    }
+
+    private async Task PlayAsPlaylistAsync()
+    {
+        // TODO: Implementar reproducción como playlist
+        await Task.CompletedTask;
+    }
+
+    private async Task EditVideoDetailsAsync()
+    {
+        // TODO: Implementar edición de detalles
+        await Task.CompletedTask;
+    }
+
+    private async Task DeleteSelectedVideosAsync()
+    {
+        // TODO: Implementar eliminación de vídeos seleccionados
+        await Task.CompletedTask;
+    }
+
+    private async Task PlayParallelAnalysisAsync()
+    {
+        // TODO: Implementar reproducción de análisis paralelo
+        await Task.CompletedTask;
+    }
+
+    private void ClearParallelAnalysis()
+    {
+        // TODO: Implementar limpieza de análisis paralelo
+    }
+
+    private async Task OnVideoTappedAsync(VideoClip? video)
+    {
+        if (video == null) return;
+
+        if (IsMultiSelectMode)
+        {
+            ToggleVideoSelection(video);
+        }
+        else
+        {
+            await PlaySelectedVideoAsync(video);
+        }
     }
 
     private void ClearFilters()
