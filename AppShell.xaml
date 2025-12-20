@@ -13,16 +13,8 @@
         <ShellContent ContentTemplate="{DataTemplate views:DashboardPage}" Route="DashboardPage" />
     </FlyoutItem>
 
-    <FlyoutItem Route="sessions" FlyoutItemIsVisible="False">
-        <ShellContent ContentTemplate="{DataTemplate views:SessionsPage}" Route="SessionsPage" />
-    </FlyoutItem>
-
     <FlyoutItem Route="athletes" FlyoutItemIsVisible="False">
         <ShellContent ContentTemplate="{DataTemplate views:AthletesPage}" Route="AthletesPage" />
-    </FlyoutItem>
-
-    <FlyoutItem Route="stats" FlyoutItemIsVisible="False">
-        <ShellContent ContentTemplate="{DataTemplate views:StatisticsPage}" Route="StatisticsPage" />
     </FlyoutItem>
 
     <FlyoutItem Route="import" FlyoutItemIsVisible="False">

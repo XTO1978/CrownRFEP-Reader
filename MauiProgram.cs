@@ -55,9 +55,11 @@ public static class MauiProgram
 		builder.Services.AddSingleton<UserProfileNotifier>();
 		builder.Services.AddSingleton<CrownFileService>();
 		builder.Services.AddSingleton<StatisticsService>();
+		builder.Services.AddSingleton<ThumbnailService>();
 
 		// ViewModels
 		builder.Services.AddSingleton<DashboardViewModel>();
+		builder.Services.AddSingleton<ImportViewModel>();
 		builder.Services.AddSingleton<SessionsViewModel>();
 		builder.Services.AddTransient<SessionDetailViewModel>();
 		builder.Services.AddSingleton<AthletesViewModel>();

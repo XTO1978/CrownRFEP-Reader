@@ -160,8 +160,8 @@ public class BoolToColorConverter : IValueConverter
 
         // Comportamiento por defecto
         if (boolValue)
-            return Color.FromArgb("#FF6DDDFF"); // Color de selección activa (azul)
-        return Color.FromArgb("#FF3A3A3A"); // Color por defecto
+            return Color.FromArgb("#FF3A5A8A"); // Color de selección activa (azul oscuro)
+        return Colors.Transparent; // Transparente cuando no seleccionado
     }
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
@@ -237,6 +237,81 @@ public class SelectedItemColorConverter : IValueConverter
         // Usaremos una lógica simplificada: si el valor coincide con la selección, color activo.
         // La lógica real se hará mediante binding MultiBinding o en el ViewModel.
         return Color.FromArgb("#FF3A3A3A"); // Color por defecto
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+/// <summary>
+/// Devuelve true si el valor no es null
+/// </summary>
+public class IsNotNullConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        return value != null;
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+/// <summary>
+/// Devuelve color verde para archivos .crown, blanco para otros
+/// </summary>
+public class CrownFileColorConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is bool isCrownFile && isCrownFile)
+            return Color.FromArgb("#FF4CAF50"); // Verde para archivos .crown
+        return Colors.White;
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+/// <summary>
+/// Devuelve Bold para archivos .crown, None para otros
+/// </summary>
+public class CrownFileFontConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is bool isCrownFile && isCrownFile)
+            return FontAttributes.Bold;
+        return FontAttributes.None;
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+/// <summary>
+/// Devuelve true si el valor es 0
+/// </summary>
+public class IsZeroConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        return value switch
+        {
+            int intValue => intValue == 0,
+            double doubleValue => doubleValue == 0,
+            float floatValue => floatValue == 0,
+            long longValue => longValue == 0,
+            _ => false
+        };
     }
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)

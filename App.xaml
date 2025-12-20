@@ -20,6 +20,10 @@
             <converters:BoolToColorConverter x:Key="BoolToColorConverter"/>
             <converters:BoolToExpandIconConverter x:Key="BoolToExpandIconConverter"/>
             <converters:SelectedItemColorConverter x:Key="SelectedItemColorConverter"/>
+            <converters:IsNotNullConverter x:Key="IsNotNullConverter"/>
+            <converters:CrownFileColorConverter x:Key="CrownFileColorConverter"/>
+            <converters:CrownFileFontConverter x:Key="CrownFileFontConverter"/>
+            <converters:IsZeroConverter x:Key="IsZeroConverter"/>
         </ResourceDictionary>
     </Application.Resources>
 </Application>
