@@ -52,6 +52,18 @@ public class Tag : INotifyPropertyChanged
     [Ignore]
     public bool IsEventTag { get; set; }
 
+    /// <summary>
+    /// Cantidad de veces que este evento aparece en un video (para mostrar "2x etiqueta")
+    /// </summary>
+    [Ignore]
+    public int EventCount { get; set; } = 1;
+
+    /// <summary>
+    /// Texto a mostrar en el badge: "2x etiqueta" si hay múltiples, o solo "etiqueta" si hay uno
+    /// </summary>
+    [Ignore]
+    public string DisplayText => EventCount > 1 ? $"{EventCount}x {NombreTag}" : NombreTag ?? "";
+
     protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));

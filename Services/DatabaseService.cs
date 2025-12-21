@@ -126,7 +126,23 @@ public class DatabaseService
         "Grabación completada"
     };
 
-    private static void HydrateTagsForClips(
+    /// <summary>
+    /// Hidrata los tags y eventos para una lista de VideoClips
+    /// </summary>
+    public async Task HydrateTagsForClips(IEnumerable<VideoClip> clips)
+    {
+        var clipList = clips.ToList();
+        if (clipList.Count == 0) return;
+
+        var db = await GetConnectionAsync();
+        var allTags = await db.Table<Tag>().ToListAsync();
+        var clipIds = clipList.Select(c => c.Id).ToList();
+        var allInputsForClips = await GetInputsForVideosAsync(db, clipIds);
+
+        HydrateTagsForClipsInternal(clipList, allTags, allInputsForClips);
+    }
+
+    private static void HydrateTagsForClipsInternal(
         IReadOnlyList<VideoClip> clips,
         IReadOnlyList<Tag> allTags,
         IReadOnlyList<Input> allInputsForClips)
@@ -171,11 +187,12 @@ public class DatabaseService
 
             clip.EventTags = eventInputs
                 .Where(i => tagDict.ContainsKey(i.InputTypeId))
-                .GroupBy(i => i.InputTypeId) // Evitar duplicados del mismo tipo
+                .GroupBy(i => i.InputTypeId) // Agrupar por tipo para contar ocurrencias
                 .Select(g =>
                 {
                     var input = g.First();
                     var baseTag = tagDict[input.InputTypeId];
+                    var count = g.Count(); // Número de ocurrencias de este evento
                     
                     // Usar InputValue si tiene contenido, sino el nombre del tipo de tag
                     var displayName = !string.IsNullOrWhiteSpace(input.InputValue)
@@ -187,7 +204,8 @@ public class DatabaseService
                         Id = baseTag.Id,
                         NombreTag = displayName,
                         IsSelected = baseTag.IsSelected,
-                        IsEventTag = true
+                        IsEventTag = true,
+                        EventCount = count // Incluir el conteo de ocurrencias
                     };
                 })
                 .Where(t => !string.IsNullOrEmpty(t.NombreTag) && !InternalTagNames.Contains(t.NombreTag))
@@ -506,7 +524,7 @@ public class DatabaseService
         var allTags = await db.Table<Tag>().ToListAsync();
         var clipIds = clips.Select(c => c.Id).ToList();
         var allInputsForClips = await GetInputsForVideosAsync(db, clipIds);
-        HydrateTagsForClips(clips, allTags, allInputsForClips);
+        HydrateTagsForClipsInternal(clips, allTags, allInputsForClips);
 
         return clips;
     }
@@ -574,7 +592,7 @@ public class DatabaseService
         var allTags = await db.Table<Tag>().ToListAsync();
         var clipIds = clips.Select(c => c.Id).ToList();
         var allInputsForClips = await GetInputsForVideosAsync(db, clipIds);
-        HydrateTagsForClips(clips, allTags, allInputsForClips);
+        HydrateTagsForClipsInternal(clips, allTags, allInputsForClips);
 
         return clips;
     }

@@ -700,6 +700,17 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     #region Métodos privados
 
+    /// <summary>
+    /// Notifica al Dashboard que un video ha sido actualizado para que refresque solo ese item
+    /// </summary>
+    private void NotifyVideoClipUpdated()
+    {
+        if (_videoClip != null && _videoClip.Id > 0)
+        {
+            MessagingCenter.Send(this, "VideoClipUpdated", _videoClip.Id);
+        }
+    }
+
     private void TogglePlayPause()
     {
         IsPlaying = !IsPlaying;
@@ -1059,6 +1070,9 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             // Cerrar panel y limpiar selección
             ShowAthleteAssignPanel = false;
             SelectedAthleteToAssign = null;
+            
+            // Notificar al Dashboard para actualizar la galería
+            NotifyVideoClipUpdated();
         }
         catch (Exception ex)
         {
@@ -1106,6 +1120,9 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             ShowAthleteAssignPanel = false;
             NewAthleteName = "";
             NewAthleteSurname = "";
+            
+            // Notificar al Dashboard para actualizar la galería
+            NotifyVideoClipUpdated();
         }
         catch (Exception ex)
         {
@@ -1130,6 +1147,9 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(CurrentSectionText));
             
             ShowSectionAssignPanel = false;
+            
+            // Notificar al Dashboard para actualizar la galería
+            NotifyVideoClipUpdated();
         }
         catch (Exception ex)
         {
@@ -1222,6 +1242,9 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(CurrentTagsText));
             
             ShowTagsAssignPanel = false;
+            
+            // Notificar al Dashboard para actualizar la galería
+            NotifyVideoClipUpdated();
         }
         catch (Exception ex)
         {
@@ -1383,6 +1406,9 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
                 OnPropertyChanged(nameof(TagEventsCountText));
                 ((Command)AddTagEventCommand).ChangeCanExecute();
             });
+            
+            // Notificar al Dashboard para actualizar la galería
+            NotifyVideoClipUpdated();
         }
         catch (Exception ex)
         {
@@ -1410,6 +1436,9 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
                 OnPropertyChanged(nameof(HasTagEvents));
                 OnPropertyChanged(nameof(TagEventsCountText));
             });
+            
+            // Notificar al Dashboard para actualizar la galería
+            NotifyVideoClipUpdated();
         }
         catch (Exception ex)
         {
@@ -1472,6 +1501,9 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
                 OnPropertyChanged(nameof(VideoClipTags));
                 OnPropertyChanged(nameof(CurrentTagsText));
             });
+            
+            // Notificar al Dashboard para actualizar la galería
+            NotifyVideoClipUpdated();
         }
         catch (Exception ex)
         {
@@ -1519,6 +1551,9 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
                 OnPropertyChanged(nameof(HasTagEvents));
                 OnPropertyChanged(nameof(TagEventsCountText));
             });
+            
+            // Notificar al Dashboard para actualizar la galería
+            NotifyVideoClipUpdated();
         }
         catch (Exception ex)
         {

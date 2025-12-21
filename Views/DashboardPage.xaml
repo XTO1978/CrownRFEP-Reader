@@ -395,7 +395,7 @@
                                                                 StrokeThickness="0">
                                                                 <Label
                                                                     FontSize="10"
-                                                                    Text="{Binding NombreTag}"
+                                                                    Text="{Binding DisplayText}"
                                                                     TextColor="White"
                                                                     LineBreakMode="TailTruncation"
                                                                     MaximumWidthRequest="120" />

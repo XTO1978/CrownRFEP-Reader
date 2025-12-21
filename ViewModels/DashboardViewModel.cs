@@ -585,6 +585,58 @@ public class DashboardViewModel : BaseViewModel
         ClearParallelAnalysisCommand = new RelayCommand(ClearParallelAnalysis);
         DropOnScreen1Command = new RelayCommand<VideoClip>(video => ParallelVideo1 = video);
         DropOnScreen2Command = new RelayCommand<VideoClip>(video => ParallelVideo2 = video);
+        
+        // Suscribirse a mensajes de actualización de video individual
+        MessagingCenter.Subscribe<SinglePlayerViewModel, int>(this, "VideoClipUpdated", async (sender, videoId) =>
+        {
+            await RefreshVideoClipInGalleryAsync(videoId);
+        });
+    }
+
+    /// <summary>
+    /// Actualiza un video específico en la galería sin recargar toda la colección
+    /// </summary>
+    private async Task RefreshVideoClipInGalleryAsync(int videoId)
+    {
+        try
+        {
+            // Buscar el video en la colección actual
+            var existingVideo = SelectedSessionVideos.FirstOrDefault(v => v.Id == videoId);
+            if (existingVideo == null) return;
+
+            var index = SelectedSessionVideos.IndexOf(existingVideo);
+            if (index < 0) return;
+
+            // Obtener el video actualizado de la base de datos
+            var updatedVideo = await _databaseService.GetVideoClipByIdAsync(videoId);
+            if (updatedVideo == null) return;
+
+            // Cargar datos relacionados
+            if (updatedVideo.AtletaId > 0)
+            {
+                updatedVideo.Atleta = await _databaseService.GetAthleteByIdAsync(updatedVideo.AtletaId);
+            }
+            if (updatedVideo.SessionId > 0)
+            {
+                updatedVideo.Session = await _databaseService.GetSessionByIdAsync(updatedVideo.SessionId);
+            }
+
+            // Hidratar tags y eventos
+            await _databaseService.HydrateTagsForClips(new List<VideoClip> { updatedVideo });
+
+            // Mantener el estado de selección si aplica
+            updatedVideo.IsSelected = existingVideo.IsSelected;
+
+            // Reemplazar en la colección (esto dispara la actualización del UI)
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                SelectedSessionVideos[index] = updatedVideo;
+            });
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error al actualizar video en galería: {ex.Message}");
+        }
     }
 
     private async Task PlayAsPlaylistAsync()
