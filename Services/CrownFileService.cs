@@ -137,6 +137,46 @@ public class CrownFileService
                 }
             }
 
+            ReportProgress(progress, "Guardando etiquetas...", 35);
+
+            // Mapeo: JSON InputTypeId → Local TagId
+            var inputTypeIdToTagIdMap = new Dictionary<int, int>(); // jsonInputTypeId → localTagId
+            
+            // Extraer tipos de input únicos de los Inputs y guardarlos como Tags
+            if (crownData.Inputs != null)
+            {
+                var uniqueInputTypes = crownData.Inputs
+                    .Where(i => i.InputTypeObj != null && !string.IsNullOrWhiteSpace(i.InputTypeObj.TipoInput))
+                    .Select(i => i.InputTypeObj!)
+                    .DistinctBy(it => it.Id)
+                    .ToList();
+                
+                foreach (var inputType in uniqueInputTypes)
+                {
+                    // Buscar si ya existe un tag con el mismo nombre
+                    var existingTag = await _databaseService.FindTagByNameAsync(inputType.TipoInput!);
+                    
+                    int localTagId;
+                    if (existingTag != null)
+                    {
+                        // Tag ya existe: usar su ID local
+                        localTagId = existingTag.Id;
+                    }
+                    else
+                    {
+                        // Tag nuevo: insertar y obtener ID autogenerado
+                        var newTag = new Tag
+                        {
+                            NombreTag = inputType.TipoInput
+                        };
+                        localTagId = await _databaseService.InsertTagAsync(newTag);
+                        result.TagsImported++;
+                    }
+                    
+                    inputTypeIdToTagIdMap[inputType.Id] = localTagId;
+                }
+            }
+
             ReportProgress(progress, "Guardando sesión...", 40);
 
             // Crear carpeta para esta sesión
@@ -171,6 +211,9 @@ public class CrownFileService
             result.SessionId = sessionId;
 
             ReportProgress(progress, "Extrayendo videos...", 50);
+
+            // Mapeo: JSON VideoId → Local VideoId (similar al mapeo de atletas)
+            var videoIdMap = new Dictionary<int, int>(); // jsonVideoId → localVideoId
 
             // Extraer y guardar videos
             if (crownData.VideoClips != null)
@@ -207,10 +250,10 @@ public class CrownFileService
                     // Resolver AtletaId usando el mapeo local
                     var localAtletaId = athleteIdMap.TryGetValue(clipJson.AtletaId, out var mappedId) ? mappedId : 0;
 
-                    // Guardar en base de datos
+                    // Guardar en base de datos (no forzar Id; dejar que SQLite asigne)
                     var clip = new VideoClip
                     {
-                        Id = clipJson.Id,
+                        // No asignamos Id: SQLite lo autogenera
                         SessionId = sessionId,
                         AtletaId = localAtletaId,
                         Section = clipJson.Section,
@@ -227,7 +270,8 @@ public class CrownFileService
                         BadgeBackgroundColor = clipJson.BadgeBackgroundColor
                     };
 
-                    await _databaseService.SaveVideoClipAsync(clip);
+                    var localClipId = await _databaseService.InsertVideoClipAsync(clip);
+                    videoIdMap[clipJson.Id] = localClipId;
                     result.VideosImported++;
 
                     processedClips++;
@@ -236,25 +280,42 @@ public class CrownFileService
                 }
             }
 
-            // Guardar inputs si existen
+            ReportProgress(progress, "Guardando eventos de etiquetas...", 96);
+
+            // Guardar inputs como eventos (todos los inputs importados de .crown son eventos)
             if (crownData.Inputs != null)
             {
                 foreach (var inputJson in crownData.Inputs)
                 {
                     var localInputAthleteId = athleteIdMap.TryGetValue(inputJson.AthleteId, out var mappedInputId) ? mappedInputId : 0;
+                    
+                    // Mapear el InputTypeId del JSON al TagId local
+                    var localTagId = inputTypeIdToTagIdMap.TryGetValue(inputJson.InputTypeId, out var mappedTagId) ? mappedTagId : inputJson.InputTypeId;
+                    
+                    // Mapear el VideoId del JSON al VideoId local
+                    var localVideoId = videoIdMap.TryGetValue(inputJson.VideoId, out var mappedVideoId) ? mappedVideoId : 0;
+                    
+                    // Saltar si no encontramos el video correspondiente
+                    if (localVideoId == 0)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[Import] Skipping input: no local video found for JSON VideoId={inputJson.VideoId}");
+                        continue;
+                    }
 
                     var input = new Input
                     {
                         SessionId = sessionId,
-                        VideoId = inputJson.VideoId,
+                        VideoId = localVideoId,  // Usar el ID de video local mapeado
                         AthleteId = localInputAthleteId,
                         CategoriaId = inputJson.CategoriaId,
-                        InputTypeId = inputJson.InputTypeId,
+                        InputTypeId = localTagId,  // Usar el ID de tag local mapeado
                         InputDateTime = inputJson.InputDateTime,
                         InputValue = inputJson.InputValue,
-                        TimeStamp = inputJson.TimeStamp
+                        TimeStamp = inputJson.TimeStamp,  // Mantener el timestamp original
+                        IsEvent = 1  // IMPORTANTE: Marcar como evento (importado de .crown)
                     };
                     await _databaseService.SaveInputAsync(input);
+                    result.TagEventsImported++;
                 }
             }
 
@@ -448,6 +509,8 @@ public class ImportResult
     public string? SessionName { get; set; }
     public int VideosImported { get; set; }
     public int AthletesImported { get; set; }
+    public int TagsImported { get; set; }
+    public int TagEventsImported { get; set; }
 }
 
 /// <summary>

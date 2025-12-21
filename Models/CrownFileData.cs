@@ -210,6 +210,18 @@ public class InputJson
 
     [JsonPropertyName("TimeStamp")]
     public long TimeStamp { get; set; }
+    
+    [JsonPropertyName("InputTypeObj")]
+    public InputTypeJson? InputTypeObj { get; set; }
+}
+
+public class InputTypeJson
+{
+    [JsonPropertyName("Id")]
+    public int Id { get; set; }
+    
+    [JsonPropertyName("TipoInput")]
+    public string? TipoInput { get; set; }
 }
 
 public class ValoracionJson

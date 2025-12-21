@@ -1,4 +1,6 @@
 using SQLite;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 
 namespace CrownRFEP_Reader.Models;
 
@@ -6,8 +8,12 @@ namespace CrownRFEP_Reader.Models;
 /// Representa una etiqueta para organizar contenido
 /// </summary>
 [Table("tags")]
-public class Tag
+public class Tag : INotifyPropertyChanged
 {
+    private int _isSelected;
+    
+    public event PropertyChangedEventHandler? PropertyChanged;
+
     [PrimaryKey, AutoIncrement]
     [Column("id")]
     public int Id { get; set; }
@@ -16,5 +22,38 @@ public class Tag
     public string? NombreTag { get; set; }
 
     [Column("IsSelected")]
-    public int IsSelected { get; set; }
+    public int IsSelected 
+    { 
+        get => _isSelected;
+        set
+        {
+            if (_isSelected != value)
+            {
+                _isSelected = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(IsSelectedBool));
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Versión booleana de IsSelected para bindings más sencillos
+    /// </summary>
+    [Ignore]
+    public bool IsSelectedBool
+    {
+        get => _isSelected == 1;
+        set => IsSelected = value ? 1 : 0;
+    }
+
+    /// <summary>
+    /// Indica si este tag proviene de un evento (TimeStamp > 0) vs asignación directa
+    /// </summary>
+    [Ignore]
+    public bool IsEventTag { get; set; }
+
+    protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
 }

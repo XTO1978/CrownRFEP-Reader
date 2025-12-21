@@ -102,10 +102,28 @@ public class VideoClip : INotifyPropertyChanged
     public Session? Session { get; set; }
 
     /// <summary>
-    /// Tags asociados al video (cargados desde la tabla inputs)
+    /// Tags asignados al video (TimeStamp == 0)
     /// </summary>
     [Ignore]
     public List<Tag>? Tags { get; set; }
+
+    /// <summary>
+    /// Tags de eventos del video (TimeStamp > 0)
+    /// </summary>
+    [Ignore]
+    public List<Tag>? EventTags { get; set; }
+
+    /// <summary>
+    /// Indica si el video tiene tags asignados
+    /// </summary>
+    [Ignore]
+    public bool HasTags => Tags != null && Tags.Count > 0;
+
+    /// <summary>
+    /// Indica si el video tiene eventos
+    /// </summary>
+    [Ignore]
+    public bool HasEventTags => EventTags != null && EventTags.Count > 0;
 
     /// <summary>
     /// Indica si el video está seleccionado (para selección múltiple en galería)

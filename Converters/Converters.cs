@@ -319,3 +319,53 @@ public class IsZeroConverter : IValueConverter
         throw new NotImplementedException();
     }
 }
+
+/// <summary>
+/// Convierte el estado de selección de un tag (int: 0 o 1) a color de fondo
+/// </summary>
+public class TagSelectedColorConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        var isSelected = value switch
+        {
+            int intValue => intValue == 1,
+            bool boolValue => boolValue,
+            _ => false
+        };
+        
+        return isSelected 
+            ? Color.FromArgb("#FF66BB6A")  // Verde cuando está seleccionado
+            : Color.FromArgb("#FF3A3A3A"); // Gris oscuro cuando no está seleccionado
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+/// <summary>
+/// Convierte el estado de selección de un tag de evento a color de fondo (naranja)
+/// </summary>
+public class EventTagSelectedColorConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        var isSelected = value switch
+        {
+            int intValue => intValue == 1,
+            bool boolValue => boolValue,
+            _ => false
+        };
+        
+        return isSelected 
+            ? Color.FromArgb("#FFFF7043")  // Naranja cuando está seleccionado
+            : Color.FromArgb("#FF3A3A3A"); // Gris oscuro cuando no está seleccionado
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}

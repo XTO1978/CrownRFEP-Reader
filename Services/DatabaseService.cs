@@ -58,6 +58,9 @@ public class DatabaseService
 
         // Migraciones ligeras: columnas nuevas en userProfile
         await EnsureColumnExistsAsync(_database, "userProfile", "referenceAthleteId", "INTEGER");
+
+        // Migraciones ligeras: columna IsEvent en input para distinguir eventos de asignaciones
+        await EnsureColumnExistsAsync(_database, "input", "IsEvent", "INTEGER DEFAULT 0");
     }
 
     private sealed class SqliteTableInfoRow
@@ -102,6 +105,98 @@ public class DatabaseService
 
         if (string.IsNullOrWhiteSpace(clip.LocalThumbnailPath) || !File.Exists(clip.LocalThumbnailPath))
             clip.LocalThumbnailPath = candidateThumbPath;
+    }
+
+    private static async Task<List<Input>> GetInputsForVideosAsync(SQLiteAsyncConnection db, IReadOnlyList<int> videoIds)
+    {
+        if (videoIds.Count == 0)
+            return new List<Input>();
+
+        // Query por IN para evitar depender de SessionID en inputs (hay flujos que pueden no rellenarlo).
+        // videoIds viene de BD, así que el SQL es seguro al usar parámetros.
+        var placeholders = string.Join(",", Enumerable.Repeat("?", videoIds.Count));
+        var sql = $"SELECT * FROM \"input\" WHERE VideoID IN ({placeholders});";
+        var args = videoIds.Cast<object>().ToArray();
+        return await db.QueryAsync<Input>(sql, args);
+    }
+
+    // Tags internos que no se muestran en la galería
+    private static readonly HashSet<string> InternalTagNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Grabación completada"
+    };
+
+    private static void HydrateTagsForClips(
+        IReadOnlyList<VideoClip> clips,
+        IReadOnlyList<Tag> allTags,
+        IReadOnlyList<Input> allInputsForClips)
+    {
+        var tagDict = allTags.ToDictionary(t => t.Id, t => t);
+        
+        foreach (var clip in clips)
+        {
+            // Tags asignados (IsEvent == 0): asignados desde la app mediante el panel de etiquetas
+            var assignedInputs = allInputsForClips
+                .Where(i => i.VideoId == clip.Id && i.IsEvent == 0)
+                .ToList();
+
+            clip.Tags = assignedInputs
+                .Where(i => tagDict.ContainsKey(i.InputTypeId))
+                .GroupBy(i => i.InputTypeId) // Evitar duplicados del mismo tipo
+                .Select(g =>
+                {
+                    var input = g.First();
+                    var baseTag = tagDict[input.InputTypeId];
+                    
+                    // Usar InputValue si tiene contenido, sino el nombre del tipo de tag
+                    var displayName = !string.IsNullOrWhiteSpace(input.InputValue)
+                        ? input.InputValue
+                        : baseTag.NombreTag;
+                    
+                    return new Tag
+                    {
+                        Id = baseTag.Id,
+                        NombreTag = displayName,
+                        IsSelected = baseTag.IsSelected,
+                        IsEventTag = false
+                    };
+                })
+                .Where(t => !string.IsNullOrEmpty(t.NombreTag) && !InternalTagNames.Contains(t.NombreTag))
+                .ToList();
+
+            // Tags de eventos (IsEvent == 1): importados de .crown o creados como eventos
+            var eventInputs = allInputsForClips
+                .Where(i => i.VideoId == clip.Id && i.IsEvent == 1)
+                .ToList();
+
+            clip.EventTags = eventInputs
+                .Where(i => tagDict.ContainsKey(i.InputTypeId))
+                .GroupBy(i => i.InputTypeId) // Evitar duplicados del mismo tipo
+                .Select(g =>
+                {
+                    var input = g.First();
+                    var baseTag = tagDict[input.InputTypeId];
+                    
+                    // Usar InputValue si tiene contenido, sino el nombre del tipo de tag
+                    var displayName = !string.IsNullOrWhiteSpace(input.InputValue)
+                        ? input.InputValue
+                        : baseTag.NombreTag;
+                    
+                    return new Tag
+                    {
+                        Id = baseTag.Id,
+                        NombreTag = displayName,
+                        IsSelected = baseTag.IsSelected,
+                        IsEventTag = true
+                    };
+                })
+                .Where(t => !string.IsNullOrEmpty(t.NombreTag) && !InternalTagNames.Contains(t.NombreTag))
+                .ToList();
+
+            // Nunca dejar null para evitar problemas de binding/medida
+            clip.Tags ??= new List<Tag>();
+            clip.EventTags ??= new List<Tag>();
+        }
     }
 
     // ==================== SESSIONS ====================
@@ -405,7 +500,21 @@ public class DatabaseService
             }
         }
 
+        // Cargar tags para cada video.
+        // Preferencia: tags asignados (TimeStamp == 0). Si no existen, usar eventos (TimeStamp > 0) como fallback.
+        // Importante: NO filtrar por SessionID aquí; algunos flujos históricos no lo rellenaban en "input".
+        var allTags = await db.Table<Tag>().ToListAsync();
+        var clipIds = clips.Select(c => c.Id).ToList();
+        var allInputsForClips = await GetInputsForVideosAsync(db, clipIds);
+        HydrateTagsForClips(clips, allTags, allInputsForClips);
+
         return clips;
+    }
+
+    public async Task<VideoClip?> GetVideoClipByIdAsync(int videoId)
+    {
+        var db = await GetConnectionAsync();
+        return await db.Table<VideoClip>().FirstOrDefaultAsync(v => v.Id == videoId);
     }
 
     public async Task<List<VideoClip>> GetVideoClipsByAthleteAsync(int athleteId)
@@ -461,6 +570,12 @@ public class DatabaseService
             }
         }
 
+        // Cargar tags también en Galería General (Dashboard usa este método).
+        var allTags = await db.Table<Tag>().ToListAsync();
+        var clipIds = clips.Select(c => c.Id).ToList();
+        var allInputsForClips = await GetInputsForVideosAsync(db, clipIds);
+        HydrateTagsForClips(clips, allTags, allInputsForClips);
+
         return clips;
     }
 
@@ -470,8 +585,11 @@ public class DatabaseService
         var existing = await db.Table<VideoClip>().FirstOrDefaultAsync(v => v.Id == clip.Id && v.SessionId == clip.SessionId);
         if (existing != null)
         {
+            // Actualizar todos los campos editables
             existing.LocalClipPath = clip.LocalClipPath;
             existing.LocalThumbnailPath = clip.LocalThumbnailPath;
+            existing.AtletaId = clip.AtletaId;
+            existing.Section = clip.Section;
             await db.UpdateAsync(existing);
             return existing.Id;
         }
@@ -480,6 +598,19 @@ public class DatabaseService
             await db.InsertAsync(clip);
             return clip.Id;
         }
+    }
+
+    /// <summary>
+    /// Inserta un nuevo VideoClip y devuelve su ID autogenerado.
+    /// A diferencia de SaveVideoClipAsync, siempre fuerza inserción (no busca existente).
+    /// </summary>
+    public async Task<int> InsertVideoClipAsync(VideoClip clip)
+    {
+        var db = await GetConnectionAsync();
+        // Forzar Id=0 para que SQLite asigne uno nuevo con AUTOINCREMENT
+        clip.Id = 0;
+        await db.InsertAsync(clip);
+        return clip.Id;
     }
 
     // ==================== CATEGORIES ====================
@@ -557,22 +688,112 @@ public class DatabaseService
     }
 
     /// <summary>
-    /// Obtiene los tags asociados a un video específico a través de la tabla inputs
+    /// Obtiene los tags asignados a un video específico (no eventos)
     /// </summary>
     public async Task<List<Tag>> GetTagsForVideoAsync(int videoId)
     {
         var db = await GetConnectionAsync();
-        
-        // Obtener los InputTypeIds únicos de los inputs asociados al video
-        var inputs = await db.Table<Input>().Where(i => i.VideoId == videoId).ToListAsync();
-        var inputTypeIds = inputs.Select(i => i.InputTypeId).Distinct().ToHashSet();
-        
+
+        // Tags asignados: IsEvent == 0
+        var assignedInputs = await db.Table<Input>()
+            .Where(i => i.VideoId == videoId && i.IsEvent == 0)
+            .ToListAsync();
+
+        var inputTypeIds = assignedInputs.Select(i => i.InputTypeId).Distinct().ToHashSet();
         if (inputTypeIds.Count == 0)
             return new List<Tag>();
-        
-        // Obtener los tags correspondientes
+
         var allTags = await db.Table<Tag>().ToListAsync();
-        return allTags.Where(t => inputTypeIds.Contains(t.Id) && !string.IsNullOrEmpty(t.NombreTag)).ToList();
+        return allTags
+            .Where(t => inputTypeIds.Contains(t.Id) && !string.IsNullOrEmpty(t.NombreTag))
+            .ToList();
+    }
+
+    /// <summary>
+    /// Obtiene los eventos de etiquetas para un video específico
+    /// </summary>
+    public async Task<List<TagEvent>> GetTagEventsForVideoAsync(int videoId)
+    {
+        var db = await GetConnectionAsync();
+        
+        // Eventos: inputs con IsEvent == 1
+        var inputs = await db.Table<Input>()
+            .Where(i => i.VideoId == videoId && i.IsEvent == 1)
+            .ToListAsync();
+        
+        if (inputs.Count == 0)
+            return new List<TagEvent>();
+        
+        // Obtener todos los tags
+        var allTags = await db.Table<Tag>().ToListAsync();
+        var tagDict = allTags.ToDictionary(t => t.Id, t => t.NombreTag ?? "");
+        
+        // Crear lista de eventos ordenados por timestamp
+        var events = inputs
+            .Where(i => tagDict.ContainsKey(i.InputTypeId) && !string.IsNullOrEmpty(tagDict[i.InputTypeId]))
+            .Select(i => new TagEvent
+            {
+                InputId = i.Id,
+                TagId = i.InputTypeId,
+                TagName = tagDict[i.InputTypeId],
+                TimestampMs = i.TimeStamp
+            })
+            .OrderBy(e => e.TimestampMs)
+            .ToList();
+        
+        return events;
+    }
+
+    /// <summary>
+    /// Añade un evento de etiqueta en un timestamp específico del video
+    /// </summary>
+    public async Task<int> AddTagEventAsync(int videoId, int tagId, long timestampMs, int sessionId, int athleteId)
+    {
+        var db = await GetConnectionAsync();
+        
+        var input = new Input
+        {
+            VideoId = videoId,
+            InputTypeId = tagId,
+            TimeStamp = timestampMs,
+            SessionId = sessionId,
+            AthleteId = athleteId,
+            InputDateTime = DateTimeOffset.Now.ToUnixTimeSeconds(),
+            IsEvent = 1  // Marcar como evento
+        };
+        
+        await db.InsertAsync(input);
+        return input.Id;
+    }
+
+    /// <summary>
+    /// Elimina un evento de etiqueta específico
+    /// </summary>
+    public async Task DeleteTagEventAsync(int inputId)
+    {
+        var db = await GetConnectionAsync();
+        await db.ExecuteAsync("DELETE FROM \"input\" WHERE id = ?", inputId);
+    }
+
+    /// <summary>
+    /// Busca un tag por su nombre
+    /// </summary>
+    public async Task<Tag?> FindTagByNameAsync(string tagName)
+    {
+        var db = await GetConnectionAsync();
+        return await db.Table<Tag>()
+            .Where(t => t.NombreTag != null && t.NombreTag.ToLower() == tagName.ToLower())
+            .FirstOrDefaultAsync();
+    }
+
+    /// <summary>
+    /// Inserta un nuevo tag y devuelve su ID autogenerado
+    /// </summary>
+    public async Task<int> InsertTagAsync(Tag tag)
+    {
+        var db = await GetConnectionAsync();
+        await db.InsertAsync(tag);
+        return tag.Id;
     }
 
     // ==================== ALL INPUTS ====================
@@ -678,5 +899,94 @@ public class DatabaseService
         {
             await db.UpdateAsync(profile);
         }
+    }
+
+    // ======================= TAGS MANAGEMENT =======================
+
+    /// <summary>
+    /// Añade un tag asignado a un video (no es evento)
+    /// </summary>
+    public async Task AddTagToVideoAsync(int videoId, int tagId, int sessionId, int athleteId)
+    {
+        var db = await GetConnectionAsync();
+        
+        // Verificar si ya existe como tag asignado
+        var existing = await db.Table<Input>()
+            .Where(i => i.VideoId == videoId && i.InputTypeId == tagId && i.IsEvent == 0)
+            .FirstOrDefaultAsync();
+        
+        if (existing == null)
+        {
+            var input = new Input
+            {
+                VideoId = videoId,
+                InputTypeId = tagId,
+                SessionId = sessionId,
+                AthleteId = athleteId,
+                TimeStamp = 0,
+                IsEvent = 0,  // Marcar como asignación, no evento
+                InputDateTime = DateTimeOffset.Now.ToUnixTimeSeconds()
+            };
+            await db.InsertAsync(input);
+        }
+    }
+
+    /// <summary>
+    /// Elimina un tag asignado de un video (no afecta eventos)
+    /// </summary>
+    public async Task RemoveTagFromVideoAsync(int videoId, int tagId)
+    {
+        var db = await GetConnectionAsync();
+        // Solo elimina el tag asignado (IsEvent == 0), no los eventos
+        await db.ExecuteAsync("DELETE FROM \"input\" WHERE VideoID = ? AND InputTypeID = ? AND IsEvent = 0", videoId, tagId);
+    }
+
+    /// <summary>
+    /// Reemplaza todos los tags asignados de un video con los nuevos (no afecta eventos)
+    /// </summary>
+    public async Task SetVideoTagsAsync(int videoId, int sessionId, int athleteId, IEnumerable<int> tagIds)
+    {
+        var db = await GetConnectionAsync();
+        
+        // Eliminar solo los tags asignados actuales del video (IsEvent == 0). No tocar eventos.
+        await db.ExecuteAsync("DELETE FROM \"input\" WHERE VideoID = ? AND IsEvent = 0", videoId);
+        
+        // Añadir los nuevos como asignaciones
+        foreach (var tagId in tagIds)
+        {
+            var input = new Input
+            {
+                VideoId = videoId,
+                InputTypeId = tagId,
+                SessionId = sessionId,
+                AthleteId = athleteId,
+                TimeStamp = 0,
+                IsEvent = 0,  // Marcar como asignación, no evento
+                InputDateTime = DateTimeOffset.Now.ToUnixTimeSeconds()
+            };
+            await db.InsertAsync(input);
+        }
+    }
+
+    /// <summary>
+    /// Elimina todos los eventos de un tag específico de un video (elimina las ocurrencias con IsEvent == 1)
+    /// </summary>
+    public async Task RemoveEventTagFromVideoAsync(int videoId, int tagId)
+    {
+        var db = await GetConnectionAsync();
+        // Solo elimina eventos (IsEvent == 1), no los tags asignados
+        await db.ExecuteAsync("DELETE FROM \"input\" WHERE VideoID = ? AND InputTypeID = ? AND IsEvent = 1", videoId, tagId);
+    }
+
+    /// <summary>
+    /// Elimina un tag de la base de datos y todas sus referencias en input
+    /// </summary>
+    public async Task DeleteTagAsync(int tagId)
+    {
+        var db = await GetConnectionAsync();
+        // Primero eliminar todas las referencias en input
+        await db.ExecuteAsync("DELETE FROM \"input\" WHERE InputTypeID = ?", tagId);
+        // Luego eliminar el tag
+        await db.ExecuteAsync("DELETE FROM \"inputtype\" WHERE id = ?", tagId);
     }
 }

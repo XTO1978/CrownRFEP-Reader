@@ -354,6 +354,57 @@
                                             FontSize="12"
                                             Text="{Binding CreationDateTime, StringFormat='{0:HH:mm}'}"
                                             TextColor="White" />
+                                        
+                                        <!--  Tags del video (chips)  -->
+                                        <ScrollView
+                                            Orientation="Horizontal"
+                                            Margin="0,2,0,0"
+                                            HorizontalScrollBarVisibility="Never">
+                                            <HorizontalStackLayout Spacing="4">
+                                                <!--  Tags asignados (verde)  -->
+                                                <HorizontalStackLayout
+                                                    Spacing="4"
+                                                    BindableLayout.ItemsSource="{Binding Tags}">
+                                                    <BindableLayout.ItemTemplate>
+                                                        <DataTemplate x:DataType="models:Tag">
+                                                            <Border
+                                                                Padding="6,2"
+                                                                BackgroundColor="#FF006A05"
+                                                                StrokeShape="RoundRectangle 2"
+                                                                StrokeThickness="0">
+                                                                <Label
+                                                                    FontSize="10"
+                                                                    Text="{Binding NombreTag}"
+                                                                    TextColor="White"
+                                                                    LineBreakMode="TailTruncation"
+                                                                    MaximumWidthRequest="120" />
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </BindableLayout.ItemTemplate>
+                                                </HorizontalStackLayout>
+                                                <!--  Tags de eventos (naranja)  -->
+                                                <HorizontalStackLayout
+                                                    Spacing="4"
+                                                    BindableLayout.ItemsSource="{Binding EventTags}">
+                                                    <BindableLayout.ItemTemplate>
+                                                        <DataTemplate x:DataType="models:Tag">
+                                                            <Border
+                                                                Padding="6,2"
+                                                                BackgroundColor="#FFFF8C00"
+                                                                StrokeShape="RoundRectangle 2"
+                                                                StrokeThickness="0">
+                                                                <Label
+                                                                    FontSize="10"
+                                                                    Text="{Binding NombreTag}"
+                                                                    TextColor="White"
+                                                                    LineBreakMode="TailTruncation"
+                                                                    MaximumWidthRequest="120" />
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </BindableLayout.ItemTemplate>
+                                                </HorizontalStackLayout>
+                                            </HorizontalStackLayout>
+                                        </ScrollView>
                                     </VerticalStackLayout>
 
                                     <!--  Zona de vista previa (hover para mostrar preview)  -->
