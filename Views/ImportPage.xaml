@@ -28,7 +28,7 @@
                 BackgroundColor="#FF1E1E1E"
                 Stroke="#FF3B3B3B"
                 StrokeShape="RoundRectangle 10"
-                StrokeThickness="1">
+                StrokeThickness="0">
                 <Grid RowDefinitions="Auto,*,Auto" RowSpacing="0">
                     <!--  Cabecera  -->
                     <Border
@@ -48,26 +48,25 @@
                                 <Button.ImageSource>
                                     <FontImageSource
                                         Glyph="↻"
-                                        Size="14"
+                                        Size="24"
                                         Color="#FF878787" />
                                 </Button.ImageSource>
                             </Button>
 
                             <Label
                                 Grid.Column="1"
-                                FontAttributes="Bold"
-                                FontSize="13"
-                                Text="📁 Carpetas"
+                                FontSize="16"
+                                Text="Carpetas"
                                 TextColor="White"
                                 VerticalOptions="Center" />
 
                             <Button
                                 Grid.Column="2"
-                                Padding="8,4"
+                                Padding="16,6"
                                 BackgroundColor="#FF3B3B3B"
                                 Command="{Binding AddVideosWithPickerCommand}"
                                 CornerRadius="4"
-                                FontSize="10"
+                                FontSize="14"
                                 Text="Buscar..."
                                 TextColor="White" />
                         </Grid>
@@ -79,7 +78,7 @@
                         BackgroundColor="Transparent"
                         ItemsSource="{Binding FlatItems}"
                         SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
-                        SelectionMode="Single">
+                        SelectionMode="Single" Margin="0,20,0,0">
                         <CollectionView.ItemTemplate>
                             <DataTemplate x:DataType="models:FileSystemItem">
                                 <Border
@@ -165,10 +164,10 @@
                         BackgroundColor="#FF2D2D2D"
                         StrokeThickness="0">
                         <Label
-                            FontSize="10"
+                            FontSize="12"
                             LineBreakMode="TailTruncation"
                             Text="{Binding CurrentPath}"
-                            TextColor="#FF666666" />
+                            TextColor="#FF878787" />
                     </Border>
                 </Grid>
             </Border>
@@ -179,7 +178,7 @@
                 BackgroundColor="#FF1E1E1E"
                 Stroke="#FF3B3B3B"
                 StrokeShape="RoundRectangle 10"
-                StrokeThickness="1">
+                StrokeThickness="0">
                 <Grid RowDefinitions="Auto,*,Auto" RowSpacing="0">
                     <!--  Cabecera  -->
                     <Border
@@ -216,15 +215,15 @@
                             Spacing="8"
                             VerticalOptions="Center">
                             <Label
-                                FontSize="11"
+                                FontSize="16"
                                 HorizontalOptions="Center"
                                 Text="Selecciona una carpeta"
-                                TextColor="#FF666666" />
+                                TextColor="#FF878787" />
                         </VerticalStackLayout>
 
                         <!--  Lista de videos  -->
                         <CollectionView
-                            Margin="4,0,4,0"
+                            Margin="40,0,40,0"
                             BackgroundColor="Transparent"
                             ItemsSource="{Binding FolderFiles}"
                             SelectionMode="None">
@@ -233,7 +232,7 @@
                                     <Border
                                         Margin="0"
                                         Padding="6,2"
-                                        BackgroundColor="#FF2A2A2A"
+                                        BackgroundColor="Transparent"
                                         StrokeShape="RoundRectangle 4"
                                         StrokeThickness="0">
                                         <Border.GestureRecognizers>
@@ -241,39 +240,43 @@
                                                 CanDrag="True"
                                                 DragStarting="OnVideoDragStarting" />
                                         </Border.GestureRecognizers>
-                                        <Grid ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="4">
-                                            <CheckBox
-                                                Grid.Column="0"
-                                                IsChecked="{Binding IsChecked, Mode=TwoWay}"
-                                                Color="#FF6DDDFF"
-                                                VerticalOptions="Center" />
+                                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="4">
                                             <controls:SymbolIcon
-                                                Grid.Column="1"
+                                                Grid.Column="0"
                                                 HeightRequest="24"
                                                 SymbolName="{Binding Icon}"
                                                 TintColor="#FFD9D9D9"
                                                 WidthRequest="24" />
 
                                             <Label
-                                                Grid.Column="2"
+                                                Grid.Column="1"
                                                 FontSize="14"
                                                 LineBreakMode="TailTruncation"
                                                 Text="{Binding Name}"
                                                 TextColor="White"
                                                 VerticalOptions="Center" />
 
-                                            <Button
-                                                Grid.Column="3"
-                                                Padding="8,6"
+                                            <Border
+                                                Grid.Column="2"
+                                                Padding="2,2"
                                                 BackgroundColor="#FF464646"
-                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:ImportViewModel}}, Path=AddVideoFromFolderListCommand}"
-                                                CommandParameter="{Binding .}"
-                                                CornerRadius="4"
-                                                FontSize="14"
-                                                HeightRequest="24"
-                                                Text="+"
-                                                TextColor="White"
-                                                WidthRequest="38" />
+                                                HeightRequest="40"
+                                                StrokeShape="RoundRectangle 4"
+                                                StrokeThickness="0"
+                                                WidthRequest="56">
+                                                <Border.GestureRecognizers>
+                                                    <TapGestureRecognizer
+                                                        Command="{Binding Source={RelativeSource AncestorType={x:Type vm:ImportViewModel}}, Path=AddVideoFromFolderListCommand}"
+                                                        CommandParameter="{Binding .}" />
+                                                </Border.GestureRecognizers>
+                                                <controls:SymbolIcon
+                                                    HeightRequest="18"
+                                                    HorizontalOptions="Center"
+                                                    SymbolName="plus.circle"
+                                                    TintColor="#FFD1D1D1"
+                                                    VerticalOptions="Center"
+                                                    WidthRequest="18" />
+                                            </Border>
                                         </Grid>
                                     </Border>
                                 </DataTemplate>
@@ -288,7 +291,7 @@
                         BackgroundColor="#FF2D2D2D"
                         StrokeThickness="0">
                         <Label
-                            FontSize="10"
+                            FontSize="12"
                             Text="{Binding FolderFilesInfo}"
                             TextColor="#FF878787" />
                     </Border>
@@ -305,7 +308,7 @@
                     Stroke="{Binding IsDragOver, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF4A9ADA|#FF3B3B3B}"
                     StrokeDashArray="5,3"
                     StrokeShape="RoundRectangle 12"
-                    StrokeThickness="2">
+                    StrokeThickness="0">
 
                     <!--  Drop gesture recognizer  -->
                     <Border.GestureRecognizers>
@@ -332,7 +335,7 @@
                                 <Button
                                     Grid.Column="1"
                                     Padding="8,4"
-                                    BackgroundColor="#FF5A2A2A"
+                                    BackgroundColor="#FF464646"
                                     Command="{Binding ClearAllVideosCommand}"
                                     CornerRadius="4"
                                     FontSize="11"
@@ -375,7 +378,7 @@
                                             BackgroundColor="#FF2A2A2A"
                                             Stroke="#FF3B3B3B"
                                             StrokeShape="RoundRectangle 8"
-                                            StrokeThickness="1">
+                                            StrokeThickness="0">
                                             <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="10">
                                                 <!--  Icono  -->
                                                 <controls:SymbolIcon
@@ -438,7 +441,7 @@
                             BackgroundColor="#FF2D2D2D"
                             StrokeThickness="0">
                             <Label
-                                FontSize="11"
+                                FontSize="12"
                                 Text="{Binding PendingVideosInfo}"
                                 TextColor="#FF878787" />
                         </Border>
@@ -453,7 +456,7 @@
                     BackgroundColor="#FF1E1E1E"
                     Stroke="#FF3B3B3B"
                     StrokeShape="RoundRectangle 12"
-                    StrokeThickness="1">
+                    StrokeThickness="0">
                     <VerticalStackLayout Spacing="12">
                         <Label
                             FontAttributes="Bold"
@@ -470,7 +473,7 @@
                             <Entry
                                 BackgroundColor="#FF2A2A2A"
                                 FontSize="13"
-                                Placeholder="Ej: Entrenamiento técnico"
+                                Placeholder="Ej: Bajadas largas"
                                 PlaceholderColor="#FF666666"
                                 Text="{Binding CustomSessionName}"
                                 TextColor="White" />
@@ -480,12 +483,12 @@
                         <VerticalStackLayout Spacing="4">
                             <Label
                                 FontSize="11"
-                                Text="Ubicación (opcional)"
+                                Text="Ubicación"
                                 TextColor="#FF878787" />
                             <Entry
                                 BackgroundColor="#FF2A2A2A"
                                 FontSize="13"
-                                Placeholder="Ej: Piscina Municipal"
+                                Placeholder="Ej: La Seu d'Urgell"
                                 PlaceholderColor="#FF666666"
                                 Text="{Binding CustomSessionLocation}"
                                 TextColor="White" />
@@ -508,10 +511,9 @@
                         <Button
                             Margin="0,8,0,0"
                             Padding="16,12"
-                            BackgroundColor="#FF2E7D32"
+                            BackgroundColor="#FF464646"
                             Command="{Binding CreateCustomSessionCommand}"
-                            CornerRadius="8"
-                            FontAttributes="Bold"
+                            CornerRadius="4"
                             FontSize="14"
                             IsEnabled="{Binding CanCreateCustomSession}"
                             Text="Crear Sesión"
