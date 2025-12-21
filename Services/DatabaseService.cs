@@ -74,25 +74,36 @@ public class DatabaseService
         if (eventInputs.Count == 0)
             return;
 
+        // Catálogo actual de event_tags
+        var eventDefs = await db.Table<EventTagDefinition>().ToListAsync();
+        var eventDefIds = new HashSet<int>(eventDefs.Select(e => e.Id));
+
+        // Comprobar si TODOS los InputTypeId de eventos ya existen en event_tags.
+        // Si es así, la migración ya se ejecutó -> salir.
+        var distinctEventTypeIds = eventInputs.Select(i => i.InputTypeId).Distinct().ToList();
+        if (distinctEventTypeIds.All(id => eventDefIds.Contains(id)))
+            return;
+
         // Catálogo previo de tags (antiguamente se reutilizaba Tag para eventos)
         var tags = await db.Table<Tag>().ToListAsync();
         var tagNameById = tags
             .Where(t => !string.IsNullOrWhiteSpace(t.NombreTag))
             .ToDictionary(t => t.Id, t => t.NombreTag!.Trim());
 
-        // Catálogo actual de event_tags
-        var eventDefs = await db.Table<EventTagDefinition>().ToListAsync();
         var eventIdByName = eventDefs
             .Where(e => !string.IsNullOrWhiteSpace(e.Nombre))
             .GroupBy(e => e.Nombre!.Trim().ToLowerInvariant())
             .ToDictionary(g => g.Key, g => g.First().Id);
 
         // Mapear antiguos InputTypeId (referenciando Tag) -> nuevo Id en event_tags (por nombre)
-        var distinctOldIds = eventInputs.Select(i => i.InputTypeId).Distinct().ToList();
         var remap = new Dictionary<int, int>();
 
-        foreach (var oldId in distinctOldIds)
+        foreach (var oldId in distinctEventTypeIds)
         {
+            // Saltar si ya existe en event_tags (no necesita remapeo)
+            if (eventDefIds.Contains(oldId))
+                continue;
+
             if (!tagNameById.TryGetValue(oldId, out var oldName))
                 continue;
 
@@ -108,7 +119,7 @@ public class DatabaseService
             remap[oldId] = newEventId;
         }
 
-        // Ejecutar remapeo en inputs (solo eventos)
+        // Ejecutar remapeo en inputs (solo eventos que necesiten migración)
         foreach (var (oldId, newId) in remap)
         {
             await db.ExecuteAsync(
