@@ -65,6 +65,10 @@ public partial class DashboardPage : ContentPage
     {
         base.OnAppearing();
         _isPageActive = true;
+        
+        // Limpiar los recuadros de preview al volver a la página
+        _viewModel.ClearPreviewVideos();
+        
         await _viewModel.LoadDataAsync();
     }
 

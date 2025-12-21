@@ -283,6 +283,16 @@ public class DashboardViewModel : BaseViewModel
     public bool HasParallelVideo1 => _parallelVideo1 != null;
     public bool HasParallelVideo2 => _parallelVideo2 != null;
 
+    /// <summary>
+    /// Limpia los videos de preview (recuadros de arrastrar)
+    /// </summary>
+    public void ClearPreviewVideos()
+    {
+        ParallelVideo1 = null;
+        ParallelVideo2 = null;
+        IsPreviewMode = false;
+    }
+
     public bool IsPreviewMode
     {
         get => _isPreviewMode;
@@ -600,7 +610,7 @@ public class DashboardViewModel : BaseViewModel
         // Verificar que hay al menos un vídeo
         if (!HasParallelVideo1 && !HasParallelVideo2)
         {
-            await Shell.Current.DisplayAlert("Análisis paralelo", 
+            await Shell.Current.DisplayAlert("Análisis", 
                 "Arrastra al menos un vídeo a las áreas de análisis.", "OK");
             return;
         }
@@ -608,7 +618,19 @@ public class DashboardViewModel : BaseViewModel
         // Desactivar el modo preview antes de abrir el reproductor
         IsPreviewMode = false;
 
-        // Obtener la página del reproductor paralelo desde el contenedor de DI
+        // Si está en modo único y hay un video en ParallelVideo1, usar SinglePlayerPage
+        if (IsSingleVideoMode && HasParallelVideo1)
+        {
+            var singlePage = App.Current?.Handler?.MauiContext?.Services.GetService<Views.SinglePlayerPage>();
+            if (singlePage?.BindingContext is SinglePlayerViewModel singleVm)
+            {
+                await singleVm.InitializeWithVideoAsync(ParallelVideo1!);
+                await Shell.Current.Navigation.PushAsync(singlePage);
+            }
+            return;
+        }
+
+        // Modo paralelo: usar ParallelPlayerPage
         var page = App.Current?.Handler?.MauiContext?.Services.GetService<Views.ParallelPlayerPage>();
         if (page?.BindingContext is ParallelPlayerViewModel vm)
         {
