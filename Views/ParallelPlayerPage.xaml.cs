@@ -1,3 +1,4 @@
+using CrownRFEP_Reader.Behaviors;
 using CrownRFEP_Reader.Controls;
 using CrownRFEP_Reader.ViewModels;
 
@@ -16,6 +17,14 @@ public partial class ParallelPlayerPage : ContentPage
     private bool _wasPlayingBeforeDrag;
     private bool _wasPlaying1BeforeDrag;
     private bool _wasPlaying2BeforeDrag;
+    
+    // Flags para controlar el scrubbing con trackpad/mouse
+    private bool _isScrubbing1;
+    private bool _isScrubbing2;
+    private bool _wasPlaying1BeforeScrub;
+    private bool _wasPlaying2BeforeScrub;
+    private double _currentScrubPosition1;
+    private double _currentScrubPosition2;
 
     public ParallelPlayerPage(ParallelPlayerViewModel viewModel)
     {
@@ -117,11 +126,20 @@ public partial class ParallelPlayerPage : ContentPage
         base.OnAppearing();
         UpdateActiveMediaElements();
         SetupMediaOpenedHandlers();
+        
+        // Suscribirse a eventos de scrubbing (trackpad/mouse wheel)
+        VideoScrubBehavior.ScrubUpdated += OnScrubUpdated;
+        VideoScrubBehavior.ScrubEnded += OnScrubEnded;
     }
 
     protected override void OnDisappearing()
     {
         base.OnDisappearing();
+        
+        // Desuscribirse de eventos de scrubbing
+        VideoScrubBehavior.ScrubUpdated -= OnScrubUpdated;
+        VideoScrubBehavior.ScrubEnded -= OnScrubEnded;
+        
         CleanupResources();
     }
 
@@ -598,6 +616,164 @@ public partial class ParallelPlayerPage : ContentPage
         
         // Mantener el reproductor en pausa mostrando el frame seleccionado
         // El usuario debe pulsar play manualmente para reanudar
+    }
+
+    #endregion
+
+    #region Scrubbing con trackpad/mouse wheel
+
+    private void OnScrubUpdated(object? sender, VideoScrubEventArgs e)
+    {
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            if (e.VideoIndex == 1)
+            {
+                HandleScrubVideo1(e);
+            }
+            else if (e.VideoIndex == 2)
+            {
+                HandleScrubVideo2(e);
+            }
+        });
+    }
+
+    private void HandleScrubVideo1(VideoScrubEventArgs e)
+    {
+        if (e.IsStart)
+        {
+            // Inicio del scrubbing: pausar si está reproduciendo
+            _isScrubbing1 = true;
+            _wasPlaying1BeforeScrub = _viewModel.IsSimultaneousMode ? _viewModel.IsPlaying : _viewModel.IsPlaying1;
+            _currentScrubPosition1 = _viewModel.CurrentPosition1.TotalMilliseconds;
+            
+            if (_wasPlaying1BeforeScrub)
+            {
+                _activePlayer1?.Pause();
+                if (_viewModel.IsSimultaneousMode)
+                {
+                    _activePlayer2?.Pause();
+                    _viewModel.IsPlaying = false;
+                }
+                else
+                {
+                    _viewModel.IsPlaying1 = false;
+                }
+            }
+        }
+        else
+        {
+            // Durante el scrubbing: actualizar posición
+            _currentScrubPosition1 += e.DeltaMilliseconds;
+            
+            // Limitar a los bordes del video
+            var maxMs = _viewModel.Duration1.TotalMilliseconds;
+            _currentScrubPosition1 = Math.Max(0, Math.Min(_currentScrubPosition1, maxMs));
+            
+            var newPosition = TimeSpan.FromMilliseconds(_currentScrubPosition1);
+            _activePlayer1?.SeekTo(newPosition);
+            _viewModel.CurrentPosition1 = newPosition;
+            
+            // En modo simultáneo, mover también el video 2
+            if (_viewModel.IsSimultaneousMode)
+            {
+                _activePlayer2?.SeekTo(newPosition);
+                _viewModel.CurrentPosition2 = newPosition;
+                _viewModel.CurrentPosition = newPosition;
+            }
+        }
+    }
+
+    private void HandleScrubVideo2(VideoScrubEventArgs e)
+    {
+        if (e.IsStart)
+        {
+            // Inicio del scrubbing: pausar si está reproduciendo
+            _isScrubbing2 = true;
+            _wasPlaying2BeforeScrub = _viewModel.IsSimultaneousMode ? _viewModel.IsPlaying : _viewModel.IsPlaying2;
+            _currentScrubPosition2 = _viewModel.CurrentPosition2.TotalMilliseconds;
+            
+            if (_wasPlaying2BeforeScrub)
+            {
+                _activePlayer2?.Pause();
+                if (_viewModel.IsSimultaneousMode)
+                {
+                    _activePlayer1?.Pause();
+                    _viewModel.IsPlaying = false;
+                }
+                else
+                {
+                    _viewModel.IsPlaying2 = false;
+                }
+            }
+        }
+        else
+        {
+            // Durante el scrubbing: actualizar posición
+            _currentScrubPosition2 += e.DeltaMilliseconds;
+            
+            // Limitar a los bordes del video
+            var maxMs = _viewModel.Duration2.TotalMilliseconds;
+            _currentScrubPosition2 = Math.Max(0, Math.Min(_currentScrubPosition2, maxMs));
+            
+            var newPosition = TimeSpan.FromMilliseconds(_currentScrubPosition2);
+            _activePlayer2?.SeekTo(newPosition);
+            _viewModel.CurrentPosition2 = newPosition;
+            
+            // En modo simultáneo, mover también el video 1
+            if (_viewModel.IsSimultaneousMode)
+            {
+                _activePlayer1?.SeekTo(newPosition);
+                _viewModel.CurrentPosition1 = newPosition;
+                _viewModel.CurrentPosition = newPosition;
+            }
+        }
+    }
+
+    private void OnScrubEnded(object? sender, VideoScrubEventArgs e)
+    {
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            if (e.VideoIndex == 1)
+            {
+                _isScrubbing1 = false;
+                
+                // Reanudar reproducción si estaba reproduciendo antes
+                if (_wasPlaying1BeforeScrub)
+                {
+                    if (_viewModel.IsSimultaneousMode)
+                    {
+                        _activePlayer1?.Play();
+                        _activePlayer2?.Play();
+                        _viewModel.IsPlaying = true;
+                    }
+                    else
+                    {
+                        _activePlayer1?.Play();
+                        _viewModel.IsPlaying1 = true;
+                    }
+                }
+            }
+            else if (e.VideoIndex == 2)
+            {
+                _isScrubbing2 = false;
+                
+                // Reanudar reproducción si estaba reproduciendo antes
+                if (_wasPlaying2BeforeScrub)
+                {
+                    if (_viewModel.IsSimultaneousMode)
+                    {
+                        _activePlayer1?.Play();
+                        _activePlayer2?.Play();
+                        _viewModel.IsPlaying = true;
+                    }
+                    else
+                    {
+                        _activePlayer2?.Play();
+                        _viewModel.IsPlaying2 = true;
+                    }
+                }
+            }
+        });
     }
 
     #endregion

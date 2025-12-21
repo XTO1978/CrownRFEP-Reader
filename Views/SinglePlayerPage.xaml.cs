@@ -1,3 +1,4 @@
+using CrownRFEP_Reader.Behaviors;
 using CrownRFEP_Reader.Controls;
 using CrownRFEP_Reader.Models;
 using CrownRFEP_Reader.ViewModels;
@@ -11,6 +12,11 @@ public partial class SinglePlayerPage : ContentPage
     // Flags para controlar el scrubbing del slider
     private bool _isDraggingSlider;
     private bool _wasPlayingBeforeDrag;
+    
+    // Flags para controlar el scrubbing con trackpad/mouse
+    private bool _isScrubbing;
+    private bool _wasPlayingBeforeScrub;
+    private double _currentScrubPosition;
 
     public SinglePlayerPage(SinglePlayerViewModel viewModel)
     {
@@ -32,11 +38,20 @@ public partial class SinglePlayerPage : ContentPage
     {
         base.OnAppearing();
         SetupMediaHandlers();
+        
+        // Suscribirse a eventos de scrubbing (trackpad/mouse wheel)
+        VideoScrubBehavior.ScrubUpdated += OnScrubUpdated;
+        VideoScrubBehavior.ScrubEnded += OnScrubEnded;
     }
 
     protected override void OnDisappearing()
     {
         base.OnDisappearing();
+        
+        // Desuscribirse de eventos de scrubbing
+        VideoScrubBehavior.ScrubUpdated -= OnScrubUpdated;
+        VideoScrubBehavior.ScrubEnded -= OnScrubEnded;
+        
         CleanupResources();
     }
 
@@ -182,6 +197,64 @@ public partial class SinglePlayerPage : ContentPage
         
         // Mantener el reproductor en pausa mostrando el frame seleccionado
         // El usuario debe pulsar play manualmente para reanudar
+    }
+
+    #endregion
+
+    #region Scrubbing con trackpad/mouse wheel
+
+    private void OnScrubUpdated(object? sender, VideoScrubEventArgs e)
+    {
+        // Solo procesar si es nuestro video (index 0)
+        if (e.VideoIndex != 0) return;
+        
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            if (e.IsStart)
+            {
+                // Inicio del scrubbing: pausar si está reproduciendo
+                _isScrubbing = true;
+                _wasPlayingBeforeScrub = _viewModel.IsPlaying;
+                _currentScrubPosition = _viewModel.CurrentPosition.TotalMilliseconds;
+                
+                if (_wasPlayingBeforeScrub)
+                {
+                    MediaPlayer?.Pause();
+                    _viewModel.IsPlaying = false;
+                }
+            }
+            else
+            {
+                // Durante el scrubbing: actualizar posición
+                _currentScrubPosition += e.DeltaMilliseconds;
+                
+                // Limitar a los bordes del video
+                var maxMs = _viewModel.Duration.TotalMilliseconds;
+                _currentScrubPosition = Math.Max(0, Math.Min(_currentScrubPosition, maxMs));
+                
+                var newPosition = TimeSpan.FromMilliseconds(_currentScrubPosition);
+                MediaPlayer?.SeekTo(newPosition);
+                _viewModel.CurrentPosition = newPosition;
+            }
+        });
+    }
+
+    private void OnScrubEnded(object? sender, VideoScrubEventArgs e)
+    {
+        // Solo procesar si es nuestro video (index 0)
+        if (e.VideoIndex != 0) return;
+        
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            _isScrubbing = false;
+            
+            // Reanudar reproducción si estaba reproduciendo antes
+            if (_wasPlayingBeforeScrub)
+            {
+                MediaPlayer?.Play();
+                _viewModel.IsPlaying = true;
+            }
+        });
     }
 
     #endregion

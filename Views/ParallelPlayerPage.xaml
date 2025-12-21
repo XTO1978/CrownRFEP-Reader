@@ -3,6 +3,7 @@
     x:Class="CrownRFEP_Reader.Views.ParallelPlayerPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:behaviors="clr-namespace:CrownRFEP_Reader.Behaviors"
     xmlns:controls="clr-namespace:CrownRFEP_Reader.Views.Controls"
     xmlns:precision="clr-namespace:CrownRFEP_Reader.Controls"
     xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
@@ -36,6 +37,14 @@
                                 Aspect="AspectFit"
                                 IsMuted="False" BackgroundColor="#FF0D0D0D"
                                 Source="{Binding Video1.LocalClipPath}" />
+                            <!--  Overlay para scrubbing con trackpad/mouse wheel  -->
+                            <BoxView
+                                BackgroundColor="Transparent"
+                                InputTransparent="False">
+                                <BoxView.Behaviors>
+                                    <behaviors:VideoScrubBehavior VideoIndex="1" />
+                                </BoxView.Behaviors>
+                            </BoxView>
                             <!--  Nombre del atleta  -->
                             <Border
                                 Margin="12"
@@ -138,6 +147,14 @@
                                 Aspect="AspectFit"
                                 IsMuted="False"
                                 Source="{Binding Video2.LocalClipPath}" />
+                            <!--  Overlay para scrubbing con trackpad/mouse wheel  -->
+                            <BoxView
+                                BackgroundColor="Transparent"
+                                InputTransparent="False">
+                                <BoxView.Behaviors>
+                                    <behaviors:VideoScrubBehavior VideoIndex="2" />
+                                </BoxView.Behaviors>
+                            </BoxView>
                             <!--  Nombre del atleta  -->
                             <Border
                                 Margin="12"
@@ -246,6 +263,14 @@
                             Aspect="AspectFit" BackgroundColor="#FF0D0D0D"
                             IsMuted="False"
                             Source="{Binding Video1.LocalClipPath}" />
+                        <!--  Overlay para scrubbing con trackpad/mouse wheel  -->
+                        <BoxView
+                            BackgroundColor="Transparent"
+                            InputTransparent="False">
+                            <BoxView.Behaviors>
+                                <behaviors:VideoScrubBehavior VideoIndex="1" />
+                            </BoxView.Behaviors>
+                        </BoxView>
                         <!--  Nombre del atleta  -->
                         <Border
                             Margin="12"
@@ -331,6 +356,14 @@
                             Aspect="AspectFit" BackgroundColor="#FF0D0D0D"
                             IsMuted="False"
                             Source="{Binding Video2.LocalClipPath}" />
+                        <!--  Overlay para scrubbing con trackpad/mouse wheel  -->
+                        <BoxView
+                            BackgroundColor="Transparent"
+                            InputTransparent="False">
+                            <BoxView.Behaviors>
+                                <behaviors:VideoScrubBehavior VideoIndex="2" />
+                            </BoxView.Behaviors>
+                        </BoxView>
                         <!--  Nombre del atleta  -->
                         <Border
                             Margin="12"
