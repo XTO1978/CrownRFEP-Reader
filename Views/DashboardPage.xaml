@@ -16,7 +16,7 @@
 
     <Grid
         Padding="0"
-        ColumnDefinitions="*,8,2.5*,8,1.2*"
+        ColumnDefinitions="350,8,2.5*,8,1.2*"
         RowDefinitions="Auto,*">
         <controls:TopTabsBar
             Grid.Row="0"
@@ -83,7 +83,7 @@
 
             <CollectionView
                 Grid.Row="1"
-                Margin="0,12,0,0"
+                Margin="0,2,0,0"
                 BackgroundColor="#00BBBABA"
                 ItemsSource="{Binding RecentSessions}"
                 SelectedItem="{Binding SelectedSession, Mode=TwoWay}"
@@ -242,14 +242,14 @@
                 VerticalOptions="Center">
                 <Label
                     FontSize="14"
-                    Text="{Binding SelectedSessionVideos.Count, StringFormat='{0} vídeos'}"
+                    Text="{Binding VideoCountDisplayText}"
                     TextColor="#FFB1B1B1" />
                 <ActivityIndicator
                     HeightRequest="16"
                     IsRunning="{Binding IsLoadingSelectedSessionVideos}"
                     IsVisible="{Binding IsLoadingSelectedSessionVideos}"
                     WidthRequest="16"
-                    Color="{StaticResource Primary}" />
+                    Color="White" />
             </HorizontalStackLayout>
 
             <CollectionView
@@ -258,7 +258,7 @@
                 ItemsSource="{Binding SelectedSessionVideos}"
                 RemainingItemsThreshold="10"
                 RemainingItemsThresholdReachedCommand="{Binding LoadMoreVideosCommand}"
-                SelectionMode="None">
+                SelectionMode="None" Margin="0,10,0,0">
                 <CollectionView.ItemsLayout>
                     <GridItemsLayout
                         HorizontalItemSpacing="4"
@@ -436,10 +436,6 @@
                         HorizontalOptions="Center"
                         VerticalOptions="Center">
                         <Label
-                            FontSize="48"
-                            HorizontalOptions="Center"
-                            Text="🎬" />
-                        <Label
                             FontSize="18"
                             HorizontalOptions="Center"
                             Text="Selecciona una sesión"
@@ -491,7 +487,7 @@
                         <Border.GestureRecognizers>
                             <TapGestureRecognizer Command="{Binding SelectCrudTechTabCommand}" />
                         </Border.GestureRecognizers>
-                        <Label Text="Acciones" TextColor="White" HorizontalOptions="Center">
+                        <Label Text="Acciones y Análisis Técnico" TextColor="White" HorizontalOptions="Center">
                             <Label.Triggers>
                                 <DataTrigger TargetType="Label" Binding="{Binding IsCrudTechTabSelected}" Value="True">
                                     <Setter Property="FontAttributes" Value="Bold" />
@@ -622,12 +618,14 @@
                     <Label
                         Margin="0,12,0,0"
                         FontSize="14"
-                        Text="Acciones"
+                        Text="Acciones en lote"
                         TextColor="#FFB1B1B1" />
 
-                    <VerticalStackLayout Spacing="8">
+                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="8">
                         <!--  Botón: Reproducir como playlist  -->
                         <Border
+                            Grid.Row="0"
+                            Grid.Column="0"
                             Padding="10,8"
                             BackgroundColor="#FF2A2A2A"
                             Stroke="Transparent"
@@ -642,12 +640,14 @@
                                     TintColor="White"
                                     WidthRequest="16"
                                     VerticalOptions="Center" />
-                                <Label Text="Reproducir como playlist" TextColor="White" VerticalOptions="Center" />
+                                <Label Text="Playlist" TextColor="White" VerticalOptions="Center" FontSize="12" />
                             </HorizontalStackLayout>
                         </Border>
 
                         <!--  Botón: Editar detalles  -->
                         <Border
+                            Grid.Row="0"
+                            Grid.Column="1"
                             Padding="10,8"
                             BackgroundColor="#FF2A2A2A"
                             Stroke="Transparent"
@@ -662,12 +662,36 @@
                                     TintColor="White"
                                     WidthRequest="16"
                                     VerticalOptions="Center" />
-                                <Label Text="Editar detalles" TextColor="White" VerticalOptions="Center" />
+                                <Label Text="Editar" TextColor="White" VerticalOptions="Center" FontSize="12" />
+                            </HorizontalStackLayout>
+                        </Border>
+
+                        <!--  Botón: Compartir  -->
+                        <Border
+                            Grid.Row="1"
+                            Grid.Column="0"
+                            Padding="10,8"
+                            BackgroundColor="#FF2A2A2A"
+                            Stroke="Transparent"
+                            StrokeShape="RoundRectangle 6">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding ShareSelectedVideosCommand}" />
+                            </Border.GestureRecognizers>
+                            <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
+                                <controls:SymbolIcon
+                                    HeightRequest="16"
+                                    SymbolName="square.and.arrow.up"
+                                    TintColor="#FF6DDDFF"
+                                    WidthRequest="16"
+                                    VerticalOptions="Center" />
+                                <Label Text="Compartir" TextColor="#FF6DDDFF" VerticalOptions="Center" FontSize="12" />
                             </HorizontalStackLayout>
                         </Border>
 
                         <!--  Botón: Eliminar selección  -->
                         <Border
+                            Grid.Row="1"
+                            Grid.Column="1"
                             Padding="10,8"
                             BackgroundColor="#FF2A2A2A"
                             Stroke="Transparent"
@@ -682,10 +706,30 @@
                                     TintColor="#FFFF6B6B"
                                     WidthRequest="16"
                                     VerticalOptions="Center" />
-                                <Label Text="Eliminar selección" TextColor="#FFFF6B6B" VerticalOptions="Center" />
+                                <Label Text="Eliminar" TextColor="#FFFF6B6B" VerticalOptions="Center" FontSize="12" />
                             </HorizontalStackLayout>
                         </Border>
-                    </VerticalStackLayout>
+                    </Grid>
+
+                    <!--  Sección: Análisis técnico  -->
+                    <Border
+                        Margin="0,12,0,0" HeightRequest="1"
+                        BackgroundColor="#FF464646"
+                        Stroke="Transparent"
+                        />
+
+                    <HorizontalStackLayout Spacing="12" VerticalOptions="Center" Margin="0,20,0,0">
+                        <controls:SymbolIcon
+                            HeightRequest="24"
+                            SymbolName="waveform.path.ecg"
+                            TintColor="#FF6DDDFF"
+                            VerticalOptions="Center"
+                            WidthRequest="24" />
+                        <Label
+                            FontSize="24"
+                            Text="Análisis técnico"
+                            TextColor="White" />
+                    </HorizontalStackLayout>
 
                     <!--  Sección: Análisis rápido  -->
                     <Label
@@ -695,7 +739,7 @@
                         TextColor="#FFB1B1B1" />
 
                     <!--  Toggle: Único / Paralelo  -->
-                    <HorizontalStackLayout Spacing="16" HorizontalOptions="Center" Margin="0,8,0,8">
+                    <HorizontalStackLayout Spacing="16" HorizontalOptions="Center" Margin="0,0,0,8">
                         <HorizontalStackLayout Spacing="6">
                             <RadioButton
                                 GroupName="AnalysisMode"

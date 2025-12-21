@@ -493,7 +493,20 @@ public class DashboardViewModel : BaseViewModel
 
     // Estadísticas: usar el cache filtrado para mostrar totales reales (no solo paginados)
     public int TotalFilteredVideoCount => (_filteredVideosCache ?? _allVideosCache)?.Count ?? SelectedSessionVideos.Count;
+    public int TotalAvailableVideoCount => _allVideosCache?.Count ?? SelectedSessionVideos.Count;
     public double TotalFilteredDurationSeconds => (_filteredVideosCache ?? _allVideosCache)?.Sum(v => v.ClipDuration) ?? SelectedSessionVideos.Sum(v => v.ClipDuration);
+    
+    public string VideoCountDisplayText
+    {
+        get
+        {
+            var shown = SelectedSessionVideos.Count;
+            var total = TotalAvailableVideoCount;
+            return shown == total 
+                ? $"{shown} vídeos" 
+                : $"{shown} de {total} vídeos";
+        }
+    }
     
     public double SelectedSessionTotalDurationSeconds => TotalFilteredDurationSeconds;
     public string SelectedSessionTotalDurationFormatted
@@ -528,6 +541,7 @@ public class DashboardViewModel : BaseViewModel
     public ICommand VideoTapCommand { get; }
     public ICommand PlayAsPlaylistCommand { get; }
     public ICommand EditVideoDetailsCommand { get; }
+    public ICommand ShareSelectedVideosCommand { get; }
     public ICommand DeleteSelectedVideosCommand { get; }
     public ICommand PlayParallelAnalysisCommand { get; }
     public ICommand PreviewParallelAnalysisCommand { get; }
@@ -579,12 +593,16 @@ public class DashboardViewModel : BaseViewModel
         VideoTapCommand = new AsyncRelayCommand<VideoClip>(OnVideoTappedAsync);
         PlayAsPlaylistCommand = new AsyncRelayCommand(PlayAsPlaylistAsync);
         EditVideoDetailsCommand = new AsyncRelayCommand(EditVideoDetailsAsync);
+        ShareSelectedVideosCommand = new AsyncRelayCommand(ShareSelectedVideosAsync);
         DeleteSelectedVideosCommand = new AsyncRelayCommand(DeleteSelectedVideosAsync);
         PlayParallelAnalysisCommand = new AsyncRelayCommand(PlayParallelAnalysisAsync);
         PreviewParallelAnalysisCommand = new AsyncRelayCommand(PreviewParallelAnalysisAsync);
         ClearParallelAnalysisCommand = new RelayCommand(ClearParallelAnalysis);
         DropOnScreen1Command = new RelayCommand<VideoClip>(video => ParallelVideo1 = video);
         DropOnScreen2Command = new RelayCommand<VideoClip>(video => ParallelVideo2 = video);
+        
+        // Notificar cambios en VideoCountDisplayText cuando cambie la colección
+        SelectedSessionVideos.CollectionChanged += (s, e) => OnPropertyChanged(nameof(VideoCountDisplayText));
         
         // Suscribirse a mensajes de actualización de video individual
         MessagingCenter.Subscribe<SinglePlayerViewModel, int>(this, "VideoClipUpdated", async (sender, videoId) =>
@@ -654,6 +672,12 @@ public class DashboardViewModel : BaseViewModel
     private async Task DeleteSelectedVideosAsync()
     {
         // TODO: Implementar eliminación de vídeos seleccionados
+        await Task.CompletedTask;
+    }
+
+    private async Task ShareSelectedVideosAsync()
+    {
+        // TODO: Implementar compartir vídeos seleccionados
         await Task.CompletedTask;
     }
 
@@ -950,6 +974,8 @@ public class DashboardViewModel : BaseViewModel
             UpdateStatisticsFromFilteredVideos();
 
             OnPropertyChanged(nameof(TotalFilteredVideoCount));
+            OnPropertyChanged(nameof(TotalAvailableVideoCount));
+            OnPropertyChanged(nameof(VideoCountDisplayText));
             OnPropertyChanged(nameof(TotalFilteredDurationSeconds));
             OnPropertyChanged(nameof(SelectedSessionTotalDurationSeconds));
             OnPropertyChanged(nameof(SelectedSessionTotalDurationFormatted));
@@ -1292,6 +1318,9 @@ public class DashboardViewModel : BaseViewModel
                 SelectedSessionValoraciones.Add(v);
             }
 
+            OnPropertyChanged(nameof(TotalFilteredVideoCount));
+            OnPropertyChanged(nameof(TotalAvailableVideoCount));
+            OnPropertyChanged(nameof(VideoCountDisplayText));
             OnPropertyChanged(nameof(SelectedSessionTotalDurationSeconds));
             OnPropertyChanged(nameof(SelectedSessionTotalDurationFormatted));
         }

@@ -244,6 +244,88 @@
                                 Text="{Binding BadgeText}"
                                 TextColor="White" />
                         </Border>
+                        
+                        <!--  Lista de eventos con timestamp  -->
+                        <VerticalStackLayout IsVisible="{Binding HasTagEvents}" Spacing="4" Margin="0,8,0,0">
+                            <Label
+                                FontSize="9"
+                                Text="EVENTOS MARCADOS"
+                                TextColor="#FF666666" />
+                            <VerticalStackLayout
+                                BindableLayout.ItemsSource="{Binding TagEvents}"
+                                Spacing="4">
+                                <BindableLayout.ItemTemplate>
+                                    <DataTemplate x:DataType="models:TagEvent">
+                                        <Border
+                                            Padding="6,4"
+                                            BackgroundColor="#FF2A2A2A"
+                                            StrokeShape="RoundRectangle 4"
+                                            StrokeThickness="0">
+                                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="6">
+                                                <!--  Timestamp clickable  -->
+                                                <Border
+                                                    Grid.Column="0"
+                                                    Padding="5,2"
+                                                    BackgroundColor="#FF3A3A3A"
+                                                    StrokeShape="RoundRectangle 3"
+                                                    StrokeThickness="0">
+                                                    <Border.GestureRecognizers>
+                                                        <TapGestureRecognizer 
+                                                            Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.SeekToTagEventCommand}"
+                                                            CommandParameter="{Binding .}" />
+                                                    </Border.GestureRecognizers>
+                                                    <HorizontalStackLayout Spacing="3">
+                                                        <controls:SymbolIcon
+                                                            HeightRequest="9"
+                                                            SymbolName="play.fill"
+                                                            TintColor="#FF6DDDFF"
+                                                            WidthRequest="9" />
+                                                        <Label
+                                                            Text="{Binding TimestampFormatted}"
+                                                            FontSize="10"
+                                                            FontAttributes="Bold"
+                                                            TextColor="#FF6DDDFF" />
+                                                    </HorizontalStackLayout>
+                                                </Border>
+                                                
+                                                <!--  Nombre del tag (naranja para eventos)  -->
+                                                <Border
+                                                    Grid.Column="1"
+                                                    Padding="6,2"
+                                                    BackgroundColor="#FFFF7043"
+                                                    StrokeShape="RoundRectangle 8"
+                                                    StrokeThickness="0"
+                                                    HorizontalOptions="Start">
+                                                    <Label
+                                                        Text="{Binding TagName}"
+                                                        FontSize="9"
+                                                        TextColor="White" />
+                                                </Border>
+                                                
+                                                <!--  Botón eliminar  -->
+                                                <Border
+                                                    Grid.Column="2"
+                                                    Padding="4"
+                                                    BackgroundColor="#44FF5555"
+                                                    StrokeShape="RoundRectangle 3"
+                                                    StrokeThickness="0">
+                                                    <Border.GestureRecognizers>
+                                                        <TapGestureRecognizer 
+                                                            Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.DeleteTagEventCommand}"
+                                                            CommandParameter="{Binding .}" />
+                                                    </Border.GestureRecognizers>
+                                                    <controls:SymbolIcon
+                                                        HeightRequest="8"
+                                                        SymbolName="trash.fill"
+                                                        TintColor="#FFFF6B6B"
+                                                        WidthRequest="8" />
+                                                </Border>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </BindableLayout.ItemTemplate>
+                            </VerticalStackLayout>
+                        </VerticalStackLayout>
                     </VerticalStackLayout>
                 </Border>
                 
@@ -996,7 +1078,7 @@
                                                 <Border
                                                     Grid.Column="1"
                                                     Padding="8,4"
-                                                    BackgroundColor="#FF66BB6A"
+                                                    BackgroundColor="#FFFF7043"
                                                     StrokeShape="RoundRectangle 10"
                                                     StrokeThickness="0"
                                                     HorizontalOptions="Start">
@@ -1013,7 +1095,7 @@
                                                 <Border
                                                     Grid.Column="3"
                                                     Padding="6"
-                                                    BackgroundColor="#44FF5555"
+                                                    BackgroundColor="#00FF5555"
                                                     StrokeShape="RoundRectangle 4"
                                                     StrokeThickness="0">
                                                     <Border.GestureRecognizers>
