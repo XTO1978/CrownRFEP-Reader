@@ -48,6 +48,7 @@ public class DatabaseService
         await _database.CreateTableAsync<InputType>();
         await _database.CreateTableAsync<Valoracion>();
         await _database.CreateTableAsync<Tag>();
+        await _database.CreateTableAsync<EventTagDefinition>();
         await _database.CreateTableAsync<WorkGroup>();
         await _database.CreateTableAsync<AthleteWorkGroup>();
         await _database.CreateTableAsync<UserProfile>();
@@ -61,6 +62,60 @@ public class DatabaseService
 
         // Migraciones ligeras: columna IsEvent en input para distinguir eventos de asignaciones
         await EnsureColumnExistsAsync(_database, "input", "IsEvent", "INTEGER DEFAULT 0");
+
+        // Migración: separar tipos de evento en event_tags (si venían guardados como Tag)
+        await MigrateEventTagsAsync(_database);
+    }
+
+    private static async Task MigrateEventTagsAsync(SQLiteAsyncConnection db)
+    {
+        // Si no hay eventos, no hacemos nada.
+        var eventInputs = await db.Table<Input>().Where(i => i.IsEvent == 1).ToListAsync();
+        if (eventInputs.Count == 0)
+            return;
+
+        // Catálogo previo de tags (antiguamente se reutilizaba Tag para eventos)
+        var tags = await db.Table<Tag>().ToListAsync();
+        var tagNameById = tags
+            .Where(t => !string.IsNullOrWhiteSpace(t.NombreTag))
+            .ToDictionary(t => t.Id, t => t.NombreTag!.Trim());
+
+        // Catálogo actual de event_tags
+        var eventDefs = await db.Table<EventTagDefinition>().ToListAsync();
+        var eventIdByName = eventDefs
+            .Where(e => !string.IsNullOrWhiteSpace(e.Nombre))
+            .GroupBy(e => e.Nombre!.Trim().ToLowerInvariant())
+            .ToDictionary(g => g.Key, g => g.First().Id);
+
+        // Mapear antiguos InputTypeId (referenciando Tag) -> nuevo Id en event_tags (por nombre)
+        var distinctOldIds = eventInputs.Select(i => i.InputTypeId).Distinct().ToList();
+        var remap = new Dictionary<int, int>();
+
+        foreach (var oldId in distinctOldIds)
+        {
+            if (!tagNameById.TryGetValue(oldId, out var oldName))
+                continue;
+
+            var key = oldName.Trim().ToLowerInvariant();
+            if (!eventIdByName.TryGetValue(key, out var newEventId))
+            {
+                var def = new EventTagDefinition { Nombre = oldName.Trim() };
+                await db.InsertAsync(def);
+                newEventId = def.Id;
+                eventIdByName[key] = newEventId;
+            }
+
+            remap[oldId] = newEventId;
+        }
+
+        // Ejecutar remapeo en inputs (solo eventos)
+        foreach (var (oldId, newId) in remap)
+        {
+            await db.ExecuteAsync(
+                "UPDATE \"input\" SET InputTypeID = ? WHERE IsEvent = 1 AND InputTypeID = ?",
+                newId,
+                oldId);
+        }
     }
 
     private sealed class SqliteTableInfoRow
@@ -705,6 +760,40 @@ public class DatabaseService
         return await db.Table<Tag>().ToListAsync();
     }
 
+    // ==================== EVENT TAG DEFINITIONS ====================
+    public async Task<List<EventTagDefinition>> GetAllEventTagsAsync()
+    {
+        var db = await GetConnectionAsync();
+        return await db.Table<EventTagDefinition>().ToListAsync();
+    }
+
+    public async Task<EventTagDefinition?> FindEventTagByNameAsync(string name)
+    {
+        var db = await GetConnectionAsync();
+        var normalized = (name ?? string.Empty).Trim().ToLowerInvariant();
+        return await db.Table<EventTagDefinition>()
+            .Where(t => t.Nombre != null && t.Nombre.ToLower() == normalized)
+            .FirstOrDefaultAsync();
+    }
+
+    public async Task<int> InsertEventTagAsync(EventTagDefinition eventTag)
+    {
+        var db = await GetConnectionAsync();
+        await db.InsertAsync(eventTag);
+        return eventTag.Id;
+    }
+
+    public async Task DeleteEventTagAsync(int eventTagId)
+    {
+        var db = await GetConnectionAsync();
+
+        // Borrar ocurrencias SOLO de eventos
+        await db.ExecuteAsync("DELETE FROM \"input\" WHERE IsEvent = 1 AND InputTypeID = ?", eventTagId);
+
+        // Borrar del catálogo de eventos
+        await db.ExecuteAsync("DELETE FROM \"event_tags\" WHERE id = ?", eventTagId);
+    }
+
     /// <summary>
     /// Obtiene los tags asignados a un video específico (no eventos)
     /// </summary>
@@ -741,19 +830,19 @@ public class DatabaseService
         
         if (inputs.Count == 0)
             return new List<TagEvent>();
-        
-        // Obtener todos los tags
-        var allTags = await db.Table<Tag>().ToListAsync();
-        var tagDict = allTags.ToDictionary(t => t.Id, t => t.NombreTag ?? "");
+
+        // Obtener catálogo de tipos de evento (separado de tags)
+        var allEventDefs = await db.Table<EventTagDefinition>().ToListAsync();
+        var eventDict = allEventDefs.ToDictionary(t => t.Id, t => t.Nombre ?? "");
         
         // Crear lista de eventos ordenados por timestamp
         var events = inputs
-            .Where(i => tagDict.ContainsKey(i.InputTypeId) && !string.IsNullOrEmpty(tagDict[i.InputTypeId]))
+            .Where(i => eventDict.ContainsKey(i.InputTypeId) && !string.IsNullOrEmpty(eventDict[i.InputTypeId]))
             .Select(i => new TagEvent
             {
                 InputId = i.Id,
                 TagId = i.InputTypeId,
-                TagName = tagDict[i.InputTypeId],
+                TagName = eventDict[i.InputTypeId],
                 TimestampMs = i.TimeStamp
             })
             .OrderBy(e => e.TimestampMs)
@@ -772,6 +861,7 @@ public class DatabaseService
         var input = new Input
         {
             VideoId = videoId,
+            // Para eventos (IsEvent=1), InputTypeId referencia event_tags
             InputTypeId = tagId,
             TimeStamp = timestampMs,
             SessionId = sessionId,
@@ -1002,9 +1092,10 @@ public class DatabaseService
     public async Task DeleteTagAsync(int tagId)
     {
         var db = await GetConnectionAsync();
-        // Primero eliminar todas las referencias en input
-        await db.ExecuteAsync("DELETE FROM \"input\" WHERE InputTypeID = ?", tagId);
-        // Luego eliminar el tag
-        await db.ExecuteAsync("DELETE FROM \"inputtype\" WHERE id = ?", tagId);
+        // Primero eliminar todas las referencias de ASIGNACIÓN (no eventos)
+        await db.ExecuteAsync("DELETE FROM \"input\" WHERE IsEvent = 0 AND InputTypeID = ?", tagId);
+
+        // Luego eliminar el tag del catálogo general
+        await db.ExecuteAsync("DELETE FROM \"tags\" WHERE id = ?", tagId);
     }
 }

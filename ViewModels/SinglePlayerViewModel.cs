@@ -66,8 +66,10 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     
     // Eventos de etiquetas con timestamps
     private bool _showTagEventsPanel;
+    private ObservableCollection<EventTagDefinition> _allEventTags = new();
     private ObservableCollection<TagEvent> _tagEvents = new();
-    private Tag? _selectedTagToAdd;
+    private EventTagDefinition? _selectedEventTagToAdd;
+    private string _newEventName = "";
 
     public SinglePlayerViewModel(DatabaseService databaseService)
     {
@@ -131,10 +133,12 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         
         // Comandos de eventos de etiquetas (con timestamps)
         ToggleTagEventsPanelCommand = new Command(async () => await ToggleTagEventsPanelAsync());
-        AddTagEventCommand = new Command(async () => await AddTagEventAsync(), () => _selectedTagToAdd != null);
+        AddTagEventCommand = new Command(async () => await AddTagEventAsync(), () => _selectedEventTagToAdd != null);
         DeleteTagEventCommand = new Command<TagEvent>(async (e) => await DeleteTagEventAsync(e));
         SeekToTagEventCommand = new Command<TagEvent>(SeekToTagEvent);
-        SelectTagToAddCommand = new Command<Tag>(SelectTagToAdd);
+        SelectTagToAddCommand = new Command<EventTagDefinition>(SelectTagToAdd);
+        CreateAndAddEventCommand = new Command(async () => await CreateAndAddEventAsync(), () => !string.IsNullOrWhiteSpace(_newEventName));
+        DeleteEventTagFromListCommand = new Command<EventTagDefinition>(async (t) => await DeleteEventTagFromListAsync(t));
     }
 
     #region Propiedades
@@ -481,6 +485,12 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         set { _allTags = value; OnPropertyChanged(); }
     }
 
+    public ObservableCollection<EventTagDefinition> AllEventTags
+    {
+        get => _allEventTags;
+        set { _allEventTags = value; OnPropertyChanged(); }
+    }
+
     public ObservableCollection<Tag> SelectedTags
     {
         get => _selectedTags;
@@ -521,14 +531,25 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         set { _tagEvents = value; OnPropertyChanged(); }
     }
 
-    public Tag? SelectedTagToAdd
+    public EventTagDefinition? SelectedEventTagToAdd
     {
-        get => _selectedTagToAdd;
+        get => _selectedEventTagToAdd;
         set
         {
-            _selectedTagToAdd = value;
+            _selectedEventTagToAdd = value;
             OnPropertyChanged();
             ((Command)AddTagEventCommand).ChangeCanExecute();
+        }
+    }
+
+    public string NewEventName
+    {
+        get => _newEventName;
+        set
+        {
+            _newEventName = value;
+            OnPropertyChanged();
+            ((Command)CreateAndAddEventCommand).ChangeCanExecute();
         }
     }
 
@@ -582,6 +603,8 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     public ICommand DeleteTagEventCommand { get; }
     public ICommand SeekToTagEventCommand { get; }
     public ICommand SelectTagToAddCommand { get; }
+    public ICommand CreateAndAddEventCommand { get; }
+    public ICommand DeleteEventTagFromListCommand { get; }
 
     #endregion
 
@@ -675,17 +698,17 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             
             // Cargar eventos y construir EventTags (lista de tags únicos de eventos)
             var events = await _databaseService.GetTagEventsForVideoAsync(video.Id);
-            var allTags = await _databaseService.GetAllTagsAsync();
-            var tagDict = allTags.ToDictionary(t => t.Id, t => t);
+            var allEventDefs = await _databaseService.GetAllEventTagsAsync();
+            var eventDict = allEventDefs.ToDictionary(t => t.Id, t => t);
             
             video.EventTags = events
                 .Select(e => e.TagId)
                 .Distinct()
-                .Where(id => tagDict.ContainsKey(id))
+                .Where(id => eventDict.ContainsKey(id))
                 .Select(id => new Tag
                 {
                     Id = id,
-                    NombreTag = tagDict[id].NombreTag,
+                    NombreTag = eventDict[id].Nombre,
                     IsEventTag = true
                 })
                 .ToList();
@@ -1285,6 +1308,67 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         }
     }
 
+    /// <summary>
+    /// Crea un nuevo evento/etiqueta y lo añade a la lista de eventos del video
+    /// </summary>
+    private async Task CreateAndAddEventAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_newEventName) || _videoClip == null)
+            return;
+
+        try
+        {
+            var normalizedName = _newEventName.Trim();
+
+            // Reusar si ya existe el tipo de evento
+            var existing = await _databaseService.FindEventTagByNameAsync(normalizedName);
+            if (existing != null)
+            {
+                foreach (var t in AllEventTags)
+                    t.IsSelected = false;
+
+                var existingInList = AllEventTags.FirstOrDefault(t => t.Id == existing.Id);
+                var toSelect = existingInList ?? existing;
+                toSelect.IsSelected = true;
+                if (existingInList == null)
+                    AllEventTags.Add(toSelect);
+
+                SelectedEventTagToAdd = toSelect;
+                await AddTagEventAsync();
+                NewEventName = "";
+                return;
+            }
+
+            // Crear nuevo tipo de evento (catálogo separado)
+            var newEventTag = new EventTagDefinition
+            {
+                Nombre = normalizedName,
+                IsSelected = true
+            };
+
+            // Insertar en la base de datos
+            var eventTagId = await _databaseService.InsertEventTagAsync(newEventTag);
+            newEventTag.Id = eventTagId;
+
+            // Añadir a la lista de eventos disponibles
+            AllEventTags.Add(newEventTag);
+            OnPropertyChanged(nameof(AllEventTags));
+
+            // Seleccionar automáticamente el nuevo tipo de evento para añadir la ocurrencia
+            SelectedEventTagToAdd = newEventTag;
+            
+            // Añadir automáticamente el evento en la posición actual
+            await AddTagEventAsync();
+            
+            // Limpiar campo
+            NewEventName = "";
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error al crear evento: {ex.Message}");
+        }
+    }
+
     // ===== Métodos de eventos de etiquetas con timestamps =====
 
     private async Task ToggleTagEventsPanelAsync()
@@ -1296,23 +1380,22 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             ShowSectionAssignPanel = false;
             ShowTagsAssignPanel = false;
             
-            // Cargar tags SIEMPRE (MacCatalyst tiene problemas con el Picker si se asigna la colección después)
-            var tags = await _databaseService.GetAllTagsAsync();
-            
+            // Cargar tipos de evento SIEMPRE (catálogo separado)
+            var eventTags = await _databaseService.GetAllEventTagsAsync();
+
             // Limpiar selección previa
-            _selectedTagToAdd = null;
-            
-            // Limpiar y volver a llenar la colección existente en lugar de reemplazarla
-            AllTags.Clear();
-            foreach (var tag in tags.Where(t => !string.IsNullOrEmpty(t.NombreTag)).OrderBy(t => t.NombreTag))
+            SelectedEventTagToAdd = null;
+
+            // Limpiar y volver a llenar la colección existente
+            AllEventTags.Clear();
+            foreach (var evt in eventTags.Where(t => !string.IsNullOrEmpty(t.Nombre)).OrderBy(t => t.Nombre))
             {
-                // Inicializar todos los tags como NO seleccionados (fondo gris)
-                tag.IsSelectedBool = false;
-                AllTags.Add(tag);
+                evt.IsSelected = false;
+                AllEventTags.Add(evt);
             }
-            
+
             // Notificar el cambio explícitamente
-            OnPropertyChanged(nameof(AllTags));
+            OnPropertyChanged(nameof(AllEventTags));
             
             // Cargar eventos del video
             await LoadTagEventsAsync();
@@ -1341,28 +1424,28 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         }
     }
 
-    private void SelectTagToAdd(Tag? tag)
+    private void SelectTagToAdd(EventTagDefinition? tag)
     {
         if (tag == null) return;
-        
-        // Deseleccionar todos los tags en AllTags
-        foreach (var t in AllTags)
+
+        // Toggle: si vuelves a tocar el mismo chip, se deselecciona.
+        if (_selectedEventTagToAdd?.Id == tag.Id && tag.IsSelected)
         {
-            t.IsSelectedBool = false;
+            tag.IsSelected = false;
+            SelectedEventTagToAdd = null;
+            return;
         }
-        
-        // Seleccionar el tag elegido
-        tag.IsSelectedBool = true;
-        _selectedTagToAdd = tag;
-        
-        // Forzar refresco visual
-        OnPropertyChanged(nameof(AllTags));
-        ((Command)AddTagEventCommand).ChangeCanExecute();
+
+        foreach (var t in AllEventTags)
+            t.IsSelected = false;
+
+        tag.IsSelected = true;
+        SelectedEventTagToAdd = tag;
     }
 
     private async Task AddTagEventAsync()
     {
-        if (_videoClip == null || _selectedTagToAdd == null)
+        if (_videoClip == null || _selectedEventTagToAdd == null)
             return;
 
         try
@@ -1373,7 +1456,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             // Añadir el evento a la base de datos
             var inputId = await _databaseService.AddTagEventAsync(
                 _videoClip.Id,
-                _selectedTagToAdd.Id,
+                _selectedEventTagToAdd.Id,
                 timestampMs,
                 _videoClip.SessionId,
                 _videoClip.AtletaId);
@@ -1387,24 +1470,16 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             // Limpiar selección para evitar re-uso accidental
             await MainThread.InvokeOnMainThreadAsync(() =>
             {
-                // Deseleccionar visualmente el tag
-                if (_selectedTagToAdd != null)
-                {
-                    _selectedTagToAdd.IsSelectedBool = false;
-                }
-                _selectedTagToAdd = null;
-                
-                // Refrescar lista visual de tags
-                var currentList = AllTags.ToList();
-                AllTags.Clear();
-                foreach (var t in currentList)
-                {
-                    AllTags.Add(t);
-                }
+                if (_selectedEventTagToAdd != null)
+                    _selectedEventTagToAdd.IsSelected = false;
+
+                SelectedEventTagToAdd = null;
+
+                foreach (var t in AllEventTags)
+                    t.IsSelected = false;
                 
                 OnPropertyChanged(nameof(HasTagEvents));
                 OnPropertyChanged(nameof(TagEventsCountText));
-                ((Command)AddTagEventCommand).ChangeCanExecute();
             });
             
             // Notificar al Dashboard para actualizar la galería
@@ -1529,17 +1604,17 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             
             // Actualizar EventTags del clip manualmente
             var allEvents = await _databaseService.GetTagEventsForVideoAsync(_videoClip.Id);
-            var allTags = await _databaseService.GetAllTagsAsync();
-            var tagDict = allTags.ToDictionary(t => t.Id, t => t);
+            var allEventDefs = await _databaseService.GetAllEventTagsAsync();
+            var eventDict = allEventDefs.ToDictionary(t => t.Id, t => t);
             
             _videoClip.EventTags = allEvents
                 .Select(e => e.TagId)
                 .Distinct()
-                .Where(id => tagDict.ContainsKey(id))
+                .Where(id => eventDict.ContainsKey(id))
                 .Select(id => new Tag
                 {
                     Id = id,
-                    NombreTag = tagDict[id].NombreTag,
+                    NombreTag = eventDict[id].Nombre,
                     IsEventTag = true
                 })
                 .ToList();
@@ -1604,6 +1679,44 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Error al eliminar tag de la lista: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Elimina un tipo de evento del catálogo AllEventTags (lo borra de event_tags y sus ocurrencias IsEvent=1)
+    /// </summary>
+    private async Task DeleteEventTagFromListAsync(EventTagDefinition? eventTag)
+    {
+        if (eventTag == null)
+            return;
+
+        try
+        {
+            await _databaseService.DeleteEventTagAsync(eventTag.Id);
+
+            // Recargar catálogo de eventos
+            var allEventTags = await _databaseService.GetAllEventTagsAsync();
+            _allEventTags.Clear();
+            foreach (var t in allEventTags)
+                _allEventTags.Add(t);
+
+            if (_videoClip != null)
+            {
+                await LoadVideoDataAsync(_videoClip);
+                await LoadTagEventsAsync();
+
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                {
+                    OnPropertyChanged(nameof(HasEventTags));
+                    OnPropertyChanged(nameof(VideoClipEventTags));
+                    OnPropertyChanged(nameof(HasTagEvents));
+                    OnPropertyChanged(nameof(TagEventsCountText));
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error al eliminar tipo de evento: {ex.Message}");
         }
     }
 

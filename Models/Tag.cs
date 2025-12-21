@@ -11,6 +11,7 @@ namespace CrownRFEP_Reader.Models;
 public class Tag : INotifyPropertyChanged
 {
     private int _isSelected;
+    private bool _isEventSelected;
     
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -44,6 +45,24 @@ public class Tag : INotifyPropertyChanged
     {
         get => _isSelected == 1;
         set => IsSelected = value ? 1 : 0;
+    }
+
+    /// <summary>
+    /// Selección temporal usada en el panel de "Eventos del video" (no persistida).
+    /// Separada de <see cref="IsSelected"/> para no interferir con el panel de etiquetas.
+    /// </summary>
+    [Ignore]
+    public bool IsEventSelected
+    {
+        get => _isEventSelected;
+        set
+        {
+            if (_isEventSelected != value)
+            {
+                _isEventSelected = value;
+                OnPropertyChanged();
+            }
+        }
     }
 
     /// <summary>
