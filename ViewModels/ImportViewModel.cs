@@ -857,8 +857,10 @@ public class ImportViewModel : BaseViewModel
             
             Directory.CreateDirectory(sessionDir);
             
-            // Crear directorio para thumbnails
+            // Crear directorio para videos y thumbnails
+            var videosDir = Path.Combine(sessionDir, "videos");
             var thumbnailsDir = Path.Combine(sessionDir, "thumbnails");
+            Directory.CreateDirectory(videosDir);
             Directory.CreateDirectory(thumbnailsDir);
 
             ImportProgressValue = 5;
@@ -876,7 +878,7 @@ public class ImportViewModel : BaseViewModel
 
             await _databaseService.SaveSessionAsync(session);
             ImportProgressValue = 10;
-            ImportProgressText = "Sesión creada, procesando videos...";
+            ImportProgressText = "Sesión creada, copiando videos...";
 
             // Procesar los videos
             var totalVideos = PendingVideos.Count;
@@ -885,31 +887,56 @@ public class ImportViewModel : BaseViewModel
             foreach (var pendingVideo in PendingVideos.ToList())
             {
                 currentVideo++;
-                var baseProgress = 10 + (int)((currentVideo / (double)totalVideos) * 80);
-                ImportProgressValue = baseProgress;
-                ImportProgressText = $"Procesando video {currentVideo}/{totalVideos}: {pendingVideo.FileName}";
+                
+                // Calcular progreso: 10-60% para copiar videos, 60-90% para thumbnails
+                var copyProgress = 10 + (int)((currentVideo / (double)totalVideos) * 50);
+                ImportProgressValue = copyProgress;
+                ImportProgressText = $"Copiando video {currentVideo}/{totalVideos}: {pendingVideo.FileName}";
 
-                // Generar nombre único para thumbnail
-                var thumbnailFileName = $"thumb_{currentVideo}_{Path.GetFileNameWithoutExtension(pendingVideo.FileName)}.jpg";
+                // Generar nombre estandarizado: CROWN{número}.{extensión}
+                var videoExtension = Path.GetExtension(pendingVideo.FullPath).ToLowerInvariant();
+                var standardVideoName = $"CROWN{currentVideo}{videoExtension}";
+                var localVideoPath = Path.Combine(videosDir, standardVideoName);
+
+                // Copiar el video a la carpeta de la sesión
+                try
+                {
+                    await Task.Run(() => File.Copy(pendingVideo.FullPath, localVideoPath, overwrite: true));
+                    System.Diagnostics.Debug.WriteLine($"Video copied: {pendingVideo.FullPath} -> {localVideoPath}");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error copying video: {ex.Message}");
+                    // Si falla la copia, usar el path original
+                    localVideoPath = pendingVideo.FullPath;
+                }
+
+                // Generar nombre único para thumbnail con estándar CROWN
+                var thumbnailFileName = $"CROWN{currentVideo}_thumb.jpg";
                 var thumbnailPath = Path.Combine(thumbnailsDir, thumbnailFileName);
 
-                // Generar thumbnail
+                // Generar thumbnail desde el video copiado
+                var thumbProgress = 60 + (int)((currentVideo / (double)totalVideos) * 30);
+                ImportProgressValue = thumbProgress;
                 ImportProgressText = $"Generando miniatura {currentVideo}/{totalVideos}...";
-                var thumbnailGenerated = await _thumbnailService.GenerateThumbnailAsync(pendingVideo.FullPath, thumbnailPath);
+                var thumbnailGenerated = await _thumbnailService.GenerateThumbnailAsync(localVideoPath, thumbnailPath);
 
                 // Obtener duración del video
-                var duration = await _thumbnailService.GetVideoDurationAsync(pendingVideo.FullPath);
+                var duration = await _thumbnailService.GetVideoDurationAsync(localVideoPath);
+
+                // Obtener tamaño del archivo copiado
+                var fileSize = File.Exists(localVideoPath) ? new FileInfo(localVideoPath).Length : pendingVideo.FileSize;
 
                 // Crear el video clip con todos los datos
                 var videoClip = new VideoClip
                 {
                     SessionId = session.Id,
-                    ClipPath = pendingVideo.FullPath,           // Path original del video
-                    LocalClipPath = pendingVideo.FullPath,      // Path local (mismo que original)
+                    ClipPath = standardVideoName,               // Nombre estandarizado (relativo)
+                    LocalClipPath = localVideoPath,             // Path completo del video copiado
                     ThumbnailPath = thumbnailFileName,          // Nombre del archivo de thumbnail
                     LocalThumbnailPath = thumbnailGenerated ? thumbnailPath : null, // Path completo del thumbnail
                     ClipDuration = duration,
-                    ClipSize = pendingVideo.FileSize,
+                    ClipSize = fileSize,
                     CreationDate = DateTimeOffset.Now.ToUnixTimeSeconds(),
                     AtletaId = 0, // Sin atleta asignado
                     Section = currentVideo
@@ -917,7 +944,7 @@ public class ImportViewModel : BaseViewModel
 
                 await _databaseService.SaveVideoClipAsync(videoClip);
 
-                System.Diagnostics.Debug.WriteLine($"Video clip saved: {videoClip.ClipPath}, Thumbnail: {videoClip.LocalThumbnailPath ?? "No generado"}");
+                System.Diagnostics.Debug.WriteLine($"Video clip saved: {videoClip.ClipPath}, LocalPath: {videoClip.LocalClipPath}, Thumbnail: {videoClip.LocalThumbnailPath ?? "No generado"}");
             }
 
             ImportProgressValue = 95;
