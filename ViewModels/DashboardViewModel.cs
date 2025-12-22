@@ -1257,8 +1257,76 @@ public class DashboardViewModel : BaseViewModel
 
     private async Task DeleteSelectedVideosAsync()
     {
-        // TODO: Implementar eliminación de vídeos seleccionados
-        await Task.CompletedTask;
+        // Obtener videos seleccionados
+        var source = _filteredVideosCache ?? _allVideosCache ?? SelectedSessionVideos.ToList();
+        var selectedVideos = source.Where(v => _selectedVideoIds.Contains(v.Id)).ToList();
+        
+        if (selectedVideos.Count == 0)
+        {
+            await Shell.Current.DisplayAlert("Eliminar", "No hay vídeos seleccionados.", "OK");
+            return;
+        }
+        
+        // Confirmar eliminación
+        var confirm = await Shell.Current.DisplayAlert(
+            "Eliminar vídeos",
+            $"¿Estás seguro de que quieres eliminar {selectedVideos.Count} vídeo(s)?\n\nEsta acción no se puede deshacer.",
+            "Eliminar",
+            "Cancelar");
+        
+        if (!confirm)
+            return;
+        
+        try
+        {
+            int deletedCount = 0;
+            
+            foreach (var video in selectedVideos)
+            {
+                // Eliminar archivo de vídeo local
+                var videoPath = !string.IsNullOrWhiteSpace(video.LocalClipPath) && File.Exists(video.LocalClipPath)
+                    ? video.LocalClipPath
+                    : video.ClipPath;
+                    
+                if (!string.IsNullOrWhiteSpace(videoPath) && File.Exists(videoPath))
+                {
+                    try { File.Delete(videoPath); } catch { }
+                }
+                
+                // Eliminar thumbnail local
+                var thumbPath = !string.IsNullOrWhiteSpace(video.LocalThumbnailPath) && File.Exists(video.LocalThumbnailPath)
+                    ? video.LocalThumbnailPath
+                    : video.ThumbnailPath;
+                    
+                if (!string.IsNullOrWhiteSpace(thumbPath) && File.Exists(thumbPath))
+                {
+                    try { File.Delete(thumbPath); } catch { }
+                }
+                
+                // Eliminar de la base de datos
+                var db = await _databaseService.GetConnectionAsync();
+                await db.DeleteAsync(video);
+                
+                deletedCount++;
+            }
+            
+            // Limpiar selección
+            _selectedVideoIds.Clear();
+            OnPropertyChanged(nameof(SelectedVideoCount));
+            
+            // Mostrar confirmación
+            await Shell.Current.DisplayAlert("Eliminación completada", $"Se eliminaron {deletedCount} vídeo(s).", "OK");
+            
+            // Refrescar galería
+            if (SelectedSession != null)
+                await LoadSelectedSessionVideosAsync(SelectedSession);
+            else if (IsAllGallerySelected)
+                await LoadAllVideosAsync();
+        }
+        catch (Exception ex)
+        {
+            await Shell.Current.DisplayAlert("Error", $"No se pudieron eliminar los vídeos: {ex.Message}", "OK");
+        }
     }
 
     private async Task ShareSelectedVideosAsync()
