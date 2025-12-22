@@ -341,6 +341,9 @@ public class CrownFileService
 
             ReportProgress(progress, "Importación completada", 100);
 
+            // Invalidar caché para que las nuevas consultas reflejen los datos importados
+            _databaseService.InvalidateCache();
+
             result.Success = true;
             result.SessionName = crownData.Session.NombreSesion;
         }

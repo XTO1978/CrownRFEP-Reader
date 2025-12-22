@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Concurrent;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 
 #if MACCATALYST
@@ -12,20 +14,21 @@ using UIKit;
 namespace CrownRFEP_Reader.Services;
 
 /// <summary>
-/// Servicio para generar thumbnails de archivos de video
+/// Servicio para generar thumbnails de archivos de video con cola de procesamiento
 /// </summary>
 public class ThumbnailService
 {
     private const int ThumbnailWidth = 320;
     private const int ThumbnailHeight = 180;
-    private const double ThumbnailTimeSeconds = 1.0; // Capturar frame al segundo 1
+    private const double ThumbnailTimeSeconds = 1.0;
+    private const int MaxConcurrentGenerations = 3;
+
+    private readonly SemaphoreSlim _generationSemaphore = new(MaxConcurrentGenerations);
+    private readonly ConcurrentDictionary<string, Task<bool>> _pendingGenerations = new();
 
     /// <summary>
-    /// Genera un thumbnail para un archivo de video
+    /// Genera un thumbnail para un archivo de video (con semáforo para limitar concurrencia)
     /// </summary>
-    /// <param name="videoPath">Ruta del archivo de video</param>
-    /// <param name="outputPath">Ruta donde guardar el thumbnail</param>
-    /// <returns>True si se generó correctamente, false en caso contrario</returns>
     public async Task<bool> GenerateThumbnailAsync(string videoPath, string outputPath)
     {
         if (string.IsNullOrEmpty(videoPath) || !File.Exists(videoPath))
@@ -34,6 +37,56 @@ public class ThumbnailService
             return false;
         }
 
+        // Si ya existe el thumbnail, retornar true inmediatamente
+        if (File.Exists(outputPath))
+            return true;
+
+        // Si ya hay una generación pendiente para este archivo, esperar a que termine
+        if (_pendingGenerations.TryGetValue(outputPath, out var existingTask))
+            return await existingTask;
+
+        var tcs = new TaskCompletionSource<bool>();
+        if (!_pendingGenerations.TryAdd(outputPath, tcs.Task))
+        {
+            // Otro hilo añadió primero, usar su tarea
+            if (_pendingGenerations.TryGetValue(outputPath, out var otherTask))
+                return await otherTask;
+        }
+
+        try
+        {
+            await _generationSemaphore.WaitAsync();
+            try
+            {
+                // Double-check después de obtener el semáforo
+                if (File.Exists(outputPath))
+                {
+                    tcs.SetResult(true);
+                    return true;
+                }
+
+                var result = await GenerateThumbnailInternalAsync(videoPath, outputPath);
+                tcs.SetResult(result);
+                return result;
+            }
+            finally
+            {
+                _generationSemaphore.Release();
+            }
+        }
+        catch (Exception ex)
+        {
+            tcs.SetException(ex);
+            throw;
+        }
+        finally
+        {
+            _pendingGenerations.TryRemove(outputPath, out _);
+        }
+    }
+
+    private async Task<bool> GenerateThumbnailInternalAsync(string videoPath, string outputPath)
+    {
         try
         {
             // Asegurar que el directorio de destino existe
@@ -46,7 +99,6 @@ public class ThumbnailService
 #if MACCATALYST
             return await GenerateThumbnailMacAsync(videoPath, outputPath);
 #else
-            // Para otras plataformas, retornar false por ahora
             System.Diagnostics.Debug.WriteLine("ThumbnailService: Thumbnail generation not supported on this platform");
             return false;
 #endif

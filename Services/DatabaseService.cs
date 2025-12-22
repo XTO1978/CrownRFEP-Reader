@@ -11,6 +11,14 @@ public class DatabaseService
     private SQLiteAsyncConnection? _database;
     private readonly string _dbPath;
     private StatusBarService? _statusBarService;
+    
+    // Caché de datos relacionados para evitar consultas repetidas
+    private Dictionary<int, Athlete>? _athleteCache;
+    private Dictionary<int, Category>? _categoryCache;
+    private Dictionary<int, Session>? _sessionCache;
+    private Dictionary<int, Tag>? _tagCache;
+    private DateTime _cacheLastRefresh = DateTime.MinValue;
+    private static readonly TimeSpan CacheExpiration = TimeSpan.FromMinutes(5);
 
     public DatabaseService()
     {
@@ -28,6 +36,38 @@ public class DatabaseService
     public void SetStatusBarService(StatusBarService statusBarService)
     {
         _statusBarService = statusBarService;
+    }
+
+    /// <summary>
+    /// Invalida la caché de datos relacionados (llamar después de imports o cambios significativos)
+    /// </summary>
+    public void InvalidateCache()
+    {
+        _athleteCache = null;
+        _categoryCache = null;
+        _sessionCache = null;
+        _tagCache = null;
+        _cacheLastRefresh = DateTime.MinValue;
+    }
+
+    private bool IsCacheValid => _athleteCache != null && 
+                                  _categoryCache != null && 
+                                  DateTime.Now - _cacheLastRefresh < CacheExpiration;
+
+    private async Task EnsureCacheLoadedAsync(SQLiteAsyncConnection db)
+    {
+        if (IsCacheValid) return;
+
+        var athletes = await db.Table<Athlete>().ToListAsync();
+        var categories = await db.Table<Category>().ToListAsync();
+        var tags = await db.Table<Tag>().ToListAsync();
+        var sessions = await db.Table<Session>().ToListAsync();
+
+        _athleteCache = athletes.ToDictionary(a => a.Id, a => a);
+        _categoryCache = categories.ToDictionary(c => c.Id, c => c);
+        _tagCache = tags.ToDictionary(t => t.Id, t => t);
+        _sessionCache = sessions.ToDictionary(s => s.Id, s => s);
+        _cacheLastRefresh = DateTime.Now;
     }
 
     private void LogInfo(string message) => _statusBarService?.LogDatabaseInfo(message);
@@ -236,15 +276,23 @@ public class DatabaseService
     {
         var tagDict = allTags.ToDictionary(t => t.Id, t => t);
         
+        // Agrupar inputs por VideoId para O(1) lookup en lugar de O(n) con Where
+        var inputsByVideoId = allInputsForClips
+            .GroupBy(i => i.VideoId)
+            .ToDictionary(g => g.Key, g => g.ToList());
+        
         foreach (var clip in clips)
         {
-            // Tags asignados (IsEvent == 0): asignados desde la app mediante el panel de etiquetas
-            var assignedInputs = allInputsForClips
-                .Where(i => i.VideoId == clip.Id && i.IsEvent == 0)
-                .ToList();
+            if (!inputsByVideoId.TryGetValue(clip.Id, out var clipInputs))
+            {
+                clip.Tags = new List<Tag>();
+                clip.EventTags = new List<Tag>();
+                continue;
+            }
 
-            clip.Tags = assignedInputs
-                .Where(i => tagDict.ContainsKey(i.InputTypeId))
+            // Tags asignados (IsEvent == 0): asignados desde la app mediante el panel de etiquetas
+            clip.Tags = clipInputs
+                .Where(i => i.IsEvent == 0 && tagDict.ContainsKey(i.InputTypeId))
                 .GroupBy(i => i.InputTypeId) // Evitar duplicados del mismo tipo
                 .Select(g =>
                 {
@@ -268,12 +316,8 @@ public class DatabaseService
                 .ToList();
 
             // Tags de eventos (IsEvent == 1): importados de .crown o creados como eventos
-            var eventInputs = allInputsForClips
-                .Where(i => i.VideoId == clip.Id && i.IsEvent == 1)
-                .ToList();
-
-            clip.EventTags = eventInputs
-                .Where(i => tagDict.ContainsKey(i.InputTypeId))
+            clip.EventTags = clipInputs
+                .Where(i => i.IsEvent == 1 && tagDict.ContainsKey(i.InputTypeId))
                 .GroupBy(i => i.InputTypeId) // Agrupar por tipo para contar ocurrencias
                 .Select(g =>
                 {
@@ -297,10 +341,6 @@ public class DatabaseService
                 })
                 .Where(t => !string.IsNullOrEmpty(t.NombreTag) && !InternalTagNames.Contains(t.NombreTag))
                 .ToList();
-
-            // Nunca dejar null para evitar problemas de binding/medida
-            clip.Tags ??= new List<Tag>();
-            clip.EventTags ??= new List<Tag>();
         }
     }
 
@@ -662,34 +702,31 @@ public class DatabaseService
             .OrderByDescending(v => v.CreationDate)
             .ToListAsync();
 
-        // Asegurar rutas locales para reproducción/miniaturas (compatibilidad con imports antiguos)
-        var session = await db.Table<Session>().FirstOrDefaultAsync(s => s.Id == sessionId);
+        // Cargar caché de datos relacionados
+        await EnsureCacheLoadedAsync(db);
+
+        // Asegurar rutas locales para reproducción/miniaturas
+        _sessionCache!.TryGetValue(sessionId, out var session);
         foreach (var clip in clips)
         {
             HydrateLocalMediaPaths(clip, session?.PathSesion);
         }
 
-        // Cargar atletas
-        var athletes = await db.Table<Athlete>().ToListAsync();
-        var categories = await db.Table<Category>().ToListAsync();
-        
+        // Hidratar atletas desde caché
         foreach (var clip in clips)
         {
-            var athlete = athletes.FirstOrDefault(a => a.Id == clip.AtletaId);
-            if (athlete != null)
+            if (_athleteCache!.TryGetValue(clip.AtletaId, out var athlete))
             {
-                athlete.CategoriaNombre = categories.FirstOrDefault(c => c.Id == athlete.CategoriaId)?.NombreCategoria;
+                if (_categoryCache!.TryGetValue(athlete.CategoriaId, out var category))
+                    athlete.CategoriaNombre = category.NombreCategoria;
                 clip.Atleta = athlete;
             }
         }
 
-        // Cargar tags para cada video.
-        // Preferencia: tags asignados (TimeStamp == 0). Si no existen, usar eventos (TimeStamp > 0) como fallback.
-        // Importante: NO filtrar por SessionID aquí; algunos flujos históricos no lo rellenaban en "input".
-        var allTags = await db.Table<Tag>().ToListAsync();
+        // Cargar tags para cada video
         var clipIds = clips.Select(c => c.Id).ToList();
         var allInputsForClips = await GetInputsForVideosAsync(db, clipIds);
-        HydrateTagsForClipsInternal(clips, allTags, allInputsForClips);
+        HydrateTagsForClipsInternal(clips, _tagCache!.Values.ToList(), allInputsForClips);
 
         return clips;
     }
@@ -730,34 +767,31 @@ public class DatabaseService
             .OrderByDescending(v => v.CreationDate)
             .ToListAsync();
 
+        // Cargar caché de datos relacionados
+        await EnsureCacheLoadedAsync(db);
+
         // Hidratar rutas locales por sesión
-        var sessions = await db.Table<Session>().ToListAsync();
-        var sessionById = sessions.ToDictionary(s => s.Id, s => s);
         foreach (var clip in clips)
         {
-            sessionById.TryGetValue(clip.SessionId, out var session);
+            _sessionCache!.TryGetValue(clip.SessionId, out var session);
             HydrateLocalMediaPaths(clip, session?.PathSesion);
         }
 
-        // Cargar atletas
-        var athletes = await db.Table<Athlete>().ToListAsync();
-        var categories = await db.Table<Category>().ToListAsync();
-        
+        // Hidratar atletas desde caché
         foreach (var clip in clips)
         {
-            var athlete = athletes.FirstOrDefault(a => a.Id == clip.AtletaId);
-            if (athlete != null)
+            if (_athleteCache!.TryGetValue(clip.AtletaId, out var athlete))
             {
-                athlete.CategoriaNombre = categories.FirstOrDefault(c => c.Id == athlete.CategoriaId)?.NombreCategoria;
+                if (_categoryCache!.TryGetValue(athlete.CategoriaId, out var category))
+                    athlete.CategoriaNombre = category.NombreCategoria;
                 clip.Atleta = athlete;
             }
         }
 
-        // Cargar tags también en Galería General (Dashboard usa este método).
-        var allTags = await db.Table<Tag>().ToListAsync();
+        // Cargar tags
         var clipIds = clips.Select(c => c.Id).ToList();
         var allInputsForClips = await GetInputsForVideosAsync(db, clipIds);
-        HydrateTagsForClipsInternal(clips, allTags, allInputsForClips);
+        HydrateTagsForClipsInternal(clips, _tagCache!.Values.ToList(), allInputsForClips);
 
         return clips;
     }
