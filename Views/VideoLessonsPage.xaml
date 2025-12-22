@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:CrownRFEP_Reader.ViewModels"
+             xmlns:models="clr-namespace:CrownRFEP_Reader.Models"
+             x:Class="CrownRFEP_Reader.Views.VideoLessonsPage"
+             x:DataType="vm:VideoLessonsViewModel"
+             Title="{Binding Title}">
+
+    <Grid RowDefinitions="Auto,*" Padding="15">
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Padding="0,0,0,10">
+            <Button Text="Volver"
+                    BackgroundColor="Transparent"
+                    TextColor="White"
+                    Clicked="OnBackClicked" />
+            <Label Grid.Column="1"
+                   Text="Videolecciones"
+                   FontSize="18"
+                   TextColor="White"
+                   HorizontalOptions="Center"
+                   VerticalOptions="Center" />
+        </Grid>
+
+        <RefreshView Grid.Row="1" Command="{Binding RefreshCommand}" IsRefreshing="{Binding IsBusy}">
+            <CollectionView ItemsSource="{Binding Lessons}" SelectionMode="None">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="models:VideoLesson">
+                        <Frame Margin="0,8" Padding="15" CornerRadius="12" HasShadow="True">
+                            <Frame.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="OnLessonTapped" CommandParameter="{Binding .}" />
+                            </Frame.GestureRecognizers>
+                            <VerticalStackLayout Spacing="4">
+                                <Label Text="{Binding DisplayTitle}" TextColor="White" FontAttributes="Bold" />
+                                <Label Text="{Binding SessionDisplayName}" TextColor="#FFAAAAAA" FontSize="12" />
+                                <Label Text="{Binding CreatedAtUtc, StringFormat='{0:dd/MM/yyyy HH:mm}'}" TextColor="#FF888888" FontSize="11" />
+                            </VerticalStackLayout>
+                        </Frame>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </RefreshView>
+    </Grid>
+</ContentPage>

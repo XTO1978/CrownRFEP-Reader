@@ -8,6 +8,9 @@ using CrownRFEP_Reader.Handlers;
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Handlers;
 #if MACCATALYST
+using CrownRFEP_Reader.Platforms.MacCatalyst;
+#endif
+#if MACCATALYST
 using UIKit;
 using Foundation;
 #endif
@@ -26,6 +29,10 @@ public static class MauiProgram
 			.ConfigureMauiHandlers(handlers =>
 			{
 				handlers.AddHandler(typeof(SymbolIcon), typeof(SymbolIconHandler));
+
+#if MACCATALYST
+				handlers.AddHandler(typeof(ReplayKitCameraPreview), typeof(ReplayKitCameraPreviewHandler));
+#endif
 				
 #if MACCATALYST || IOS
 				handlers.AddHandler(typeof(PrecisionVideoPlayer), typeof(PrecisionVideoPlayerHandler));
@@ -57,6 +64,14 @@ public static class MauiProgram
 		builder.Services.AddSingleton<StatisticsService>();
 		builder.Services.AddSingleton<ThumbnailService>();
 
+#if MACCATALYST
+		builder.Services.AddSingleton<IVideoLessonRecorder, ReplayKitVideoLessonRecorder>();
+#elif WINDOWS
+		builder.Services.AddSingleton<IVideoLessonRecorder, CrownRFEP_Reader.Platforms.Windows.WindowsVideoLessonRecorder>();
+#else
+		builder.Services.AddSingleton<IVideoLessonRecorder, NullVideoLessonRecorder>();
+#endif
+
 		// ViewModels
 		builder.Services.AddSingleton<DashboardViewModel>();
 		builder.Services.AddSingleton<ImportViewModel>();
@@ -69,6 +84,7 @@ public static class MauiProgram
 		builder.Services.AddTransient<SinglePlayerViewModel>();
 		builder.Services.AddSingleton<StatisticsViewModel>();
 		builder.Services.AddSingleton<UserProfileViewModel>();
+		builder.Services.AddSingleton<VideoLessonsViewModel>();
 
 		// Páginas
 		builder.Services.AddSingleton<DashboardPage>();
@@ -82,6 +98,7 @@ public static class MauiProgram
 		builder.Services.AddTransient<SinglePlayerPage>();
 		builder.Services.AddSingleton<StatisticsPage>();
 		builder.Services.AddSingleton<UserProfilePage>();
+		builder.Services.AddSingleton<VideoLessonsPage>();
 
 #if DEBUG
 		builder.Logging.AddDebug();

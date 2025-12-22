@@ -39,6 +39,7 @@ public class SessionsViewModel : BaseViewModel
     public ICommand RefreshCommand { get; }
     public ICommand ViewSessionCommand { get; }
     public ICommand DeleteSessionCommand { get; }
+    public ICommand ViewVideoLessonsCommand { get; }
 
     public SessionsViewModel(DatabaseService databaseService)
     {
@@ -48,6 +49,12 @@ public class SessionsViewModel : BaseViewModel
         RefreshCommand = new AsyncRelayCommand(LoadSessionsAsync);
         ViewSessionCommand = new AsyncRelayCommand<Session>(ViewSessionAsync);
         DeleteSessionCommand = new AsyncRelayCommand<Session>(DeleteSessionAsync);
+        ViewVideoLessonsCommand = new AsyncRelayCommand(ViewVideoLessonsAsync);
+    }
+
+    private static async Task ViewVideoLessonsAsync()
+    {
+        await Shell.Current.GoToAsync(nameof(VideoLessonsPage));
     }
 
     public async Task LoadSessionsAsync()

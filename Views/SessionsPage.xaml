@@ -8,18 +8,33 @@
              x:DataType="vm:SessionsViewModel"
              Title="{Binding Title}">
 
-    <Grid RowDefinitions="Auto,Auto,*" Padding="15">
+    <Grid RowDefinitions="Auto,Auto,Auto,*" Padding="15">
 
         <controls:TopTabsBar Grid.Row="0" />
         
+        <!-- Acceso a Videolecciones (como una sesión más) -->
+        <Frame Grid.Row="1" Margin="0,8" Padding="15" CornerRadius="12" HasShadow="True">
+            <Frame.GestureRecognizers>
+                <TapGestureRecognizer Command="{Binding ViewVideoLessonsCommand}" />
+            </Frame.GestureRecognizers>
+
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                <Label Text="🎥" FontSize="20" VerticalOptions="Center" />
+                <VerticalStackLayout Grid.Column="1" Spacing="2">
+                    <Label Text="Videolecciones" FontSize="16" TextColor="White" FontAttributes="Bold" />
+                    <Label Text="Todas las videolecciones guardadas" FontSize="12" TextColor="#FFAAAAAA" />
+                </VerticalStackLayout>
+            </Grid>
+        </Frame>
+
         <!-- Barra de búsqueda -->
-        <SearchBar Grid.Row="1"
+        <SearchBar Grid.Row="2"
                    Placeholder="Buscar sesiones..."
                    Text="{Binding SearchText}"
                    BackgroundColor="{AppThemeBinding Light={StaticResource Gray100}, Dark={StaticResource Gray900}}"
                    CancelButtonColor="{StaticResource Primary}"/>
 
-        <RefreshView Grid.Row="2" 
+        <RefreshView Grid.Row="3" 
                      Command="{Binding RefreshCommand}" 
                      IsRefreshing="{Binding IsBusy}">
             <CollectionView ItemsSource="{Binding FilteredSessions}"

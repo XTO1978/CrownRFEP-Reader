@@ -52,6 +52,7 @@ public class DatabaseService
         await _database.CreateTableAsync<WorkGroup>();
         await _database.CreateTableAsync<AthleteWorkGroup>();
         await _database.CreateTableAsync<UserProfile>();
+        await _database.CreateTableAsync<VideoLesson>();
 
         // Migraciones ligeras: columnas nuevas en videoClip
         await EnsureColumnExistsAsync(_database, "videoClip", "localClipPath", "TEXT");
@@ -325,6 +326,43 @@ public class DatabaseService
         // Eliminar también los videos asociados
         await db.Table<VideoClip>().DeleteAsync(v => v.SessionId == session.Id);
         return await db.DeleteAsync(session);
+    }
+
+    // ==================== VIDEO LESSONS ====================
+    public async Task<List<VideoLesson>> GetAllVideoLessonsAsync()
+    {
+        var db = await GetConnectionAsync();
+        return await db.Table<VideoLesson>()
+            .OrderByDescending(v => v.CreatedAtUtc)
+            .ToListAsync();
+    }
+
+    public async Task<List<VideoLesson>> GetVideoLessonsBySessionAsync(int sessionId)
+    {
+        var db = await GetConnectionAsync();
+        return await db.Table<VideoLesson>()
+            .Where(v => v.SessionId == sessionId)
+            .OrderByDescending(v => v.CreatedAtUtc)
+            .ToListAsync();
+    }
+
+    public async Task<int> SaveVideoLessonAsync(VideoLesson lesson)
+    {
+        var db = await GetConnectionAsync();
+        if (lesson.Id != 0)
+        {
+            await db.UpdateAsync(lesson);
+            return lesson.Id;
+        }
+
+        await db.InsertAsync(lesson);
+        return lesson.Id;
+    }
+
+    public async Task<int> DeleteVideoLessonAsync(VideoLesson lesson)
+    {
+        var db = await GetConnectionAsync();
+        return await db.DeleteAsync(lesson);
     }
 
     // ==================== ATHLETES ====================

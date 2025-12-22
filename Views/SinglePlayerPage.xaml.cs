@@ -1,6 +1,7 @@
 using CrownRFEP_Reader.Behaviors;
 using CrownRFEP_Reader.Controls;
 using CrownRFEP_Reader.Models;
+using CrownRFEP_Reader.Services;
 using CrownRFEP_Reader.Views.Controls;
 using CrownRFEP_Reader.ViewModels;
 
@@ -13,11 +14,25 @@ namespace CrownRFEP_Reader.Views;
 public partial class SinglePlayerPage : ContentPage
 {
     private readonly SinglePlayerViewModel _viewModel;
+    private readonly DatabaseService _databaseService;
+    private readonly IVideoLessonRecorder _videoLessonRecorder;
 
     private bool _isDrawingMode;
 
+    private bool _isVideoLessonMode;
+    private bool _isVideoLessonRecording;
+    private string? _currentVideoLessonPath;
+    private bool _isVideoLessonStartStopInProgress;
+
+    private bool _videoLessonCameraEnabled = true;
+    private bool _videoLessonMicEnabled = true;
+
     private bool _isPageActive;
     private bool _isTextPromptOpen;
+
+    private bool _pipHasUserMoved;
+    private double _pipDragStartTranslationX;
+    private double _pipDragStartTranslationY;
     
     // Flags para controlar el scrubbing del slider
     private bool _isDraggingSlider;
@@ -32,10 +47,15 @@ public partial class SinglePlayerPage : ContentPage
     private const float DefaultInkThickness = 3f;
     private const float DefaultTextSize = 16f;
 
-    public SinglePlayerPage(SinglePlayerViewModel viewModel)
+    public SinglePlayerPage(SinglePlayerViewModel viewModel, DatabaseService databaseService, IVideoLessonRecorder videoLessonRecorder)
     {
         InitializeComponent();
         BindingContext = _viewModel = viewModel;
+        _databaseService = databaseService;
+        _videoLessonRecorder = videoLessonRecorder;
+
+        if (RootGrid != null)
+            RootGrid.SizeChanged += OnRootGridSizeChanged;
 
         // Suscribirse a eventos del ViewModel
         _viewModel.PlayRequested += OnPlayRequested;
@@ -49,13 +69,382 @@ public partial class SinglePlayerPage : ContentPage
 
         if (AnalysisCanvas != null)
             AnalysisCanvas.TextRequested += OnAnalysisCanvasTextRequested;
+
+        SyncVideoLessonUiFromRecorder();
     }
+
+    private void SyncVideoLessonUiFromRecorder()
+    {
+        _isVideoLessonRecording = _videoLessonRecorder.IsRecording;
+        _isVideoLessonMode = _isVideoLessonRecording;
+
+        if (VideoLessonCameraPip != null)
+            VideoLessonCameraPip.IsVisible = _isVideoLessonRecording && _videoLessonCameraEnabled;
+
+        if (VideoLessonCameraPreview != null)
+            VideoLessonCameraPreview.IsActive = _isVideoLessonRecording && _videoLessonCameraEnabled;
+
+        if (VideoLessonOptionsPanel != null)
+            VideoLessonOptionsPanel.IsVisible = !_isVideoLessonRecording && false;
+
+        UpdateVideoLessonToggleVisualState();
+        UpdateVideoLessonOptionsVisualState();
+
+        if (_isVideoLessonRecording)
+            EnsurePipPositioned();
+    }
+
+    private void UpdateVideoLessonToggleVisualState()
+    {
+        if (VideoLessonRecordButton != null)
+            VideoLessonRecordButton.BackgroundColor = _isVideoLessonRecording
+                ? Color.FromArgb("#FFFF7043")
+                : Color.FromArgb("#FF2A2A2A");
+
+        if (VideoLessonRecordIcon != null)
+            VideoLessonRecordIcon.SymbolName = _isVideoLessonRecording ? "stop.fill" : "record.circle";
+    }
+
+    private void UpdateVideoLessonOptionsVisualState()
+    {
+        if (VideoLessonCameraToggle != null)
+            VideoLessonCameraToggle.BackgroundColor = _videoLessonCameraEnabled ? Color.FromArgb("#33FF7043") : Color.FromArgb("#FF2A2A2A");
+
+        if (VideoLessonCameraToggleIcon != null)
+            VideoLessonCameraToggleIcon.SymbolName = _videoLessonCameraEnabled ? "video.fill" : "video.slash";
+
+        if (VideoLessonMicToggle != null)
+            VideoLessonMicToggle.BackgroundColor = _videoLessonMicEnabled ? Color.FromArgb("#33FF7043") : Color.FromArgb("#FF2A2A2A");
+
+        if (VideoLessonMicToggleIcon != null)
+            VideoLessonMicToggleIcon.SymbolName = _videoLessonMicEnabled ? "mic.fill" : "mic.slash";
+    }
+
+    private void OnRootGridSizeChanged(object? sender, EventArgs e)
+    {
+        if (VideoLessonCameraPip?.IsVisible == true)
+        {
+            if (!_pipHasUserMoved)
+                PositionPipTopCenter();
+            else
+                ClampPipWithinBounds();
+        }
+    }
+
+    private async void OnToggleVideoLessonTapped(object? sender, TappedEventArgs e)
+    {
+        if (_isVideoLessonStartStopInProgress)
+            return;
+
+        // Si ya está grabando, el botón siempre hace STOP.
+        if (_videoLessonRecorder.IsRecording)
+        {
+            _isVideoLessonRecording = true;
+            await StopVideoLessonRecordingAsync();
+            return;
+        }
+
+        // Si no está grabando: primer toque abre opciones, segundo toque inicia.
+        if (VideoLessonOptionsPanel != null && !VideoLessonOptionsPanel.IsVisible)
+        {
+            VideoLessonOptionsPanel.IsVisible = true;
+            UpdateVideoLessonOptionsVisualState();
+            return;
+        }
+
+        await StartVideoLessonRecordingAsync();
+    }
+
+    private void OnVideoLessonCameraToggleTapped(object? sender, TappedEventArgs e)
+    {
+        _videoLessonCameraEnabled = !_videoLessonCameraEnabled;
+        ApplyVideoLessonRuntimeOptions();
+    }
+
+    private void OnVideoLessonMicToggleTapped(object? sender, TappedEventArgs e)
+    {
+        _videoLessonMicEnabled = !_videoLessonMicEnabled;
+        ApplyVideoLessonRuntimeOptions();
+    }
+
+    private void ApplyVideoLessonRuntimeOptions()
+    {
+        UpdateVideoLessonOptionsVisualState();
+
+#if MACCATALYST
+        if (_videoLessonRecorder is CrownRFEP_Reader.Platforms.MacCatalyst.ReplayKitVideoLessonRecorder replayKit)
+            replayKit.SetOptions(cameraEnabled: _videoLessonCameraEnabled, microphoneEnabled: _videoLessonMicEnabled);
+#endif
+
+        var shouldShowCamera = _isVideoLessonRecording && _videoLessonCameraEnabled;
+
+        if (VideoLessonCameraPip != null)
+            VideoLessonCameraPip.IsVisible = shouldShowCamera;
+
+        if (VideoLessonCameraPreview != null)
+            VideoLessonCameraPreview.IsActive = shouldShowCamera;
+
+        if (shouldShowCamera)
+            EnsurePipPositioned();
+    }
+
+    private async Task StartVideoLessonRecordingAsync()
+    {
+        if (_videoLessonRecorder.IsRecording)
+        {
+            SyncVideoLessonUiFromRecorder();
+            return;
+        }
+
+        var sessionId = _viewModel.VideoClip?.SessionId ?? 0;
+        if (sessionId <= 0)
+        {
+            await DisplayAlert("Sin sesión", "No se pudo determinar la sesión para guardar la videolección.", "OK");
+            return;
+        }
+
+        try
+        {
+            _isVideoLessonStartStopInProgress = true;
+
+            // Aplicar opciones antes de iniciar
+            ApplyVideoLessonRuntimeOptions();
+
+            var dir = Path.Combine(FileSystem.AppDataDirectory, "videolecciones");
+            Directory.CreateDirectory(dir);
+
+            var fileName = $"videoleccion_s{sessionId}_{DateTime.UtcNow:yyyyMMdd_HHmmss}.mp4";
+            var path = Path.Combine(dir, fileName);
+            _currentVideoLessonPath = path;
+
+            await _videoLessonRecorder.StartAsync(path);
+            _isVideoLessonRecording = true;
+            _isVideoLessonMode = true;
+
+            if (VideoLessonOptionsPanel != null)
+                VideoLessonOptionsPanel.IsVisible = true;
+
+            if (VideoLessonCameraPip != null)
+                VideoLessonCameraPip.IsVisible = _videoLessonCameraEnabled;
+
+            if (VideoLessonCameraPreview != null)
+                VideoLessonCameraPreview.IsActive = _videoLessonCameraEnabled;
+
+            if (_videoLessonCameraEnabled)
+                EnsurePipPositioned();
+            UpdateVideoLessonToggleVisualState();
+            UpdateVideoLessonOptionsVisualState();
+        }
+        catch (Exception ex)
+        {
+            _currentVideoLessonPath = null;
+            _isVideoLessonRecording = false;
+            _isVideoLessonMode = false;
+            UpdateVideoLessonToggleVisualState();
+
+            if (VideoLessonCameraPip != null)
+                VideoLessonCameraPip.IsVisible = false;
+
+            if (VideoLessonCameraPreview != null)
+                VideoLessonCameraPreview.IsActive = false;
+
+            if (VideoLessonOptionsPanel != null)
+                VideoLessonOptionsPanel.IsVisible = false;
+
+            await DisplayAlert("Error", $"No se pudo iniciar la grabación: {ex.Message}", "OK");
+        }
+        finally
+        {
+            _isVideoLessonStartStopInProgress = false;
+        }
+    }
+
+    private async Task StopVideoLessonRecordingAsync()
+    {
+        if (!_videoLessonRecorder.IsRecording)
+        {
+            _isVideoLessonRecording = false;
+            _isVideoLessonMode = false;
+            UpdateVideoLessonToggleVisualState();
+
+            if (VideoLessonCameraPip != null)
+                VideoLessonCameraPip.IsVisible = false;
+
+            if (VideoLessonCameraPreview != null)
+                VideoLessonCameraPreview.IsActive = false;
+
+            _currentVideoLessonPath = null;
+            return;
+        }
+
+        try
+        {
+            _isVideoLessonStartStopInProgress = true;
+            await _videoLessonRecorder.StopAsync();
+            _isVideoLessonRecording = false;
+            _isVideoLessonMode = false;
+
+            UpdateVideoLessonToggleVisualState();
+
+            if (VideoLessonCameraPip != null)
+                VideoLessonCameraPip.IsVisible = false;
+
+            if (VideoLessonCameraPreview != null)
+                VideoLessonCameraPreview.IsActive = false;
+
+            if (VideoLessonOptionsPanel != null)
+                VideoLessonOptionsPanel.IsVisible = false;
+
+            var sessionId = _viewModel.VideoClip?.SessionId ?? 0;
+            if (!string.IsNullOrWhiteSpace(_currentVideoLessonPath) && File.Exists(_currentVideoLessonPath))
+            {
+                var lesson = new VideoLesson
+                {
+                    SessionId = sessionId,
+                    CreatedAtUtc = DateTime.UtcNow,
+                    FilePath = _currentVideoLessonPath,
+                    Title = null
+                };
+
+                await _databaseService.SaveVideoLessonAsync(lesson);
+
+                await Share.Default.RequestAsync(new ShareFileRequest
+                {
+                    Title = "Videolección",
+                    File = new ShareFile(_currentVideoLessonPath)
+                });
+            }
+            else
+            {
+                await DisplayAlert("Grabación finalizada", "La grabación terminó, pero no se encontró el archivo generado.", "OK");
+            }
+        }
+        catch (Exception ex)
+        {
+            _isVideoLessonRecording = false;
+            _isVideoLessonMode = false;
+            UpdateVideoLessonToggleVisualState();
+            await DisplayAlert("Error", $"No se pudo detener la grabación: {ex.Message}", "OK");
+        }
+        finally
+        {
+            _currentVideoLessonPath = null;
+            _isVideoLessonStartStopInProgress = false;
+        }
+    }
+
+    private void EnsurePipPositioned()
+    {
+        if (VideoLessonCameraPip == null)
+            return;
+
+        if (!_pipHasUserMoved)
+            PositionPipTopCenter();
+        else
+            ClampPipWithinBounds();
+    }
+
+    private void PositionPipTopCenter()
+    {
+        if (RootGrid == null || VideoLessonCameraPip == null)
+            return;
+
+        const double inset = 16;
+
+        var containerWidth = RootGrid.Width;
+        var containerHeight = RootGrid.Height;
+        if (containerWidth <= 0 || containerHeight <= 0)
+            return;
+
+        var pipWidth = VideoLessonCameraPip.Width;
+        if (pipWidth <= 0)
+            pipWidth = VideoLessonCameraPip.WidthRequest;
+
+        var pipHeight = VideoLessonCameraPip.Height;
+        if (pipHeight <= 0)
+            pipHeight = VideoLessonCameraPip.HeightRequest;
+
+        var x = (containerWidth - pipWidth) / 2.0;
+        var y = inset;
+
+        VideoLessonCameraPip.TranslationX = x;
+        VideoLessonCameraPip.TranslationY = y;
+
+        ClampPipWithinBounds();
+    }
+
+    private void ClampPipWithinBounds()
+    {
+        if (RootGrid == null || VideoLessonCameraPip == null)
+            return;
+
+        const double inset = 16;
+
+        var containerWidth = RootGrid.Width;
+        var containerHeight = RootGrid.Height;
+        if (containerWidth <= 0 || containerHeight <= 0)
+            return;
+
+        var pipWidth = VideoLessonCameraPip.Width;
+        if (pipWidth <= 0)
+            pipWidth = VideoLessonCameraPip.WidthRequest;
+
+        var pipHeight = VideoLessonCameraPip.Height;
+        if (pipHeight <= 0)
+            pipHeight = VideoLessonCameraPip.HeightRequest;
+
+        var minX = inset;
+        var minY = inset;
+        var maxX = Math.Max(minX, containerWidth - pipWidth - inset);
+        var maxY = Math.Max(minY, containerHeight - pipHeight - inset);
+
+        var clampedX = Math.Clamp(VideoLessonCameraPip.TranslationX, minX, maxX);
+        var clampedY = Math.Clamp(VideoLessonCameraPip.TranslationY, minY, maxY);
+
+        VideoLessonCameraPip.TranslationX = clampedX;
+        VideoLessonCameraPip.TranslationY = clampedY;
+    }
+
+    private void OnVideoLessonPipPanUpdated(object? sender, PanUpdatedEventArgs e)
+    {
+        if (VideoLessonCameraPip == null)
+            return;
+
+        switch (e.StatusType)
+        {
+            case GestureStatus.Started:
+                _pipDragStartTranslationX = VideoLessonCameraPip.TranslationX;
+                _pipDragStartTranslationY = VideoLessonCameraPip.TranslationY;
+                break;
+
+            case GestureStatus.Running:
+            {
+                var newX = _pipDragStartTranslationX + e.TotalX;
+                var newY = _pipDragStartTranslationY + e.TotalY;
+
+                VideoLessonCameraPip.TranslationX = newX;
+                VideoLessonCameraPip.TranslationY = newY;
+                ClampPipWithinBounds();
+                break;
+            }
+
+            case GestureStatus.Canceled:
+            case GestureStatus.Completed:
+                _pipHasUserMoved = true;
+                ClampPipWithinBounds();
+                break;
+        }
+    }
+
+    // Los handlers Start/Stop ya no se usan (se mantiene la grabación como toggle en OnToggleVideoLessonTapped)
 
     protected override void OnAppearing()
     {
         base.OnAppearing();
         _isPageActive = true;
         SetupMediaHandlers();
+
+        SyncVideoLessonUiFromRecorder();
         
         // Suscribirse a eventos de scrubbing (trackpad/mouse wheel)
         VideoScrubBehavior.ScrubUpdated += OnScrubUpdated;

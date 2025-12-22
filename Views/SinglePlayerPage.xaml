@@ -29,7 +29,7 @@
         <converters:BoolToColorConverter x:Key="BoolToTagEventBackgroundConverter" />
     </ContentPage.Resources>
 
-    <Grid Padding="0" RowDefinitions="*,Auto,Auto">
+    <Grid x:Name="RootGrid" Padding="0" RowDefinitions="*,Auto,Auto">
 
         <!--  Área del vídeo  -->
         <Border
@@ -346,6 +346,92 @@
                     StrokeThickness="0"
                     VerticalOptions="Start">
                     <HorizontalStackLayout Spacing="4">
+
+                        <!-- Videolección (toggle start/stop) - separado del resto -->
+                        <Border
+                            x:Name="VideoLessonRecordButton"
+                            WidthRequest="44"
+                            HeightRequest="44"
+                            Padding="0"
+                            BackgroundColor="#FF2A2A2A"
+                            StrokeShape="RoundRectangle 22"
+                            StrokeThickness="0">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="OnToggleVideoLessonTapped" />
+                            </Border.GestureRecognizers>
+                            <Grid>
+                                <controls:SymbolIcon
+                                    x:Name="VideoLessonRecordIcon"
+                                    WidthRequest="18"
+                                    HeightRequest="18"
+                                    SymbolName="record.circle"
+                                    TintColor="White"
+                                    HorizontalOptions="Center"
+                                    VerticalOptions="Center" />
+                            </Grid>
+                        </Border>
+
+                        <!-- Opciones Videolección (cámara / micrófono) -->
+                        <Border
+                            x:Name="VideoLessonOptionsPanel"
+                            Margin="6,0,0,0"
+                            Padding="6"
+                            BackgroundColor="#EE1E1E1E"
+                            IsVisible="False"
+                            StrokeShape="RoundRectangle 10"
+                            StrokeThickness="0"
+                            VerticalOptions="Center">
+                            <HorizontalStackLayout Spacing="6">
+                                <Border
+                                    x:Name="VideoLessonCameraToggle"
+                                    WidthRequest="34"
+                                    HeightRequest="34"
+                                    Padding="0"
+                                    BackgroundColor="#FF2A2A2A"
+                                    StrokeShape="RoundRectangle 17"
+                                    StrokeThickness="0">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="OnVideoLessonCameraToggleTapped" />
+                                    </Border.GestureRecognizers>
+                                    <Grid>
+                                        <controls:SymbolIcon
+                                            x:Name="VideoLessonCameraToggleIcon"
+                                            WidthRequest="16"
+                                            HeightRequest="16"
+                                            SymbolName="video.fill"
+                                            TintColor="White"
+                                            HorizontalOptions="Center"
+                                            VerticalOptions="Center" />
+                                    </Grid>
+                                </Border>
+
+                                <Border
+                                    x:Name="VideoLessonMicToggle"
+                                    WidthRequest="34"
+                                    HeightRequest="34"
+                                    Padding="0"
+                                    BackgroundColor="#FF2A2A2A"
+                                    StrokeShape="RoundRectangle 17"
+                                    StrokeThickness="0">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="OnVideoLessonMicToggleTapped" />
+                                    </Border.GestureRecognizers>
+                                    <Grid>
+                                        <controls:SymbolIcon
+                                            x:Name="VideoLessonMicToggleIcon"
+                                            WidthRequest="16"
+                                            HeightRequest="16"
+                                            SymbolName="mic.fill"
+                                            TintColor="White"
+                                            HorizontalOptions="Center"
+                                            VerticalOptions="Center" />
+                                    </Grid>
+                                </Border>
+                            </HorizontalStackLayout>
+                        </Border>
+
+                        <BoxView WidthRequest="1" BackgroundColor="#FF555555" Margin="6,4" />
+
                         <!--  Botón Asignar Atleta  -->
                         <Border
                             Padding="8,6"
@@ -468,6 +554,7 @@
                                     VerticalOptions="Center" />
                             </HorizontalStackLayout>
                         </Border>
+
                     </HorizontalStackLayout>
                 </Border>
 
@@ -1568,6 +1655,29 @@
                         WidthRequest="20" />
                 </Border>
             </Grid>
+        </Border>
+
+        <!-- PiP cámara (Videolección) - por encima de todo y arrastrable -->
+        <Border
+            x:Name="VideoLessonCameraPip"
+            Grid.RowSpan="3"
+            Margin="0"
+            Padding="0"
+            BackgroundColor="#CC000000"
+            HorizontalOptions="Start"
+            IsVisible="False"
+            StrokeShape="RoundRectangle 10"
+            StrokeThickness="0"
+            VerticalOptions="Start"
+            WidthRequest="300"
+            HeightRequest="200"
+            ZIndex="1000">
+            <Border.GestureRecognizers>
+                <PanGestureRecognizer PanUpdated="OnVideoLessonPipPanUpdated" />
+            </Border.GestureRecognizers>
+            <controls:ReplayKitCameraPreview
+                x:Name="VideoLessonCameraPreview"
+                IsActive="False" />
         </Border>
 
         <!--  Controles de reproducción  -->
