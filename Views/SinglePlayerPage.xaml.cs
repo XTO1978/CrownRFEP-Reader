@@ -54,6 +54,8 @@ public partial class SinglePlayerPage : ContentPage
         _databaseService = databaseService;
         _videoLessonRecorder = videoLessonRecorder;
 
+        AppLog.Info("SinglePlayerPage", "CTOR");
+
         if (RootGrid != null)
             RootGrid.SizeChanged += OnRootGridSizeChanged;
 
@@ -436,6 +438,10 @@ public partial class SinglePlayerPage : ContentPage
     {
         base.OnAppearing();
         _isPageActive = true;
+
+        AppLog.Info(
+            "SinglePlayerPage",
+            $"OnAppearing | IsRecording={_videoLessonRecorder.IsRecording} | VideoPath='{_viewModel.VideoPath}' | NavStack={Shell.Current?.Navigation?.NavigationStack?.Count} | ModalStack={Shell.Current?.Navigation?.ModalStack?.Count}");
         SetupMediaHandlers();
 
         SyncVideoLessonUiFromRecorder();
@@ -454,6 +460,10 @@ public partial class SinglePlayerPage : ContentPage
     {
         base.OnDisappearing();
 
+        AppLog.Info(
+            "SinglePlayerPage",
+            $"OnDisappearing BEGIN | IsRecording={_videoLessonRecorder.IsRecording} | HasMediaPlayer={(MediaPlayer != null)} | NavStack={Shell.Current?.Navigation?.NavigationStack?.Count} | ModalStack={Shell.Current?.Navigation?.ModalStack?.Count}");
+
         _isPageActive = false;
         
         // Desuscribirse de eventos de scrubbing
@@ -466,6 +476,8 @@ public partial class SinglePlayerPage : ContentPage
 #endif
         
         CleanupResources();
+
+        AppLog.Info("SinglePlayerPage", "OnDisappearing END");
     }
 
 #if MACCATALYST
@@ -509,6 +521,8 @@ public partial class SinglePlayerPage : ContentPage
 
     private void CleanupResources()
     {
+        AppLog.Info("SinglePlayerPage", "CleanupResources BEGIN");
+
         // Desuscribirse de eventos del ViewModel
         _viewModel.PlayRequested -= OnPlayRequested;
         _viewModel.PauseRequested -= OnPauseRequested;
@@ -528,11 +542,23 @@ public partial class SinglePlayerPage : ContentPage
             MediaPlayer.MediaOpened -= OnMediaOpened;
             MediaPlayer.PositionChanged -= OnPositionChanged;
             MediaPlayer.MediaEnded -= OnMediaEnded;
-            MediaPlayer.Stop();
+
+            try
+            {
+                AppLog.Info("SinglePlayerPage", "CleanupResources: calling MediaPlayer.Stop()");
+                MediaPlayer.Stop();
+                AppLog.Info("SinglePlayerPage", "CleanupResources: MediaPlayer.Stop() returned");
+            }
+            catch (Exception ex)
+            {
+                AppLog.Error("SinglePlayerPage", "CleanupResources: MediaPlayer.Stop() threw", ex);
+            }
 #if !MACCATALYST
             MediaPlayer.Handler?.DisconnectHandler();
 #endif
         }
+
+        AppLog.Info("SinglePlayerPage", "CleanupResources END");
     }
 
     private void OnToggleDrawingToolsTapped(object? sender, TappedEventArgs e)

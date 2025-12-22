@@ -3,6 +3,7 @@ using System.Windows.Input;
 using CrownRFEP_Reader.Models;
 using CrownRFEP_Reader.Services;
 using CrownRFEP_Reader.Views;
+using Microsoft.Maui.Controls;
 using Microsoft.Maui.Storage;
 
 namespace CrownRFEP_Reader.ViewModels;
@@ -23,6 +24,9 @@ public class DashboardViewModel : BaseViewModel
     private bool _isVideoLessonsSelected;
     private bool _isSessionsListExpanded = true;
     private bool _isLoadingSelectedSessionVideos;
+
+    private GridLength _rightPanelWidth = new(1.2, GridUnitType.Star);
+    private GridLength _rightSplitterWidth = new(8);
     private string _importProgressText = "";
     private int _importProgressValue;
     private bool _isImporting;
@@ -115,9 +119,36 @@ public class DashboardViewModel : BaseViewModel
                 {
                     IsAllGallerySelected = false;
                 }
+                UpdateRightPanelLayout();
                 OnPropertyChanged(nameof(SelectedSessionTitle));
                 OnPropertyChanged(nameof(VideoCountDisplayText));
             }
+        }
+    }
+
+    public GridLength RightPanelWidth
+    {
+        get => _rightPanelWidth;
+        set => SetProperty(ref _rightPanelWidth, value);
+    }
+
+    public GridLength RightSplitterWidth
+    {
+        get => _rightSplitterWidth;
+        set => SetProperty(ref _rightSplitterWidth, value);
+    }
+
+    private void UpdateRightPanelLayout()
+    {
+        if (IsVideoLessonsSelected)
+        {
+            RightSplitterWidth = new GridLength(0);
+            RightPanelWidth = new GridLength(0);
+        }
+        else
+        {
+            RightSplitterWidth = new GridLength(8);
+            RightPanelWidth = new GridLength(1.2, GridUnitType.Star);
         }
     }
 

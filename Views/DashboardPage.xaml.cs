@@ -2,6 +2,7 @@ using CrownRFEP_Reader.Behaviors;
 using CrownRFEP_Reader.Models;
 using CrownRFEP_Reader.ViewModels;
 using CrownRFEP_Reader.Controls;
+using CrownRFEP_Reader.Services;
 
 #if MACCATALYST
 using CrownRFEP_Reader.Platforms.MacCatalyst;
@@ -25,6 +26,8 @@ public partial class DashboardPage : ContentPage
     {
         InitializeComponent();
         BindingContext = _viewModel = viewModel;
+
+        AppLog.Info("DashboardPage", "CTOR");
 
         // Suscribirse a eventos de hover para video preview
         HoverVideoPreviewBehavior.VideoHoverStarted += OnVideoHoverStarted;
@@ -65,17 +68,46 @@ public partial class DashboardPage : ContentPage
     {
         base.OnAppearing();
         _isPageActive = true;
+
+        AppLog.Info(
+            "DashboardPage",
+            $"OnAppearing | IsVideoLessonsSelected={_viewModel.IsVideoLessonsSelected} | NavStack={Shell.Current?.Navigation?.NavigationStack?.Count} | ModalStack={Shell.Current?.Navigation?.ModalStack?.Count}");
+
+        _ = LogHeartbeatsAsync();
         
         // Limpiar los recuadros de preview al volver a la página
         _viewModel.ClearPreviewVideos();
         
         await _viewModel.LoadDataAsync();
+
+        AppLog.Info("DashboardPage", "OnAppearing finished LoadDataAsync");
+    }
+
+    private async Task LogHeartbeatsAsync()
+    {
+        try
+        {
+            await Task.Delay(250);
+            AppLog.Info("DashboardPage", "Heartbeat +250ms");
+            await Task.Delay(750);
+            AppLog.Info("DashboardPage", "Heartbeat +1s");
+            await Task.Delay(2000);
+            AppLog.Info("DashboardPage", "Heartbeat +3s");
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "Heartbeat task error", ex);
+        }
     }
 
     protected override void OnDisappearing()
     {
         base.OnDisappearing();
         _isPageActive = false;
+
+        AppLog.Info(
+            "DashboardPage",
+            $"OnDisappearing | NavStack={Shell.Current?.Navigation?.NavigationStack?.Count} | ModalStack={Shell.Current?.Navigation?.ModalStack?.Count}");
         // Pausar todos los videos al salir
         PauseAllVideos();
     }

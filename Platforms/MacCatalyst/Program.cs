@@ -1,6 +1,7 @@
 ﻿using ObjCRuntime;
 using UIKit;
 using System;
+using CrownRFEP_Reader.Services;
 
 namespace CrownRFEP_Reader;
 
@@ -9,6 +10,8 @@ public class Program
 	// This is the main entry point of the application.
 	static void Main(string[] args)
 	{
+		AppLog.Info("Program", "Main() start");
+
 		// Capturar excepciones no controladas para diagnóstico
 		AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
 		{
@@ -28,12 +31,33 @@ public class Program
 			Console.WriteLine($"StackTrace: {ex?.StackTrace}");
 		};
 
+		Runtime.MarshalManagedException += (sender, e) =>
+		{
+			try
+			{
+				AppLog.Error("Program", $"MarshalManagedException: Mode={e.ExceptionMode}", e.Exception);
+			}
+			catch
+			{
+				// no-op
+			}
+		};
+
 		Runtime.MarshalObjectiveCException += (sender, e) =>
 		{
 			System.Diagnostics.Debug.WriteLine("=== ObjC EXCEPTION ===");
 			System.Diagnostics.Debug.WriteLine($"ObjC Exception: {e.Exception}");
 			Console.WriteLine("=== ObjC EXCEPTION ===");
 			Console.WriteLine($"ObjC Exception: {e.Exception}");
+
+			try
+			{
+				AppLog.Error("Program", $"MarshalObjectiveCException: {e.Exception}");
+			}
+			catch
+			{
+				// no-op
+			}
 		};
 
 		// if you want to use a different Application Delegate class from "AppDelegate"

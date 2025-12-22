@@ -3,6 +3,7 @@ using AVFoundation;
 using AVKit;
 using CoreMedia;
 using Foundation;
+using CrownRFEP_Reader.Services;
 using Microsoft.Maui.Handlers;
 using UIKit;
 
@@ -69,6 +70,31 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
 
     protected override void DisconnectHandler(UIView platformView)
     {
+#if DEBUG
+        AppLog.Info("PrecisionVideoPlayerHandler", $"DisconnectHandler ENTER | MainThread={MainThread.IsMainThread}");
+#endif
+
+        // Importante: UIKit/AVFoundation deben tocarse en el main thread.
+        // En escenarios con debugger/hotreload, a veces DisconnectHandler llega desde otro hilo.
+        if (!MainThread.IsMainThread)
+        {
+#if DEBUG
+            AppLog.Warn("PrecisionVideoPlayerHandler", "DisconnectHandler called off main thread; rescheduling to main thread");
+#endif
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                try
+                {
+                    DisconnectHandler(platformView);
+                }
+                catch (Exception ex)
+                {
+                    AppLog.Error("PrecisionVideoPlayerHandler", "DisconnectHandler rescheduled threw", ex);
+                }
+            });
+            return;
+        }
+
         _isDisconnected = true;
         
         // Desuscribirse de eventos
@@ -89,35 +115,110 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
         _playerViewController = null;
 
         base.DisconnectHandler(platformView);
+
+    #if DEBUG
+        AppLog.Info("PrecisionVideoPlayerHandler", "DisconnectHandler EXIT");
+    #endif
     }
 
     private void CleanupPlayer()
     {
+#if DEBUG
+        AppLog.Info("PrecisionVideoPlayerHandler", "CleanupPlayer BEGIN");
+#endif
         if (_timeObserver != null && _player != null)
         {
-            _player.RemoveTimeObserver(_timeObserver);
-            _timeObserver.Dispose();
+            try
+            {
+                _player.RemoveTimeObserver(_timeObserver);
+            }
+            catch (Exception ex)
+            {
+                AppLog.Error("PrecisionVideoPlayerHandler", "RemoveTimeObserver threw", ex);
+            }
+
+            try
+            {
+                _timeObserver.Dispose();
+            }
+            catch (Exception ex)
+            {
+                AppLog.Error("PrecisionVideoPlayerHandler", "Dispose timeObserver threw", ex);
+            }
             _timeObserver = null;
         }
 
         if (_endObserver != null)
         {
-            NSNotificationCenter.DefaultCenter.RemoveObserver(_endObserver);
-            _endObserver.Dispose();
+            try
+            {
+                NSNotificationCenter.DefaultCenter.RemoveObserver(_endObserver);
+            }
+            catch (Exception ex)
+            {
+                AppLog.Error("PrecisionVideoPlayerHandler", "RemoveObserver endObserver threw", ex);
+            }
+
+            try
+            {
+                _endObserver.Dispose();
+            }
+            catch (Exception ex)
+            {
+                AppLog.Error("PrecisionVideoPlayerHandler", "Dispose endObserver threw", ex);
+            }
             _endObserver = null;
         }
 
         if (_statusObserver != null)
         {
-            _statusObserver.Dispose();
+            // Importante: quitar el observer de NSNotificationCenter antes de Dispose.
+            try
+            {
+                NSNotificationCenter.DefaultCenter.RemoveObserver(_statusObserver);
+            }
+            catch (Exception ex)
+            {
+                AppLog.Error("PrecisionVideoPlayerHandler", "RemoveObserver statusObserver threw", ex);
+            }
+
+            try
+            {
+                _statusObserver.Dispose();
+            }
+            catch (Exception ex)
+            {
+                AppLog.Error("PrecisionVideoPlayerHandler", "Dispose statusObserver threw", ex);
+            }
             _statusObserver = null;
         }
 
-        _player?.Pause();
-        _playerItem?.Dispose();
-        _player?.Dispose();
+        try
+        {
+            // Desasociar del view controller para evitar callbacks tardíos.
+            if (_playerViewController != null)
+                _playerViewController.Player = null;
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("PrecisionVideoPlayerHandler", "Setting Player=null threw", ex);
+        }
+
+        try { _player?.Pause(); }
+        catch (Exception ex) { AppLog.Error("PrecisionVideoPlayerHandler", "Pause threw", ex); }
+
+        try { _playerItem?.Dispose(); }
+        catch (Exception ex) { AppLog.Error("PrecisionVideoPlayerHandler", "Dispose playerItem threw", ex); }
+
+        try { _player?.Dispose(); }
+        catch (Exception ex) { AppLog.Error("PrecisionVideoPlayerHandler", "Dispose player threw", ex); }
+
         _playerItem = null;
         _player = null;
+
+#if DEBUG
+        AppLog.Info("PrecisionVideoPlayerHandler", "CleanupPlayer END");
+#endif
     }
 
     #region Property Mappers

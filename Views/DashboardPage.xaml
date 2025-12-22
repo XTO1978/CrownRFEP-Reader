@@ -16,8 +16,14 @@
 
     <Grid
         Padding="0"
-        ColumnDefinitions="350,8,2.5*,8,1.2*"
         RowDefinitions="Auto,*">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="350" />
+            <ColumnDefinition Width="8" />
+            <ColumnDefinition Width="2.5*" />
+            <ColumnDefinition Width="{Binding RightSplitterWidth}" />
+            <ColumnDefinition Width="{Binding RightPanelWidth}" />
+        </Grid.ColumnDefinitions>
         <controls:TopTabsBar
             Grid.Row="0"
             Grid.ColumnSpan="5"
@@ -52,6 +58,7 @@
             MinLeftWidth="300"
             MinRightWidth="200"
             RightColumnIndex="4"
+            IsVisible="{Binding IsVideoLessonsSelected, Converter={toolkit:InvertedBoolConverter}}"
             WidthRequest="8" />
 
         <!--  Lista de sesiones recientes + barra superior  -->
@@ -133,7 +140,7 @@
 
                         <Border
                             x:Name="VideoLessonsHeaderBorder"
-                            Margin="0,0,0,8"
+                            Margin="0"
                             BackgroundColor="Transparent"
                             Stroke="Transparent"
                             StrokeShape="RoundRectangle 4">
@@ -173,7 +180,7 @@
                         <!--  Item padre: Sesiones (expandir/colapsar)  -->
                         <Border
                             x:Name="SessionsHeaderBorder"
-                            Margin="0,0,0,4"
+                            Margin="0"
                             BackgroundColor="Transparent"
                             Stroke="Transparent"
                             StrokeShape="RoundRectangle 4">
@@ -661,6 +668,9 @@
             Grid.Row="1"
             Grid.Column="4"
             Padding="20">
+            <ScrollView.IsVisible>
+                <Binding Path="IsVideoLessonsSelected" Converter="{toolkit:InvertedBoolConverter}" />
+            </ScrollView.IsVisible>
             <VerticalStackLayout Spacing="12">
 
                 <!--  Pestañas: Acciones / Estadísticas  -->
