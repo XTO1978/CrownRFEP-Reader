@@ -8,6 +8,11 @@
     HeightRequest="36">
 
     <Grid>
+        <!--  Línea separadora superior  -->
+        <BoxView
+            HeightRequest="0.6"
+            VerticalOptions="Start"
+            Color="#FF3A3A3A" />
         <!--  Contenido principal del footer  -->
         <Grid
             Padding="16,0"

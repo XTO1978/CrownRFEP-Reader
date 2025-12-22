@@ -103,21 +103,8 @@ public class StatisticsService
 
     private string GetSectionName(int section)
     {
-        return section switch
-        {
-            1 => "Salida",
-            2 => "Contrarreloj",
-            3 => "Técnica",
-            4 => "Remontada",
-            5 => "Bajada",
-            6 => "Llegada",
-            7 => "Recuperación",
-            8 => "Sprint",
-            9 => "General",
-            10 => "Calentamiento",
-            11 => "Enfriamiento",
-            _ => $"Sección {section}"
-        };
+        // Usar formato simple "Tramo N" - no hay tabla de nombres de secciones en la BD
+        return $"Tramo {section}";
     }
 
     /// <summary>
@@ -203,7 +190,7 @@ public class StatisticsService
             });
         }
 
-        // Agrupar por sección y luego por atleta
+        // Agrupar por sección numérica
         var result = rows
             .GroupBy(r => r.Section)
             .OrderBy(g => g.Key)
