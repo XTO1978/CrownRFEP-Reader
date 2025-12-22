@@ -689,6 +689,244 @@ public class DashboardViewModel : BaseViewModel
     public ObservableCollection<double> SelectedSessionPenaltyCounts { get; } = new();
     public ObservableCollection<string> SelectedSessionPenaltyLabels { get; } = new();
 
+    // ==================== ESTADÍSTICAS ABSOLUTAS (CONTADORES) ====================
+    private int _totalEventTagsCount;
+    private int _totalUniqueEventTagsCount;
+    private int _totalLabelTagsCount;
+    private int _totalUniqueLabelTagsCount;
+    private int _labeledVideosCount;
+    private int _totalVideosForLabeling;
+    private double _avgTagsPerSession;
+
+    /// <summary>Total de eventos de tag establecidos (Input.IsEvent = 1)</summary>
+    public int TotalEventTagsCount
+    {
+        get => _totalEventTagsCount;
+        set => SetProperty(ref _totalEventTagsCount, value);
+    }
+
+    /// <summary>Número de tipos de eventos únicos usados</summary>
+    public int TotalUniqueEventTagsCount
+    {
+        get => _totalUniqueEventTagsCount;
+        set => SetProperty(ref _totalUniqueEventTagsCount, value);
+    }
+
+    /// <summary>Total de etiquetas asignadas (Input.IsEvent = 0)</summary>
+    public int TotalLabelTagsCount
+    {
+        get => _totalLabelTagsCount;
+        set => SetProperty(ref _totalLabelTagsCount, value);
+    }
+
+    /// <summary>Número de etiquetas únicas usadas</summary>
+    public int TotalUniqueLabelTagsCount
+    {
+        get => _totalUniqueLabelTagsCount;
+        set => SetProperty(ref _totalUniqueLabelTagsCount, value);
+    }
+
+    /// <summary>Vídeos con nombre/etiqueta asignada</summary>
+    public int LabeledVideosCount
+    {
+        get => _labeledVideosCount;
+        set => SetProperty(ref _labeledVideosCount, value);
+    }
+
+    /// <summary>Total de vídeos en contexto para calcular porcentaje</summary>
+    public int TotalVideosForLabeling
+    {
+        get => _totalVideosForLabeling;
+        set => SetProperty(ref _totalVideosForLabeling, value);
+    }
+
+    /// <summary>Media de etiquetas por sesión</summary>
+    public double AvgTagsPerSession
+    {
+        get => _avgTagsPerSession;
+        set => SetProperty(ref _avgTagsPerSession, value);
+    }
+
+    /// <summary>Texto formateado de vídeos etiquetados</summary>
+    public string LabeledVideosText => TotalVideosForLabeling > 0 
+        ? $"{LabeledVideosCount} de {TotalVideosForLabeling}"
+        : "0";
+
+    /// <summary>Porcentaje de vídeos etiquetados</summary>
+    public double LabeledVideosPercentage => TotalVideosForLabeling > 0
+        ? (double)LabeledVideosCount / TotalVideosForLabeling * 100
+        : 0;
+
+    /// <summary>Top tags de eventos más usados</summary>
+    public ObservableCollection<TagUsageRow> TopEventTags { get; } = new();
+
+    /// <summary>Valores para gráfico circular de eventos</summary>
+    public ObservableCollection<double> TopEventTagValues { get; } = new();
+
+    /// <summary>Nombres para gráfico circular de eventos</summary>
+    public ObservableCollection<string> TopEventTagNames { get; } = new();
+
+    /// <summary>Top etiquetas más usadas</summary>
+    public ObservableCollection<TagUsageRow> TopLabelTags { get; } = new();
+
+    /// <summary>Valores para gráfico circular de etiquetas</summary>
+    public ObservableCollection<double> TopLabelTagValues { get; } = new();
+
+    /// <summary>Nombres para gráfico circular de etiquetas</summary>
+    public ObservableCollection<string> TopLabelTagNames { get; } = new();
+
+    // ==================== ESTADÍSTICAS RELATIVAS (USUARIO) ====================
+    private bool _isAbsoluteStatsMode = true;
+    private UserAthleteStats? _userAthleteStats;
+    private int? _referenceAthleteId;
+    private string? _referenceAthleteName;
+
+    public bool IsAbsoluteStatsMode
+    {
+        get => _isAbsoluteStatsMode;
+        set
+        {
+            if (SetProperty(ref _isAbsoluteStatsMode, value))
+            {
+                OnPropertyChanged(nameof(IsRelativeStatsMode));
+                if (!value)
+                {
+                    _ = LoadUserAthleteStatsAsync();
+                }
+            }
+        }
+    }
+
+    public bool IsRelativeStatsMode => !IsAbsoluteStatsMode;
+
+    public UserAthleteStats? UserAthleteStats
+    {
+        get => _userAthleteStats;
+        set => SetProperty(ref _userAthleteStats, value);
+    }
+
+    public int? ReferenceAthleteId
+    {
+        get => _referenceAthleteId;
+        set => SetProperty(ref _referenceAthleteId, value);
+    }
+
+    public string? ReferenceAthleteName
+    {
+        get => _referenceAthleteName;
+        set => SetProperty(ref _referenceAthleteName, value);
+    }
+
+    public bool HasReferenceAthlete => ReferenceAthleteId.HasValue;
+    public bool HasUserStats => UserAthleteStats?.HasData == true;
+
+    public ObservableCollection<AthleteComparisonRow> AthleteComparison { get; } = new();
+
+    private async Task LoadUserAthleteStatsAsync()
+    {
+        if (!ReferenceAthleteId.HasValue)
+        {
+            UserAthleteStats = null;
+            AthleteComparison.Clear();
+            return;
+        }
+
+        try
+        {
+            int? sessionId = IsAllGallerySelected ? null : SelectedSession?.Id;
+
+            // Cargar estadísticas del atleta de referencia
+            UserAthleteStats = await _statisticsService.GetUserAthleteStatsAsync(ReferenceAthleteId.Value, sessionId);
+
+            // Cargar comparativa con otros atletas
+            var comparison = await _statisticsService.GetAthleteComparisonAsync(ReferenceAthleteId.Value, sessionId, 5);
+            AthleteComparison.Clear();
+            foreach (var row in comparison)
+            {
+                AthleteComparison.Add(row);
+            }
+
+            OnPropertyChanged(nameof(HasUserStats));
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error cargando estadísticas de usuario: {ex.Message}");
+        }
+    }
+
+    private async Task LoadReferenceAthleteAsync()
+    {
+        try
+        {
+            var profile = await _databaseService.GetUserProfileAsync();
+            if (profile?.ReferenceAthleteId.HasValue == true)
+            {
+                ReferenceAthleteId = profile.ReferenceAthleteId;
+
+                var athletes = await _databaseService.GetAllAthletesAsync();
+                var refAthlete = athletes.FirstOrDefault(a => a.Id == ReferenceAthleteId.Value);
+                ReferenceAthleteName = refAthlete != null
+                    ? $"{refAthlete.Nombre} {refAthlete.Apellido}".Trim()
+                    : null;
+            }
+            else
+            {
+                ReferenceAthleteId = null;
+                ReferenceAthleteName = null;
+            }
+            OnPropertyChanged(nameof(HasReferenceAthlete));
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error cargando atleta de referencia: {ex.Message}");
+        }
+    }
+
+    private async Task LoadAbsoluteTagStatsAsync(int? sessionId)
+    {
+        try
+        {
+            var stats = await _statisticsService.GetAbsoluteTagStatsAsync(sessionId);
+
+            TotalEventTagsCount = stats.TotalEventTags;
+            TotalUniqueEventTagsCount = stats.UniqueEventTags;
+            TotalLabelTagsCount = stats.TotalLabelTags;
+            TotalUniqueLabelTagsCount = stats.UniqueLabelTags;
+            LabeledVideosCount = stats.LabeledVideos;
+            TotalVideosForLabeling = stats.TotalVideos;
+            AvgTagsPerSession = stats.AvgTagsPerSession;
+
+            TopEventTags.Clear();
+            TopEventTagValues.Clear();
+            TopEventTagNames.Clear();
+            foreach (var tag in stats.TopEventTags)
+            {
+                TopEventTags.Add(tag);
+                TopEventTagValues.Add(tag.UsageCount);
+                TopEventTagNames.Add(tag.TagName);
+            }
+
+            TopLabelTags.Clear();
+            TopLabelTagValues.Clear();
+            TopLabelTagNames.Clear();
+            foreach (var tag in stats.TopLabelTags)
+            {
+                TopLabelTags.Add(tag);
+                TopLabelTagValues.Add(tag.UsageCount);
+                TopLabelTagNames.Add(tag.TagName);
+            }
+
+            OnPropertyChanged(nameof(LabeledVideosText));
+            OnPropertyChanged(nameof(LabeledVideosPercentage));
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error cargando estadísticas absolutas: {ex.Message}");
+        }
+    }
+
+    // ==================== FIN ESTADÍSTICAS RELATIVAS ====================
+
     // Estadísticas: usar el cache filtrado para mostrar totales reales (no solo paginados)
     public int TotalFilteredVideoCount => IsVideoLessonsSelected
         ? VideoLessons.Count
@@ -771,6 +1009,10 @@ public class DashboardViewModel : BaseViewModel
     public ICommand ApplyBatchEditCommand { get; }
     public ICommand ToggleBatchTagCommand { get; }
     public ICommand SelectBatchAthleteCommand { get; }
+
+    // Comandos de estadísticas relativas
+    public ICommand SetAbsoluteStatsModeCommand { get; }
+    public ICommand SetRelativeStatsModeCommand { get; }
 
     // Propiedades de edición en lote
     public bool ShowBatchEditPopup
@@ -879,6 +1121,10 @@ public class DashboardViewModel : BaseViewModel
         ApplyBatchEditCommand = new AsyncRelayCommand(ApplyBatchEditAsync);
         ToggleBatchTagCommand = new RelayCommand<Tag>(ToggleBatchTag);
         SelectBatchAthleteCommand = new RelayCommand<Athlete>(SelectBatchAthlete);
+        
+        // Comandos de estadísticas relativas
+        SetAbsoluteStatsModeCommand = new RelayCommand(() => IsAbsoluteStatsMode = true);
+        SetRelativeStatsModeCommand = new RelayCommand(() => IsAbsoluteStatsMode = false);
         
         // Notificar cambios en VideoCountDisplayText cuando cambie la colección
         SelectedSessionVideos.CollectionChanged += (s, e) => OnPropertyChanged(nameof(VideoCountDisplayText));
@@ -1682,6 +1928,9 @@ public class DashboardViewModel : BaseViewModel
             if (!ct.IsCancellationRequested)
                 await ApplyGalleryStatsSnapshotAsync(snapshot, ct);
 
+            // Cargar estadísticas absolutas de tags (galería general = null)
+            await LoadAbsoluteTagStatsAsync(null);
+
             await filterTask;
 
             OnPropertyChanged(nameof(TotalFilteredVideoCount));
@@ -1930,6 +2179,9 @@ public class DashboardViewModel : BaseViewModel
 
             SyncVisibleRecentSessions();
 
+            // Cargar el atleta de referencia del perfil del usuario
+            await LoadReferenceAthleteAsync();
+
             // Si la sesión seleccionada ya no existe (p.ej. tras borrar), limpiar panel derecho.
             if (SelectedSession != null && !RecentSessions.Any(s => s.Id == SelectedSession.Id))
             {
@@ -2101,6 +2353,9 @@ public class DashboardViewModel : BaseViewModel
             SelectedSessionPenaltyLabels.Add("50");
             SelectedSessionPenaltyCounts.Add(penalty2);
             SelectedSessionPenaltyCounts.Add(penalty50);
+
+            // Cargar estadísticas absolutas de tags
+            await LoadAbsoluteTagStatsAsync(session.Id);
 
             // Valoraciones (tabla valoracion)
             var valoraciones = await _databaseService.GetValoracionesBySessionAsync(session.Id);
