@@ -61,36 +61,16 @@
             IsVisible="{Binding IsVideoLessonsSelected, Converter={toolkit:InvertedBoolConverter}}"
             WidthRequest="8" />
 
-        <!--  Lista de sesiones recientes + barra superior  -->
+        <!--  Lista de sesiones recientes + acciones en la parte baja  -->
         <Grid
             Grid.Row="1"
             Grid.Column="0"
             Padding="20,0"
-            RowDefinitions="Auto,*">
-            <HorizontalStackLayout
-                Grid.Row="0"
-                Padding="0,12,0,0"
-                Spacing="10">
-                <Button
-                    Padding="12,10"
-                    BackgroundColor="#FF121212"
-                    Command="{Binding ImportCommand}"
-                    CornerRadius="6"
-                    Text="Importar"
-                    TextColor="White" />
-
-                <Button
-                    Padding="12,10"
-                    BackgroundColor="#FF121212"
-                    Command="{Binding DeleteSelectedSessionCommand}"
-                    CornerRadius="6"
-                    Text="Eliminar"
-                    TextColor="White" />
-            </HorizontalStackLayout>
+            RowDefinitions="*,Auto">
 
             <CollectionView
-                Grid.Row="1"
-                Margin="0,2,0,0"
+                Grid.Row="0"
+                Margin="0,20,0,0"
                 BackgroundColor="#00BBBABA"
                 ItemsSource="{Binding VisibleRecentSessions}"
                 SelectedItem="{Binding SelectedSession, Mode=TwoWay}"
@@ -322,6 +302,56 @@
                     </VerticalStackLayout>
                 </CollectionView.EmptyView>
             </CollectionView>
+
+            <!--  Acciones de sesión  -->
+            <VerticalStackLayout Grid.Row="1" Spacing="10" Margin="0,20,0,20">
+                <Label
+                    FontFamily="SF Pro Text"
+                    FontSize="14"
+                    FontAttributes="Bold"
+                    Text="Acciones de sesión"
+                    TextColor="#FF888888" />
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                    <Border
+                        Grid.Column="0"
+                        Padding="10,8"
+                        BackgroundColor="#FF2A2A2A"
+                        Stroke="Transparent"
+                        StrokeShape="RoundRectangle 6">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding ImportCommand}" />
+                        </Border.GestureRecognizers>
+                        <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
+                            <controls:SymbolIcon
+                                HeightRequest="16"
+                                SymbolName="square.and.arrow.down"
+                                TintColor="White"
+                                WidthRequest="16"
+                                VerticalOptions="Center" />
+                            <Label Text="Importar" TextColor="White" VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                    </Border>
+                    <Border
+                        Grid.Column="1"
+                        Padding="10,8"
+                        BackgroundColor="#FF2A2A2A"
+                        Stroke="Transparent"
+                        StrokeShape="RoundRectangle 6">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding DeleteSelectedSessionCommand}" />
+                        </Border.GestureRecognizers>
+                        <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
+                            <controls:SymbolIcon
+                                HeightRequest="16"
+                                SymbolName="trash"
+                                TintColor="White"
+                                WidthRequest="16"
+                                VerticalOptions="Center" />
+                            <Label Text="Eliminar" TextColor="White" VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                    </Border>
+                </Grid>
+            </VerticalStackLayout>
         </Grid>
 
         <!--  Panel derecho: vídeos de la sesión seleccionada  -->
