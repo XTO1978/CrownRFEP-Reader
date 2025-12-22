@@ -104,6 +104,7 @@
                             Margin="0,0,0,0"
                             BackgroundColor="Transparent"
                             Stroke="Transparent"
+                            StrokeThickness="0"
                             StrokeShape="RoundRectangle 4">
                             <Border.Behaviors>
                                 <behaviors:DashboardAllGalleryHoverBehavior />
@@ -143,6 +144,7 @@
                             Margin="0"
                             BackgroundColor="Transparent"
                             Stroke="Transparent"
+                            StrokeThickness="0"
                             StrokeShape="RoundRectangle 4">
                             <Border.Behaviors>
                                 <behaviors:DashboardAllGalleryHoverBehavior />
@@ -183,6 +185,7 @@
                             Margin="0"
                             BackgroundColor="Transparent"
                             Stroke="Transparent"
+                            StrokeThickness="0"
                             StrokeShape="RoundRectangle 4">
                             <Border.Behaviors>
                                 <behaviors:DashboardAllGalleryHoverBehavior />

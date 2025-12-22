@@ -4,6 +4,8 @@ using AVKit;
 using CoreMedia;
 using Foundation;
 using CrownRFEP_Reader.Services;
+using Microsoft.Maui.ApplicationModel;
+using Microsoft.Maui.Controls;
 using Microsoft.Maui.Handlers;
 using UIKit;
 
@@ -21,6 +23,7 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
     private NSObject? _timeObserver;
     private NSObject? _endObserver;
     private NSObject? _statusObserver;
+    private CancellationTokenSource? _statusCheckCts;
     private bool _isUpdatingPosition;
     private bool _isSeekingFromBinding;
     private bool _isSeeking; // Flag para evitar seeks simultáneos
@@ -95,6 +98,9 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
             return;
         }
 
+        if (_isDisconnected)
+            return;
+
         _isDisconnected = true;
         
         // Desuscribirse de eventos
@@ -126,6 +132,21 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
 #if DEBUG
         AppLog.Info("PrecisionVideoPlayerHandler", "CleanupPlayer BEGIN");
 #endif
+
+        try
+        {
+            _statusCheckCts?.Cancel();
+            _statusCheckCts?.Dispose();
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("PrecisionVideoPlayerHandler", "Cancelling statusCheckCts threw", ex);
+        }
+        finally
+        {
+            _statusCheckCts = null;
+        }
+
         if (_timeObserver != null && _player != null)
         {
             try
@@ -207,14 +228,25 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
         try { _player?.Pause(); }
         catch (Exception ex) { AppLog.Error("PrecisionVideoPlayerHandler", "Pause threw", ex); }
 
-        try { _playerItem?.Dispose(); }
-        catch (Exception ex) { AppLog.Error("PrecisionVideoPlayerHandler", "Dispose playerItem threw", ex); }
+        // Cortar la relación Player -> Item antes de disponer, para evitar callbacks tardíos.
+        try
+        {
+            _player?.ReplaceCurrentItemWithPlayerItem(null);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("PrecisionVideoPlayerHandler", "ReplaceCurrentItemWithPlayerItem(null) threw", ex);
+        }
 
-        try { _player?.Dispose(); }
+        var playerToDispose = _player;
+        _player = null;
+        try { playerToDispose?.Dispose(); }
         catch (Exception ex) { AppLog.Error("PrecisionVideoPlayerHandler", "Dispose player threw", ex); }
 
+        var itemToDispose = _playerItem;
         _playerItem = null;
-        _player = null;
+        try { itemToDispose?.Dispose(); }
+        catch (Exception ex) { AppLog.Error("PrecisionVideoPlayerHandler", "Dispose playerItem threw", ex); }
 
 #if DEBUG
         AppLog.Info("PrecisionVideoPlayerHandler", "CleanupPlayer END");
@@ -263,6 +295,22 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
 
     private void LoadSource(string? source)
     {
+        if (!MainThread.IsMainThread)
+        {
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                try
+                {
+                    LoadSource(source);
+                }
+                catch (Exception ex)
+                {
+                    AppLog.Error("PrecisionVideoPlayerHandler", "LoadSource (rescheduled) threw", ex);
+                }
+            });
+            return;
+        }
+
         CleanupPlayer();
 
         if (string.IsNullOrEmpty(source))
@@ -300,7 +348,8 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
             _playerItem);
 
         // También verificar el status directamente con un timer breve
-        CheckPlayerStatus();
+        _statusCheckCts = new CancellationTokenSource();
+        _ = CheckPlayerStatusAsync(_statusCheckCts.Token);
 
         // Observar el fin del vídeo
         _endObserver = NSNotificationCenter.DefaultCenter.AddObserver(
@@ -328,26 +377,59 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
         });
     }
 
-    private async void CheckPlayerStatus()
+    private async Task CheckPlayerStatusAsync(CancellationToken ct)
     {
-        // Esperar un poco y verificar el status
-        for (int i = 0; i < 50; i++) // Máximo 5 segundos
+        try
         {
-            await Task.Delay(100);
-            
-            if (_isDisconnected || _playerItem == null) return;
-            
-            if (_playerItem.Status == AVPlayerItemStatus.ReadyToPlay)
+            // Esperar un poco y verificar el status (máx 5s)
+            for (int i = 0; i < 50; i++)
             {
-                OnPlayerReady();
-                return;
+                await Task.Delay(100, ct);
+
+                if (ct.IsCancellationRequested || _isDisconnected)
+                    return;
+
+                // Acceder a AVPlayerItem en main thread para evitar crashes nativos intermitentes.
+                var isReady = await MainThread.InvokeOnMainThreadAsync(() =>
+                {
+                    if (ct.IsCancellationRequested || _isDisconnected || _playerItem == null)
+                        return false;
+
+                    return _playerItem.Status == AVPlayerItemStatus.ReadyToPlay;
+                });
+
+                if (isReady)
+                {
+                    OnPlayerReady();
+                    return;
+                }
             }
+        }
+        catch (TaskCanceledException)
+        {
+            // normal
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("PrecisionVideoPlayerHandler", "CheckPlayerStatusAsync threw", ex);
         }
     }
 
     private void OnPlayerItemReady(NSNotification notification)
     {
         if (_isDisconnected) return;
+
+        try
+        {
+            // Ignorar notificaciones de items antiguos.
+            if (notification.Object != null && _playerItem != null && notification.Object.Handle != _playerItem.Handle)
+                return;
+        }
+        catch
+        {
+            return;
+        }
+
         OnPlayerReady();
     }
 

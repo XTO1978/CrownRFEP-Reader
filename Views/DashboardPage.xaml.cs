@@ -78,9 +78,20 @@ public partial class DashboardPage : ContentPage
         // Limpiar los recuadros de preview al volver a la página
         _viewModel.ClearPreviewVideos();
         
-        await _viewModel.LoadDataAsync();
+        _ = LoadDashboardAsync();
+    }
 
-        AppLog.Info("DashboardPage", "OnAppearing finished LoadDataAsync");
+    private async Task LoadDashboardAsync()
+    {
+        try
+        {
+            await _viewModel.LoadDataAsync();
+            AppLog.Info("DashboardPage", "OnAppearing finished LoadDataAsync");
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "LoadDataAsync threw", ex);
+        }
     }
 
     private async Task LogHeartbeatsAsync()

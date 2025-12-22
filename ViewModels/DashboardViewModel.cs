@@ -67,6 +67,109 @@ public class DashboardViewModel : BaseViewModel
 
     private CancellationTokenSource? _selectedSessionVideosCts;
 
+    private sealed record GalleryStatsSnapshot(
+        List<SectionStats> SectionStats,
+        List<double> SectionDurationMinutes,
+        List<string> SectionLabels,
+        List<SessionAthleteTimeRow> AthleteTimes);
+
+    private static async Task ReplaceCollectionInBatchesAsync<T>(
+        ObservableCollection<T> target,
+        IEnumerable<T> items,
+        CancellationToken ct,
+        int batchSize = 20)
+    {
+        target.Clear();
+
+        var i = 0;
+        foreach (var item in items)
+        {
+            if (ct.IsCancellationRequested)
+                return;
+
+            target.Add(item);
+            i++;
+
+            if (i % batchSize == 0)
+                await Task.Yield();
+        }
+    }
+
+    private static GalleryStatsSnapshot BuildGalleryStatsSnapshot(List<VideoClip> clips)
+    {
+        var sectionStats = clips
+            .GroupBy(v => v.Section)
+            .OrderBy(g => g.Key)
+            .Select(g => new SectionStats
+            {
+                Section = g.Key,
+                VideoCount = g.Count(),
+                TotalDuration = g.Sum(v => v.ClipDuration)
+            })
+            .ToList();
+
+        var sectionMinutes = sectionStats.Select(s => Math.Round(s.TotalDuration / 60.0, 1)).ToList();
+        var sectionLabels = sectionStats.Select(s => s.Section.ToString()).ToList();
+
+        var byAthlete = clips
+            .Where(v => v.AtletaId != 0)
+            .GroupBy(v => v.AtletaId)
+            .Select(g => new SessionAthleteTimeRow(
+                g.FirstOrDefault()?.Atleta?.NombreCompleto ?? $"Atleta {g.Key}",
+                g.Count(),
+                g.Sum(v => v.ClipDuration),
+                g.Any() ? g.Average(v => v.ClipDuration) : 0))
+            .OrderByDescending(x => x.TotalSeconds)
+            .ToList();
+
+        return new GalleryStatsSnapshot(sectionStats, sectionMinutes, sectionLabels, byAthlete);
+    }
+
+    private async Task ApplyGalleryStatsSnapshotAsync(GalleryStatsSnapshot snapshot, CancellationToken ct)
+    {
+        await MainThread.InvokeOnMainThreadAsync(async () =>
+        {
+            if (ct.IsCancellationRequested)
+                return;
+
+            SelectedSessionSectionStats.Clear();
+            SelectedSessionAthleteTimes.Clear();
+            SelectedSessionSectionDurationMinutes.Clear();
+            SelectedSessionSectionLabels.Clear();
+            SelectedSessionTagVideoCounts.Clear();
+            SelectedSessionTagLabels.Clear();
+
+            var i = 0;
+            foreach (var s in snapshot.SectionStats)
+            {
+                if (ct.IsCancellationRequested)
+                    return;
+
+                SelectedSessionSectionStats.Add(s);
+                i++;
+                if (i % 20 == 0)
+                    await Task.Yield();
+            }
+
+            foreach (var m in snapshot.SectionDurationMinutes)
+                SelectedSessionSectionDurationMinutes.Add(m);
+            foreach (var l in snapshot.SectionLabels)
+                SelectedSessionSectionLabels.Add(l);
+
+            i = 0;
+            foreach (var row in snapshot.AthleteTimes)
+            {
+                if (ct.IsCancellationRequested)
+                    return;
+
+                SelectedSessionAthleteTimes.Add(row);
+                i++;
+                if (i % 20 == 0)
+                    await Task.Yield();
+            }
+        });
+    }
+
     public DashboardStats? Stats
     {
         get => _stats;
@@ -735,7 +838,7 @@ public class DashboardViewModel : BaseViewModel
 
     private async Task LoadVideoLessonsAsync(CancellationToken ct)
     {
-        VideoLessons.Clear();
+        await MainThread.InvokeOnMainThreadAsync(() => VideoLessons.Clear());
 
         var lessons = await _databaseService.GetAllVideoLessonsAsync();
         if (ct.IsCancellationRequested)
@@ -747,8 +850,12 @@ public class DashboardViewModel : BaseViewModel
         var thumbnailsDir = Path.Combine(FileSystem.AppDataDirectory, "videoLessonThumbs");
         Directory.CreateDirectory(thumbnailsDir);
 
-        foreach (var lesson in lessons)
+        var thumbTasks = new List<Task>();
+        using var thumbSemaphore = new SemaphoreSlim(2);
+
+        for (var idx = 0; idx < lessons.Count; idx++)
         {
+            var lesson = lessons[idx];
             if (ct.IsCancellationRequested)
                 return;
 
@@ -760,22 +867,57 @@ public class DashboardViewModel : BaseViewModel
             }
             lesson.SessionDisplayName = sessionName;
 
-            // Miniatura (si no existe, generarla)
             var thumbPath = Path.Combine(thumbnailsDir, $"lesson_{lesson.Id}.jpg");
+            lesson.LocalThumbnailPath = File.Exists(thumbPath) ? thumbPath : null;
+
+            await MainThread.InvokeOnMainThreadAsync(() => VideoLessons.Add(lesson));
+
             if (!File.Exists(thumbPath))
             {
-                try
+                thumbTasks.Add(Task.Run(async () =>
                 {
-                    await _thumbnailService.GenerateThumbnailAsync(lesson.FilePath, thumbPath);
-                }
-                catch
-                {
-                    // Ignorar: si falla, se verá el placeholder.
-                }
+                    await thumbSemaphore.WaitAsync(ct);
+                    try
+                    {
+                        if (!File.Exists(thumbPath))
+                            await _thumbnailService.GenerateThumbnailAsync(lesson.FilePath, thumbPath);
+                    }
+                    catch
+                    {
+                        // Ignorar: placeholder
+                    }
+                    finally
+                    {
+                        thumbSemaphore.Release();
+                    }
+
+                    if (ct.IsCancellationRequested)
+                        return;
+
+                    if (File.Exists(thumbPath))
+                    {
+                        lesson.LocalThumbnailPath = thumbPath;
+                        await MainThread.InvokeOnMainThreadAsync(() =>
+                        {
+                            var currentIndex = VideoLessons.IndexOf(lesson);
+                            if (currentIndex >= 0)
+                                VideoLessons[currentIndex] = lesson;
+                        });
+                    }
+                }, ct));
             }
 
-            lesson.LocalThumbnailPath = File.Exists(thumbPath) ? thumbPath : null;
-            VideoLessons.Add(lesson);
+            if (idx % 10 == 0)
+                await Task.Yield();
+        }
+
+        try
+        {
+            await Task.WhenAll(thumbTasks);
+        }
+        catch
+        {
+            // cancelación
         }
     }
 
@@ -938,74 +1080,77 @@ public class DashboardViewModel : BaseViewModel
         if (!IsAllGallerySelected || _allVideosCache == null)
             return;
 
-        var filtered = _allVideosCache.AsEnumerable();
+        var allVideos = _allVideosCache;
+        var sessionsSnapshot = RecentSessions.ToList();
+        var inputsSnapshot = _allInputsCache;
 
-        // Filtrar por lugares seleccionados (selección múltiple)
+        // Capturar selección en UI thread
         var selectedPlaces = FilterPlaces.Where(p => p.IsSelected).Select(p => p.Value).ToList();
-        if (selectedPlaces.Any())
-        {
-            var sessionsInPlaces = RecentSessions
-                .Where(s => selectedPlaces.Contains(s.Lugar))
-                .Select(s => s.Id)
-                .ToHashSet();
-            filtered = filtered.Where(v => sessionsInPlaces.Contains(v.SessionId));
-        }
-
-        // Filtrar por fecha desde
-        if (SelectedFilterDateFrom.HasValue)
-        {
-            filtered = filtered.Where(v => v.CreationDateTime >= SelectedFilterDateFrom.Value);
-        }
-
-        // Filtrar por fecha hasta
-        if (SelectedFilterDateTo.HasValue)
-        {
-            filtered = filtered.Where(v => v.CreationDateTime <= SelectedFilterDateTo.Value.AddDays(1));
-        }
-
-        // Filtrar por deportistas seleccionados (selección múltiple)
         var selectedAthletes = FilterAthletes.Where(a => a.IsSelected).Select(a => a.Value.Id).ToList();
-        if (selectedAthletes.Any())
-        {
-            filtered = filtered.Where(v => selectedAthletes.Contains(v.AtletaId));
-        }
-
-        // Filtrar por secciones seleccionadas (selección múltiple)
         var selectedSections = FilterSections.Where(s => s.IsSelected).Select(s => s.Value).ToList();
-        if (selectedSections.Any())
-        {
-            filtered = filtered.Where(v => selectedSections.Contains(v.Section));
-        }
-
-        // Filtrar por tags seleccionados (selección múltiple)
         var selectedTags = FilterTagItems.Where(t => t.IsSelected).Select(t => t.Value.Id).ToList();
-        if (selectedTags.Any() && _allInputsCache != null)
-        {
-            // Obtener los VideoIds que tienen alguno de los tags seleccionados
-            var videoIdsWithTags = _allInputsCache
-                .Where(i => selectedTags.Contains(i.InputTypeId))
-                .Select(i => i.VideoId)
-                .ToHashSet();
-            
-            filtered = filtered.Where(v => videoIdsWithTags.Contains(v.Id));
-        }
 
-        _filteredVideosCache = filtered.ToList();
+        await Task.Yield();
+
+        var (filteredList, statsSnapshot) = await Task.Run(() =>
+        {
+            IEnumerable<VideoClip> query = allVideos;
+
+            if (selectedPlaces.Any())
+            {
+                var sessionsInPlaces = sessionsSnapshot
+                    .Where(s =>
+                    {
+                        var lugar = s.Lugar;
+                        return lugar != null && selectedPlaces.Contains(lugar);
+                    })
+                    .Select(s => s.Id)
+                    .ToHashSet();
+                query = query.Where(v => sessionsInPlaces.Contains(v.SessionId));
+            }
+
+            if (SelectedFilterDateFrom.HasValue)
+                query = query.Where(v => v.CreationDateTime >= SelectedFilterDateFrom.Value);
+
+            if (SelectedFilterDateTo.HasValue)
+                query = query.Where(v => v.CreationDateTime <= SelectedFilterDateTo.Value.AddDays(1));
+
+            if (selectedAthletes.Any())
+                query = query.Where(v => selectedAthletes.Contains(v.AtletaId));
+
+            if (selectedSections.Any())
+                query = query.Where(v => selectedSections.Contains(v.Section));
+
+            if (selectedTags.Any() && inputsSnapshot != null)
+            {
+                var videoIdsWithTags = inputsSnapshot
+                    .Where(i => selectedTags.Contains(i.InputTypeId))
+                    .Select(i => i.VideoId)
+                    .ToHashSet();
+                query = query.Where(v => videoIdsWithTags.Contains(v.Id));
+            }
+
+            var list = query.ToList();
+            var snapshot = BuildGalleryStatsSnapshot(list);
+            return (list, snapshot);
+        });
+
+        _filteredVideosCache = filteredList;
         
         // Recargar videos paginados con el filtro aplicado
-        SelectedSessionVideos.Clear();
         _currentPage = 0;
         
-        var firstBatch = _filteredVideosCache.Take(PageSize).ToList();
-        foreach (var clip in firstBatch)
+        var filteredCache = _filteredVideosCache ?? new List<VideoClip>();
+        var firstBatch = filteredCache.Take(PageSize).ToList();
+        await MainThread.InvokeOnMainThreadAsync(async () =>
         {
-            SelectedSessionVideos.Add(clip);
-        }
+            await ReplaceCollectionInBatchesAsync(SelectedSessionVideos, firstBatch, CancellationToken.None);
+        });
         _currentPage = 1;
         HasMoreVideos = _filteredVideosCache.Count > PageSize;
 
-        // Actualizar estadísticas basadas en videos filtrados
-        UpdateStatisticsFromFilteredVideos();
+        // Actualizar estadísticas sin bloquear el UI
+        await ApplyGalleryStatsSnapshotAsync(statsSnapshot, CancellationToken.None);
 
         OnPropertyChanged(nameof(TotalFilteredVideoCount));
         OnPropertyChanged(nameof(TotalFilteredDurationSeconds));
@@ -1116,6 +1261,7 @@ public class DashboardViewModel : BaseViewModel
         try
         {
             IsLoadingSelectedSessionVideos = true;
+            await Task.Yield();
             
             // Cargar todos los videos en caché
             System.Diagnostics.Debug.WriteLine($"[LoadAllVideosAsync] Loading all videos from DB...");
@@ -1123,23 +1269,28 @@ public class DashboardViewModel : BaseViewModel
             System.Diagnostics.Debug.WriteLine($"[LoadAllVideosAsync] Videos loaded: {_allVideosCache?.Count ?? 0}");
             if (ct.IsCancellationRequested) return;
 
-            // Cargar opciones de filtro
-            await LoadFilterOptionsAsync();
-
             // Cargar primer lote
             _filteredVideosCache = _allVideosCache;
-            var firstBatch = _filteredVideosCache.Take(PageSize).ToList();
+            var filteredCache = _filteredVideosCache ?? new List<VideoClip>();
+            var firstBatch = filteredCache.Take(PageSize).ToList();
             System.Diagnostics.Debug.WriteLine($"[LoadAllVideosAsync] First batch: {firstBatch.Count}, adding to SelectedSessionVideos...");
-            foreach (var clip in firstBatch)
+            await MainThread.InvokeOnMainThreadAsync(async () =>
             {
-                SelectedSessionVideos.Add(clip);
-            }
+                await ReplaceCollectionInBatchesAsync(SelectedSessionVideos, firstBatch, ct);
+            });
             System.Diagnostics.Debug.WriteLine($"[LoadAllVideosAsync] SelectedSessionVideos.Count: {SelectedSessionVideos.Count}");
             _currentPage = 1;
             HasMoreVideos = _filteredVideosCache.Count > PageSize;
 
-            // Actualizar estadísticas basadas en todos los videos
-            UpdateStatisticsFromFilteredVideos();
+            // Cargar opciones de filtro en paralelo (no bloquea la primera carga de galería)
+            var filterTask = LoadFilterOptionsAsync();
+
+            // Stats: cálculo fuera del hilo UI
+            var snapshot = await Task.Run(() => BuildGalleryStatsSnapshot(filteredCache), ct);
+            if (!ct.IsCancellationRequested)
+                await ApplyGalleryStatsSnapshotAsync(snapshot, ct);
+
+            await filterTask;
 
             OnPropertyChanged(nameof(TotalFilteredVideoCount));
             OnPropertyChanged(nameof(TotalAvailableVideoCount));
@@ -1161,52 +1312,81 @@ public class DashboardViewModel : BaseViewModel
     private async Task LoadFilterOptionsAsync()
     {
         System.Diagnostics.Debug.WriteLine($"[LoadFilterOptionsAsync] Start - RecentSessions: {RecentSessions.Count}, _allVideosCache: {_allVideosCache?.Count ?? 0}");
+
+        await Task.Yield();
+
+        var sessionsSnapshot = RecentSessions.ToList();
+        var allVideosSnapshot = _allVideosCache?.ToList();
         
         // Cargar lugares únicos de las sesiones
         FilterPlaces.Clear();
-        var places = RecentSessions
+        var places = await Task.Run(() => sessionsSnapshot
             .Where(s => !string.IsNullOrEmpty(s.Lugar))
             .Select(s => s.Lugar!)
             .Distinct()
             .OrderBy(p => p)
-            .ToList();
+            .ToList());
         System.Diagnostics.Debug.WriteLine($"[LoadFilterOptionsAsync] Places found: {places.Count}");
-        foreach (var place in places)
+        await MainThread.InvokeOnMainThreadAsync(async () =>
         {
-            var item = new PlaceFilterItem(place);
-            item.SelectionChanged += OnFilterSelectionChanged;
-            FilterPlaces.Add(item);
-        }
+            var i = 0;
+            foreach (var place in places)
+            {
+                var item = new PlaceFilterItem(place);
+                item.SelectionChanged += OnFilterSelectionChanged;
+                FilterPlaces.Add(item);
+
+                i++;
+                if (i % 30 == 0)
+                    await Task.Yield();
+            }
+        });
         System.Diagnostics.Debug.WriteLine($"[LoadFilterOptionsAsync] FilterPlaces.Count: {FilterPlaces.Count}");
 
         // Cargar atletas
         FilterAthletes.Clear();
         var athletes = await _databaseService.GetAllAthletesAsync();
         System.Diagnostics.Debug.WriteLine($"[LoadFilterOptionsAsync] Athletes from DB: {athletes.Count}");
-        foreach (var athlete in athletes.OrderBy(a => a.NombreCompleto))
+        await MainThread.InvokeOnMainThreadAsync(async () =>
         {
-            var item = new AthleteFilterItem(athlete);
-            item.SelectionChanged += OnFilterSelectionChanged;
-            FilterAthletes.Add(item);
-        }
+            var i = 0;
+            foreach (var athlete in athletes.OrderBy(a => a.NombreCompleto))
+            {
+                var item = new AthleteFilterItem(athlete);
+                item.SelectionChanged += OnFilterSelectionChanged;
+                FilterAthletes.Add(item);
+
+                i++;
+                if (i % 30 == 0)
+                    await Task.Yield();
+            }
+        });
         System.Diagnostics.Debug.WriteLine($"[LoadFilterOptionsAsync] FilterAthletes.Count: {FilterAthletes.Count}");
 
         // Cargar secciones únicas de los videos
         FilterSections.Clear();
-        if (_allVideosCache != null)
+        if (allVideosSnapshot != null)
         {
-            var sections = _allVideosCache
+            var sections = await Task.Run(() => allVideosSnapshot
                 .Select(v => v.Section)
                 .Distinct()
                 .OrderBy(s => s)
-                .ToList();
+                .ToList());
             System.Diagnostics.Debug.WriteLine($"[LoadFilterOptionsAsync] Sections found: {sections.Count}");
-            foreach (var section in sections)
+            await MainThread.InvokeOnMainThreadAsync(async () =>
             {
-                var item = new SectionFilterItem(section);
-                item.SelectionChanged += OnFilterSelectionChanged;
-                FilterSections.Add(item);
-            }
+                var i = 0;
+                foreach (var section in sections)
+                {
+                    var item = new SectionFilterItem(section);
+                    item.SelectionChanged += OnFilterSelectionChanged;
+                    FilterSections.Add(item);
+
+                    i++;
+                    if (i % 30 == 0)
+                        await Task.Yield();
+                }
+            });
         }
         System.Diagnostics.Debug.WriteLine($"[LoadFilterOptionsAsync] FilterSections.Count: {FilterSections.Count}");
 
@@ -1231,12 +1411,20 @@ public class DashboardViewModel : BaseViewModel
                 .Where(t => usedTagIds.Contains(t.Id) && !string.IsNullOrEmpty(t.NombreTag))
                 .OrderBy(t => t.NombreTag);
             
-            foreach (var tag in tags)
+            await MainThread.InvokeOnMainThreadAsync(async () =>
             {
-                var item = new TagFilterItem(tag);
-                item.SelectionChanged += OnFilterSelectionChanged;
-                FilterTagItems.Add(item);
-            }
+                var i = 0;
+                foreach (var tag in tags)
+                {
+                    var item = new TagFilterItem(tag);
+                    item.SelectionChanged += OnFilterSelectionChanged;
+                    FilterTagItems.Add(item);
+
+                    i++;
+                    if (i % 30 == 0)
+                        await Task.Yield();
+                }
+            });
         }
         System.Diagnostics.Debug.WriteLine($"[LoadFilterOptionsAsync] FilterTagItems.Count: {FilterTagItems.Count}");
         OnPropertyChanged(nameof(SelectedTagsSummary));
@@ -1267,10 +1455,21 @@ public class DashboardViewModel : BaseViewModel
             var skip = _currentPage * PageSize;
             var nextBatch = videosSource.Skip(skip).Take(PageSize).ToList();
 
-            foreach (var clip in nextBatch)
+            var ct = _selectedSessionVideosCts?.Token ?? CancellationToken.None;
+            await MainThread.InvokeOnMainThreadAsync(async () =>
             {
-                SelectedSessionVideos.Add(clip);
-            }
+                var i = 0;
+                foreach (var clip in nextBatch)
+                {
+                    if (ct.IsCancellationRequested)
+                        return;
+
+                    SelectedSessionVideos.Add(clip);
+                    i++;
+                    if (i % 20 == 0)
+                        await Task.Yield();
+                }
+            });
 
             _currentPage++;
             HasMoreVideos = videosSource.Count > (_currentPage * PageSize);
@@ -1399,10 +1598,10 @@ public class DashboardViewModel : BaseViewModel
             
             // Cargar primer lote
             var firstBatch = clips.Take(PageSize).ToList();
-            foreach (var clip in firstBatch)
+            await MainThread.InvokeOnMainThreadAsync(async () =>
             {
-                SelectedSessionVideos.Add(clip);
-            }
+                await ReplaceCollectionInBatchesAsync(SelectedSessionVideos, firstBatch, ct);
+            });
             _currentPage = 1;
             HasMoreVideos = clips.Count > PageSize;
 
@@ -1410,14 +1609,22 @@ public class DashboardViewModel : BaseViewModel
             var sectionStats = await _statisticsService.GetVideosBySectionAsync(session.Id);
             if (ct.IsCancellationRequested) return;
 
-            foreach (var s in sectionStats)
+            await MainThread.InvokeOnMainThreadAsync(async () =>
             {
-                SelectedSessionSectionStats.Add(s);
+                var i = 0;
+                foreach (var s in sectionStats)
+                {
+                    SelectedSessionSectionStats.Add(s);
 
-                // Para gráfico: minutos, y etiqueta corta
-                SelectedSessionSectionDurationMinutes.Add(Math.Round(s.TotalDuration / 60.0, 1));
-                SelectedSessionSectionLabels.Add(s.Section.ToString());
-            }
+                    // Para gráfico: minutos, y etiqueta corta
+                    SelectedSessionSectionDurationMinutes.Add(Math.Round(s.TotalDuration / 60.0, 1));
+                    SelectedSessionSectionLabels.Add(s.Section.ToString());
+
+                    i++;
+                    if (i % 20 == 0)
+                        await Task.Yield();
+                }
+            });
 
             // Tabla de tiempos por atleta
             var byAthlete = clips
@@ -1433,24 +1640,39 @@ public class DashboardViewModel : BaseViewModel
                 .OrderByDescending(x => x.TotalSeconds)
                 .ToList();
 
-            foreach (var row in byAthlete)
+            await MainThread.InvokeOnMainThreadAsync(async () =>
             {
-                SelectedSessionAthleteTimes.Add(new SessionAthleteTimeRow(
-                    row.AthleteName,
-                    row.VideoCount,
-                    row.TotalSeconds,
-                    row.AvgSeconds));
-            }
+                var i = 0;
+                foreach (var row in byAthlete)
+                {
+                    SelectedSessionAthleteTimes.Add(new SessionAthleteTimeRow(
+                        row.AthleteName,
+                        row.VideoCount,
+                        row.TotalSeconds,
+                        row.AvgSeconds));
+
+                    i++;
+                    if (i % 30 == 0)
+                        await Task.Yield();
+                }
+            });
 
             // Etiquetas (tags) y penalizaciones: usando Inputs de la sesión.
             // Asunción: InputTypeId representa el TagId.
             var inputs = await _databaseService.GetInputsBySessionAsync(session.Id);
             if (ct.IsCancellationRequested) return;
 
-            foreach (var input in inputs.OrderBy(i => i.InputDateTime))
+            await MainThread.InvokeOnMainThreadAsync(async () =>
             {
-                SelectedSessionInputs.Add(input);
-            }
+                var i = 0;
+                foreach (var input in inputs.OrderBy(i => i.InputDateTime))
+                {
+                    SelectedSessionInputs.Add(input);
+                    i++;
+                    if (i % 50 == 0)
+                        await Task.Yield();
+                }
+            });
 
             var tagStats = inputs
                 .GroupBy(i => i.InputTypeId)
@@ -1465,11 +1687,14 @@ public class DashboardViewModel : BaseViewModel
                 .Take(12)
                 .ToList();
 
-            foreach (var t in tagStats)
+            await MainThread.InvokeOnMainThreadAsync(() =>
             {
-                SelectedSessionTagLabels.Add(t.TagId.ToString());
-                SelectedSessionTagVideoCounts.Add(t.VideoCount);
-            }
+                foreach (var t in tagStats)
+                {
+                    SelectedSessionTagLabels.Add(t.TagId.ToString());
+                    SelectedSessionTagVideoCounts.Add(t.VideoCount);
+                }
+            });
 
             // Penalizaciones (tags 2 y 50): por número de asignaciones
             var penalty2 = inputs.Count(i => i.InputTypeId == 2);
@@ -1483,10 +1708,17 @@ public class DashboardViewModel : BaseViewModel
             var valoraciones = await _databaseService.GetValoracionesBySessionAsync(session.Id);
             if (ct.IsCancellationRequested) return;
 
-            foreach (var v in valoraciones.OrderBy(v => v.InputDateTime))
+            await MainThread.InvokeOnMainThreadAsync(async () =>
             {
-                SelectedSessionValoraciones.Add(v);
-            }
+                var i = 0;
+                foreach (var v in valoraciones.OrderBy(v => v.InputDateTime))
+                {
+                    SelectedSessionValoraciones.Add(v);
+                    i++;
+                    if (i % 50 == 0)
+                        await Task.Yield();
+                }
+            });
 
             OnPropertyChanged(nameof(TotalFilteredVideoCount));
             OnPropertyChanged(nameof(TotalAvailableVideoCount));

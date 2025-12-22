@@ -66,16 +66,26 @@ public sealed class ReplayKitCameraPreviewHandler : ViewHandler<ReplayKitCameraP
         _attachTimer?.Invalidate();
         _attachTimer = NSTimer.CreateRepeatingScheduledTimer(TimeSpan.FromMilliseconds(500), _ =>
         {
-            if (VirtualView?.IsActive != true)
+            try
             {
-                _attachTimer?.Invalidate();
-                _attachTimer = null;
-                return;
-            }
+                var active = VirtualView?.IsActive == true;
+                if (!active)
+                {
+                    _attachTimer?.Invalidate();
+                    _attachTimer = null;
+                    return;
+                }
 
-            if (TryAttachReplayKitPreview(platformView))
+                if (TryAttachReplayKitPreview(platformView))
+                {
+                    StopFallbackCamera();
+                    _attachTimer?.Invalidate();
+                    _attachTimer = null;
+                }
+            }
+            catch
             {
-                StopFallbackCamera();
+                // Si algo falla, paramos el timer para evitar loops de crash.
                 _attachTimer?.Invalidate();
                 _attachTimer = null;
             }
@@ -230,7 +240,22 @@ public sealed class ReplayKitCameraPreviewHandler : ViewHandler<ReplayKitCameraP
 
     protected override void DisconnectHandler(UIView platformView)
     {
-        StopAll();
+        try
+        {
+            _attachTimer?.Invalidate();
+            _attachTimer = null;
+        }
+        catch { }
+
+        try
+        {
+            StopAll();
+        }
+        catch (Exception ex)
+        {
+            CrownRFEP_Reader.Services.AppLog.Error("ReplayKitCameraPreviewHandler", "DisconnectHandler StopAll threw", ex);
+        }
+
         base.DisconnectHandler(platformView);
     }
 

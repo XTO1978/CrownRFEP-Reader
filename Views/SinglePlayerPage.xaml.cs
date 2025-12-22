@@ -523,6 +523,17 @@ public partial class SinglePlayerPage : ContentPage
     {
         AppLog.Info("SinglePlayerPage", "CleanupResources BEGIN");
 
+        // Desactivar el preview de cámara antes de seguir (evita callbacks nativos tardíos)
+        try
+        {
+            if (VideoLessonCameraPreview != null)
+                VideoLessonCameraPreview.IsActive = false;
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("SinglePlayerPage", "CleanupResources: VideoLessonCameraPreview.IsActive=false threw", ex);
+        }
+
         // Desuscribirse de eventos del ViewModel
         _viewModel.PlayRequested -= OnPlayRequested;
         _viewModel.PauseRequested -= OnPauseRequested;
