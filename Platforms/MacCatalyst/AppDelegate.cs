@@ -19,13 +19,25 @@ public class AppDelegate : MauiUIApplicationDelegate
 			0,
 			new Selector("handleSpaceKeyPress"));
 		playPauseCommand.Title = "Play/Pause";
+
+		var deleteCommand = UIKeyCommand.Create(
+			new NSString("\u007F"),
+			0,
+			new Selector("handleDeleteKeyPress"));
+		deleteCommand.Title = "Delete";
+
+		var backspaceCommand = UIKeyCommand.Create(
+			new NSString("\b"),
+			0,
+			new Selector("handleBackspaceKeyPress"));
+		backspaceCommand.Title = "Backspace";
 		
 		var playPauseMenu = UIMenu.Create(
 			"",  // Título vacío para que sea invisible
 			null,
 			UIMenuIdentifier.None,
 			UIMenuOptions.DisplayInline,
-			new UIMenuElement[] { playPauseCommand });
+			new UIMenuElement[] { playPauseCommand, deleteCommand, backspaceCommand });
 		
 		// Insertar después del menú View
 		builder.InsertSiblingMenuBefore(playPauseMenu, UIMenuIdentifier.View.GetConstant()!);
@@ -35,5 +47,17 @@ public class AppDelegate : MauiUIApplicationDelegate
 	public void HandleSpaceKeyPress()
 	{
 		CrownRFEP_Reader.Platforms.MacCatalyst.KeyPressHandler.OnSpaceBarPressed();
+	}
+
+	[Export("handleDeleteKeyPress")]
+	public void HandleDeleteKeyPress()
+	{
+		CrownRFEP_Reader.Platforms.MacCatalyst.KeyPressHandler.OnDeletePressed();
+	}
+
+	[Export("handleBackspaceKeyPress")]
+	public void HandleBackspaceKeyPress()
+	{
+		CrownRFEP_Reader.Platforms.MacCatalyst.KeyPressHandler.OnBackspacePressed();
 	}
 }

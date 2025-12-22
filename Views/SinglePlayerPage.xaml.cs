@@ -4,6 +4,10 @@ using CrownRFEP_Reader.Models;
 using CrownRFEP_Reader.Views.Controls;
 using CrownRFEP_Reader.ViewModels;
 
+#if MACCATALYST
+using CrownRFEP_Reader.Platforms.MacCatalyst;
+#endif
+
 namespace CrownRFEP_Reader.Views;
 
 public partial class SinglePlayerPage : ContentPage
@@ -11,6 +15,9 @@ public partial class SinglePlayerPage : ContentPage
     private readonly SinglePlayerViewModel _viewModel;
 
     private bool _isDrawingMode;
+
+    private bool _isPageActive;
+    private bool _isTextPromptOpen;
     
     // Flags para controlar el scrubbing del slider
     private bool _isDraggingSlider;
@@ -47,23 +54,62 @@ public partial class SinglePlayerPage : ContentPage
     protected override void OnAppearing()
     {
         base.OnAppearing();
+        _isPageActive = true;
         SetupMediaHandlers();
         
         // Suscribirse a eventos de scrubbing (trackpad/mouse wheel)
         VideoScrubBehavior.ScrubUpdated += OnScrubUpdated;
         VideoScrubBehavior.ScrubEnded += OnScrubEnded;
+
+    #if MACCATALYST
+        KeyPressHandler.DeletePressed += OnDeletePressed;
+        KeyPressHandler.BackspacePressed += OnBackspacePressed;
+    #endif
     }
 
     protected override void OnDisappearing()
     {
         base.OnDisappearing();
+
+        _isPageActive = false;
         
         // Desuscribirse de eventos de scrubbing
         VideoScrubBehavior.ScrubUpdated -= OnScrubUpdated;
         VideoScrubBehavior.ScrubEnded -= OnScrubEnded;
+
+#if MACCATALYST
+        KeyPressHandler.DeletePressed -= OnDeletePressed;
+        KeyPressHandler.BackspacePressed -= OnBackspacePressed;
+#endif
         
         CleanupResources();
     }
+
+#if MACCATALYST
+    private void OnDeletePressed(object? sender, EventArgs e)
+    {
+        if (!_isPageActive || !_isDrawingMode || _isTextPromptOpen)
+            return;
+
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            if (AnalysisCanvas?.HasSelection == true)
+                AnalysisCanvas.DeleteSelected();
+        });
+    }
+
+    private void OnBackspacePressed(object? sender, EventArgs e)
+    {
+        if (!_isPageActive || !_isDrawingMode || _isTextPromptOpen)
+            return;
+
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            if (AnalysisCanvas?.HasSelection == true)
+                AnalysisCanvas.DeleteSelected();
+        });
+    }
+#endif
 
     private void SetupMediaHandlers()
     {
@@ -289,7 +335,9 @@ public partial class SinglePlayerPage : ContentPage
         if (!_isDrawingMode || AnalysisCanvas == null)
             return;
 
+        _isTextPromptOpen = true;
         var text = await DisplayPromptAsync("Texto", "Introduce el texto", "OK", "Cancelar");
+        _isTextPromptOpen = false;
         if (string.IsNullOrWhiteSpace(text))
             return;
 
