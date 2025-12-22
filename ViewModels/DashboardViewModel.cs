@@ -744,6 +744,8 @@ public class DashboardViewModel : BaseViewModel
     public ICommand ClearVideoSelectionCommand { get; }
     public ICommand VideoTapCommand { get; }
     public ICommand VideoLessonTapCommand { get; }
+    public ICommand ShareVideoLessonCommand { get; }
+    public ICommand DeleteVideoLessonCommand { get; }
     public ICommand PlayAsPlaylistCommand { get; }
     public ICommand EditVideoDetailsCommand { get; }
     public ICommand ShareSelectedVideosCommand { get; }
@@ -801,6 +803,8 @@ public class DashboardViewModel : BaseViewModel
         ClearVideoSelectionCommand = new RelayCommand(ClearVideoSelection);
         VideoTapCommand = new AsyncRelayCommand<VideoClip>(OnVideoTappedAsync);
         VideoLessonTapCommand = new AsyncRelayCommand<VideoLesson>(OnVideoLessonTappedAsync);
+        ShareVideoLessonCommand = new AsyncRelayCommand<VideoLesson>(ShareVideoLessonAsync);
+        DeleteVideoLessonCommand = new AsyncRelayCommand<VideoLesson>(DeleteVideoLessonAsync);
         PlayAsPlaylistCommand = new AsyncRelayCommand(PlayAsPlaylistAsync);
         EditVideoDetailsCommand = new AsyncRelayCommand(EditVideoDetailsAsync);
         ShareSelectedVideosCommand = new AsyncRelayCommand(ShareSelectedVideosAsync);
@@ -834,6 +838,61 @@ public class DashboardViewModel : BaseViewModel
         }
 
         await Shell.Current.GoToAsync($"{nameof(SinglePlayerPage)}?videoPath={Uri.EscapeDataString(lesson.FilePath)}");
+    }
+
+    private async Task ShareVideoLessonAsync(VideoLesson? lesson)
+    {
+        if (lesson == null)
+            return;
+
+        if (string.IsNullOrWhiteSpace(lesson.FilePath) || !File.Exists(lesson.FilePath))
+        {
+            await Shell.Current.DisplayAlert("Archivo no encontrado", "No se encontró el vídeo de esta videolección.", "OK");
+            return;
+        }
+
+        await Share.Default.RequestAsync(new ShareFileRequest
+        {
+            Title = lesson.DisplayTitle ?? "Videolección",
+            File = new ShareFile(lesson.FilePath)
+        });
+    }
+
+    private async Task DeleteVideoLessonAsync(VideoLesson? lesson)
+    {
+        if (lesson == null)
+            return;
+
+        var confirm = await Shell.Current.DisplayAlert(
+            "Eliminar videolección",
+            $"¿Estás seguro de que quieres eliminar \"{lesson.DisplayTitle}\"?",
+            "Eliminar",
+            "Cancelar");
+
+        if (!confirm)
+            return;
+
+        try
+        {
+            // Eliminar archivo de vídeo
+            if (!string.IsNullOrWhiteSpace(lesson.FilePath) && File.Exists(lesson.FilePath))
+                File.Delete(lesson.FilePath);
+
+            // Eliminar thumbnail
+            var thumbPath = Path.Combine(FileSystem.AppDataDirectory, "videoLessonThumbs", $"lesson_{lesson.Id}.jpg");
+            if (File.Exists(thumbPath))
+                File.Delete(thumbPath);
+
+            // Eliminar de la base de datos
+            await _databaseService.DeleteVideoLessonAsync(lesson);
+
+            // Actualizar la colección en UI
+            await MainThread.InvokeOnMainThreadAsync(() => VideoLessons.Remove(lesson));
+        }
+        catch (Exception ex)
+        {
+            await Shell.Current.DisplayAlert("Error", $"No se pudo eliminar la videolección: {ex.Message}", "OK");
+        }
     }
 
     private async Task LoadVideoLessonsAsync(CancellationToken ct)

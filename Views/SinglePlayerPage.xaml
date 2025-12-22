@@ -371,6 +371,32 @@
                             </Grid>
                         </Border>
 
+                        <!-- Cronómetro de grabación -->
+                        <Border
+                            x:Name="RecordingTimerBorder"
+                            Padding="8,4"
+                            BackgroundColor="#CCFF3B30"
+                            IsVisible="False"
+                            StrokeShape="RoundRectangle 12"
+                            StrokeThickness="0"
+                            VerticalOptions="Center">
+                            <HorizontalStackLayout Spacing="6">
+                                <Ellipse
+                                    WidthRequest="8"
+                                    HeightRequest="8"
+                                    Fill="#FFFF3B30"
+                                    VerticalOptions="Center" />
+                                <Label
+                                    x:Name="RecordingTimerLabel"
+                                    FontFamily="SF Pro Text"
+                                    FontSize="14"
+                                    FontAttributes="Bold"
+                                    Text="00:00"
+                                    TextColor="White"
+                                    VerticalOptions="Center" />
+                            </HorizontalStackLayout>
+                        </Border>
+
                         <!-- Opciones Videolección (cámara / micrófono) -->
                         <Border
                             x:Name="VideoLessonOptionsPanel"

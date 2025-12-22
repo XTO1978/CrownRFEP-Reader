@@ -311,13 +311,13 @@
                     FontAttributes="Bold"
                     Text="Acciones de sesión"
                     TextColor="#FF888888" />
-                <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="4">
                     <Border
                         Grid.Column="0"
                         Padding="10,8"
                         BackgroundColor="#FF2A2A2A"
                         Stroke="Transparent"
-                        StrokeShape="RoundRectangle 6">
+                        StrokeShape="RoundRectangle 4">
                         <Border.GestureRecognizers>
                             <TapGestureRecognizer Command="{Binding ImportCommand}" />
                         </Border.GestureRecognizers>
@@ -336,7 +336,7 @@
                         Padding="10,8"
                         BackgroundColor="#FF2A2A2A"
                         Stroke="Transparent"
-                        StrokeShape="RoundRectangle 6">
+                        StrokeShape="RoundRectangle 4">
                         <Border.GestureRecognizers>
                             <TapGestureRecognizer Command="{Binding DeleteSelectedSessionCommand}" />
                         </Border.GestureRecognizers>
@@ -344,10 +344,10 @@
                             <controls:SymbolIcon
                                 HeightRequest="16"
                                 SymbolName="trash"
-                                TintColor="White"
+                                TintColor="#FFFF9696"
                                 WidthRequest="16"
                                 VerticalOptions="Center" />
-                            <Label Text="Eliminar" TextColor="White" VerticalOptions="Center" />
+                            <Label Text="Eliminar" TextColor="#FFFF9696" VerticalOptions="Center" />
                         </HorizontalStackLayout>
                     </Border>
                 </Grid>
@@ -654,12 +654,12 @@
                                     </Grid>
                                 </controls:AspectRatioContainer>
 
-                                <!--  Footer con info  -->
+                                <!--  Footer con info y acciones  -->
                                 <Grid
                                     Grid.Row="1"
                                     Padding="8"
-                                    ColumnDefinitions="*">
-                                    <VerticalStackLayout Spacing="2">
+                                    ColumnDefinitions="*,Auto">
+                                    <VerticalStackLayout Grid.Column="0" Spacing="2">
                                         <Label
                                             FontSize="12"
                                             LineBreakMode="TailTruncation"
@@ -675,6 +675,50 @@
                                             Text="{Binding CreatedAtUtc, StringFormat='{0:dd/MM/yyyy HH:mm}'}"
                                             TextColor="#FFB1B1B1" />
                                     </VerticalStackLayout>
+                                    
+                                    <!--  Botones de acción  -->
+                                    <HorizontalStackLayout Grid.Column="1" Spacing="4" VerticalOptions="Center">
+                                        <Border
+                                            WidthRequest="28"
+                                            HeightRequest="28"
+                                            Padding="0"
+                                            BackgroundColor="#FF3A3A3A"
+                                            StrokeShape="RoundRectangle 14"
+                                            StrokeThickness="0">
+                                            <Border.GestureRecognizers>
+                                                <TapGestureRecognizer
+                                                    Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=ShareVideoLessonCommand}"
+                                                    CommandParameter="{Binding .}" />
+                                            </Border.GestureRecognizers>
+                                            <controls:SymbolIcon
+                                                WidthRequest="14"
+                                                HeightRequest="14"
+                                                SymbolName="square.and.arrow.up"
+                                                TintColor="White"
+                                                HorizontalOptions="Center"
+                                                VerticalOptions="Center" />
+                                        </Border>
+                                        <Border
+                                            WidthRequest="28"
+                                            HeightRequest="28"
+                                            Padding="0"
+                                            BackgroundColor="#FF3A3A3A"
+                                            StrokeShape="RoundRectangle 14"
+                                            StrokeThickness="0">
+                                            <Border.GestureRecognizers>
+                                                <TapGestureRecognizer
+                                                    Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=DeleteVideoLessonCommand}"
+                                                    CommandParameter="{Binding .}" />
+                                            </Border.GestureRecognizers>
+                                            <controls:SymbolIcon
+                                                WidthRequest="14"
+                                                HeightRequest="14"
+                                                SymbolName="trash"
+                                                TintColor="#FFFF6B6B"
+                                                HorizontalOptions="Center"
+                                                VerticalOptions="Center" />
+                                        </Border>
+                                    </HorizontalStackLayout>
                                 </Grid>
                             </Grid>
                         </Border>

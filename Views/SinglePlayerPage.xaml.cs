@@ -27,6 +27,10 @@ public partial class SinglePlayerPage : ContentPage
     private bool _videoLessonCameraEnabled = true;
     private bool _videoLessonMicEnabled = true;
 
+    // Timer para el cronómetro de grabación
+    private System.Timers.Timer? _recordingTimer;
+    private DateTime _recordingStartTime;
+
     private bool _isPageActive;
     private bool _isTextPromptOpen;
 
@@ -99,7 +103,7 @@ public partial class SinglePlayerPage : ContentPage
     {
         if (VideoLessonRecordButton != null)
             VideoLessonRecordButton.BackgroundColor = _isVideoLessonRecording
-                ? Color.FromArgb("#FFFF7043")
+                ? Color.FromArgb("#FFFF3B30")
                 : Color.FromArgb("#FF2A2A2A");
 
         if (VideoLessonRecordIcon != null)
@@ -228,6 +232,7 @@ public partial class SinglePlayerPage : ContentPage
                 EnsurePipPositioned();
             UpdateVideoLessonToggleVisualState();
             UpdateVideoLessonOptionsVisualState();
+            StartRecordingTimer();
         }
         catch (Exception ex)
         {
@@ -243,6 +248,7 @@ public partial class SinglePlayerPage : ContentPage
                 VideoLessonCameraPreview.IsActive = false;
 
             // VideoLessonOptionsPanel siempre visible
+            StopRecordingTimer();
 
             await DisplayAlert("Error", $"No se pudo iniciar la grabación: {ex.Message}", "OK");
         }
@@ -266,6 +272,7 @@ public partial class SinglePlayerPage : ContentPage
             if (VideoLessonCameraPreview != null)
                 VideoLessonCameraPreview.IsActive = false;
 
+            StopRecordingTimer();
             _currentVideoLessonPath = null;
             return;
         }
@@ -286,6 +293,7 @@ public partial class SinglePlayerPage : ContentPage
                 VideoLessonCameraPreview.IsActive = false;
 
             // VideoLessonOptionsPanel siempre visible
+            StopRecordingTimer();
 
             var sessionId = _viewModel.VideoClip?.SessionId ?? 0;
             if (!string.IsNullOrWhiteSpace(_currentVideoLessonPath) && File.Exists(_currentVideoLessonPath))
@@ -310,6 +318,7 @@ public partial class SinglePlayerPage : ContentPage
             _isVideoLessonRecording = false;
             _isVideoLessonMode = false;
             UpdateVideoLessonToggleVisualState();
+            StopRecordingTimer();
             await DisplayAlert("Error", $"No se pudo detener la grabación: {ex.Message}", "OK");
         }
         finally
@@ -317,6 +326,49 @@ public partial class SinglePlayerPage : ContentPage
             _currentVideoLessonPath = null;
             _isVideoLessonStartStopInProgress = false;
         }
+    }
+
+    private void StartRecordingTimer()
+    {
+        _recordingStartTime = DateTime.Now;
+        
+        if (RecordingTimerBorder != null)
+            RecordingTimerBorder.IsVisible = true;
+        
+        if (RecordingTimerLabel != null)
+            RecordingTimerLabel.Text = "00:00";
+
+        _recordingTimer?.Stop();
+        _recordingTimer?.Dispose();
+        
+        _recordingTimer = new System.Timers.Timer(1000);
+        _recordingTimer.Elapsed += (s, e) =>
+        {
+            var elapsed = DateTime.Now - _recordingStartTime;
+            var formatted = elapsed.TotalHours >= 1
+                ? $"{(int)elapsed.TotalHours:D2}:{elapsed.Minutes:D2}:{elapsed.Seconds:D2}"
+                : $"{elapsed.Minutes:D2}:{elapsed.Seconds:D2}";
+            
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                if (RecordingTimerLabel != null)
+                    RecordingTimerLabel.Text = formatted;
+            });
+        };
+        _recordingTimer.Start();
+    }
+
+    private void StopRecordingTimer()
+    {
+        _recordingTimer?.Stop();
+        _recordingTimer?.Dispose();
+        _recordingTimer = null;
+
+        if (RecordingTimerBorder != null)
+            RecordingTimerBorder.IsVisible = false;
+        
+        if (RecordingTimerLabel != null)
+            RecordingTimerLabel.Text = "00:00";
     }
 
     private void EnsurePipPositioned()
@@ -512,6 +564,9 @@ public partial class SinglePlayerPage : ContentPage
     private void CleanupResources()
     {
         AppLog.Info("SinglePlayerPage", "CleanupResources BEGIN");
+
+        // Detener el cronómetro de grabación
+        StopRecordingTimer();
 
         // Desactivar el preview de cámara antes de seguir (evita callbacks nativos tardíos)
         try
