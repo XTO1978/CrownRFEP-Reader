@@ -21,6 +21,7 @@ public partial class AppShell : Shell
 		Routing.RegisterRoute(nameof(SessionsPage), typeof(SessionsPage));
 		Routing.RegisterRoute(nameof(AthletesPage), typeof(AthletesPage));
 		Routing.RegisterRoute(nameof(VideoLessonsPage), typeof(VideoLessonsPage));
+		Routing.RegisterRoute(nameof(ImportPage), typeof(ImportPage));
 	}
 
 	private void OnShellNavigating(object? sender, ShellNavigatingEventArgs e)

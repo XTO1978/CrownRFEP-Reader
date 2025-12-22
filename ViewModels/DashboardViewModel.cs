@@ -769,7 +769,7 @@ public class DashboardViewModel : BaseViewModel
 
         Title = "Dashboard";
 
-        ImportCommand = new AsyncRelayCommand(ImportCrownFileAsync);
+        ImportCommand = new AsyncRelayCommand(ShowImportOptionsAsync);
         RefreshCommand = new AsyncRelayCommand(LoadDataAsync);
         ViewSessionCommand = new AsyncRelayCommand<Session>(ViewSessionAsync);
         ViewAllSessionsCommand = new AsyncRelayCommand(ViewAllSessionsAsync);
@@ -1897,6 +1897,25 @@ public class DashboardViewModel : BaseViewModel
         }
     }
 
+    private async Task ShowImportOptionsAsync()
+    {
+        var action = await Shell.Current.DisplayActionSheet(
+            "¿Cómo deseas importar?",
+            "Cancelar",
+            null,
+            "Desde archivo .crown",
+            "Crear sesión desde vídeos");
+
+        if (action == "Desde archivo .crown")
+        {
+            await ImportCrownFileAsync();
+        }
+        else if (action == "Crear sesión desde vídeos")
+        {
+            await Shell.Current.GoToAsync(nameof(ImportPage));
+        }
+    }
+
     private async Task ImportCrownFileAsync()
     {
         if (IsImporting) return; // Evitar múltiples importaciones simultáneas
@@ -1912,27 +1931,10 @@ public class DashboardViewModel : BaseViewModel
 
             System.Diagnostics.Debug.WriteLine("Iniciando selección de archivo...");
 
-            Task<string?> pickTask;
-            if (MainThread.IsMainThread)
-            {
-                pickTask = _crownFileService.PickCrownFilePathAsync();
-            }
-            else
-            {
-                pickTask = MainThread.InvokeOnMainThreadAsync(_crownFileService.PickCrownFilePathAsync);
-            }
-
-            var completed = await Task.WhenAny(pickTask, Task.Delay(TimeSpan.FromSeconds(15)));
-            if (completed != pickTask)
-            {
-                await Shell.Current.DisplayAlert(
-                    "Selector bloqueado",
-                    "El selector de archivos no respondió (15s). Si ocurre siempre en macOS, suele ser un problema del FilePicker de MacCatalyst. Prueba a traer la ventana al frente y vuelve a intentar.",
-                    "OK");
-                return;
-            }
-
-            var filePath = await pickTask;
+            // El picker nativo MacCrownFilePicker usa runModal que es síncrono
+            // y responde inmediatamente cuando el usuario selecciona o cancela.
+            // No es necesario timeout ya que el picker siempre responde.
+            var filePath = await _crownFileService.PickCrownFilePathAsync();
 
             if (string.IsNullOrWhiteSpace(filePath))
             {

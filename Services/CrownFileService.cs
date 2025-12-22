@@ -459,11 +459,10 @@ public class CrownFileService
     {
 #if MACCATALYST
         // FilePicker en MacCatalyst puede colgarse; usamos un picker nativo.
+        // Si el usuario cancela, retornamos null directamente sin mostrar otro picker.
         var macPath = await MacCrownFilePicker.PickToCacheAsync();
-        if (!string.IsNullOrWhiteSpace(macPath) && File.Exists(macPath))
-        {
-            return macPath;
-        }
+        // Retornar siempre el resultado del picker nativo (null si canceló, path si seleccionó)
+        return string.IsNullOrWhiteSpace(macPath) ? null : macPath;
 #endif
 
         var file = await PickCrownFileAsync();
