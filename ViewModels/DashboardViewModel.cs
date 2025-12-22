@@ -1028,8 +1028,29 @@ public class DashboardViewModel : BaseViewModel
 
     private async Task PlayAsPlaylistAsync()
     {
-        // TODO: Implementar reproducción como playlist
-        await Task.CompletedTask;
+        // Obtener videos seleccionados
+        var source = _filteredVideosCache ?? _allVideosCache ?? SelectedSessionVideos.ToList();
+        var selectedVideos = source.Where(v => _selectedVideoIds.Contains(v.Id)).OrderBy(v => v.CreationDate).ToList();
+        
+        if (selectedVideos.Count == 0)
+        {
+            await Shell.Current.DisplayAlert("Playlist", "No hay vídeos seleccionados.", "OK");
+            return;
+        }
+        
+        // Navegar a SinglePlayerPage con la playlist
+        var singlePage = App.Current?.Handler?.MauiContext?.Services.GetService<Views.SinglePlayerPage>();
+        if (singlePage?.BindingContext is SinglePlayerViewModel singleVm)
+        {
+            await singleVm.InitializeWithPlaylistAsync(selectedVideos, 0);
+            await Shell.Current.Navigation.PushAsync(singlePage);
+        }
+        else
+        {
+            // Fallback: reproducir el primer video seleccionado
+            var firstVideo = selectedVideos.First();
+            await Shell.Current.GoToAsync($"{nameof(SinglePlayerPage)}?videoPath={Uri.EscapeDataString(firstVideo.ClipPath ?? "")}");
+        }
     }
 
     private async Task EditVideoDetailsAsync()

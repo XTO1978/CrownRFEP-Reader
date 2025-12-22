@@ -644,6 +644,30 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     }
 
     /// <summary>
+    /// Inicializa el ViewModel con una playlist de videos (para reproducción secuencial)
+    /// </summary>
+    public async Task InitializeWithPlaylistAsync(List<VideoClip> playlist, int startIndex = 0)
+    {
+        if (playlist == null || playlist.Count == 0)
+            return;
+        
+        // Establecer la playlist directamente sin cargar datos de sesión
+        _sessionVideos = playlist;
+        _filteredPlaylist = playlist.OrderBy(v => v.CreationDate).ToList();
+        _currentPlaylistIndex = Math.Max(0, Math.Min(startIndex, _filteredPlaylist.Count - 1));
+        
+        // Inicializar con el primer video de la playlist
+        var firstVideo = _filteredPlaylist[_currentPlaylistIndex];
+        await LoadVideoDataAsync(firstVideo);
+        VideoClip = firstVideo;
+        
+        UpdatePlaylistProperties();
+        
+        // Cargar eventos de etiquetas del video
+        await LoadTagEventsAsync();
+    }
+
+    /// <summary>
     /// Inicializa el ViewModel con un video y carga los datos de filtrado de la sesión
     /// </summary>
     public async Task InitializeWithVideoAsync(VideoClip video)
