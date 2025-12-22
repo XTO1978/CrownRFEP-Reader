@@ -21,4 +21,7 @@ public class VideoLesson
 
     [Ignore]
     public string? SessionDisplayName { get; set; }
+
+    [Ignore]
+    public string? LocalThumbnailPath { get; set; }
 }

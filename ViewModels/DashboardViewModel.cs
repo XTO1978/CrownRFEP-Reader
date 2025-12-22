@@ -3,6 +3,7 @@ using System.Windows.Input;
 using CrownRFEP_Reader.Models;
 using CrownRFEP_Reader.Services;
 using CrownRFEP_Reader.Views;
+using Microsoft.Maui.Storage;
 
 namespace CrownRFEP_Reader.ViewModels;
 
@@ -14,10 +15,12 @@ public class DashboardViewModel : BaseViewModel
     private readonly DatabaseService _databaseService;
     private readonly CrownFileService _crownFileService;
     private readonly StatisticsService _statisticsService;
+    private readonly ThumbnailService _thumbnailService;
 
     private DashboardStats? _stats;
     private Session? _selectedSession;
     private bool _isAllGallerySelected;
+    private bool _isVideoLessonsSelected;
     private bool _isLoadingSelectedSessionVideos;
     private string _importProgressText = "";
     private int _importProgressValue;
@@ -75,6 +78,7 @@ public class DashboardViewModel : BaseViewModel
                 if (value != null)
                 {
                     IsAllGallerySelected = false;
+                    IsVideoLessonsSelected = false;
                 }
                 OnPropertyChanged(nameof(SelectedSessionTitle));
                 _ = LoadSelectedSessionVideosAsync(value);
@@ -89,14 +93,38 @@ public class DashboardViewModel : BaseViewModel
         {
             if (SetProperty(ref _isAllGallerySelected, value))
             {
+                if (value)
+                {
+                    IsVideoLessonsSelected = false;
+                }
                 OnPropertyChanged(nameof(SelectedSessionTitle));
+                OnPropertyChanged(nameof(VideoCountDisplayText));
             }
         }
     }
 
-    public string SelectedSessionTitle => IsAllGallerySelected 
-        ? "Galería General" 
-        : (SelectedSession?.DisplayName ?? "Selecciona una sesión");
+    public bool IsVideoLessonsSelected
+    {
+        get => _isVideoLessonsSelected;
+        set
+        {
+            if (SetProperty(ref _isVideoLessonsSelected, value))
+            {
+                if (value)
+                {
+                    IsAllGallerySelected = false;
+                }
+                OnPropertyChanged(nameof(SelectedSessionTitle));
+                OnPropertyChanged(nameof(VideoCountDisplayText));
+            }
+        }
+    }
+
+    public string SelectedSessionTitle => IsVideoLessonsSelected
+        ? "Videolecciones"
+        : (IsAllGallerySelected
+            ? "Galería General"
+            : (SelectedSession?.DisplayName ?? "Selecciona una sesión"));
 
     public bool IsLoadingSelectedSessionVideos
     {
@@ -471,6 +499,7 @@ public class DashboardViewModel : BaseViewModel
 
     public ObservableCollection<Session> RecentSessions { get; } = new();
     public ObservableCollection<VideoClip> SelectedSessionVideos { get; } = new();
+    public ObservableCollection<VideoLesson> VideoLessons { get; } = new();
 
     public ObservableCollection<SectionStats> SelectedSessionSectionStats { get; } = new();
     public ObservableCollection<SessionAthleteTimeRow> SelectedSessionAthleteTimes { get; } = new();
@@ -492,18 +521,32 @@ public class DashboardViewModel : BaseViewModel
     public ObservableCollection<string> SelectedSessionPenaltyLabels { get; } = new();
 
     // Estadísticas: usar el cache filtrado para mostrar totales reales (no solo paginados)
-    public int TotalFilteredVideoCount => (_filteredVideosCache ?? _allVideosCache)?.Count ?? SelectedSessionVideos.Count;
-    public int TotalAvailableVideoCount => _allVideosCache?.Count ?? SelectedSessionVideos.Count;
-    public double TotalFilteredDurationSeconds => (_filteredVideosCache ?? _allVideosCache)?.Sum(v => v.ClipDuration) ?? SelectedSessionVideos.Sum(v => v.ClipDuration);
+    public int TotalFilteredVideoCount => IsVideoLessonsSelected
+        ? VideoLessons.Count
+        : ((_filteredVideosCache ?? _allVideosCache)?.Count ?? SelectedSessionVideos.Count);
+
+    public int TotalAvailableVideoCount => IsVideoLessonsSelected
+        ? VideoLessons.Count
+        : (_allVideosCache?.Count ?? SelectedSessionVideos.Count);
+
+    public double TotalFilteredDurationSeconds => IsVideoLessonsSelected
+        ? 0
+        : ((_filteredVideosCache ?? _allVideosCache)?.Sum(v => v.ClipDuration) ?? SelectedSessionVideos.Sum(v => v.ClipDuration));
     
     public string VideoCountDisplayText
     {
         get
         {
+            if (IsVideoLessonsSelected)
+            {
+                var shownLessons = VideoLessons.Count;
+                return $"{shownLessons} videolecciones";
+            }
+
             var shown = SelectedSessionVideos.Count;
             var total = TotalAvailableVideoCount;
-            return shown == total 
-                ? $"{shown} vídeos" 
+            return shown == total
+                ? $"{shown} vídeos"
                 : $"{shown} de {total} vídeos";
         }
     }
@@ -526,6 +569,7 @@ public class DashboardViewModel : BaseViewModel
     public ICommand PlaySelectedVideoCommand { get; }
     public ICommand DeleteSelectedSessionCommand { get; }
     public ICommand SelectAllGalleryCommand { get; }
+    public ICommand ViewVideoLessonsCommand { get; }
     public ICommand LoadMoreVideosCommand { get; }
     public ICommand ClearFiltersCommand { get; }
     public ICommand TogglePlacesExpandedCommand { get; }
@@ -539,6 +583,7 @@ public class DashboardViewModel : BaseViewModel
     public ICommand ToggleVideoSelectionCommand { get; }
     public ICommand ClearVideoSelectionCommand { get; }
     public ICommand VideoTapCommand { get; }
+    public ICommand VideoLessonTapCommand { get; }
     public ICommand PlayAsPlaylistCommand { get; }
     public ICommand EditVideoDetailsCommand { get; }
     public ICommand ShareSelectedVideosCommand { get; }
@@ -552,11 +597,13 @@ public class DashboardViewModel : BaseViewModel
     public DashboardViewModel(
         DatabaseService databaseService,
         CrownFileService crownFileService,
-        StatisticsService statisticsService)
+        StatisticsService statisticsService,
+        ThumbnailService thumbnailService)
     {
         _databaseService = databaseService;
         _crownFileService = crownFileService;
         _statisticsService = statisticsService;
+        _thumbnailService = thumbnailService;
 
         Title = "Dashboard";
 
@@ -568,6 +615,7 @@ public class DashboardViewModel : BaseViewModel
         PlaySelectedVideoCommand = new AsyncRelayCommand<VideoClip>(PlaySelectedVideoAsync);
         DeleteSelectedSessionCommand = new AsyncRelayCommand(DeleteSelectedSessionAsync);
         SelectAllGalleryCommand = new AsyncRelayCommand(SelectAllGalleryAsync);
+        ViewVideoLessonsCommand = new AsyncRelayCommand(ViewVideoLessonsAsync);
         LoadMoreVideosCommand = new AsyncRelayCommand(LoadMoreVideosAsync);
         ClearFiltersCommand = new RelayCommand(ClearFilters);
         TogglePlacesExpandedCommand = new RelayCommand(() => IsPlacesExpanded = !IsPlacesExpanded);
@@ -591,6 +639,7 @@ public class DashboardViewModel : BaseViewModel
         ToggleVideoSelectionCommand = new RelayCommand<VideoClip>(ToggleVideoSelection);
         ClearVideoSelectionCommand = new RelayCommand(ClearVideoSelection);
         VideoTapCommand = new AsyncRelayCommand<VideoClip>(OnVideoTappedAsync);
+        VideoLessonTapCommand = new AsyncRelayCommand<VideoLesson>(OnVideoLessonTappedAsync);
         PlayAsPlaylistCommand = new AsyncRelayCommand(PlayAsPlaylistAsync);
         EditVideoDetailsCommand = new AsyncRelayCommand(EditVideoDetailsAsync);
         ShareSelectedVideosCommand = new AsyncRelayCommand(ShareSelectedVideosAsync);
@@ -603,12 +652,73 @@ public class DashboardViewModel : BaseViewModel
         
         // Notificar cambios en VideoCountDisplayText cuando cambie la colección
         SelectedSessionVideos.CollectionChanged += (s, e) => OnPropertyChanged(nameof(VideoCountDisplayText));
+        VideoLessons.CollectionChanged += (s, e) => OnPropertyChanged(nameof(VideoCountDisplayText));
         
         // Suscribirse a mensajes de actualización de video individual
         MessagingCenter.Subscribe<SinglePlayerViewModel, int>(this, "VideoClipUpdated", async (sender, videoId) =>
         {
             await RefreshVideoClipInGalleryAsync(videoId);
         });
+    }
+
+    private async Task OnVideoLessonTappedAsync(VideoLesson? lesson)
+    {
+        if (lesson == null)
+            return;
+
+        if (string.IsNullOrWhiteSpace(lesson.FilePath) || !File.Exists(lesson.FilePath))
+        {
+            await Shell.Current.DisplayAlert("Archivo no encontrado", "No se encontró el vídeo de esta videolección en el dispositivo.", "OK");
+            return;
+        }
+
+        await Shell.Current.GoToAsync($"{nameof(SinglePlayerPage)}?videoPath={Uri.EscapeDataString(lesson.FilePath)}");
+    }
+
+    private async Task LoadVideoLessonsAsync(CancellationToken ct)
+    {
+        VideoLessons.Clear();
+
+        var lessons = await _databaseService.GetAllVideoLessonsAsync();
+        if (ct.IsCancellationRequested)
+            return;
+
+        // Resolver nombres de sesión (mejor esfuerzo)
+        var sessionNameCache = new Dictionary<int, string?>();
+
+        var thumbnailsDir = Path.Combine(FileSystem.AppDataDirectory, "videoLessonThumbs");
+        Directory.CreateDirectory(thumbnailsDir);
+
+        foreach (var lesson in lessons)
+        {
+            if (ct.IsCancellationRequested)
+                return;
+
+            if (!sessionNameCache.TryGetValue(lesson.SessionId, out var sessionName))
+            {
+                var session = lesson.SessionId > 0 ? await _databaseService.GetSessionByIdAsync(lesson.SessionId) : null;
+                sessionName = session?.DisplayName;
+                sessionNameCache[lesson.SessionId] = sessionName;
+            }
+            lesson.SessionDisplayName = sessionName;
+
+            // Miniatura (si no existe, generarla)
+            var thumbPath = Path.Combine(thumbnailsDir, $"lesson_{lesson.Id}.jpg");
+            if (!File.Exists(thumbPath))
+            {
+                try
+                {
+                    await _thumbnailService.GenerateThumbnailAsync(lesson.FilePath, thumbPath);
+                }
+                catch
+                {
+                    // Ignorar: si falla, se verá el placeholder.
+                }
+            }
+
+            lesson.LocalThumbnailPath = File.Exists(thumbPath) ? thumbPath : null;
+            VideoLessons.Add(lesson);
+        }
     }
 
     /// <summary>
@@ -1176,7 +1286,7 @@ public class DashboardViewModel : BaseViewModel
             }
 
             // Por defecto, mostrar Galería General al iniciar
-            if (SelectedSession == null && !IsAllGallerySelected)
+            if (SelectedSession == null && !IsAllGallerySelected && !IsVideoLessonsSelected)
             {
                 await SelectAllGalleryAsync();
             }
@@ -1509,6 +1619,46 @@ public class DashboardViewModel : BaseViewModel
     private async Task ViewAllSessionsAsync()
     {
         await Shell.Current.GoToAsync(nameof(SessionsPage));
+    }
+
+    private async Task ViewVideoLessonsAsync()
+    {
+        _selectedSessionVideosCts?.Cancel();
+        _selectedSessionVideosCts?.Dispose();
+        _selectedSessionVideosCts = new CancellationTokenSource();
+        var ct = _selectedSessionVideosCts.Token;
+
+        try
+        {
+            IsLoadingSelectedSessionVideos = true;
+
+            // Cambiar modo en el Dashboard (sin navegar)
+            SelectedSession = null;
+            IsAllGallerySelected = false;
+            IsVideoLessonsSelected = true;
+
+            // Desactivar selección múltiple (no aplica a videolecciones)
+            IsMultiSelectMode = false;
+            IsSelectAllActive = false;
+
+            // Limpiar caches de vídeos para que contadores y paginación no interfieran
+            _currentPage = 0;
+            _allVideosCache = null;
+            _filteredVideosCache = null;
+            HasMoreVideos = false;
+
+            await LoadVideoLessonsAsync(ct);
+        }
+        catch (Exception ex)
+        {
+            if (!ct.IsCancellationRequested)
+                await Shell.Current.DisplayAlert("Error", $"No se pudieron cargar las videolecciones: {ex.Message}", "OK");
+        }
+        finally
+        {
+            if (!ct.IsCancellationRequested)
+                IsLoadingSelectedSessionVideos = false;
+        }
     }
 
     private async Task ViewAthletesAsync()

@@ -307,12 +307,6 @@ public partial class SinglePlayerPage : ContentPage
                 };
 
                 await _databaseService.SaveVideoLessonAsync(lesson);
-
-                await Share.Default.RequestAsync(new ShareFileRequest
-                {
-                    Title = "Videolección",
-                    File = new ShareFile(_currentVideoLessonPath)
-                });
             }
             else
             {
