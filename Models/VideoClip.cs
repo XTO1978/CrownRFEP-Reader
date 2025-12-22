@@ -58,6 +58,64 @@ public class VideoClip : INotifyPropertyChanged
     [Ignore]
     public DateTime CreationDateTime => DateTimeOffset.FromUnixTimeSeconds(CreationDate).LocalDateTime;
 
+    /// <summary>
+    /// Primera línea de display: APELLIDOS Nombre - Sesión
+    /// </summary>
+    [Ignore]
+    public string DisplayLine1
+    {
+        get
+        {
+            var parts = new List<string>();
+            
+            // Atleta: APELLIDO Nombre
+            if (Atleta != null && !string.IsNullOrWhiteSpace(Atleta.Apellido))
+            {
+                var apellido = Atleta.Apellido.ToUpperInvariant();
+                var nombre = Atleta.Nombre ?? "";
+                parts.Add($"{apellido} {nombre}".Trim());
+            }
+            else if (Atleta != null && !string.IsNullOrWhiteSpace(Atleta.Nombre))
+            {
+                parts.Add(Atleta.Nombre);
+            }
+            
+            // Sesión
+            if (Session != null && !string.IsNullOrWhiteSpace(Session.DisplayName))
+            {
+                parts.Add(Session.DisplayName);
+            }
+            
+            return parts.Count > 0 ? string.Join(" - ", parts) : "";
+        }
+    }
+
+    /// <summary>
+    /// Segunda línea de display: Lugar, fecha y hora
+    /// </summary>
+    [Ignore]
+    public string DisplayLine2
+    {
+        get
+        {
+            var parts = new List<string>();
+            
+            // Lugar
+            if (Session != null && !string.IsNullOrWhiteSpace(Session.Lugar))
+            {
+                parts.Add(Session.Lugar);
+            }
+            
+            // Fecha y hora
+            if (CreationDate > 0)
+            {
+                parts.Add(CreationDateTime.ToString("dd/MM/yyyy HH:mm"));
+            }
+            
+            return parts.Count > 0 ? string.Join(", ", parts) : "";
+        }
+    }
+
     [Ignore]
     public string DurationFormatted
     {

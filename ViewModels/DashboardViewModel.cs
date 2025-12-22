@@ -1328,6 +1328,26 @@ public class DashboardViewModel : BaseViewModel
             System.Diagnostics.Debug.WriteLine($"[LoadAllVideosAsync] Videos loaded: {_allVideosCache?.Count ?? 0}");
             if (ct.IsCancellationRequested) return;
 
+            // Crear diccionario de sesiones para asignar a cada clip
+            var sessionIds = _allVideosCache?.Select(c => c.SessionId).Distinct().ToList() ?? new List<int>();
+            var sessionsDict = new Dictionary<int, Session>();
+            foreach (var sessionId in sessionIds)
+            {
+                var session = await _databaseService.GetSessionByIdAsync(sessionId);
+                if (session != null)
+                    sessionsDict[sessionId] = session;
+            }
+            
+            // Asignar la sesión a cada clip para que DisplayLine1/2 funcionen
+            if (_allVideosCache != null)
+            {
+                foreach (var clip in _allVideosCache)
+                {
+                    if (sessionsDict.TryGetValue(clip.SessionId, out var session))
+                        clip.Session = session;
+                }
+            }
+
             // Cargar primer lote
             _filteredVideosCache = _allVideosCache;
             var filteredCache = _filteredVideosCache ?? new List<VideoClip>();
@@ -1651,6 +1671,12 @@ public class DashboardViewModel : BaseViewModel
             IsLoadingSelectedSessionVideos = true;
             var clips = await _databaseService.GetVideoClipsBySessionAsync(session.Id);
             if (ct.IsCancellationRequested) return;
+
+            // Asignar la sesión actual a cada clip para que DisplayLine1/2 funcionen
+            foreach (var clip in clips)
+            {
+                clip.Session = session;
+            }
 
             // Guardar en caché para paginación
             _allVideosCache = clips;

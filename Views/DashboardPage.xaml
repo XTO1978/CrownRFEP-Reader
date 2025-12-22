@@ -477,15 +477,19 @@
                                     Padding="8"
                                     ColumnDefinitions="*,Auto">
                                     <VerticalStackLayout Spacing="2">
+                                        <!--  Primera línea: APELLIDOS Nombre - Sesión  -->
                                         <Label
                                             FontSize="12"
+                                            FontAttributes="Bold"
                                             LineBreakMode="TailTruncation"
-                                            Text="{Binding Atleta.NombreCompleto}"
+                                            Text="{Binding DisplayLine1}"
                                             TextColor="White" />
+                                        <!--  Segunda línea: Lugar, fecha y hora  -->
                                         <Label
-                                            FontSize="12"
-                                            Text="{Binding CreationDateTime, StringFormat='{0:HH:mm}'}"
-                                            TextColor="White" />
+                                            FontSize="11"
+                                            LineBreakMode="TailTruncation"
+                                            Text="{Binding DisplayLine2}"
+                                            TextColor="#FFB1B1B1" />
                                         
                                         <!--  Tags del video (chips)  -->
                                         <ScrollView
