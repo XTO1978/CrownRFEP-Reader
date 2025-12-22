@@ -1,6 +1,7 @@
 using CrownRFEP_Reader.Behaviors;
 using CrownRFEP_Reader.Controls;
 using CrownRFEP_Reader.Models;
+using CrownRFEP_Reader.Views.Controls;
 using CrownRFEP_Reader.ViewModels;
 
 namespace CrownRFEP_Reader.Views;
@@ -8,6 +9,8 @@ namespace CrownRFEP_Reader.Views;
 public partial class SinglePlayerPage : ContentPage
 {
     private readonly SinglePlayerViewModel _viewModel;
+
+    private bool _isDrawingMode;
     
     // Flags para controlar el scrubbing del slider
     private bool _isDraggingSlider;
@@ -17,6 +20,9 @@ public partial class SinglePlayerPage : ContentPage
     private bool _isScrubbing;
     private bool _wasPlayingBeforeScrub;
     private double _currentScrubPosition;
+
+    private static readonly Color DefaultInkColor = Color.FromArgb("#FFFF7043");
+    private const float DefaultInkThickness = 3f;
 
     public SinglePlayerPage(SinglePlayerViewModel viewModel)
     {
@@ -32,6 +38,9 @@ public partial class SinglePlayerPage : ContentPage
         _viewModel.FrameBackwardRequested += OnFrameBackwardRequested;
         _viewModel.SpeedChangeRequested += OnSpeedChangeRequested;
         _viewModel.VideoChanged += OnVideoChanged;
+
+        if (AnalysisCanvas != null)
+            AnalysisCanvas.TextRequested += OnAnalysisCanvasTextRequested;
     }
 
     protected override void OnAppearing()
@@ -80,6 +89,9 @@ public partial class SinglePlayerPage : ContentPage
         _viewModel.SpeedChangeRequested -= OnSpeedChangeRequested;
         _viewModel.VideoChanged -= OnVideoChanged;
 
+        if (AnalysisCanvas != null)
+            AnalysisCanvas.TextRequested -= OnAnalysisCanvasTextRequested;
+
         // Desuscribirse de eventos del reproductor
         if (MediaPlayer != null)
         {
@@ -89,6 +101,181 @@ public partial class SinglePlayerPage : ContentPage
             MediaPlayer.Stop();
             MediaPlayer.Handler?.DisconnectHandler();
         }
+    }
+
+    private void OnToggleDrawingToolsTapped(object? sender, TappedEventArgs e)
+    {
+        _isDrawingMode = !_isDrawingMode;
+
+        if (DrawingToolsPanel != null)
+            DrawingToolsPanel.IsVisible = _isDrawingMode;
+
+        if (AnalysisCanvas != null)
+            AnalysisCanvas.InputTransparent = !_isDrawingMode;
+
+        // Cuando dibujamos, evitamos que el overlay de scrub intercepte gestos.
+        if (ScrubOverlay != null)
+            ScrubOverlay.InputTransparent = _isDrawingMode;
+
+        // Por defecto: herramienta de trazo al activar
+        if (_isDrawingMode && AnalysisCanvas != null)
+        {
+            SetSelectedInkColor(DefaultInkColor);
+            SetSelectedInkThickness(DefaultInkThickness);
+            SetSelectedTool(AnalysisDrawingTool.Stroke);
+        }
+
+        if (!_isDrawingMode && InkOptionsPanel != null)
+            InkOptionsPanel.IsVisible = false;
+    }
+
+    private void OnSelectStrokeToolTapped(object? sender, TappedEventArgs e)
+        => SetSelectedTool(AnalysisDrawingTool.Stroke);
+
+    private void OnSelectTextToolTapped(object? sender, TappedEventArgs e)
+        => SetSelectedTool(AnalysisDrawingTool.Text);
+
+    private void OnSelectShapeToolTapped(object? sender, TappedEventArgs e)
+        => SetSelectedTool(AnalysisDrawingTool.Shape);
+
+    private void OnSelectShapeRectTapped(object? sender, TappedEventArgs e)
+        => SetSelectedShape(AnalysisShapeType.Rectangle);
+
+    private void OnSelectShapeCircleTapped(object? sender, TappedEventArgs e)
+        => SetSelectedShape(AnalysisShapeType.Circle);
+
+    private void OnSelectShapeLineTapped(object? sender, TappedEventArgs e)
+        => SetSelectedShape(AnalysisShapeType.Line);
+
+    private void OnSelectShapeArrowTapped(object? sender, TappedEventArgs e)
+        => SetSelectedShape(AnalysisShapeType.Arrow);
+
+    private void SetSelectedTool(AnalysisDrawingTool tool)
+    {
+        if (AnalysisCanvas == null)
+            return;
+
+        AnalysisCanvas.Tool = tool;
+
+        if (ShapeOptionsRow != null)
+            ShapeOptionsRow.IsVisible = tool == AnalysisDrawingTool.Shape;
+
+        if (tool == AnalysisDrawingTool.Shape)
+        {
+            // Por defecto: rectángulo
+            SetSelectedShape(AnalysisCanvas.ShapeType);
+        }
+
+        // UI mínima: resaltar el botón activo
+        if (ToolStrokeButton != null)
+            ToolStrokeButton.BackgroundColor = tool == AnalysisDrawingTool.Stroke ? Color.FromArgb("#FFFF7043") : Color.FromArgb("#FF2A2A2A");
+        if (ToolTextButton != null)
+            ToolTextButton.BackgroundColor = tool == AnalysisDrawingTool.Text ? Color.FromArgb("#FFFF7043") : Color.FromArgb("#FF2A2A2A");
+        if (ToolShapeButton != null)
+            ToolShapeButton.BackgroundColor = tool == AnalysisDrawingTool.Shape ? Color.FromArgb("#FFFF7043") : Color.FromArgb("#FF2A2A2A");
+    }
+
+    private void OnToggleInkOptionsTapped(object? sender, TappedEventArgs e)
+    {
+        if (!_isDrawingMode)
+            return;
+
+        if (InkOptionsPanel != null)
+            InkOptionsPanel.IsVisible = !InkOptionsPanel.IsVisible;
+    }
+
+    private void OnSelectInkOrangeTapped(object? sender, TappedEventArgs e)
+        => SetSelectedInkColor(Color.FromArgb("#FFFF7043"));
+
+    private void OnSelectInkWhiteTapped(object? sender, TappedEventArgs e)
+        => SetSelectedInkColor(Colors.White);
+
+    private void OnSelectInkBlueTapped(object? sender, TappedEventArgs e)
+        => SetSelectedInkColor(Color.FromArgb("#FF6DDDFF"));
+
+    private void OnSelectInkGreenTapped(object? sender, TappedEventArgs e)
+        => SetSelectedInkColor(Color.FromArgb("#FF66BB6A"));
+
+    private void SetSelectedInkColor(Color color)
+    {
+        if (AnalysisCanvas == null)
+            return;
+
+        AnalysisCanvas.InkColor = color;
+
+        if (InkColorSwatch != null)
+            InkColorSwatch.BackgroundColor = color;
+
+        // Resaltado mínimo del color activo
+        if (InkColorOrangeButton != null)
+            InkColorOrangeButton.BackgroundColor = color == Color.FromArgb("#FFFF7043") ? Color.FromArgb("#FFFF7043") : Color.FromArgb("#FF2A2A2A");
+        if (InkColorWhiteButton != null)
+            InkColorWhiteButton.BackgroundColor = color == Colors.White ? Color.FromArgb("#FFFF7043") : Color.FromArgb("#FF2A2A2A");
+        if (InkColorBlueButton != null)
+            InkColorBlueButton.BackgroundColor = color == Color.FromArgb("#FF6DDDFF") ? Color.FromArgb("#FFFF7043") : Color.FromArgb("#FF2A2A2A");
+        if (InkColorGreenButton != null)
+            InkColorGreenButton.BackgroundColor = color == Color.FromArgb("#FF66BB6A") ? Color.FromArgb("#FFFF7043") : Color.FromArgb("#FF2A2A2A");
+    }
+
+    private void OnSelectInkThickness2Tapped(object? sender, TappedEventArgs e)
+        => SetSelectedInkThickness(2f);
+
+    private void OnSelectInkThickness4Tapped(object? sender, TappedEventArgs e)
+        => SetSelectedInkThickness(4f);
+
+    private void OnSelectInkThickness6Tapped(object? sender, TappedEventArgs e)
+        => SetSelectedInkThickness(6f);
+
+    private void SetSelectedInkThickness(float thickness)
+    {
+        if (AnalysisCanvas == null)
+            return;
+
+        AnalysisCanvas.InkThickness = thickness;
+
+        if (InkThickness2Button != null)
+            InkThickness2Button.BackgroundColor = Math.Abs(thickness - 2f) < 0.01f ? Color.FromArgb("#FFFF7043") : Color.FromArgb("#FF2A2A2A");
+        if (InkThickness4Button != null)
+            InkThickness4Button.BackgroundColor = Math.Abs(thickness - 4f) < 0.01f ? Color.FromArgb("#FFFF7043") : Color.FromArgb("#FF2A2A2A");
+        if (InkThickness6Button != null)
+            InkThickness6Button.BackgroundColor = Math.Abs(thickness - 6f) < 0.01f ? Color.FromArgb("#FFFF7043") : Color.FromArgb("#FF2A2A2A");
+    }
+
+    private void SetSelectedShape(AnalysisShapeType shape)
+    {
+        if (AnalysisCanvas == null)
+            return;
+
+        AnalysisCanvas.ShapeType = shape;
+
+        if (ShapeRectButton != null)
+            ShapeRectButton.BackgroundColor = shape == AnalysisShapeType.Rectangle ? Color.FromArgb("#FFFF7043") : Color.FromArgb("#FF2A2A2A");
+        if (ShapeCircleButton != null)
+            ShapeCircleButton.BackgroundColor = shape == AnalysisShapeType.Circle ? Color.FromArgb("#FFFF7043") : Color.FromArgb("#FF2A2A2A");
+        if (ShapeLineButton != null)
+            ShapeLineButton.BackgroundColor = shape == AnalysisShapeType.Line ? Color.FromArgb("#FFFF7043") : Color.FromArgb("#FF2A2A2A");
+        if (ShapeArrowButton != null)
+            ShapeArrowButton.BackgroundColor = shape == AnalysisShapeType.Arrow ? Color.FromArgb("#FFFF7043") : Color.FromArgb("#FF2A2A2A");
+    }
+
+    private async void OnAnalysisCanvasTextRequested(object? sender, TextRequestedEventArgs e)
+    {
+        if (!_isDrawingMode || AnalysisCanvas == null)
+            return;
+
+        var text = await DisplayPromptAsync("Texto", "Introduce el texto", "OK", "Cancelar");
+        if (string.IsNullOrWhiteSpace(text))
+            return;
+
+        AnalysisCanvas.AddText(e.Position, text);
+    }
+
+    private void OnClearDrawingTapped(object? sender, TappedEventArgs e)
+    {
+        if (!_isDrawingMode)
+            return;
+
+        AnalysisCanvas?.ClearAll();
     }
 
     #region Eventos del reproductor
