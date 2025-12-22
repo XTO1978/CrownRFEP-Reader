@@ -65,6 +65,16 @@ public class DashboardViewModel : BaseViewModel
     private DateTime? _selectedFilterDateFrom;
     private DateTime? _selectedFilterDateTo;
 
+    // Edición en lote
+    private bool _showBatchEditPopup;
+    private ObservableCollection<Athlete> _batchEditAthletes = new();
+    private ObservableCollection<Tag> _batchEditTags = new();
+    private Athlete? _selectedBatchAthlete;
+    private int _batchEditSection;
+    private bool _batchEditSectionEnabled;
+    private bool _batchEditAthleteEnabled;
+    private readonly HashSet<int> _batchEditSelectedTagIds = new();
+
     private CancellationTokenSource? _selectedSessionVideosCts;
 
     private sealed record GalleryStatsSnapshot(
@@ -755,6 +765,55 @@ public class DashboardViewModel : BaseViewModel
     public ICommand ClearParallelAnalysisCommand { get; }
     public ICommand DropOnScreen1Command { get; }
     public ICommand DropOnScreen2Command { get; }
+    
+    // Comandos de edición en lote
+    public ICommand CloseBatchEditPopupCommand { get; }
+    public ICommand ApplyBatchEditCommand { get; }
+    public ICommand ToggleBatchTagCommand { get; }
+    public ICommand SelectBatchAthleteCommand { get; }
+
+    // Propiedades de edición en lote
+    public bool ShowBatchEditPopup
+    {
+        get => _showBatchEditPopup;
+        set => SetProperty(ref _showBatchEditPopup, value);
+    }
+
+    public ObservableCollection<Athlete> BatchEditAthletes
+    {
+        get => _batchEditAthletes;
+        set => SetProperty(ref _batchEditAthletes, value);
+    }
+
+    public ObservableCollection<Tag> BatchEditTags
+    {
+        get => _batchEditTags;
+        set => SetProperty(ref _batchEditTags, value);
+    }
+
+    public Athlete? SelectedBatchAthlete
+    {
+        get => _selectedBatchAthlete;
+        set => SetProperty(ref _selectedBatchAthlete, value);
+    }
+
+    public int BatchEditSection
+    {
+        get => _batchEditSection;
+        set => SetProperty(ref _batchEditSection, value);
+    }
+
+    public bool BatchEditSectionEnabled
+    {
+        get => _batchEditSectionEnabled;
+        set => SetProperty(ref _batchEditSectionEnabled, value);
+    }
+
+    public bool BatchEditAthleteEnabled
+    {
+        get => _batchEditAthleteEnabled;
+        set => SetProperty(ref _batchEditAthleteEnabled, value);
+    }
 
     public DashboardViewModel(
         DatabaseService databaseService,
@@ -814,6 +873,12 @@ public class DashboardViewModel : BaseViewModel
         ClearParallelAnalysisCommand = new RelayCommand(ClearParallelAnalysis);
         DropOnScreen1Command = new RelayCommand<VideoClip>(video => ParallelVideo1 = video);
         DropOnScreen2Command = new RelayCommand<VideoClip>(video => ParallelVideo2 = video);
+        
+        // Comandos de edición en lote
+        CloseBatchEditPopupCommand = new RelayCommand(() => ShowBatchEditPopup = false);
+        ApplyBatchEditCommand = new AsyncRelayCommand(ApplyBatchEditAsync);
+        ToggleBatchTagCommand = new RelayCommand<Tag>(ToggleBatchTag);
+        SelectBatchAthleteCommand = new RelayCommand<Athlete>(SelectBatchAthlete);
         
         // Notificar cambios en VideoCountDisplayText cuando cambie la colección
         SelectedSessionVideos.CollectionChanged += (s, e) => OnPropertyChanged(nameof(VideoCountDisplayText));
@@ -1055,8 +1120,139 @@ public class DashboardViewModel : BaseViewModel
 
     private async Task EditVideoDetailsAsync()
     {
-        // TODO: Implementar edición de detalles
-        await Task.CompletedTask;
+        // Verificar que hay videos seleccionados
+        if (_selectedVideoIds.Count == 0)
+        {
+            await Shell.Current.DisplayAlert("Editar", "No hay vídeos seleccionados.", "OK");
+            return;
+        }
+        
+        // Cargar atletas disponibles y resetear selección
+        var athletes = await _databaseService.GetAllAthletesAsync();
+        BatchEditAthletes.Clear();
+        foreach (var a in athletes.OrderBy(a => a.NombreCompleto))
+        {
+            a.IsSelected = false;
+            BatchEditAthletes.Add(a);
+        }
+        
+        // Cargar tags disponibles (no eventos) y resetear selección
+        var tags = await _databaseService.GetAllTagsAsync();
+        BatchEditTags.Clear();
+        foreach (var t in tags.OrderBy(t => t.NombreTag))
+        {
+            t.IsSelectedBool = false;
+            BatchEditTags.Add(t);
+        }
+        
+        // Resetear selecciones
+        SelectedBatchAthlete = null;
+        BatchEditSection = 1;
+        BatchEditSectionEnabled = false;
+        BatchEditAthleteEnabled = false;
+        _batchEditSelectedTagIds.Clear();
+        
+        // Mostrar popup
+        ShowBatchEditPopup = true;
+    }
+    private void ToggleBatchTag(Tag? tag)
+    {
+        if (tag == null) return;
+        
+        if (_batchEditSelectedTagIds.Contains(tag.Id))
+        {
+            _batchEditSelectedTagIds.Remove(tag.Id);
+            tag.IsSelectedBool = false;
+        }
+        else
+        {
+            _batchEditSelectedTagIds.Add(tag.Id);
+            tag.IsSelectedBool = true;
+        }
+    }
+
+    private void SelectBatchAthlete(Athlete? athlete)
+    {
+        if (athlete == null) return;
+        
+        // Deseleccionar el atleta anterior
+        if (SelectedBatchAthlete != null)
+            SelectedBatchAthlete.IsSelected = false;
+        
+        // Seleccionar el nuevo atleta
+        athlete.IsSelected = true;
+        SelectedBatchAthlete = athlete;
+        
+        // Habilitar automáticamente la opción de atleta
+        BatchEditAthleteEnabled = true;
+    }
+
+    public bool IsTagSelectedForBatchEdit(int tagId) => _batchEditSelectedTagIds.Contains(tagId);
+    private async Task ApplyBatchEditAsync()
+    {
+        var source = _filteredVideosCache ?? _allVideosCache ?? SelectedSessionVideos.ToList();
+        var selectedVideos = source.Where(v => _selectedVideoIds.Contains(v.Id)).ToList();
+        
+        if (selectedVideos.Count == 0)
+        {
+            ShowBatchEditPopup = false;
+            return;
+        }
+        
+        try
+        {
+            foreach (var video in selectedVideos)
+            {
+                bool updated = false;
+                
+                // Actualizar atleta si está habilitado
+                if (BatchEditAthleteEnabled && SelectedBatchAthlete != null)
+                {
+                    video.AtletaId = SelectedBatchAthlete.Id;
+                    video.Atleta = SelectedBatchAthlete;
+                    updated = true;
+                }
+                
+                // Actualizar sección si está habilitado
+                if (BatchEditSectionEnabled && BatchEditSection > 0)
+                {
+                    video.Section = BatchEditSection;
+                    updated = true;
+                }
+                
+                // Guardar cambios en el video
+                if (updated)
+                {
+                    await _databaseService.SaveVideoClipAsync(video);
+                }
+                
+                // Agregar tags seleccionados
+                foreach (var tagId in _batchEditSelectedTagIds)
+                {
+                    await _databaseService.AddTagToVideoAsync(video.Id, tagId, video.SessionId, video.AtletaId);
+                }
+            }
+            
+            // Cerrar popup
+            ShowBatchEditPopup = false;
+            
+            // Mostrar confirmación
+            var msg = $"Se actualizaron {selectedVideos.Count} vídeos.";
+            if (_batchEditSelectedTagIds.Count > 0)
+                msg += $"\nSe añadieron {_batchEditSelectedTagIds.Count} etiquetas.";
+            
+            await Shell.Current.DisplayAlert("Edición completada", msg, "OK");
+            
+            // Refrescar galería para mostrar cambios
+            if (SelectedSession != null)
+                await LoadSelectedSessionVideosAsync(SelectedSession);
+            else if (IsAllGallerySelected)
+                await LoadAllVideosAsync();
+        }
+        catch (Exception ex)
+        {
+            await Shell.Current.DisplayAlert("Error", $"No se pudo aplicar los cambios: {ex.Message}", "OK");
+        }
     }
 
     private async Task DeleteSelectedVideosAsync()
