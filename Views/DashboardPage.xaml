@@ -2149,6 +2149,97 @@
                     TextColor="White"
                     Values="{Binding TopLabelTagValues}" />
 
+                <!--  ===== TABLA DE TIEMPOS POR SECCIÓN =====  -->
+                <VerticalStackLayout IsVisible="{Binding ShowSectionTimesTable}" Spacing="8" Margin="0,16,0,0">
+                    <Label
+                        FontAttributes="Bold"
+                        FontSize="16"
+                        Text="⏱ Tiempos por Sección"
+                        TextColor="White" />
+                    
+                    <!--  Iteramos por cada sección  -->
+                    <VerticalStackLayout Spacing="12">
+                        <BindableLayout.ItemsSource>
+                            <Binding Path="SectionTimes" />
+                        </BindableLayout.ItemsSource>
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate x:DataType="services:SectionWithAthleteRows">
+                                <Border
+                                    Padding="8"
+                                    BackgroundColor="#FF1A1A1A"
+                                    StrokeShape="RoundRectangle 8"
+                                    StrokeThickness="0">
+                                    <VerticalStackLayout Spacing="6">
+                                        <!--  Nombre de la sección  -->
+                                        <Label
+                                            FontAttributes="Bold"
+                                            FontSize="14"
+                                            Text="{Binding SectionName}"
+                                            TextColor="#FF6DDDFF" />
+                                        
+                                        <!--  Cabecera de tabla  -->
+                                        <Grid ColumnDefinitions="2*,*,*,*" ColumnSpacing="4" Padding="4,2" BackgroundColor="#FF252525">
+                                            <Label Grid.Column="0" FontSize="11" FontAttributes="Bold" Text="ATLETA" TextColor="#FFB1B1B1" />
+                                            <Label Grid.Column="1" FontSize="11" FontAttributes="Bold" Text="TIEMPO" TextColor="#FFB1B1B1" HorizontalTextAlignment="End" />
+                                            <Label Grid.Column="2" FontSize="11" FontAttributes="Bold" Text="PENAL." TextColor="#FFB1B1B1" HorizontalTextAlignment="End" />
+                                            <Label Grid.Column="3" FontSize="11" FontAttributes="Bold" Text="TOTAL" TextColor="#FFB1B1B1" HorizontalTextAlignment="End" />
+                                        </Grid>
+                                        
+                                        <!--  Filas de atletas  -->
+                                        <VerticalStackLayout Spacing="2">
+                                            <BindableLayout.ItemsSource>
+                                                <Binding Path="Athletes" />
+                                            </BindableLayout.ItemsSource>
+                                            <BindableLayout.ItemTemplate>
+                                                <DataTemplate x:DataType="services:AthleteSectionTimeRow">
+                                                    <Grid ColumnDefinitions="2*,*,*,*" ColumnSpacing="4" Padding="4,3">
+                                                        <!--  Nombre del atleta  -->
+                                                        <Label
+                                                            Grid.Column="0"
+                                                            FontSize="12"
+                                                            Text="{Binding AthleteName}"
+                                                            TextColor="White"
+                                                            LineBreakMode="TailTruncation"
+                                                            VerticalOptions="Center" />
+                                                        
+                                                        <!--  Tiempo (split)  -->
+                                                        <Label
+                                                            Grid.Column="1"
+                                                            FontSize="12"
+                                                            Text="{Binding DurationFormatted}"
+                                                            TextColor="#FF4CAF50"
+                                                            HorizontalTextAlignment="End"
+                                                            VerticalOptions="Center" />
+                                                        
+                                                        <!--  Penalizaciones  -->
+                                                        <Label
+                                                            Grid.Column="2"
+                                                            FontSize="12"
+                                                            Text="{Binding PenaltyFormatted}"
+                                                            TextColor="#FFFF6B6B"
+                                                            HorizontalTextAlignment="End"
+                                                            VerticalOptions="Center" />
+                                                        
+                                                        <!--  Tiempo total  -->
+                                                        <Label
+                                                            Grid.Column="3"
+                                                            FontSize="12"
+                                                            FontAttributes="Bold"
+                                                            Text="{Binding TotalFormatted}"
+                                                            TextColor="#FFFFD700"
+                                                            HorizontalTextAlignment="End"
+                                                            VerticalOptions="Center" />
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </BindableLayout.ItemTemplate>
+                                        </VerticalStackLayout>
+                                    </VerticalStackLayout>
+                                </Border>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
+                </VerticalStackLayout>
+
                 </VerticalStackLayout>
 
                 <!--  ===== VISTA RELATIVAS (USUARIO) =====  -->

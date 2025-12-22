@@ -121,6 +121,106 @@ public class StatisticsService
     }
 
     /// <summary>
+    /// Obtiene la tabla de tiempos por atleta y sección para una sesión específica
+    /// Incluye split times y penalizaciones (eventos 2 y 50)
+    /// </summary>
+    public async Task<List<SectionWithAthleteRows>> GetAthleteSectionTimesAsync(int sessionId)
+    {
+        var videos = await _databaseService.GetVideoClipsBySessionAsync(sessionId);
+        var allInputs = await _databaseService.GetInputsBySessionAsync(sessionId);
+        
+        if (videos.Count == 0)
+            return new List<SectionWithAthleteRows>();
+
+        // Crear diccionario de videos por Id
+        var videoDict = videos.ToDictionary(v => v.Id, v => v);
+        
+        // Obtener split times (InputTypeId = -1)
+        var splitInputs = allInputs.Where(i => i.InputTypeId == -1).ToList();
+        
+        // Obtener tags de sistema con penalizaciones
+        var systemEventTags = await _databaseService.GetSystemEventTagsAsync();
+        var penaltyTagIds = systemEventTags
+            .Where(t => t.PenaltySeconds > 0)
+            .ToDictionary(t => t.Id, t => t.PenaltySeconds * 1000L); // Convertir a ms
+        
+        // Obtener eventos que son penalizaciones (IsEvent=1 y InputTypeId está en penaltyTagIds)
+        var penaltyInputs = allInputs
+            .Where(i => i.IsEvent == 1 && penaltyTagIds.ContainsKey(i.InputTypeId))
+            .GroupBy(i => i.VideoId)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        // Crear filas de tiempos por video
+        var rows = new List<AthleteSectionTimeRow>();
+        
+        foreach (var splitInput in splitInputs)
+        {
+            if (!videoDict.TryGetValue(splitInput.VideoId, out var video))
+                continue;
+
+            long durationMs = 0;
+            if (!string.IsNullOrEmpty(splitInput.InputValue))
+            {
+                try
+                {
+                    var splitData = System.Text.Json.JsonSerializer.Deserialize<SplitTimeData>(splitInput.InputValue);
+                    if (splitData != null)
+                        durationMs = splitData.DurationMs;
+                }
+                catch { /* JSON inválido */ }
+            }
+
+            if (durationMs <= 0) continue;
+
+            // Calcular penalizaciones para este video usando los tags de sistema
+            long penaltyMs = 0;
+            if (penaltyInputs.TryGetValue(video.Id, out var penalties))
+            {
+                foreach (var penalty in penalties)
+                {
+                    if (penaltyTagIds.TryGetValue(penalty.InputTypeId, out var penaltyValue))
+                    {
+                        penaltyMs += penaltyValue;
+                    }
+                }
+            }
+
+            var athlete = video.Atleta;
+            var athleteName = athlete != null 
+                ? $"{athlete.Apellido?.ToUpperInvariant() ?? ""} {athlete.Nombre ?? ""}".Trim()
+                : $"Atleta {video.AtletaId}";
+
+            rows.Add(new AthleteSectionTimeRow
+            {
+                AthleteId = video.AtletaId,
+                AthleteName = athleteName,
+                Section = video.Section,
+                SectionName = GetSectionName(video.Section),
+                VideoId = video.Id,
+                VideoName = video.ComparisonName ?? video.ClipPath ?? "",
+                DurationMs = durationMs,
+                PenaltyMs = penaltyMs
+            });
+        }
+
+        // Agrupar por sección y luego por atleta
+        var result = rows
+            .GroupBy(r => r.Section)
+            .OrderBy(g => g.Key)
+            .Select(sectionGroup => new SectionWithAthleteRows
+            {
+                Section = sectionGroup.Key,
+                SectionName = GetSectionName(sectionGroup.Key),
+                Athletes = sectionGroup
+                    .OrderBy(r => r.TotalMs)
+                    .ToList()
+            })
+            .ToList();
+
+        return result;
+    }
+
+    /// <summary>
     /// Obtiene estadísticas absolutas de tags y etiquetas
     /// </summary>
     public async Task<AbsoluteTagStats> GetAbsoluteTagStatsAsync(int? sessionId = null)
@@ -142,26 +242,31 @@ public class StatisticsService
             sessionCount = await _databaseService.GetTotalSessionsCountAsync();
         }
 
+        // Cargar etiquetas (tags) para IsEvent=0
         var tags = await _databaseService.GetAllTagsAsync();
         var tagById = tags.ToDictionary(t => t.Id, t => t.NombreTag ?? $"Tag {t.Id}");
+
+        // Cargar eventos (event_tags) para IsEvent=1
+        var eventTags = await _databaseService.GetAllEventTagsAsync();
+        var eventTagById = eventTags.ToDictionary(t => t.Id, t => t.Nombre ?? $"Evento {t.Id}");
 
         // Separar eventos y etiquetas
         var eventInputs = inputs.Where(i => i.IsEvent == 1).ToList();
         var labelInputs = inputs.Where(i => i.IsEvent == 0).ToList();
 
-        // Estadísticas de eventos
+        // Estadísticas de eventos (usar eventTagById)
         var eventStats = eventInputs
             .GroupBy(i => i.InputTypeId)
             .Select(g => new TagUsageRow
             {
                 TagId = g.Key,
-                TagName = tagById.GetValueOrDefault(g.Key, $"Tag {g.Key}"),
+                TagName = eventTagById.GetValueOrDefault(g.Key, $"Evento {g.Key}"),
                 UsageCount = g.Count()
             })
             .OrderByDescending(t => t.UsageCount)
             .ToList();
 
-        // Estadísticas de etiquetas
+        // Estadísticas de etiquetas (usar tagById)
         var labelStats = labelInputs
             .GroupBy(i => i.InputTypeId)
             .Select(g => new TagUsageRow
@@ -505,4 +610,51 @@ public class AbsoluteTagStats
     public double AvgTagsPerSession { get; set; }
     public List<TagUsageRow> TopEventTags { get; set; } = new();
     public List<TagUsageRow> TopLabelTags { get; set; } = new();
+}
+
+/// <summary>
+/// Sección con filas de tiempos de atletas
+/// </summary>
+public class SectionWithAthleteRows
+{
+    public int Section { get; set; }
+    public string SectionName { get; set; } = "";
+    public List<AthleteSectionTimeRow> Athletes { get; set; } = new();
+}
+
+/// <summary>
+/// Fila para tabla de tiempos por atleta y sección
+/// </summary>
+public class AthleteSectionTimeRow
+{
+    public int AthleteId { get; set; }
+    public string AthleteName { get; set; } = "";
+    public int Section { get; set; }
+    public string SectionName { get; set; } = "";
+    public int VideoId { get; set; }
+    public string VideoName { get; set; } = "";
+    
+    /// <summary>Duración del split en milisegundos</summary>
+    public long DurationMs { get; set; }
+    
+    /// <summary>Penalización en milisegundos</summary>
+    public long PenaltyMs { get; set; }
+    
+    /// <summary>Tiempo total (duración + penalización) en milisegundos</summary>
+    public long TotalMs => DurationMs + PenaltyMs;
+
+    /// <summary>Duración formateada como mm:ss.fff</summary>
+    public string DurationFormatted => FormatTime(DurationMs);
+    
+    /// <summary>Penalización formateada</summary>
+    public string PenaltyFormatted => PenaltyMs > 0 ? $"+{FormatTime(PenaltyMs)}" : "-";
+    
+    /// <summary>Total formateado</summary>
+    public string TotalFormatted => FormatTime(TotalMs);
+
+    private static string FormatTime(long ms)
+    {
+        var ts = TimeSpan.FromMilliseconds(ms);
+        return $"{(int)ts.TotalMinutes}:{ts.Seconds:D2}.{ts.Milliseconds:D3}";
+    }
 }

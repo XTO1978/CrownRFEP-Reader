@@ -126,10 +126,50 @@ public class DatabaseService
         // Migraciones ligeras: columna IsEvent en input para distinguir eventos de asignaciones
         await EnsureColumnExistsAsync(_database, "input", "IsEvent", "INTEGER DEFAULT 0");
 
+        // Migraciones ligeras: columnas nuevas en event_tags para tags de sistema
+        await EnsureColumnExistsAsync(_database, "event_tags", "is_system", "INTEGER DEFAULT 0");
+        await EnsureColumnExistsAsync(_database, "event_tags", "penalty_seconds", "INTEGER DEFAULT 0");
+
         // Migración: separar tipos de evento en event_tags (si venían guardados como Tag)
         await MigrateEventTagsAsync(_database);
+
+        // Asegurar que existen los tags de sistema (penalizaciones)
+        await EnsureSystemEventTagsAsync(_database);
         
         LogSuccess("Tablas inicializadas correctamente");
+    }
+
+    /// <summary>
+    /// Crea los tags de evento de sistema para penalizaciones si no existen
+    /// </summary>
+    private static async Task EnsureSystemEventTagsAsync(SQLiteAsyncConnection db)
+    {
+        var systemTags = new[]
+        {
+            new { Name = "+2", PenaltySeconds = 2 },
+            new { Name = "+50", PenaltySeconds = 50 }
+        };
+
+        foreach (var tagDef in systemTags)
+        {
+            // Buscar por nombre o por penalty_seconds
+            var existing = await db.Table<EventTagDefinition>()
+                .Where(t => t.PenaltySeconds == tagDef.PenaltySeconds && t.IsSystem)
+                .FirstOrDefaultAsync();
+
+            if (existing == null)
+            {
+                // No existe, crearlo
+                var newTag = new EventTagDefinition
+                {
+                    Nombre = tagDef.Name,
+                    IsSystem = true,
+                    PenaltySeconds = tagDef.PenaltySeconds
+                };
+                await db.InsertAsync(newTag);
+                System.Diagnostics.Debug.WriteLine($"[DatabaseService] Creado tag de sistema: {tagDef.Name} (Id={newTag.Id})");
+            }
+        }
     }
 
     private static async Task MigrateEventTagsAsync(SQLiteAsyncConnection db)
@@ -945,15 +985,38 @@ public class DatabaseService
         return eventTag.Id;
     }
 
-    public async Task DeleteEventTagAsync(int eventTagId)
+    public async Task<bool> DeleteEventTagAsync(int eventTagId)
     {
         var db = await GetConnectionAsync();
+
+        // Verificar si es un tag de sistema - no se puede borrar
+        var eventTag = await db.Table<EventTagDefinition>()
+            .Where(t => t.Id == eventTagId)
+            .FirstOrDefaultAsync();
+        
+        if (eventTag?.IsSystem == true)
+        {
+            System.Diagnostics.Debug.WriteLine($"[DatabaseService] No se puede borrar tag de sistema: {eventTag.Nombre}");
+            return false;
+        }
 
         // Borrar ocurrencias SOLO de eventos
         await db.ExecuteAsync("DELETE FROM \"input\" WHERE IsEvent = 1 AND InputTypeID = ?", eventTagId);
 
         // Borrar del catálogo de eventos
         await db.ExecuteAsync("DELETE FROM \"event_tags\" WHERE id = ?", eventTagId);
+        return true;
+    }
+
+    /// <summary>
+    /// Obtiene los tags de evento de sistema (penalizaciones)
+    /// </summary>
+    public async Task<List<EventTagDefinition>> GetSystemEventTagsAsync()
+    {
+        var db = await GetConnectionAsync();
+        return await db.Table<EventTagDefinition>()
+            .Where(t => t.IsSystem)
+            .ToListAsync();
     }
 
     /// <summary>
@@ -1324,5 +1387,16 @@ public class DatabaseService
     {
         var db = await GetConnectionAsync();
         await db.ExecuteAsync("DELETE FROM \"input\" WHERE VideoID = ? AND InputTypeID = ?", videoId, SplitTimeInputTypeId);
+    }
+
+    /// <summary>
+    /// Obtiene todos los split times para una sesión
+    /// </summary>
+    public async Task<List<Input>> GetSplitTimesForSessionAsync(int sessionId)
+    {
+        var db = await GetConnectionAsync();
+        return await db.Table<Input>()
+            .Where(i => i.SessionId == sessionId && i.InputTypeId == SplitTimeInputTypeId)
+            .ToListAsync();
     }
 }

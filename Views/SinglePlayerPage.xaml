@@ -1493,16 +1493,18 @@
                                                         </Border.GestureRecognizers>
                                                         <HorizontalStackLayout Spacing="4">
                                                             <Label
-                                                                Text="{Binding Nombre}"
+                                                                Text="{Binding DisplayName}"
                                                                 FontSize="12"
                                                                 TextColor="White"
                                                                 VerticalOptions="Center" />
+                                                            <!--  Botón borrar solo para tags no de sistema  -->
                                                             <Border
                                                                 Padding="4"
                                                                 BackgroundColor="#33000000"
                                                                 StrokeShape="RoundRectangle 10"
                                                                 StrokeThickness="0"
-                                                                VerticalOptions="Center">
+                                                                VerticalOptions="Center"
+                                                                IsVisible="{Binding IsSystem, Converter={StaticResource InvertedBoolConverter}}">
                                                                 <Border.GestureRecognizers>
                                                                     <TapGestureRecognizer 
                                                                         Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.DeleteEventTagFromListCommand}"

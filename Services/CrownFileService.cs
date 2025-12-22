@@ -139,10 +139,15 @@ public class CrownFileService
 
             ReportProgress(progress, "Guardando etiquetas...", 35);
 
-            // Mapeo: JSON InputTypeId → Local TagId
-            var inputTypeIdToTagIdMap = new Dictionary<int, int>(); // jsonInputTypeId → localTagId
+            // Mapeo: JSON InputTypeId → Local EventTagId (para eventos)
+            var inputTypeIdToEventTagIdMap = new Dictionary<int, int>(); // jsonInputTypeId → localEventTagId
             
-            // Extraer tipos de input únicos de los Inputs y guardarlos como Tags
+            // Obtener los tags de sistema de penalización
+            var systemPenaltyTags = await _databaseService.GetSystemEventTagsAsync();
+            var penalty2Tag = systemPenaltyTags.FirstOrDefault(t => t.PenaltySeconds == 2);
+            var penalty50Tag = systemPenaltyTags.FirstOrDefault(t => t.PenaltySeconds == 50);
+            
+            // Extraer tipos de input únicos de los Inputs y guardarlos como EventTags
             if (crownData.Inputs != null)
             {
                 var uniqueInputTypes = crownData.Inputs
@@ -153,27 +158,49 @@ public class CrownFileService
                 
                 foreach (var inputType in uniqueInputTypes)
                 {
-                    // Buscar si ya existe un tag con el mismo nombre
-                    var existingTag = await _databaseService.FindTagByNameAsync(inputType.TipoInput!);
+                    var tipoInput = inputType.TipoInput?.Trim() ?? "";
                     
-                    int localTagId;
-                    if (existingTag != null)
+                    // Detectar si es una penalización por nombre o ID
+                    bool isPenalty2 = tipoInput == "2" || tipoInput == "+2" || inputType.Id == 2;
+                    bool isPenalty50 = tipoInput == "50" || tipoInput == "+50" || inputType.Id == 50;
+                    
+                    int localEventTagId;
+                    
+                    if (isPenalty2 && penalty2Tag != null)
                     {
-                        // Tag ya existe: usar su ID local
-                        localTagId = existingTag.Id;
+                        // Es penalización de 2s: usar el tag de sistema
+                        localEventTagId = penalty2Tag.Id;
+                    }
+                    else if (isPenalty50 && penalty50Tag != null)
+                    {
+                        // Es penalización de 50s: usar el tag de sistema
+                        localEventTagId = penalty50Tag.Id;
                     }
                     else
                     {
-                        // Tag nuevo: insertar y obtener ID autogenerado
-                        var newTag = new Tag
+                        // No es penalización: buscar o crear EventTag
+                        var existingEventTag = await _databaseService.FindEventTagByNameAsync(tipoInput);
+                        
+                        if (existingEventTag != null)
                         {
-                            NombreTag = inputType.TipoInput
-                        };
-                        localTagId = await _databaseService.InsertTagAsync(newTag);
-                        result.TagsImported++;
+                            // EventTag ya existe: usar su ID local
+                            localEventTagId = existingEventTag.Id;
+                        }
+                        else
+                        {
+                            // EventTag nuevo: insertar y obtener ID autogenerado
+                            var newEventTag = new EventTagDefinition
+                            {
+                                Nombre = tipoInput,
+                                IsSystem = false,
+                                PenaltySeconds = 0
+                            };
+                            localEventTagId = await _databaseService.InsertEventTagAsync(newEventTag);
+                            result.TagsImported++;
+                        }
                     }
                     
-                    inputTypeIdToTagIdMap[inputType.Id] = localTagId;
+                    inputTypeIdToEventTagIdMap[inputType.Id] = localEventTagId;
                 }
             }
 
@@ -289,8 +316,8 @@ public class CrownFileService
                 {
                     var localInputAthleteId = athleteIdMap.TryGetValue(inputJson.AthleteId, out var mappedInputId) ? mappedInputId : 0;
                     
-                    // Mapear el InputTypeId del JSON al TagId local
-                    var localTagId = inputTypeIdToTagIdMap.TryGetValue(inputJson.InputTypeId, out var mappedTagId) ? mappedTagId : inputJson.InputTypeId;
+                    // Mapear el InputTypeId del JSON al EventTagId local
+                    var localEventTagId = inputTypeIdToEventTagIdMap.TryGetValue(inputJson.InputTypeId, out var mappedEventTagId) ? mappedEventTagId : inputJson.InputTypeId;
                     
                     // Mapear el VideoId del JSON al VideoId local
                     var localVideoId = videoIdMap.TryGetValue(inputJson.VideoId, out var mappedVideoId) ? mappedVideoId : 0;
@@ -308,7 +335,7 @@ public class CrownFileService
                         VideoId = localVideoId,  // Usar el ID de video local mapeado
                         AthleteId = localInputAthleteId,
                         CategoriaId = inputJson.CategoriaId,
-                        InputTypeId = localTagId,  // Usar el ID de tag local mapeado
+                        InputTypeId = localEventTagId,  // Usar el ID de EventTag local mapeado
                         InputDateTime = inputJson.InputDateTime,
                         InputValue = inputJson.InputValue,
                         TimeStamp = inputJson.TimeStamp,  // Mantener el timestamp original

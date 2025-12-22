@@ -22,6 +22,19 @@ public class EventTagDefinition : INotifyPropertyChanged
     [Column("nombre")]
     public string? Nombre { get; set; }
 
+    /// <summary>
+    /// Indica si es un tag de sistema (penalizaciones, etc.) que no puede ser borrado.
+    /// </summary>
+    [Column("is_system")]
+    public bool IsSystem { get; set; }
+
+    /// <summary>
+    /// Valor en segundos de la penalización (solo para tags de sistema de penalización).
+    /// 0 = no es penalización.
+    /// </summary>
+    [Column("penalty_seconds")]
+    public int PenaltySeconds { get; set; }
+
     [Ignore]
     public bool IsSelected
     {
@@ -35,6 +48,14 @@ public class EventTagDefinition : INotifyPropertyChanged
             }
         }
     }
+
+    /// <summary>
+    /// Nombre para mostrar (incluye indicador de penalización si aplica)
+    /// </summary>
+    [Ignore]
+    public string DisplayName => IsSystem && PenaltySeconds > 0 
+        ? $"⚠️ {Nombre}" 
+        : Nombre ?? "";
 
     protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
     {

@@ -214,9 +214,11 @@ public class DashboardViewModel : BaseViewModel
                 if (value)
                 {
                     IsVideoLessonsSelected = false;
+                    ClearSectionTimes();
                 }
                 OnPropertyChanged(nameof(SelectedSessionTitle));
                 OnPropertyChanged(nameof(VideoCountDisplayText));
+                OnPropertyChanged(nameof(ShowSectionTimesTable));
             }
         }
     }
@@ -231,10 +233,12 @@ public class DashboardViewModel : BaseViewModel
                 if (value)
                 {
                     IsAllGallerySelected = false;
+                    ClearSectionTimes();
                 }
                 UpdateRightPanelLayout();
                 OnPropertyChanged(nameof(SelectedSessionTitle));
                 OnPropertyChanged(nameof(VideoCountDisplayText));
+                OnPropertyChanged(nameof(ShowSectionTimesTable));
             }
         }
     }
@@ -775,6 +779,22 @@ public class DashboardViewModel : BaseViewModel
     /// <summary>Nombres para gráfico circular de etiquetas</summary>
     public ObservableCollection<string> TopLabelTagNames { get; } = new();
 
+    // ==================== TABLA DE TIEMPOS POR SECCIÓN ====================
+    
+    /// <summary>Secciones con tiempos de atletas</summary>
+    public ObservableCollection<SectionWithAthleteRows> SectionTimes { get; } = new();
+    
+    private bool _hasSectionTimes;
+    /// <summary>Indica si hay tiempos por sección para mostrar</summary>
+    public bool HasSectionTimes
+    {
+        get => _hasSectionTimes;
+        set => SetProperty(ref _hasSectionTimes, value);
+    }
+
+    /// <summary>Indica si se debe mostrar la tabla de tiempos (solo para sesiones específicas, no Galería General ni Videolecciones)</summary>
+    public bool ShowSectionTimesTable => !IsAllGallerySelected && !IsVideoLessonsSelected && SelectedSession != null && HasSectionTimes;
+
     // ==================== ESTADÍSTICAS RELATIVAS (USUARIO) ====================
     private bool _isAbsoluteStatsMode = true;
     private UserAthleteStats? _userAthleteStats;
@@ -923,6 +943,36 @@ public class DashboardViewModel : BaseViewModel
         {
             System.Diagnostics.Debug.WriteLine($"Error cargando estadísticas absolutas: {ex.Message}");
         }
+    }
+
+    private async Task LoadAthleteSectionTimesAsync(int sessionId)
+    {
+        try
+        {
+            var sections = await _statisticsService.GetAthleteSectionTimesAsync(sessionId);
+
+            SectionTimes.Clear();
+            foreach (var section in sections)
+            {
+                SectionTimes.Add(section);
+            }
+
+            HasSectionTimes = SectionTimes.Count > 0;
+            OnPropertyChanged(nameof(ShowSectionTimesTable));
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error cargando tiempos por sección: {ex.Message}");
+            HasSectionTimes = false;
+            OnPropertyChanged(nameof(ShowSectionTimesTable));
+        }
+    }
+
+    private void ClearSectionTimes()
+    {
+        SectionTimes.Clear();
+        HasSectionTimes = false;
+        OnPropertyChanged(nameof(ShowSectionTimesTable));
     }
 
     // ==================== FIN ESTADÍSTICAS RELATIVAS ====================
@@ -2356,6 +2406,9 @@ public class DashboardViewModel : BaseViewModel
 
             // Cargar estadísticas absolutas de tags
             await LoadAbsoluteTagStatsAsync(session.Id);
+            
+            // Cargar tiempos por sección (Split Times)
+            await LoadAthleteSectionTimesAsync(session.Id);
 
             // Valoraciones (tabla valoracion)
             var valoraciones = await _databaseService.GetValoracionesBySessionAsync(session.Id);

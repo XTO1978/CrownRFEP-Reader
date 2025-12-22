@@ -1504,8 +1504,14 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             SelectedEventTagToAdd = null;
 
             // Limpiar y volver a llenar la colección existente
+            // Ordenar: primero los de sistema (penalizaciones), luego el resto alfabéticamente
             AllEventTags.Clear();
-            foreach (var evt in eventTags.Where(t => !string.IsNullOrEmpty(t.Nombre)).OrderBy(t => t.Nombre))
+            var orderedTags = eventTags
+                .Where(t => !string.IsNullOrEmpty(t.Nombre))
+                .OrderByDescending(t => t.IsSystem)
+                .ThenBy(t => t.Nombre);
+            
+            foreach (var evt in orderedTags)
             {
                 evt.IsSelected = false;
                 AllEventTags.Add(evt);
@@ -1846,15 +1852,29 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     /// <summary>
     /// Elimina un tipo de evento del catálogo AllEventTags (lo borra de event_tags y sus ocurrencias IsEvent=1)
+    /// No se pueden borrar tags de sistema (penalizaciones)
     /// </summary>
     private async Task DeleteEventTagFromListAsync(EventTagDefinition? eventTag)
     {
         if (eventTag == null)
             return;
 
+        // No permitir borrar tags de sistema
+        if (eventTag.IsSystem)
+        {
+            System.Diagnostics.Debug.WriteLine($"No se puede borrar tag de sistema: {eventTag.Nombre}");
+            return;
+        }
+
         try
         {
-            await _databaseService.DeleteEventTagAsync(eventTag.Id);
+            var deleted = await _databaseService.DeleteEventTagAsync(eventTag.Id);
+            
+            if (!deleted)
+            {
+                System.Diagnostics.Debug.WriteLine($"No se pudo borrar el tag: {eventTag.Nombre}");
+                return;
+            }
 
             // Recargar catálogo de eventos
             var allEventTags = await _databaseService.GetAllEventTagsAsync();
@@ -2005,16 +2025,6 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     }
 
     #endregion
-}
-
-/// <summary>
-/// Datos del split time serializados en JSON
-/// </summary>
-public class SplitTimeData
-{
-    public long StartMs { get; set; }
-    public long EndMs { get; set; }
-    public long DurationMs { get; set; }
 }
 
 /// <summary>
