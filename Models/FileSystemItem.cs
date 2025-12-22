@@ -14,6 +14,7 @@ public class FileSystemItem : INotifyPropertyChanged
     private bool _isLoading;
     private bool _childrenLoaded;
     private bool _isChecked;
+    private bool _isAddedToSession;
 
     public string Name { get; set; } = string.Empty;
     public string FullPath { get; set; } = string.Empty;
@@ -108,6 +109,22 @@ public class FileSystemItem : INotifyPropertyChanged
             if (_isChecked != value)
             {
                 _isChecked = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Indica si el archivo ya ha sido añadido a la lista de videos pendientes para la sesión
+    /// </summary>
+    public bool IsAddedToSession
+    {
+        get => _isAddedToSession;
+        set
+        {
+            if (_isAddedToSession != value)
+            {
+                _isAddedToSession = value;
                 OnPropertyChanged();
             }
         }

@@ -232,7 +232,7 @@
                                     <Border
                                         Margin="0"
                                         Padding="6,2"
-                                        BackgroundColor="Transparent"
+                                        BackgroundColor="{Binding IsAddedToSession, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#2066BB6A|Transparent}"
                                         StrokeShape="RoundRectangle 4"
                                         StrokeThickness="0">
                                         <Border.GestureRecognizers>
@@ -245,7 +245,7 @@
                                                 Grid.Column="0"
                                                 HeightRequest="24"
                                                 SymbolName="{Binding Icon}"
-                                                TintColor="#FFD9D9D9"
+                                                TintColor="{Binding IsAddedToSession, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF66BB6A|#FFD9D9D9}"
                                                 WidthRequest="24" />
 
                                             <Label
@@ -253,14 +253,16 @@
                                                 FontSize="14"
                                                 LineBreakMode="TailTruncation"
                                                 Text="{Binding Name}"
-                                                TextColor="White"
+                                                TextColor="{Binding IsAddedToSession, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF66BB6A|#FFFFFFFF}"
                                                 VerticalOptions="Center" />
 
+                                            <!--  Botón añadir (visible cuando NO está añadido)  -->
                                             <Border
                                                 Grid.Column="2"
                                                 Padding="2,2"
                                                 BackgroundColor="#FF464646"
                                                 HeightRequest="40"
+                                                IsVisible="{Binding IsAddedToSession, Converter={StaticResource InvertedBoolConverter}}"
                                                 StrokeShape="RoundRectangle 4"
                                                 StrokeThickness="0"
                                                 WidthRequest="56">
@@ -274,6 +276,25 @@
                                                     HorizontalOptions="Center"
                                                     SymbolName="plus.circle"
                                                     TintColor="#FFD1D1D1"
+                                                    VerticalOptions="Center"
+                                                    WidthRequest="18" />
+                                            </Border>
+
+                                            <!--  Indicador añadido (visible cuando SÍ está añadido)  -->
+                                            <Border
+                                                Grid.Column="2"
+                                                Padding="2,2"
+                                                BackgroundColor="#FF2A5A2A"
+                                                HeightRequest="40"
+                                                IsVisible="{Binding IsAddedToSession}"
+                                                StrokeShape="RoundRectangle 4"
+                                                StrokeThickness="0"
+                                                WidthRequest="56">
+                                                <controls:SymbolIcon
+                                                    HeightRequest="18"
+                                                    HorizontalOptions="Center"
+                                                    SymbolName="checkmark.circle.fill"
+                                                    TintColor="#FF66BB6A"
                                                     VerticalOptions="Center"
                                                     WidthRequest="18" />
                                             </Border>

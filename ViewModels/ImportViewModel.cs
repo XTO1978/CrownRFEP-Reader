@@ -596,15 +596,22 @@ public class ImportViewModel : BaseViewModel
                         return;
                     }
 
+                    // Crear un HashSet de rutas de videos pendientes para búsqueda rápida
+                    var pendingPaths = new HashSet<string>(
+                        PendingVideos.Select(v => v.FullPath),
+                        StringComparer.OrdinalIgnoreCase);
+
                     foreach (var file in files)
                     {
-                        FolderFiles.Add(new FileSystemItem
+                        var fileItem = new FileSystemItem
                         {
                             Name = file.Name,
                             FullPath = file.FullName,
                             IsDirectory = false,
-                            Level = 0
-                        });
+                            Level = 0,
+                            IsAddedToSession = pendingPaths.Contains(file.FullName)
+                        };
+                        FolderFiles.Add(fileItem);
                     }
                     OnPropertyChanged(nameof(FolderFilesInfo));
                 });
@@ -804,6 +811,7 @@ public class ImportViewModel : BaseViewModel
 
         PendingVideos.Add(pendingVideo);
         UpdatePendingVideosState();
+        UpdateFolderFileAddedState(filePath, true);
     }
 
     /// <summary>
@@ -813,6 +821,7 @@ public class ImportViewModel : BaseViewModel
     {
         PendingVideos.Remove(video);
         UpdatePendingVideosState();
+        UpdateFolderFileAddedState(video.FullPath, false);
     }
 
     /// <summary>
@@ -820,8 +829,28 @@ public class ImportViewModel : BaseViewModel
     /// </summary>
     private void ClearAllVideos()
     {
+        // Desmarcar todos los archivos en FolderFiles
+        foreach (var file in FolderFiles)
+        {
+            file.IsAddedToSession = false;
+        }
+        
         PendingVideos.Clear();
         UpdatePendingVideosState();
+    }
+
+    /// <summary>
+    /// Actualiza el estado IsAddedToSession de un archivo en FolderFiles
+    /// </summary>
+    private void UpdateFolderFileAddedState(string filePath, bool isAdded)
+    {
+        var folderFile = FolderFiles.FirstOrDefault(f => 
+            f.FullPath.Equals(filePath, StringComparison.OrdinalIgnoreCase));
+        
+        if (folderFile != null)
+        {
+            folderFile.IsAddedToSession = isAdded;
+        }
     }
 
     /// <summary>
@@ -841,6 +870,9 @@ public class ImportViewModel : BaseViewModel
     private async Task CreateCustomSessionAsync()
     {
         if (!CanCreateCustomSession) return;
+
+        var successCount = 0;
+        var failedVideos = new List<string>();
 
         try
         {
@@ -898,17 +930,65 @@ public class ImportViewModel : BaseViewModel
                 var standardVideoName = $"CROWN{currentVideo}{videoExtension}";
                 var localVideoPath = Path.Combine(videosDir, standardVideoName);
 
-                // Copiar el video a la carpeta de la sesión
-                try
+                // Verificar que el archivo origen existe y tiene tamaño válido
+                var sourceInfo = new FileInfo(pendingVideo.FullPath);
+                if (!sourceInfo.Exists || sourceInfo.Length == 0)
                 {
-                    await Task.Run(() => File.Copy(pendingVideo.FullPath, localVideoPath, overwrite: true));
-                    System.Diagnostics.Debug.WriteLine($"Video copied: {pendingVideo.FullPath} -> {localVideoPath}");
+                    System.Diagnostics.Debug.WriteLine($"Source file missing or empty: {pendingVideo.FullPath}");
+                    failedVideos.Add($"{pendingVideo.FileName} (archivo origen no encontrado o vacío)");
+                    continue;
                 }
-                catch (Exception ex)
+
+                var expectedSize = sourceInfo.Length;
+                var copySuccess = false;
+
+                // Copiar el video a la carpeta de la sesión con reintentos
+                for (int attempt = 1; attempt <= 3 && !copySuccess; attempt++)
                 {
-                    System.Diagnostics.Debug.WriteLine($"Error copying video: {ex.Message}");
-                    // Si falla la copia, usar el path original
-                    localVideoPath = pendingVideo.FullPath;
+                    try
+                    {
+                        ImportProgressText = $"Copiando video {currentVideo}/{totalVideos}: {pendingVideo.FileName}" + 
+                            (attempt > 1 ? $" (intento {attempt})" : "");
+
+                        // Eliminar archivo parcial si existe
+                        if (File.Exists(localVideoPath))
+                            File.Delete(localVideoPath);
+
+                        // Copiar con buffer grande para mejor rendimiento
+                        await Task.Run(() =>
+                        {
+                            using var sourceStream = new FileStream(pendingVideo.FullPath, FileMode.Open, FileAccess.Read, FileShare.Read, 1024 * 1024);
+                            using var destStream = new FileStream(localVideoPath, FileMode.Create, FileAccess.Write, FileShare.None, 1024 * 1024);
+                            sourceStream.CopyTo(destStream);
+                            destStream.Flush(true);
+                        });
+
+                        // Verificar que el archivo se copió correctamente
+                        var destInfo = new FileInfo(localVideoPath);
+                        if (destInfo.Exists && destInfo.Length == expectedSize)
+                        {
+                            copySuccess = true;
+                            System.Diagnostics.Debug.WriteLine($"Video copied successfully: {pendingVideo.FullPath} -> {localVideoPath} ({destInfo.Length} bytes)");
+                        }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Copy verification failed: expected {expectedSize} bytes, got {(destInfo.Exists ? destInfo.Length : 0)} bytes");
+                            if (attempt < 3)
+                                await Task.Delay(500); // Esperar antes de reintentar
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Error copying video (attempt {attempt}): {ex.Message}");
+                        if (attempt < 3)
+                            await Task.Delay(500);
+                    }
+                }
+
+                if (!copySuccess)
+                {
+                    failedVideos.Add($"{pendingVideo.FileName} (error al copiar)");
+                    continue;
                 }
 
                 // Generar nombre único para thumbnail con estándar CROWN
@@ -925,7 +1005,7 @@ public class ImportViewModel : BaseViewModel
                 var duration = await _thumbnailService.GetVideoDurationAsync(localVideoPath);
 
                 // Obtener tamaño del archivo copiado
-                var fileSize = File.Exists(localVideoPath) ? new FileInfo(localVideoPath).Length : pendingVideo.FileSize;
+                var fileSize = new FileInfo(localVideoPath).Length;
 
                 // Crear el video clip con todos los datos
                 var videoClip = new VideoClip
@@ -943,6 +1023,7 @@ public class ImportViewModel : BaseViewModel
                 };
 
                 await _databaseService.SaveVideoClipAsync(videoClip);
+                successCount++;
 
                 System.Diagnostics.Debug.WriteLine($"Video clip saved: {videoClip.ClipPath}, LocalPath: {videoClip.LocalClipPath}, Thumbnail: {videoClip.LocalThumbnailPath ?? "No generado"}");
             }
@@ -955,10 +1036,26 @@ public class ImportViewModel : BaseViewModel
             await _databaseService.SaveSessionAsync(session);
 
             ImportProgressValue = 100;
-            ImportProgressText = $"¡Sesión '{CustomSessionName}' creada con {totalVideos} videos!";
+
+            // Mostrar resumen
+            if (failedVideos.Count == 0)
+            {
+                ImportProgressText = $"¡Sesión '{CustomSessionName}' creada con {successCount} videos!";
+            }
+            else
+            {
+                ImportProgressText = $"Sesión creada: {successCount} videos OK, {failedVideos.Count} fallidos";
+                System.Diagnostics.Debug.WriteLine($"Failed videos: {string.Join(", ", failedVideos)}");
+                
+                // Mostrar alerta con los videos fallidos
+                await Shell.Current.DisplayAlert(
+                    "Importación completada con errores",
+                    $"Se importaron {successCount} de {totalVideos} videos.\n\nVideos fallidos:\n• " + string.Join("\n• ", failedVideos),
+                    "OK");
+            }
 
             // Limpiar estado después de mostrar el mensaje de éxito
-            await Task.Delay(2500);
+            await Task.Delay(failedVideos.Count > 0 ? 1000 : 2500);
             ClearAllVideos();
             CustomSessionName = "";
             CustomSessionLocation = "";
@@ -970,7 +1067,8 @@ public class ImportViewModel : BaseViewModel
         {
             ImportProgressText = $"Error: {ex.Message}";
             System.Diagnostics.Debug.WriteLine($"Error creating custom session: {ex}");
-            await Task.Delay(3000);
+            await Shell.Current.DisplayAlert("Error", $"Error al crear la sesión: {ex.Message}", "OK");
+            await Task.Delay(1000);
             ImportProgressText = "";
         }
         finally
