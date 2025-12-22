@@ -25,6 +25,7 @@ public class AnalysisDrawingView : GraphicsView
 
     private Color _inkColor = Color.FromArgb("#FFFF7043");
     private float _inkThickness = 3f;
+    private float _textSize = 16f;
 
     private bool _isDrawing;
     private StrokeElement? _activeStroke;
@@ -73,6 +74,16 @@ public class AnalysisDrawingView : GraphicsView
         }
     }
 
+    public float TextSize
+    {
+        get => _textSize;
+        set
+        {
+            _textSize = Math.Max(6f, value);
+            Invalidate();
+        }
+    }
+
     public AnalysisDrawingView()
     {
         _drawable = new DrawingDrawable();
@@ -96,7 +107,8 @@ public class AnalysisDrawingView : GraphicsView
         {
             Position = position,
             Text = text.Trim(),
-            Color = InkColor
+            Color = InkColor,
+            FontSize = TextSize
         });
 
         Invalidate();
@@ -250,7 +262,7 @@ public class AnalysisDrawingView : GraphicsView
             canvas.SaveState();
 
             foreach (var element in Elements)
-                element.Draw(canvas);
+                element.Draw(canvas, dirtyRect);
 
             canvas.RestoreState();
         }
@@ -258,7 +270,7 @@ public class AnalysisDrawingView : GraphicsView
 
     public interface IDrawingElement
     {
-        void Draw(ICanvas canvas);
+        void Draw(ICanvas canvas, RectF bounds);
     }
 
     private sealed class StrokeElement : IDrawingElement
@@ -267,7 +279,7 @@ public class AnalysisDrawingView : GraphicsView
         public Color Color { get; set; } = Color.FromArgb("#FFFF7043");
         public float StrokeSize { get; set; } = 3f;
 
-        public void Draw(ICanvas canvas)
+        public void Draw(ICanvas canvas, RectF bounds)
         {
             if (Points.Count < 2)
                 return;
@@ -293,7 +305,7 @@ public class AnalysisDrawingView : GraphicsView
         public Color Color { get; set; } = Color.FromArgb("#FFFF7043");
         public float StrokeSize { get; set; } = 3f;
 
-        public void Draw(ICanvas canvas)
+        public void Draw(ICanvas canvas, RectF bounds)
         {
             canvas.StrokeColor = Color;
             canvas.StrokeSize = StrokeSize;
@@ -308,7 +320,7 @@ public class AnalysisDrawingView : GraphicsView
         public Color Color { get; set; } = Color.FromArgb("#FFFF7043");
         public float StrokeSize { get; set; } = 3f;
 
-        public void Draw(ICanvas canvas)
+        public void Draw(ICanvas canvas, RectF bounds)
         {
             canvas.StrokeColor = Color;
             canvas.StrokeSize = StrokeSize;
@@ -323,7 +335,7 @@ public class AnalysisDrawingView : GraphicsView
         public Color Color { get; set; } = Color.FromArgb("#FFFF7043");
         public float StrokeSize { get; set; } = 3f;
 
-        public void Draw(ICanvas canvas)
+        public void Draw(ICanvas canvas, RectF bounds)
         {
             canvas.StrokeColor = Color;
             canvas.StrokeSize = StrokeSize;
@@ -339,7 +351,7 @@ public class AnalysisDrawingView : GraphicsView
         public Color Color { get; set; } = Color.FromArgb("#FFFF7043");
         public float StrokeSize { get; set; } = 3f;
 
-        public void Draw(ICanvas canvas)
+        public void Draw(ICanvas canvas, RectF bounds)
         {
             canvas.StrokeColor = Color;
             canvas.StrokeSize = StrokeSize;
@@ -391,15 +403,29 @@ public class AnalysisDrawingView : GraphicsView
         public PointF Position { get; set; }
         public string Text { get; set; } = string.Empty;
         public Color Color { get; set; } = Color.FromArgb("#FFFF7043");
+        public float FontSize { get; set; } = 16f;
 
-        public void Draw(ICanvas canvas)
+        public void Draw(ICanvas canvas, RectF bounds)
         {
             if (string.IsNullOrWhiteSpace(Text))
                 return;
 
             canvas.FontColor = Color;
-            canvas.FontSize = 14;
-            canvas.DrawString(Text, Position.X, Position.Y, HorizontalAlignment.Left);
+            canvas.FontSize = FontSize;
+
+            // En MacCatalyst, el overload simple puede no renderizar como esperamos.
+            // Usamos un rectángulo (como en SimpleBarChart) para asegurar layout.
+            var width = Math.Max(1, bounds.Right - Position.X);
+            var height = Math.Max(1, bounds.Bottom - Position.Y);
+            canvas.DrawString(
+                Text,
+                Position.X,
+                Position.Y,
+                width,
+                height,
+                HorizontalAlignment.Left,
+                VerticalAlignment.Top,
+                TextFlow.ClipBounds);
         }
     }
 }

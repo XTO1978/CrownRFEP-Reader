@@ -23,6 +23,7 @@ public partial class SinglePlayerPage : ContentPage
 
     private static readonly Color DefaultInkColor = Color.FromArgb("#FFFF7043");
     private const float DefaultInkThickness = 3f;
+    private const float DefaultTextSize = 16f;
 
     public SinglePlayerPage(SinglePlayerViewModel viewModel)
     {
@@ -122,6 +123,7 @@ public partial class SinglePlayerPage : ContentPage
         {
             SetSelectedInkColor(DefaultInkColor);
             SetSelectedInkThickness(DefaultInkThickness);
+            SetSelectedTextSize(DefaultTextSize);
             SetSelectedTool(AnalysisDrawingTool.Stroke);
         }
 
@@ -239,6 +241,30 @@ public partial class SinglePlayerPage : ContentPage
             InkThickness4Button.BackgroundColor = Math.Abs(thickness - 4f) < 0.01f ? Color.FromArgb("#FFFF7043") : Color.FromArgb("#FF2A2A2A");
         if (InkThickness6Button != null)
             InkThickness6Button.BackgroundColor = Math.Abs(thickness - 6f) < 0.01f ? Color.FromArgb("#FFFF7043") : Color.FromArgb("#FF2A2A2A");
+    }
+
+    private void OnSelectTextSizeSmallTapped(object? sender, TappedEventArgs e)
+        => SetSelectedTextSize(12f);
+
+    private void OnSelectTextSizeMediumTapped(object? sender, TappedEventArgs e)
+        => SetSelectedTextSize(16f);
+
+    private void OnSelectTextSizeLargeTapped(object? sender, TappedEventArgs e)
+        => SetSelectedTextSize(22f);
+
+    private void SetSelectedTextSize(float size)
+    {
+        if (AnalysisCanvas == null)
+            return;
+
+        AnalysisCanvas.TextSize = size;
+
+        if (TextSizeSmallButton != null)
+            TextSizeSmallButton.BackgroundColor = Math.Abs(size - 12f) < 0.01f ? Color.FromArgb("#FFFF7043") : Color.FromArgb("#FF2A2A2A");
+        if (TextSizeMediumButton != null)
+            TextSizeMediumButton.BackgroundColor = Math.Abs(size - 16f) < 0.01f ? Color.FromArgb("#FFFF7043") : Color.FromArgb("#FF2A2A2A");
+        if (TextSizeLargeButton != null)
+            TextSizeLargeButton.BackgroundColor = Math.Abs(size - 22f) < 0.01f ? Color.FromArgb("#FFFF7043") : Color.FromArgb("#FF2A2A2A");
     }
 
     private void SetSelectedShape(AnalysisShapeType shape)

@@ -694,6 +694,44 @@
                                             HorizontalOptions="Center" />
                                     </Border>
                                 </HorizontalStackLayout>
+
+                                <HorizontalStackLayout x:Name="InkTextSizeRow" Spacing="8">
+                                    <Border
+                                        x:Name="TextSizeSmallButton"
+                                        Padding="10,6"
+                                        BackgroundColor="#FF2A2A2A"
+                                        StrokeShape="RoundRectangle 6"
+                                        StrokeThickness="0">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer Tapped="OnSelectTextSizeSmallTapped" />
+                                        </Border.GestureRecognizers>
+                                        <Label Text="A" FontSize="12" TextColor="White" HorizontalOptions="Center" VerticalOptions="Center" />
+                                    </Border>
+
+                                    <Border
+                                        x:Name="TextSizeMediumButton"
+                                        Padding="10,6"
+                                        BackgroundColor="#FF2A2A2A"
+                                        StrokeShape="RoundRectangle 6"
+                                        StrokeThickness="0">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer Tapped="OnSelectTextSizeMediumTapped" />
+                                        </Border.GestureRecognizers>
+                                        <Label Text="A" FontSize="16" TextColor="White" HorizontalOptions="Center" VerticalOptions="Center" />
+                                    </Border>
+
+                                    <Border
+                                        x:Name="TextSizeLargeButton"
+                                        Padding="10,6"
+                                        BackgroundColor="#FF2A2A2A"
+                                        StrokeShape="RoundRectangle 6"
+                                        StrokeThickness="0">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer Tapped="OnSelectTextSizeLargeTapped" />
+                                        </Border.GestureRecognizers>
+                                        <Label Text="A" FontSize="22" TextColor="White" HorizontalOptions="Center" VerticalOptions="Center" />
+                                    </Border>
+                                </HorizontalStackLayout>
                             </VerticalStackLayout>
                         </Border>
 
