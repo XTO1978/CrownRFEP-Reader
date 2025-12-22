@@ -68,6 +68,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     private bool _showTagEventsPanel;
     private ObservableCollection<EventTagDefinition> _allEventTags = new();
     private ObservableCollection<TagEvent> _tagEvents = new();
+    private ObservableCollection<TimelineMarker> _timelineMarkers = new();
     private EventTagDefinition? _selectedEventTagToAdd;
     private string _newEventName = "";
 
@@ -136,6 +137,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         AddTagEventCommand = new Command(async () => await AddTagEventAsync(), () => _selectedEventTagToAdd != null);
         DeleteTagEventCommand = new Command<TagEvent>(async (e) => await DeleteTagEventAsync(e));
         SeekToTagEventCommand = new Command<TagEvent>(SeekToTagEvent);
+        SeekToTimelineMarkerCommand = new Command<TimelineMarker>(SeekToTimelineMarker);
         SelectTagToAddCommand = new Command<EventTagDefinition>(SelectTagToAdd);
         CreateAndAddEventCommand = new Command(async () => await CreateAndAddEventAsync(), () => !string.IsNullOrWhiteSpace(_newEventName));
         DeleteEventTagFromListCommand = new Command<EventTagDefinition>(async (t) => await DeleteEventTagFromListAsync(t));
@@ -199,6 +201,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             OnPropertyChanged();
             OnPropertyChanged(nameof(DurationText));
             UpdateProgress();
+            RefreshTimelineMarkers();
         }
     }
 
@@ -531,6 +534,12 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         set { _tagEvents = value; OnPropertyChanged(); }
     }
 
+    public ObservableCollection<TimelineMarker> TimelineMarkers
+    {
+        get => _timelineMarkers;
+        set { _timelineMarkers = value; OnPropertyChanged(); }
+    }
+
     public EventTagDefinition? SelectedEventTagToAdd
     {
         get => _selectedEventTagToAdd;
@@ -602,6 +611,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     public ICommand AddTagEventCommand { get; }
     public ICommand DeleteTagEventCommand { get; }
     public ICommand SeekToTagEventCommand { get; }
+    public ICommand SeekToTimelineMarkerCommand { get; }
     public ICommand SelectTagToAddCommand { get; }
     public ICommand CreateAndAddEventCommand { get; }
     public ICommand DeleteEventTagFromListCommand { get; }
@@ -1416,12 +1426,57 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
                 TagEvents = new ObservableCollection<TagEvent>(events);
                 OnPropertyChanged(nameof(HasTagEvents));
                 OnPropertyChanged(nameof(TagEventsCountText));
+                RefreshTimelineMarkers();
             });
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Error al cargar eventos: {ex.Message}");
         }
+    }
+
+    private void RefreshTimelineMarkers()
+    {
+        try
+        {
+            var durationMs = Duration.TotalMilliseconds;
+            if (durationMs <= 0 || _tagEvents == null || _tagEvents.Count == 0)
+            {
+                if (_timelineMarkers.Count > 0)
+                    _timelineMarkers.Clear();
+                return;
+            }
+
+            var markers = _tagEvents
+                .Where(e => e.TimestampMs >= 0)
+                .Select(e => new TimelineMarker
+                {
+                    Position = Math.Clamp(e.TimestampMs / durationMs, 0.0, 1.0),
+                    TimestampMs = e.TimestampMs,
+                    Label = e.TagName
+                })
+                .ToList();
+
+            _timelineMarkers.Clear();
+            foreach (var m in markers)
+                _timelineMarkers.Add(m);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error al refrescar marcadores de timeline: {ex.Message}");
+        }
+    }
+
+    private void SeekToTimelineMarker(TimelineMarker? marker)
+    {
+        if (marker == null)
+            return;
+
+        // Posicionar 0,5 segundos antes del punto (o al inicio si es muy temprano)
+        var seekMs = Math.Max(0, marker.TimestampMs - 500);
+        var seekSeconds = seekMs / 1000.0;
+
+        SeekRequested?.Invoke(this, seekSeconds);
     }
 
     private void SelectTagToAdd(EventTagDefinition? tag)

@@ -23,6 +23,8 @@
         <converters:BoolToOpacityConverter x:Key="BoolToOpacityConverter" />
         <converters:TagSelectedColorConverter x:Key="TagSelectedColorConverter" />
         <converters:EventTagSelectedColorConverter x:Key="EventTagSelectedColorConverter" />
+        <converters:NormalizedPositionToRectConverter x:Key="NormalizedPositionToRectConverter" />
+        <converters:NormalizedPositionToTickRectConverter x:Key="NormalizedPositionToTickRectConverter" />
         <converters:BoolToColorConverter x:Key="BoolToAthleteBackgroundConverter" />
         <converters:BoolToColorConverter x:Key="BoolToTagEventBackgroundConverter" />
     </ContentPage.Resources>
@@ -1205,18 +1207,63 @@
                         Text="{Binding CurrentPositionText}"
                         TextColor="#FFB1B1B1"
                         VerticalOptions="Center" />
-                    <Slider
-                        x:Name="ProgressSlider"
-                        Grid.Column="1"
-                        DragCompleted="OnSliderDragCompleted"
-                        DragStarted="OnSliderDragStarted"
-                        Maximum="1"
-                        MaximumTrackColor="#FF3A3A3A"
-                        Minimum="0"
-                        MinimumTrackColor="#FF6DDDFF"
-                        ThumbColor="#FF6DDDFF"
-                        ValueChanged="OnSliderValueChanged"
-                        Value="{Binding Progress}" />
+                    <Grid Grid.Column="1" RowDefinitions="14,*" RowSpacing="2">
+                        <!-- Marcadores de eventos a lo largo del slider -->
+                        <AbsoluteLayout
+                            Grid.Row="0"
+                            HeightRequest="14"
+                            HorizontalOptions="Fill"
+                            VerticalOptions="Center"
+                            BindableLayout.ItemsSource="{Binding TimelineMarkers}">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate x:DataType="models:TimelineMarker">
+                                    <Button
+                                        BackgroundColor="#FF373737"
+                                        CornerRadius="4"
+                                        FontSize="12"
+                                        HeightRequest="18"
+                                        MinimumHeightRequest="18"
+                                        Padding="8,0"
+                                        Text="{Binding Label}"
+                                        TextColor="White"
+                                        AbsoluteLayout.LayoutFlags="PositionProportional"
+                                        AbsoluteLayout.LayoutBounds="{Binding Position, Converter={StaticResource NormalizedPositionToRectConverter}}"
+                                        Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.SeekToTimelineMarkerCommand}"
+                                        CommandParameter="{Binding .}" />
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </AbsoluteLayout>
+
+                        <Grid Grid.Row="1">
+                            <!-- Ticks naranjas en la zona del slider -->
+                            <AbsoluteLayout
+                                HeightRequest="14"
+                                HorizontalOptions="Fill"
+                                VerticalOptions="Center"
+                                InputTransparent="True" ZIndex="1"
+                                BindableLayout.ItemsSource="{Binding TimelineMarkers}">
+                                <BindableLayout.ItemTemplate>
+                                    <DataTemplate x:DataType="models:TimelineMarker">
+                                        <BoxView
+                                            Color="#FFFF5555" WidthRequest="22" HeightRequest="6"
+                                            AbsoluteLayout.LayoutFlags="PositionProportional"
+                                            AbsoluteLayout.LayoutBounds="{Binding Position, Converter={StaticResource NormalizedPositionToTickRectConverter}}" />
+                                    </DataTemplate>
+                                </BindableLayout.ItemTemplate>
+                            </AbsoluteLayout>
+                            <Slider
+                                x:Name="ProgressSlider"
+                                DragCompleted="OnSliderDragCompleted"
+                                DragStarted="OnSliderDragStarted"
+                                Maximum="1"
+                                MaximumTrackColor="#FF3A3A3A"
+                                Minimum="0"
+                                MinimumTrackColor="#FF6DDDFF"
+                                ThumbColor="#FF6DDDFF"
+                                ValueChanged="OnSliderValueChanged"
+                                Value="{Binding Progress}" />
+                        </Grid>
+                    </Grid>
                     <Label
                         Grid.Column="2"
                         FontSize="12"

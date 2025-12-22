@@ -369,3 +369,64 @@ public class EventTagSelectedColorConverter : IValueConverter
         throw new NotImplementedException();
     }
 }
+
+/// <summary>
+/// Convierte una posición normalizada (0..1) a un Rect para AbsoluteLayout con PositionProportional.
+/// Útil para colocar marcadores en una línea temporal.
+/// </summary>
+public class NormalizedPositionToRectConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        var x = value switch
+        {
+            double d => d,
+            float f => f,
+            int i => i,
+            long l => l,
+            _ => 0.0
+        };
+
+        // clamp 0..1
+        if (x < 0) x = 0;
+        if (x > 1) x = 1;
+
+        // AutoSize (-1) para que el contenido (badge) determine su tamaño
+        // y=0.5 -> centrado vertical dentro del contenedor
+        return new Rect(x, 0.5, -1, -1);
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+/// <summary>
+/// Convierte una posición normalizada (0..1) a un Rect para un tick pequeño (2px) en AbsoluteLayout.
+/// </summary>
+public class NormalizedPositionToTickRectConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        var x = value switch
+        {
+            double d => d,
+            float f => f,
+            int i => i,
+            long l => l,
+            _ => 0.0
+        };
+
+        if (x < 0) x = 0;
+        if (x > 1) x = 1;
+
+        // Tick centrado verticalmente dentro del contenedor
+        return new Rect(x, 0.5, 2, 8);
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
