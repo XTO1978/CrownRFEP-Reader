@@ -17,6 +17,7 @@ public class DatabaseService
     private Dictionary<int, Category>? _categoryCache;
     private Dictionary<int, Session>? _sessionCache;
     private Dictionary<int, Tag>? _tagCache;
+    private Dictionary<int, EventTagDefinition>? _eventTagCache;
     private DateTime _cacheLastRefresh = DateTime.MinValue;
     private static readonly TimeSpan CacheExpiration = TimeSpan.FromMinutes(5);
 
@@ -47,6 +48,7 @@ public class DatabaseService
         _categoryCache = null;
         _sessionCache = null;
         _tagCache = null;
+        _eventTagCache = null;
         _cacheLastRefresh = DateTime.MinValue;
     }
 
@@ -62,11 +64,13 @@ public class DatabaseService
         var categories = await db.Table<Category>().ToListAsync();
         var tags = await db.Table<Tag>().ToListAsync();
         var sessions = await db.Table<Session>().ToListAsync();
+        var eventTags = await db.Table<EventTagDefinition>().ToListAsync();
 
         _athleteCache = athletes.ToDictionary(a => a.Id, a => a);
         _categoryCache = categories.ToDictionary(c => c.Id, c => c);
         _tagCache = tags.ToDictionary(t => t.Id, t => t);
         _sessionCache = sessions.ToDictionary(s => s.Id, s => s);
+        _eventTagCache = eventTags.ToDictionary(e => e.Id, e => e);
         _cacheLastRefresh = DateTime.Now;
     }
 
@@ -263,18 +267,21 @@ public class DatabaseService
 
         var db = await GetConnectionAsync();
         var allTags = await db.Table<Tag>().ToListAsync();
+        var allEventDefs = await db.Table<EventTagDefinition>().ToListAsync();
         var clipIds = clipList.Select(c => c.Id).ToList();
         var allInputsForClips = await GetInputsForVideosAsync(db, clipIds);
 
-        HydrateTagsForClipsInternal(clipList, allTags, allInputsForClips);
+        HydrateTagsForClipsInternal(clipList, allTags, allEventDefs, allInputsForClips);
     }
 
     private static void HydrateTagsForClipsInternal(
         IReadOnlyList<VideoClip> clips,
         IReadOnlyList<Tag> allTags,
+        IReadOnlyList<EventTagDefinition> allEventDefs,
         IReadOnlyList<Input> allInputsForClips)
     {
         var tagDict = allTags.ToDictionary(t => t.Id, t => t);
+        var eventDict = allEventDefs.ToDictionary(e => e.Id, e => e);
         
         // Agrupar inputs por VideoId para O(1) lookup en lugar de O(n) con Where
         var inputsByVideoId = allInputsForClips
@@ -316,25 +323,26 @@ public class DatabaseService
                 .ToList();
 
             // Tags de eventos (IsEvent == 1): importados de .crown o creados como eventos
+            // Los eventos usan EventTagDefinition (tabla event_tags), NO la tabla tags
             clip.EventTags = clipInputs
-                .Where(i => i.IsEvent == 1 && tagDict.ContainsKey(i.InputTypeId))
+                .Where(i => i.IsEvent == 1 && eventDict.ContainsKey(i.InputTypeId))
                 .GroupBy(i => i.InputTypeId) // Agrupar por tipo para contar ocurrencias
                 .Select(g =>
                 {
                     var input = g.First();
-                    var baseTag = tagDict[input.InputTypeId];
+                    var eventDef = eventDict[input.InputTypeId];
                     var count = g.Count(); // Número de ocurrencias de este evento
                     
-                    // Usar InputValue si tiene contenido, sino el nombre del tipo de tag
+                    // Usar InputValue si tiene contenido, sino el nombre del tipo de evento
                     var displayName = !string.IsNullOrWhiteSpace(input.InputValue)
                         ? input.InputValue
-                        : baseTag.NombreTag;
+                        : eventDef.Nombre;
                     
                     return new Tag
                     {
-                        Id = baseTag.Id,
+                        Id = eventDef.Id,
                         NombreTag = displayName,
-                        IsSelected = baseTag.IsSelected,
+                        IsSelected = 0,
                         IsEventTag = true,
                         EventCount = count // Incluir el conteo de ocurrencias
                     };
@@ -726,7 +734,7 @@ public class DatabaseService
         // Cargar tags para cada video
         var clipIds = clips.Select(c => c.Id).ToList();
         var allInputsForClips = await GetInputsForVideosAsync(db, clipIds);
-        HydrateTagsForClipsInternal(clips, _tagCache!.Values.ToList(), allInputsForClips);
+        HydrateTagsForClipsInternal(clips, _tagCache!.Values.ToList(), _eventTagCache!.Values.ToList(), allInputsForClips);
 
         return clips;
     }
@@ -791,7 +799,7 @@ public class DatabaseService
         // Cargar tags
         var clipIds = clips.Select(c => c.Id).ToList();
         var allInputsForClips = await GetInputsForVideosAsync(db, clipIds);
-        HydrateTagsForClipsInternal(clips, _tagCache!.Values.ToList(), allInputsForClips);
+        HydrateTagsForClipsInternal(clips, _tagCache!.Values.ToList(), _eventTagCache!.Values.ToList(), allInputsForClips);
 
         return clips;
     }
@@ -1251,5 +1259,70 @@ public class DatabaseService
 
         // Luego eliminar el tag del catálogo general
         await db.ExecuteAsync("DELETE FROM \"tags\" WHERE id = ?", tagId);
+    }
+
+    // ==================== SPLIT TIME ====================
+    
+    /// <summary>
+    /// ID especial para los inputs de tipo "split time"
+    /// Usamos un valor negativo para evitar colisiones con tags normales
+    /// </summary>
+    private const int SplitTimeInputTypeId = -1;
+
+    /// <summary>
+    /// Obtiene el split time guardado para un video específico
+    /// </summary>
+    public async Task<Input?> GetSplitTimeForVideoAsync(int videoId)
+    {
+        var db = await GetConnectionAsync();
+        return await db.Table<Input>()
+            .Where(i => i.VideoId == videoId && i.InputTypeId == SplitTimeInputTypeId)
+            .FirstOrDefaultAsync();
+    }
+
+    /// <summary>
+    /// Guarda o actualiza el split time para un video.
+    /// Si ya existe, lo sobreescribe.
+    /// </summary>
+    public async Task SaveSplitTimeAsync(int videoId, int sessionId, string splitDataJson)
+    {
+        var db = await GetConnectionAsync();
+        
+        // Buscar si ya existe un split para este video
+        var existing = await db.Table<Input>()
+            .Where(i => i.VideoId == videoId && i.InputTypeId == SplitTimeInputTypeId)
+            .FirstOrDefaultAsync();
+
+        if (existing != null)
+        {
+            // Actualizar el existente
+            existing.InputValue = splitDataJson;
+            existing.InputDateTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            await db.UpdateAsync(existing);
+        }
+        else
+        {
+            // Crear nuevo
+            var input = new Input
+            {
+                VideoId = videoId,
+                SessionId = sessionId,
+                InputTypeId = SplitTimeInputTypeId,
+                InputValue = splitDataJson,
+                InputDateTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                TimeStamp = 0,
+                IsEvent = 0 // No es un evento, es un dato calculado
+            };
+            await db.InsertAsync(input);
+        }
+    }
+
+    /// <summary>
+    /// Elimina el split time de un video
+    /// </summary>
+    public async Task DeleteSplitTimeAsync(int videoId)
+    {
+        var db = await GetConnectionAsync();
+        await db.ExecuteAsync("DELETE FROM \"input\" WHERE VideoID = ? AND InputTypeID = ?", videoId, SplitTimeInputTypeId);
     }
 }

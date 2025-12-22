@@ -71,6 +71,13 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     private ObservableCollection<TimelineMarker> _timelineMarkers = new();
     private EventTagDefinition? _selectedEventTagToAdd;
     private string _newEventName = "";
+    
+    // Medidor de tiempo (Split Time)
+    private bool _showSplitTimePanel;
+    private TimeSpan? _splitStartTime;
+    private TimeSpan? _splitEndTime;
+    private TimeSpan? _splitDuration;
+    private bool _hasSavedSplit;
 
     public SinglePlayerViewModel(DatabaseService databaseService)
     {
@@ -141,6 +148,13 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         SelectTagToAddCommand = new Command<EventTagDefinition>(SelectTagToAdd);
         CreateAndAddEventCommand = new Command(async () => await CreateAndAddEventAsync(), () => !string.IsNullOrWhiteSpace(_newEventName));
         DeleteEventTagFromListCommand = new Command<EventTagDefinition>(async (t) => await DeleteEventTagFromListAsync(t));
+        
+        // Comandos de Split Time
+        ToggleSplitTimePanelCommand = new Command(ToggleSplitTimePanel);
+        SetSplitStartCommand = new Command(SetSplitStart);
+        SetSplitEndCommand = new Command(SetSplitEnd);
+        ClearSplitCommand = new Command(ClearSplit);
+        SaveSplitCommand = new Command(async () => await SaveSplitAsync(), () => CanSaveSplit);
     }
 
     #region Propiedades
@@ -566,6 +580,68 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     public string TagEventsCountText => _tagEvents.Count == 1 ? "1 evento" : $"{_tagEvents.Count} eventos";
 
+    // Propiedades para Split Time
+    public bool ShowSplitTimePanel
+    {
+        get => _showSplitTimePanel;
+        set { _showSplitTimePanel = value; OnPropertyChanged(); }
+    }
+
+    public TimeSpan? SplitStartTime
+    {
+        get => _splitStartTime;
+        set
+        {
+            _splitStartTime = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(SplitStartTimeText));
+            OnPropertyChanged(nameof(HasSplitStart));
+            CalculateSplitDuration();
+            ((Command)SaveSplitCommand).ChangeCanExecute();
+        }
+    }
+
+    public TimeSpan? SplitEndTime
+    {
+        get => _splitEndTime;
+        set
+        {
+            _splitEndTime = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(SplitEndTimeText));
+            OnPropertyChanged(nameof(HasSplitEnd));
+            CalculateSplitDuration();
+            ((Command)SaveSplitCommand).ChangeCanExecute();
+        }
+    }
+
+    public TimeSpan? SplitDuration
+    {
+        get => _splitDuration;
+        private set
+        {
+            _splitDuration = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(SplitDurationText));
+            OnPropertyChanged(nameof(HasSplitDuration));
+        }
+    }
+
+    public bool HasSavedSplit
+    {
+        get => _hasSavedSplit;
+        set { _hasSavedSplit = value; OnPropertyChanged(); }
+    }
+
+    public bool HasSplitStart => _splitStartTime.HasValue;
+    public bool HasSplitEnd => _splitEndTime.HasValue;
+    public bool HasSplitDuration => _splitDuration.HasValue;
+    public bool CanSaveSplit => _splitStartTime.HasValue && _splitEndTime.HasValue && _splitDuration.HasValue && _splitDuration.Value.TotalMilliseconds > 0;
+
+    public string SplitStartTimeText => _splitStartTime.HasValue ? $"{_splitStartTime.Value:mm\\:ss\\.ff}" : "--:--:--";
+    public string SplitEndTimeText => _splitEndTime.HasValue ? $"{_splitEndTime.Value:mm\\:ss\\.ff}" : "--:--:--";
+    public string SplitDurationText => _splitDuration.HasValue ? $"{_splitDuration.Value:mm\\:ss\\.fff}" : "--:--:---";
+
     #endregion
 
     #region Comandos
@@ -615,6 +691,13 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     public ICommand SelectTagToAddCommand { get; }
     public ICommand CreateAndAddEventCommand { get; }
     public ICommand DeleteEventTagFromListCommand { get; }
+    
+    // Comandos de Split Time
+    public ICommand ToggleSplitTimePanelCommand { get; }
+    public ICommand SetSplitStartCommand { get; }
+    public ICommand SetSplitEndCommand { get; }
+    public ICommand ClearSplitCommand { get; }
+    public ICommand SaveSplitCommand { get; }
 
     #endregion
 
@@ -1800,6 +1883,138 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     }
 
     #endregion
+
+    #region Split Time Methods
+
+    private void ToggleSplitTimePanel()
+    {
+        // Cerrar otros paneles si se va a abrir este
+        if (!ShowSplitTimePanel)
+        {
+            ShowAthleteAssignPanel = false;
+            ShowSectionAssignPanel = false;
+            ShowTagsAssignPanel = false;
+            ShowTagEventsPanel = false;
+        }
+        ShowSplitTimePanel = !ShowSplitTimePanel;
+
+        // Al abrir, cargar el split existente si lo hay
+        if (ShowSplitTimePanel && _videoClip != null)
+        {
+            _ = LoadExistingSplitAsync();
+        }
+    }
+
+    private void SetSplitStart()
+    {
+        SplitStartTime = CurrentPosition;
+    }
+
+    private void SetSplitEnd()
+    {
+        SplitEndTime = CurrentPosition;
+    }
+
+    private void ClearSplit()
+    {
+        SplitStartTime = null;
+        SplitEndTime = null;
+        SplitDuration = null;
+    }
+
+    private void CalculateSplitDuration()
+    {
+        if (_splitStartTime.HasValue && _splitEndTime.HasValue)
+        {
+            var duration = _splitEndTime.Value - _splitStartTime.Value;
+            // Permitir duración negativa mostrando valor absoluto para el cálculo
+            SplitDuration = duration.TotalMilliseconds >= 0 ? duration : TimeSpan.Zero;
+        }
+        else
+        {
+            SplitDuration = null;
+        }
+    }
+
+    private async Task LoadExistingSplitAsync()
+    {
+        if (_videoClip == null)
+            return;
+
+        try
+        {
+            var existingSplit = await _databaseService.GetSplitTimeForVideoAsync(_videoClip.Id);
+            if (existingSplit != null)
+            {
+                // Parsear el InputValue que contiene JSON con start/end/duration en ms
+                if (!string.IsNullOrEmpty(existingSplit.InputValue))
+                {
+                    try
+                    {
+                        var splitData = System.Text.Json.JsonSerializer.Deserialize<SplitTimeData>(existingSplit.InputValue);
+                        if (splitData != null)
+                        {
+                            SplitStartTime = TimeSpan.FromMilliseconds(splitData.StartMs);
+                            SplitEndTime = TimeSpan.FromMilliseconds(splitData.EndMs);
+                            HasSavedSplit = true;
+                        }
+                    }
+                    catch
+                    {
+                        // JSON inválido, ignorar
+                    }
+                }
+            }
+            else
+            {
+                HasSavedSplit = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error cargando split existente: {ex.Message}");
+        }
+    }
+
+    private async Task SaveSplitAsync()
+    {
+        if (_videoClip == null || !CanSaveSplit)
+            return;
+
+        try
+        {
+            var splitData = new SplitTimeData
+            {
+                StartMs = (long)_splitStartTime!.Value.TotalMilliseconds,
+                EndMs = (long)_splitEndTime!.Value.TotalMilliseconds,
+                DurationMs = (long)_splitDuration!.Value.TotalMilliseconds
+            };
+
+            var json = System.Text.Json.JsonSerializer.Serialize(splitData);
+
+            await _databaseService.SaveSplitTimeAsync(_videoClip.Id, _videoClip.SessionId, json);
+            HasSavedSplit = true;
+
+            // Opcional: cerrar el panel después de guardar
+            // ShowSplitTimePanel = false;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error guardando split: {ex.Message}");
+        }
+    }
+
+    #endregion
+}
+
+/// <summary>
+/// Datos del split time serializados en JSON
+/// </summary>
+public class SplitTimeData
+{
+    public long StartMs { get; set; }
+    public long EndMs { get; set; }
+    public long DurationMs { get; set; }
 }
 
 /// <summary>
