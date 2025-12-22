@@ -51,6 +51,10 @@ public class DashboardViewModel : BaseViewModel
     private VideoClip? _parallelVideo2;
     private bool _isPreviewMode;
 
+    // Flag para indicar si hay actualizaciones de estadísticas pendientes
+    private bool _hasStatsUpdatePending;
+    private readonly HashSet<int> _modifiedVideoIds = new();
+
     // Lazy loading
     private const int PageSize = 40;
     private int _currentPage;
@@ -975,6 +979,36 @@ public class DashboardViewModel : BaseViewModel
         OnPropertyChanged(nameof(ShowSectionTimesTable));
     }
 
+    /// <summary>
+    /// Refresca las estadísticas si hay actualizaciones pendientes (llamar desde OnAppearing)
+    /// </summary>
+    public async Task RefreshPendingStatsAsync()
+    {
+        if (!_hasStatsUpdatePending)
+            return;
+
+        _hasStatsUpdatePending = false;
+        _modifiedVideoIds.Clear();
+
+        try
+        {
+            // Refrescar estadísticas según el contexto actual
+            if (SelectedSession != null)
+            {
+                await LoadAbsoluteTagStatsAsync(SelectedSession.Id);
+                await LoadAthleteSectionTimesAsync(SelectedSession.Id);
+            }
+            else if (IsAllGallerySelected)
+            {
+                await LoadAbsoluteTagStatsAsync(null);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error refrescando estadísticas pendientes: {ex.Message}");
+        }
+    }
+
     // ==================== FIN ESTADÍSTICAS RELATIVAS ====================
 
     // Estadísticas: usar el cache filtrado para mostrar totales reales (no solo paginados)
@@ -1184,6 +1218,9 @@ public class DashboardViewModel : BaseViewModel
         MessagingCenter.Subscribe<SinglePlayerViewModel, int>(this, "VideoClipUpdated", async (sender, videoId) =>
         {
             await RefreshVideoClipInGalleryAsync(videoId);
+            // Marcar que hay estadísticas pendientes de actualizar
+            _modifiedVideoIds.Add(videoId);
+            _hasStatsUpdatePending = true;
         });
     }
 
@@ -1374,6 +1411,20 @@ public class DashboardViewModel : BaseViewModel
 
             // Mantener el estado de selección si aplica
             updatedVideo.IsSelected = existingVideo.IsSelected;
+
+            // Actualizar también en los caches si existe
+            if (_allVideosCache != null)
+            {
+                var cacheIndex = _allVideosCache.FindIndex(v => v.Id == videoId);
+                if (cacheIndex >= 0)
+                    _allVideosCache[cacheIndex] = updatedVideo;
+            }
+            if (_filteredVideosCache != null)
+            {
+                var filteredIndex = _filteredVideosCache.FindIndex(v => v.Id == videoId);
+                if (filteredIndex >= 0)
+                    _filteredVideosCache[filteredIndex] = updatedVideo;
+            }
 
             // Reemplazar en la colección (esto dispara la actualización del UI)
             await MainThread.InvokeOnMainThreadAsync(() =>

@@ -78,6 +78,9 @@ public partial class DashboardPage : ContentPage
         // Limpiar los recuadros de preview al volver a la página
         _viewModel.ClearPreviewVideos();
         
+        // Refrescar estadísticas si hay cambios pendientes (al volver de SinglePlayerPage)
+        _ = _viewModel.RefreshPendingStatsAsync();
+        
         _ = LoadDashboardAsync();
     }
 
