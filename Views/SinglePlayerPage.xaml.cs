@@ -86,8 +86,7 @@ public partial class SinglePlayerPage : ContentPage
         if (VideoLessonCameraPreview != null)
             VideoLessonCameraPreview.IsActive = _isVideoLessonRecording && _videoLessonCameraEnabled;
 
-        if (VideoLessonOptionsPanel != null)
-            VideoLessonOptionsPanel.IsVisible = !_isVideoLessonRecording && false;
+        // VideoLessonOptionsPanel siempre visible
 
         UpdateVideoLessonToggleVisualState();
         UpdateVideoLessonOptionsVisualState();
@@ -146,14 +145,7 @@ public partial class SinglePlayerPage : ContentPage
             return;
         }
 
-        // Si no está grabando: primer toque abre opciones, segundo toque inicia.
-        if (VideoLessonOptionsPanel != null && !VideoLessonOptionsPanel.IsVisible)
-        {
-            VideoLessonOptionsPanel.IsVisible = true;
-            UpdateVideoLessonOptionsVisualState();
-            return;
-        }
-
+        // Iniciar grabación directamente (las opciones siempre están visibles)
         await StartVideoLessonRecordingAsync();
     }
 
@@ -250,8 +242,7 @@ public partial class SinglePlayerPage : ContentPage
             if (VideoLessonCameraPreview != null)
                 VideoLessonCameraPreview.IsActive = false;
 
-            if (VideoLessonOptionsPanel != null)
-                VideoLessonOptionsPanel.IsVisible = false;
+            // VideoLessonOptionsPanel siempre visible
 
             await DisplayAlert("Error", $"No se pudo iniciar la grabación: {ex.Message}", "OK");
         }
@@ -294,8 +285,7 @@ public partial class SinglePlayerPage : ContentPage
             if (VideoLessonCameraPreview != null)
                 VideoLessonCameraPreview.IsActive = false;
 
-            if (VideoLessonOptionsPanel != null)
-                VideoLessonOptionsPanel.IsVisible = false;
+            // VideoLessonOptionsPanel siempre visible
 
             var sessionId = _viewModel.VideoClip?.SessionId ?? 0;
             if (!string.IsNullOrWhiteSpace(_currentVideoLessonPath) && File.Exists(_currentVideoLessonPath))

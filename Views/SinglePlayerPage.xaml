@@ -377,7 +377,7 @@
                             Margin="6,0,0,0"
                             Padding="6"
                             BackgroundColor="#EE1E1E1E"
-                            IsVisible="False"
+                            IsVisible="True"
                             StrokeShape="RoundRectangle 10"
                             StrokeThickness="0"
                             VerticalOptions="Center">
