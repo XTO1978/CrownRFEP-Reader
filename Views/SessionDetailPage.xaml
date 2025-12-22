@@ -4,11 +4,12 @@
              xmlns:vm="clr-namespace:CrownRFEP_Reader.ViewModels"
              xmlns:models="clr-namespace:CrownRFEP_Reader.Models"
              xmlns:services="clr-namespace:CrownRFEP_Reader.Services"
+             xmlns:controls="clr-namespace:CrownRFEP_Reader.Views.Controls"
              x:Class="CrownRFEP_Reader.Views.SessionDetailPage"
              x:DataType="vm:SessionDetailViewModel"
              Title="{Binding Title}">
 
-    <Grid RowDefinitions="Auto,Auto,*" Padding="15">
+    <Grid RowDefinitions="Auto,Auto,*,Auto" Padding="15">
         
         <!-- Info de la sesión -->
         <Frame Grid.Row="0" Padding="15" CornerRadius="12" HasShadow="True" Margin="0,0,0,10">
@@ -186,5 +187,8 @@
                            Color="{StaticResource Primary}"
                            VerticalOptions="Center"
                            HorizontalOptions="Center"/>
+
+        <!--  Footer de la aplicación  -->
+        <controls:AppFooter Grid.Row="3" />
     </Grid>
 </ContentPage>

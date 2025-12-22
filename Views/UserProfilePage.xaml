@@ -12,7 +12,7 @@
 
     <Grid
         Padding="0"
-        RowDefinitions="Auto,*">
+        RowDefinitions="Auto,*,Auto">
         
         <!-- Header con botón cerrar -->
         <Grid
@@ -457,5 +457,8 @@
             IsVisible="{Binding IsBusy}"
             VerticalOptions="Center"
             Color="{StaticResource Primary}" />
+
+        <!--  Footer de la aplicación  -->
+        <controls:AppFooter Grid.Row="2" />
     </Grid>
 </ContentPage>

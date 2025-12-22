@@ -10,7 +10,7 @@
     x:DataType="vm:ImportViewModel"
     BackgroundColor="#FF121212">
 
-    <Grid RowDefinitions="Auto,*" RowSpacing="0">
+    <Grid RowDefinitions="Auto,*,Auto" RowSpacing="0">
         <controls:TopTabsBar
             Grid.Row="0"
             HorizontalOptions="Center"
@@ -565,5 +565,8 @@
                 VerticalOptions="Center"
                 Color="{StaticResource Primary}" />
         </Grid>
+
+        <!--  Footer de la aplicación  -->
+        <controls:AppFooter Grid.Row="2" />
     </Grid>
 </ContentPage>

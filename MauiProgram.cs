@@ -60,6 +60,7 @@ public static class MauiProgram
 		// Servicios
 		builder.Services.AddSingleton<DatabaseService>();
 		builder.Services.AddSingleton<UserProfileNotifier>();
+		builder.Services.AddSingleton<StatusBarService>();
 		builder.Services.AddSingleton<CrownFileService>();
 		builder.Services.AddSingleton<StatisticsService>();
 		builder.Services.AddSingleton<ThumbnailService>();
@@ -104,6 +105,16 @@ public static class MauiProgram
 		builder.Logging.AddDebug();
 #endif
 
-		return builder.Build();
+		var app = builder.Build();
+		
+		// Conectar StatusBarService al DatabaseService para logging
+		var databaseService = app.Services.GetService<DatabaseService>();
+		var statusBarService = app.Services.GetService<StatusBarService>();
+		if (databaseService != null && statusBarService != null)
+		{
+			databaseService.SetStatusBarService(statusBarService);
+		}
+
+		return app;
 	}
 }

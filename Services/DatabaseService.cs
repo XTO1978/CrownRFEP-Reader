@@ -10,6 +10,7 @@ public class DatabaseService
 {
     private SQLiteAsyncConnection? _database;
     private readonly string _dbPath;
+    private StatusBarService? _statusBarService;
 
     public DatabaseService()
     {
@@ -21,14 +22,29 @@ public class DatabaseService
         _dbPath = dbPath;
     }
 
+    /// <summary>
+    /// Inyecta el StatusBarService para logging (se llama desde MauiProgram después de construir)
+    /// </summary>
+    public void SetStatusBarService(StatusBarService statusBarService)
+    {
+        _statusBarService = statusBarService;
+    }
+
+    private void LogInfo(string message) => _statusBarService?.LogDatabaseInfo(message);
+    private void LogSuccess(string message) => _statusBarService?.LogDatabaseSuccess(message);
+    private void LogWarning(string message) => _statusBarService?.LogDatabaseWarning(message);
+    private void LogError(string message) => _statusBarService?.LogDatabaseError(message);
+
     public async Task<SQLiteAsyncConnection> GetConnectionAsync()
     {
         if (_database != null)
             return _database;
 
+        LogInfo("Conectando a base de datos...");
         _database = new SQLiteAsyncConnection(_dbPath, SQLiteOpenFlags.ReadWrite | SQLiteOpenFlags.Create | SQLiteOpenFlags.SharedCache);
         
         await InitializeDatabaseAsync();
+        LogSuccess("Base de datos conectada");
         
         return _database;
     }
@@ -37,6 +53,8 @@ public class DatabaseService
     {
         if (_database == null) return;
 
+        LogInfo("Inicializando tablas...");
+        
         // Crear las tablas si no existen
         await _database.CreateTableAsync<Session>();
         await _database.CreateTableAsync<Athlete>();
@@ -66,6 +84,8 @@ public class DatabaseService
 
         // Migración: separar tipos de evento en event_tags (si venían guardados como Tag)
         await MigrateEventTagsAsync(_database);
+        
+        LogSuccess("Tablas inicializadas correctamente");
     }
 
     private static async Task MigrateEventTagsAsync(SQLiteAsyncConnection db)
@@ -307,25 +327,46 @@ public class DatabaseService
 
     public async Task<int> SaveSessionAsync(Session session)
     {
-        var db = await GetConnectionAsync();
-        if (session.Id != 0)
+        try
         {
-            await db.UpdateAsync(session);
-            return session.Id;
+            var db = await GetConnectionAsync();
+            if (session.Id != 0)
+            {
+                await db.UpdateAsync(session);
+                LogInfo($"Sesión actualizada: {session.DisplayName}");
+                return session.Id;
+            }
+            else
+            {
+                await db.InsertAsync(session);
+                LogSuccess($"Sesión creada: {session.DisplayName}");
+                return session.Id;
+            }
         }
-        else
+        catch (Exception ex)
         {
-            await db.InsertAsync(session);
-            return session.Id;
+            LogError($"Error guardando sesión: {ex.Message}");
+            throw;
         }
     }
 
     public async Task<int> DeleteSessionAsync(Session session)
     {
-        var db = await GetConnectionAsync();
-        // Eliminar también los videos asociados
-        await db.Table<VideoClip>().DeleteAsync(v => v.SessionId == session.Id);
-        return await db.DeleteAsync(session);
+        try
+        {
+            var db = await GetConnectionAsync();
+            // Eliminar también los videos asociados
+            var deletedVideos = await db.Table<VideoClip>().DeleteAsync(v => v.SessionId == session.Id);
+            LogInfo($"Eliminados {deletedVideos} vídeos de la sesión");
+            var result = await db.DeleteAsync(session);
+            LogSuccess($"Sesión eliminada: {session.DisplayName}");
+            return result;
+        }
+        catch (Exception ex)
+        {
+            LogError($"Error eliminando sesión: {ex.Message}");
+            throw;
+        }
     }
 
     // ==================== VIDEO LESSONS ====================
@@ -348,21 +389,41 @@ public class DatabaseService
 
     public async Task<int> SaveVideoLessonAsync(VideoLesson lesson)
     {
-        var db = await GetConnectionAsync();
-        if (lesson.Id != 0)
+        try
         {
-            await db.UpdateAsync(lesson);
+            var db = await GetConnectionAsync();
+            if (lesson.Id != 0)
+            {
+                await db.UpdateAsync(lesson);
+                LogInfo($"Videolección actualizada: {lesson.DisplayTitle}");
+                return lesson.Id;
+            }
+
+            await db.InsertAsync(lesson);
+            LogSuccess($"Videolección guardada: {lesson.DisplayTitle}");
             return lesson.Id;
         }
-
-        await db.InsertAsync(lesson);
-        return lesson.Id;
+        catch (Exception ex)
+        {
+            LogError($"Error guardando videolección: {ex.Message}");
+            throw;
+        }
     }
 
     public async Task<int> DeleteVideoLessonAsync(VideoLesson lesson)
     {
-        var db = await GetConnectionAsync();
-        return await db.DeleteAsync(lesson);
+        try
+        {
+            var db = await GetConnectionAsync();
+            var result = await db.DeleteAsync(lesson);
+            LogInfo($"Videolección eliminada: {lesson.DisplayTitle}");
+            return result;
+        }
+        catch (Exception ex)
+        {
+            LogError($"Error eliminando videolección: {ex.Message}");
+            throw;
+        }
     }
 
     // ==================== ATHLETES ====================
@@ -703,22 +764,32 @@ public class DatabaseService
 
     public async Task<int> SaveVideoClipAsync(VideoClip clip)
     {
-        var db = await GetConnectionAsync();
-        var existing = await db.Table<VideoClip>().FirstOrDefaultAsync(v => v.Id == clip.Id && v.SessionId == clip.SessionId);
-        if (existing != null)
+        try
         {
-            // Actualizar todos los campos editables
-            existing.LocalClipPath = clip.LocalClipPath;
-            existing.LocalThumbnailPath = clip.LocalThumbnailPath;
-            existing.AtletaId = clip.AtletaId;
-            existing.Section = clip.Section;
-            await db.UpdateAsync(existing);
-            return existing.Id;
+            var db = await GetConnectionAsync();
+            var existing = await db.Table<VideoClip>().FirstOrDefaultAsync(v => v.Id == clip.Id && v.SessionId == clip.SessionId);
+            if (existing != null)
+            {
+                // Actualizar todos los campos editables
+                existing.LocalClipPath = clip.LocalClipPath;
+                existing.LocalThumbnailPath = clip.LocalThumbnailPath;
+                existing.AtletaId = clip.AtletaId;
+                existing.Section = clip.Section;
+                await db.UpdateAsync(existing);
+                LogInfo($"VideoClip actualizado: ID {existing.Id}");
+                return existing.Id;
+            }
+            else
+            {
+                await db.InsertAsync(clip);
+                LogInfo($"VideoClip insertado: ID {clip.Id}");
+                return clip.Id;
+            }
         }
-        else
+        catch (Exception ex)
         {
-            await db.InsertAsync(clip);
-            return clip.Id;
+            LogError($"Error guardando VideoClip: {ex.Message}");
+            throw;
         }
     }
 

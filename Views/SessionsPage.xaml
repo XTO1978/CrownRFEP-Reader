@@ -8,7 +8,7 @@
              x:DataType="vm:SessionsViewModel"
              Title="{Binding Title}">
 
-    <Grid RowDefinitions="Auto,Auto,Auto,*" Padding="15">
+    <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" Padding="15">
 
         <controls:TopTabsBar Grid.Row="0" />
         
@@ -89,5 +89,8 @@
                 </CollectionView.EmptyView>
             </CollectionView>
         </RefreshView>
+
+        <!--  Footer de la aplicación  -->
+        <controls:AppFooter Grid.Row="4" />
     </Grid>
 </ContentPage>

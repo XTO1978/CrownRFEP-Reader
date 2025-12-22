@@ -8,7 +8,7 @@
              x:DataType="vm:StatisticsViewModel"
              Title="{Binding Title}">
 
-    <Grid RowDefinitions="Auto,*">
+    <Grid RowDefinitions="Auto,*,Auto">
         <controls:TopTabsBar Grid.Row="0" />
 
         <RefreshView Grid.Row="1" Command="{Binding RefreshCommand}" IsRefreshing="{Binding IsBusy}">
@@ -124,5 +124,8 @@
                 </VerticalStackLayout>
             </ScrollView>
         </RefreshView>
+
+        <!--  Footer de la aplicación  -->
+        <controls:AppFooter Grid.Row="2" />
     </Grid>
 </ContentPage>

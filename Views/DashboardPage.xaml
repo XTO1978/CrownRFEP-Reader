@@ -16,7 +16,7 @@
 
     <Grid
         Padding="0"
-        RowDefinitions="Auto,*">
+        RowDefinitions="Auto,*,Auto">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="350" />
             <ColumnDefinition Width="8" />
@@ -223,11 +223,11 @@
                                 Spacing="8"
                                 VerticalOptions="Center">
                                 <controls:SymbolIcon
-                                    HeightRequest="24"
+                                    HeightRequest="20"
                                     SymbolName="arrow.turn.down.right"
                                     TintColor="#FF888888"
                                     VerticalOptions="Center"
-                                    WidthRequest="24" />
+                                    WidthRequest="20" />
                                 <controls:SymbolIcon
                                     HeightRequest="24"
                                     SymbolName="oar.2.crossed"
@@ -2348,5 +2348,10 @@
                 </VerticalStackLayout>
             </Border>
         </Grid>
+
+        <!--  Footer de la aplicación  -->
+        <controls:AppFooter
+            Grid.Row="2"
+            Grid.ColumnSpan="5" />
     </Grid>
 </ContentPage>

@@ -8,7 +8,7 @@
              x:DataType="vm:AthletesViewModel" BackgroundColor="#FF121212"
              Title="{Binding Title}">
 
-    <Grid RowDefinitions="Auto,Auto,Auto,*" Padding="0" BackgroundColor="#FF121212">
+    <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" Padding="0" BackgroundColor="#FF121212">
 
         <controls:TopTabsBar Grid.Row="0" HorizontalOptions="Center" VerticalOptions="Start"/>
 
@@ -155,5 +155,8 @@
                 </RefreshView>
             </Grid>
         </Border>
+
+        <!--  Footer de la aplicación  -->
+        <controls:AppFooter Grid.Row="4" />
     </Grid>
 </ContentPage>
