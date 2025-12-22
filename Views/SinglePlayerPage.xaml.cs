@@ -529,7 +529,9 @@ public partial class SinglePlayerPage : ContentPage
             MediaPlayer.PositionChanged -= OnPositionChanged;
             MediaPlayer.MediaEnded -= OnMediaEnded;
             MediaPlayer.Stop();
+#if !MACCATALYST
             MediaPlayer.Handler?.DisconnectHandler();
+#endif
         }
     }
 

@@ -117,7 +117,9 @@ public partial class ParallelPlayerPage : ContentPage
         if (player != null)
         {
             player.Stop();
+#if !MACCATALYST
             player.Handler?.DisconnectHandler();
+#endif
         }
     }
 

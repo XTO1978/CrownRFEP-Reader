@@ -85,7 +85,7 @@
                 Grid.Row="1"
                 Margin="0,2,0,0"
                 BackgroundColor="#00BBBABA"
-                ItemsSource="{Binding RecentSessions}"
+                ItemsSource="{Binding VisibleRecentSessions}"
                 SelectedItem="{Binding SelectedSession, Mode=TwoWay}"
                 SelectionMode="Single">
 
@@ -169,6 +169,49 @@
                                     VerticalOptions="Center" />
                             </HorizontalStackLayout>
                         </Border>
+
+                        <!--  Item padre: Sesiones (expandir/colapsar)  -->
+                        <Border
+                            x:Name="SessionsHeaderBorder"
+                            Margin="0,0,0,4"
+                            BackgroundColor="Transparent"
+                            Stroke="Transparent"
+                            StrokeShape="RoundRectangle 4">
+                            <Border.Behaviors>
+                                <behaviors:DashboardAllGalleryHoverBehavior />
+                            </Border.Behaviors>
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding ToggleSessionsListExpandedCommand}" />
+                            </Border.GestureRecognizers>
+                            <Grid
+                                Padding="16,10"
+                                ColumnDefinitions="*,Auto"
+                                VerticalOptions="Center">
+                                <HorizontalStackLayout
+                                    Grid.Column="0"
+                                    Spacing="8"
+                                    VerticalOptions="Center">
+                                    <controls:SymbolIcon
+                                        HeightRequest="24"
+                                        SymbolName="clock"
+                                        TintColor="#FF6DDDFF"
+                                        VerticalOptions="Center"
+                                        WidthRequest="24" />
+                                    <Label
+                                        FontFamily="SF Pro Text"
+                                        FontSize="16"
+                                        Text="Sesiones"
+                                        TextColor="White"
+                                        VerticalOptions="Center" />
+                                </HorizontalStackLayout>
+                                <Label
+                                    Grid.Column="1"
+                                    FontSize="16"
+                                    Text="{Binding IsSessionsListExpanded, Converter={StaticResource BoolToExpandIconConverter}}"
+                                    TextColor="Gray"
+                                    VerticalOptions="Center" />
+                            </Grid>
+                        </Border>
                     </VerticalStackLayout>
                 </CollectionView.Header>
 
@@ -189,6 +232,12 @@
                                 Padding="16,10"
                                 Spacing="8"
                                 VerticalOptions="Center">
+                                <controls:SymbolIcon
+                                    HeightRequest="14"
+                                    SymbolName="chevron.right"
+                                    TintColor="#FF888888"
+                                    VerticalOptions="Center"
+                                    WidthRequest="14" />
                                 <controls:SymbolIcon
                                     HeightRequest="24"
                                     SymbolName="oar.2.crossed"
@@ -248,7 +297,8 @@
                     <VerticalStackLayout
                         Padding="40"
                         HorizontalOptions="Center"
-                        VerticalOptions="Center">
+                        VerticalOptions="Center"
+                        IsVisible="{Binding IsSessionsListExpanded}">
                         <Label
                             FontSize="18"
                             HorizontalOptions="Center"

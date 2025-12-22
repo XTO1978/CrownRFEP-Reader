@@ -21,6 +21,7 @@ public class DashboardViewModel : BaseViewModel
     private Session? _selectedSession;
     private bool _isAllGallerySelected;
     private bool _isVideoLessonsSelected;
+    private bool _isSessionsListExpanded = true;
     private bool _isLoadingSelectedSessionVideos;
     private string _importProgressText = "";
     private int _importProgressValue;
@@ -116,6 +117,18 @@ public class DashboardViewModel : BaseViewModel
                 }
                 OnPropertyChanged(nameof(SelectedSessionTitle));
                 OnPropertyChanged(nameof(VideoCountDisplayText));
+            }
+        }
+    }
+
+    public bool IsSessionsListExpanded
+    {
+        get => _isSessionsListExpanded;
+        set
+        {
+            if (SetProperty(ref _isSessionsListExpanded, value))
+            {
+                SyncVisibleRecentSessions();
             }
         }
     }
@@ -498,8 +511,20 @@ public class DashboardViewModel : BaseViewModel
     }
 
     public ObservableCollection<Session> RecentSessions { get; } = new();
+    public ObservableCollection<Session> VisibleRecentSessions { get; } = new();
     public ObservableCollection<VideoClip> SelectedSessionVideos { get; } = new();
     public ObservableCollection<VideoLesson> VideoLessons { get; } = new();
+
+    private void SyncVisibleRecentSessions()
+    {
+        VisibleRecentSessions.Clear();
+
+        if (!IsSessionsListExpanded)
+            return;
+
+        foreach (var session in RecentSessions)
+            VisibleRecentSessions.Add(session);
+    }
 
     public ObservableCollection<SectionStats> SelectedSessionSectionStats { get; } = new();
     public ObservableCollection<SessionAthleteTimeRow> SelectedSessionAthleteTimes { get; } = new();
@@ -572,6 +597,7 @@ public class DashboardViewModel : BaseViewModel
     public ICommand ViewVideoLessonsCommand { get; }
     public ICommand LoadMoreVideosCommand { get; }
     public ICommand ClearFiltersCommand { get; }
+    public ICommand ToggleSessionsListExpandedCommand { get; }
     public ICommand TogglePlacesExpandedCommand { get; }
     public ICommand ToggleAthletesExpandedCommand { get; }
     public ICommand ToggleSectionsExpandedCommand { get; }
@@ -618,6 +644,7 @@ public class DashboardViewModel : BaseViewModel
         ViewVideoLessonsCommand = new AsyncRelayCommand(ViewVideoLessonsAsync);
         LoadMoreVideosCommand = new AsyncRelayCommand(LoadMoreVideosAsync);
         ClearFiltersCommand = new RelayCommand(ClearFilters);
+        ToggleSessionsListExpandedCommand = new RelayCommand(() => IsSessionsListExpanded = !IsSessionsListExpanded);
         TogglePlacesExpandedCommand = new RelayCommand(() => IsPlacesExpanded = !IsPlacesExpanded);
         ToggleAthletesExpandedCommand = new RelayCommand(() => IsAthletesExpanded = !IsAthletesExpanded);
         ToggleSectionsExpandedCommand = new RelayCommand(() => IsSectionsExpanded = !IsSectionsExpanded);
@@ -1278,6 +1305,8 @@ public class DashboardViewModel : BaseViewModel
             {
                 RecentSessions.Add(session);
             }
+
+            SyncVisibleRecentSessions();
 
             // Si la sesión seleccionada ya no existe (p.ej. tras borrar), limpiar panel derecho.
             if (SelectedSession != null && !RecentSessions.Any(s => s.Id == SelectedSession.Id))
