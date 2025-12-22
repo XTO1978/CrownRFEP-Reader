@@ -1263,10 +1263,38 @@ public class DashboardViewModel : BaseViewModel
 
     private async Task ShareSelectedVideosAsync()
     {
-        // TODO: Implementar compartir vídeos seleccionados
-        await Task.CompletedTask;
+        // Obtener videos seleccionados
+        var source = _filteredVideosCache ?? _allVideosCache ?? SelectedSessionVideos.ToList();
+        var selectedVideos = source.Where(v => _selectedVideoIds.Contains(v.Id)).ToList();
+        
+        if (selectedVideos.Count == 0)
+        {
+            await Shell.Current.DisplayAlert("Compartir", "No hay vídeos seleccionados.", "OK");
+            return;
+        }
+        
+        // Verificar que los archivos existen (usar LocalClipPath si existe, sino ClipPath)
+        var existingFiles = selectedVideos
+            .Select(v => !string.IsNullOrWhiteSpace(v.LocalClipPath) && File.Exists(v.LocalClipPath) 
+                ? v.LocalClipPath 
+                : v.ClipPath)
+            .Where(path => !string.IsNullOrWhiteSpace(path) && File.Exists(path))
+            .Select(path => new ShareFile(path!))
+            .ToList();
+        
+        if (existingFiles.Count == 0)
+        {
+            await Shell.Current.DisplayAlert("Compartir", "No se encontraron los archivos de vídeo.", "OK");
+            return;
+        }
+        
+        // Compartir archivos
+        await Share.Default.RequestAsync(new ShareMultipleFilesRequest
+        {
+            Title = $"Compartir {existingFiles.Count} vídeo(s)",
+            Files = existingFiles
+        });
     }
-
     private async Task PlayParallelAnalysisAsync()
     {
         // Verificar que hay al menos un vídeo

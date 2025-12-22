@@ -223,11 +223,11 @@
                                 Spacing="8"
                                 VerticalOptions="Center">
                                 <controls:SymbolIcon
-                                    HeightRequest="14"
-                                    SymbolName="chevron.right"
+                                    HeightRequest="24"
+                                    SymbolName="arrow.turn.down.right"
                                     TintColor="#FF888888"
                                     VerticalOptions="Center"
-                                    WidthRequest="14" />
+                                    WidthRequest="24" />
                                 <controls:SymbolIcon
                                     HeightRequest="24"
                                     SymbolName="oar.2.crossed"
