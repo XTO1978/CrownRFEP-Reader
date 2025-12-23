@@ -28,6 +28,7 @@
             <converters:IntToBoolConverter x:Key="IntToBoolConverter"/>
             <converters:IntEqualityToColorConverter x:Key="IntEqualityToColorConverter"/>
             <converters:TimestampToDateConverter x:Key="TimestampToDateConverter"/>
+            <converters:AllTrueMultiConverter x:Key="AllTrueConverter"/>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

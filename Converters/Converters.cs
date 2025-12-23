@@ -23,23 +23,36 @@ public class InvertedBoolConverter : IValueConverter
 }
 
 /// <summary>
-/// Convierte un porcentaje (0-100) a un valor de progreso (0-1)
+/// Convierte un valor numérico a un valor de progreso (0-1)
+/// El parámetro indica el valor máximo (por defecto 100)
 /// </summary>
 public class ProgressConverter : IValueConverter
 {
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
+        double maxValue = 100.0;
+        if (parameter is string paramStr && double.TryParse(paramStr, out var parsed))
+            maxValue = parsed;
+        else if (parameter is int paramInt)
+            maxValue = paramInt;
+        else if (parameter is double paramDouble)
+            maxValue = paramDouble;
+
         if (value is int intValue)
-            return intValue / 100.0;
+            return intValue / maxValue;
         if (value is double doubleValue)
-            return doubleValue / 100.0;
+            return doubleValue / maxValue;
         return 0.0;
     }
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
+        double maxValue = 100.0;
+        if (parameter is string paramStr && double.TryParse(paramStr, out var parsed))
+            maxValue = parsed;
+
         if (value is double doubleValue)
-            return (int)(doubleValue * 100);
+            return (int)(doubleValue * maxValue);
         return 0;
     }
 }
@@ -518,6 +531,32 @@ public class TimestampToDateConverter : IValueConverter
     }
 
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+/// <summary>
+/// MultiValueConverter que retorna true solo si todos los valores son true
+/// </summary>
+public class AllTrueMultiConverter : IMultiValueConverter
+{
+    public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (values == null || values.Length == 0)
+            return false;
+
+        foreach (var value in values)
+        {
+            if (value is bool boolValue && !boolValue)
+                return false;
+            if (value is not bool)
+                return false;
+        }
+        return true;
+    }
+
+    public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
     {
         throw new NotImplementedException();
     }

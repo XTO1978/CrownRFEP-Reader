@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView
+    x:Class="CrownRFEP_Reader.Views.Controls.CalendarView"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:controls="clr-namespace:CrownRFEP_Reader.Views.Controls"
+    xmlns:local="clr-namespace:CrownRFEP_Reader.Views.Controls"
+    x:Name="CalendarRoot"
+    x:DataType="local:CalendarView">
+    
+    <ContentView.Resources>
+        <ResourceDictionary>
+            <!-- Colores del calendario -->
+            <Color x:Key="CalendarSelectedBg">#FF6DDDFF</Color>
+            <Color x:Key="CalendarTodayBg">#FF3A3A3A</Color>
+            <Color x:Key="CalendarDefaultBg">Transparent</Color>
+            <Color x:Key="CalendarTodayStroke">#FF6DDDFF</Color>
+            <Color x:Key="CalendarDefaultStroke">#FF2A2A2A</Color>
+            <Color x:Key="CalendarVideoIconColor">#FF6DDDFF</Color>
+            <Color x:Key="CalendarDiaryIconColor">#FF8DD3C7</Color>
+        </ResourceDictionary>
+    </ContentView.Resources>
+    
+    <Grid RowDefinitions="Auto,Auto,*" RowSpacing="8" Padding="16">
+        
+        <!--  Header: Navegación de mes  -->
+        <Grid ColumnDefinitions="Auto,*,Auto">
+            <Button
+                Text="◀"
+                BackgroundColor="Transparent"
+                TextColor="{StaticResource CalendarSelectedBg}"
+                FontSize="18"
+                Padding="12,8"
+                Clicked="OnPreviousMonthClicked" />
+            
+            <Label
+                Grid.Column="1"
+                Text="{Binding DisplayMonthText, Source={x:Reference CalendarRoot}}"
+                FontSize="20"
+                FontAttributes="Bold"
+                TextColor="White"
+                HorizontalOptions="Center"
+                VerticalOptions="Center" />
+            
+            <Button
+                Grid.Column="2"
+                Text="▶"
+                BackgroundColor="Transparent"
+                TextColor="{StaticResource CalendarSelectedBg}"
+                FontSize="18"
+                Padding="12,8"
+                Clicked="OnNextMonthClicked" />
+        </Grid>
+        
+        <!--  Días de la semana  -->
+        <Grid Grid.Row="1" ColumnSpacing="4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            
+            <Label Grid.Column="0" Text="Lun" FontSize="12" TextColor="#FF888888" HorizontalOptions="Center" />
+            <Label Grid.Column="1" Text="Mar" FontSize="12" TextColor="#FF888888" HorizontalOptions="Center" />
+            <Label Grid.Column="2" Text="Mié" FontSize="12" TextColor="#FF888888" HorizontalOptions="Center" />
+            <Label Grid.Column="3" Text="Jue" FontSize="12" TextColor="#FF888888" HorizontalOptions="Center" />
+            <Label Grid.Column="4" Text="Vie" FontSize="12" TextColor="#FF888888" HorizontalOptions="Center" />
+            <Label Grid.Column="5" Text="Sáb" FontSize="12" TextColor="#FF888888" HorizontalOptions="Center" />
+            <Label Grid.Column="6" Text="Dom" FontSize="12" TextColor="#FF888888" HorizontalOptions="Center" />
+        </Grid>
+        
+        <!--  Grid de días del mes usando CollectionView con GridItemsLayout  -->
+        <CollectionView
+            Grid.Row="2"
+            ItemsSource="{Binding CalendarDays, Source={x:Reference CalendarRoot}}"
+            SelectionMode="None"
+            VerticalOptions="Start">
+            <CollectionView.ItemsLayout>
+                <GridItemsLayout 
+                    Orientation="Vertical" 
+                    Span="7"
+                    HorizontalItemSpacing="4"
+                    VerticalItemSpacing="4" />
+            </CollectionView.ItemsLayout>
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="local:CalendarDayModel">
+                    <Border
+                        Padding="6"
+                        HeightRequest="140"
+                        BackgroundColor="{Binding BackgroundColor}"
+                        Stroke="{Binding StrokeColor}"
+                        StrokeThickness="{Binding StrokeThickness}"
+                        StrokeShape="RoundRectangle 4">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer 
+                                Command="{Binding TapCommand, Source={x:Reference CalendarRoot}}"
+                                CommandParameter="{Binding Date}" />
+                        </Border.GestureRecognizers>
+                        
+                        <Grid IsVisible="{Binding IsVisible}">
+                            <!--  Fila superior: Número del día + Iconos  -->
+                            <HorizontalStackLayout
+                                HorizontalOptions="Start"
+                                VerticalOptions="Start"
+                                Spacing="4">
+                                
+                                <!--  Número del día  -->
+                                <Label
+                                    Text="{Binding DayNumber}"
+                                    FontSize="26"
+                                    FontAttributes="Bold" Margin="0,0,10,0"
+                                    TextColor="{Binding TextColor}"
+                                    VerticalOptions="Center" />
+                                
+                                <!--  Icono de video  -->
+                                <controls:SymbolIcon
+                                    IsVisible="{Binding HasSession}"
+                                    SymbolName="video.fill"
+                                    TintColor="{Binding VideoIconColor}"
+                                    WidthRequest="18"
+                                    HeightRequest="18"
+                                    VerticalOptions="Center" />
+                                
+                                <!--  Icono de diario  -->
+                                <controls:SymbolIcon
+                                    IsVisible="{Binding HasDiary}"
+                                    SymbolName="note.text"
+                                    TintColor="{Binding DiaryIconColor}"
+                                    WidthRequest="18"
+                                    HeightRequest="18"
+                                    VerticalOptions="Center" />
+                                
+                                <!--  Icono de valoraciones  -->
+                                <controls:SymbolIcon
+                                    IsVisible="{Binding HasValoraciones}"
+                                    SymbolName="star.fill"
+                                    TintColor="{Binding ValoracionesIconColor}"
+                                    WidthRequest="18"
+                                    HeightRequest="18"
+                                    VerticalOptions="Center" />
+                                
+                            </HorizontalStackLayout>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+        
+    </Grid>
+</ContentView>

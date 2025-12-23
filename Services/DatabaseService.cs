@@ -1434,12 +1434,12 @@ public class DatabaseService
         {
             diary.Id = existing.Id;
             diary.CreatedAt = existing.CreatedAt;
-            diary.UpdatedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            diary.UpdatedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             return await db.UpdateAsync(diary);
         }
         else
         {
-            diary.CreatedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            diary.CreatedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             diary.UpdatedAt = diary.CreatedAt;
             return await db.InsertAsync(diary);
         }
@@ -1451,7 +1451,7 @@ public class DatabaseService
     public async Task<(double Fisica, double Mental, double Tecnica, int Count)> GetValoracionAveragesAsync(int athleteId, int days = 30)
     {
         var db = await GetConnectionAsync();
-        var cutoffDate = DateTimeOffset.UtcNow.AddDays(-days).ToUnixTimeMilliseconds();
+        var cutoffDate = DateTimeOffset.UtcNow.AddDays(-days).ToUnixTimeSeconds();
         
         var diaries = await db.Table<SessionDiary>()
             .Where(d => d.AthleteId == athleteId && d.CreatedAt >= cutoffDate && 
@@ -1489,6 +1489,21 @@ public class DatabaseService
         var db = await GetConnectionAsync();
         return await db.Table<SessionDiary>()
             .Where(d => d.AthleteId == athleteId)
+            .OrderByDescending(d => d.CreatedAt)
+            .ToListAsync();
+    }
+
+    /// <summary>
+    /// Obtiene los diarios de sesión para un atleta en un período específico
+    /// </summary>
+    public async Task<List<SessionDiary>> GetSessionDiariesForPeriodAsync(int athleteId, DateTime startDate, DateTime endDate)
+    {
+        var db = await GetConnectionAsync();
+        var startUnix = new DateTimeOffset(startDate).ToUnixTimeSeconds();
+        var endUnix = new DateTimeOffset(endDate).ToUnixTimeSeconds();
+        
+        return await db.Table<SessionDiary>()
+            .Where(d => d.AthleteId == athleteId && d.CreatedAt >= startUnix && d.CreatedAt <= endUnix)
             .OrderByDescending(d => d.CreatedAt)
             .ToListAsync();
     }

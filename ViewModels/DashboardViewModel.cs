@@ -22,12 +22,19 @@ public class DashboardViewModel : BaseViewModel
     private Session? _selectedSession;
     private bool _isAllGallerySelected;
     private bool _isVideoLessonsSelected;
+    private bool _isDiaryViewSelected;
     private bool _isSessionsListExpanded = true;
     private bool _isLoadingSelectedSessionVideos;
 
     private GridLength _rightPanelWidth = new(1.2, GridUnitType.Star);
     private GridLength _rightSplitterWidth = new(8);
     private string _importProgressText = "";
+
+    // Vista Diario (calendario)
+    private DateTime _selectedDiaryDate = DateTime.Today;
+    private List<SessionDiary> _diaryEntriesForMonth = new();
+    private List<Session> _sessionsForMonth = new();
+    private SessionDiary? _selectedDateDiary;
     private int _importProgressValue;
     private bool _isImporting;
 
@@ -221,6 +228,7 @@ public class DashboardViewModel : BaseViewModel
                 {
                     IsAllGallerySelected = false;
                     IsVideoLessonsSelected = false;
+                    IsDiaryViewSelected = false;
                 }
                 OnPropertyChanged(nameof(SelectedSessionTitle));
                 OnPropertyChanged(nameof(HasSpecificSessionSelected));
@@ -245,6 +253,7 @@ public class DashboardViewModel : BaseViewModel
                 if (value)
                 {
                     IsVideoLessonsSelected = false;
+                    IsDiaryViewSelected = false;
                     ClearSectionTimes();
                 }
                 OnPropertyChanged(nameof(SelectedSessionTitle));
@@ -265,6 +274,7 @@ public class DashboardViewModel : BaseViewModel
                 if (value)
                 {
                     IsAllGallerySelected = false;
+                    IsDiaryViewSelected = false;
                     ClearSectionTimes();
                 }
                 UpdateRightPanelLayout();
@@ -272,9 +282,73 @@ public class DashboardViewModel : BaseViewModel
                 OnPropertyChanged(nameof(VideoCountDisplayText));
                 OnPropertyChanged(nameof(ShowSectionTimesTable));
                 OnPropertyChanged(nameof(HasSpecificSessionSelected));
+                OnPropertyChanged(nameof(ShowVideoGallery));
             }
         }
     }
+
+    public bool IsDiaryViewSelected
+    {
+        get => _isDiaryViewSelected;
+        set
+        {
+            if (SetProperty(ref _isDiaryViewSelected, value))
+            {
+                if (value)
+                {
+                    IsAllGallerySelected = false;
+                    IsVideoLessonsSelected = false;
+                    SelectedSession = null;
+                    ClearSectionTimes();
+                    _ = LoadDiaryViewDataAsync();
+                }
+                UpdateRightPanelLayout();
+                OnPropertyChanged(nameof(SelectedSessionTitle));
+                OnPropertyChanged(nameof(VideoCountDisplayText));
+                OnPropertyChanged(nameof(ShowSectionTimesTable));
+                OnPropertyChanged(nameof(HasSpecificSessionSelected));
+                OnPropertyChanged(nameof(ShowVideoGallery));
+            }
+        }
+    }
+
+    public DateTime SelectedDiaryDate
+    {
+        get => _selectedDiaryDate;
+        set
+        {
+            if (SetProperty(ref _selectedDiaryDate, value))
+            {
+                _ = LoadDiaryForDateAsync(value);
+            }
+        }
+    }
+
+    public List<SessionDiary> DiaryEntriesForMonth
+    {
+        get => _diaryEntriesForMonth;
+        set => SetProperty(ref _diaryEntriesForMonth, value);
+    }
+
+    public List<Session> SessionsForMonth
+    {
+        get => _sessionsForMonth;
+        set => SetProperty(ref _sessionsForMonth, value);
+    }
+
+    public SessionDiary? SelectedDateDiary
+    {
+        get => _selectedDateDiary;
+        set
+        {
+            if (SetProperty(ref _selectedDateDiary, value))
+            {
+                OnPropertyChanged(nameof(HasSelectedDateDiary));
+            }
+        }
+    }
+
+    public bool HasSelectedDateDiary => SelectedDateDiary != null;
 
     public GridLength RightPanelWidth
     {
@@ -314,11 +388,13 @@ public class DashboardViewModel : BaseViewModel
         }
     }
 
-    public string SelectedSessionTitle => IsVideoLessonsSelected
-        ? "Videolecciones"
-        : (IsAllGallerySelected
-            ? "Galería General"
-            : (SelectedSession?.DisplayName ?? "Selecciona una sesión"));
+    public string SelectedSessionTitle => IsDiaryViewSelected
+        ? "Diario Personal"
+        : (IsVideoLessonsSelected
+            ? "Videolecciones"
+            : (IsAllGallerySelected
+                ? "Galería General"
+                : (SelectedSession?.DisplayName ?? "Selecciona una sesión")));
 
     public bool IsLoadingSelectedSessionVideos
     {
@@ -485,6 +561,9 @@ public class DashboardViewModel : BaseViewModel
     }
 
     public bool HasDiaryData => _currentSessionDiary != null;
+
+    /// <summary>Indica si debe mostrarse la galería de vídeos (no en Videolecciones ni Diario)</summary>
+    public bool ShowVideoGallery => !IsVideoLessonsSelected && !IsDiaryViewSelected;
 
     public bool IsMultiSelectMode
     {
@@ -1322,6 +1401,8 @@ public class DashboardViewModel : BaseViewModel
     public ICommand DeleteSelectedSessionCommand { get; }
     public ICommand SelectAllGalleryCommand { get; }
     public ICommand ViewVideoLessonsCommand { get; }
+    public ICommand ViewDiaryCommand { get; }
+    public ICommand SelectDiaryDateCommand { get; }
     public ICommand LoadMoreVideosCommand { get; }
     public ICommand ClearFiltersCommand { get; }
     public ICommand ToggleSessionsListExpandedCommand { get; }
@@ -1423,6 +1504,8 @@ public class DashboardViewModel : BaseViewModel
         DeleteSelectedSessionCommand = new AsyncRelayCommand(DeleteSelectedSessionAsync);
         SelectAllGalleryCommand = new AsyncRelayCommand(SelectAllGalleryAsync);
         ViewVideoLessonsCommand = new AsyncRelayCommand(ViewVideoLessonsAsync);
+        ViewDiaryCommand = new RelayCommand(() => IsDiaryViewSelected = true);
+        SelectDiaryDateCommand = new RelayCommand<DateTime>(date => SelectedDiaryDate = date);
         LoadMoreVideosCommand = new AsyncRelayCommand(LoadMoreVideosAsync);
         ClearFiltersCommand = new RelayCommand(ClearFilters);
         ToggleSessionsListExpandedCommand = new RelayCommand(() => IsSessionsListExpanded = !IsSessionsListExpanded);
@@ -3145,6 +3228,81 @@ public class DashboardViewModel : BaseViewModel
         {
             System.Diagnostics.Debug.WriteLine($"Error guardando diario: {ex}");
             await Shell.Current.DisplayAlert("Error", $"No se pudo guardar el diario: {ex.Message}", "OK");
+        }
+    }
+
+    #endregion
+
+    #region Diary View Methods (Calendar)
+
+    private async Task LoadDiaryViewDataAsync()
+    {
+        try
+        {
+            var profile = await _databaseService.GetUserProfileAsync();
+            if (profile?.ReferenceAthleteId == null) return;
+
+            // Cargar entradas del mes actual
+            await LoadDiaryEntriesForMonthAsync(SelectedDiaryDate, profile.ReferenceAthleteId.Value);
+            
+            // Cargar diario del día seleccionado
+            await LoadDiaryForDateAsync(SelectedDiaryDate);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error cargando vista diario: {ex}");
+        }
+    }
+
+    private async Task LoadDiaryEntriesForMonthAsync(DateTime month, int athleteId)
+    {
+        try
+        {
+            var startOfMonth = new DateTime(month.Year, month.Month, 1);
+            var endOfMonth = startOfMonth.AddMonths(1).AddDays(-1);
+
+            // Cargar sesiones del mes para mostrar iconos de video en el calendario
+            var startUnix = new DateTimeOffset(startOfMonth).ToUnixTimeSeconds();
+            var endUnix = new DateTimeOffset(endOfMonth.AddDays(1)).ToUnixTimeSeconds();
+            var sessions = await _databaseService.GetAllSessionsAsync();
+            SessionsForMonth = sessions.Where(s => s.Fecha >= startUnix && s.Fecha < endUnix).ToList();
+
+            // Cargar diarios de las sesiones del mes (filtrados por SessionId)
+            var sessionIds = SessionsForMonth.Select(s => s.Id).ToHashSet();
+            var allDiaries = await _databaseService.GetAllSessionDiariesForAthleteAsync(athleteId);
+            DiaryEntriesForMonth = allDiaries.Where(d => sessionIds.Contains(d.SessionId)).ToList();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error cargando entradas del mes: {ex}");
+            DiaryEntriesForMonth = new List<SessionDiary>();
+            SessionsForMonth = new List<Session>();
+        }
+    }
+
+    private async Task LoadDiaryForDateAsync(DateTime date)
+    {
+        try
+        {
+            var profile = await _databaseService.GetUserProfileAsync();
+            if (profile?.ReferenceAthleteId == null)
+            {
+                SelectedDateDiary = null;
+                return;
+            }
+
+            var athleteId = profile.ReferenceAthleteId.Value;
+
+            // Buscar un diario para esa fecha específica
+            var entries = await _databaseService.GetSessionDiariesForPeriodAsync(
+                athleteId, date.Date, date.Date.AddDays(1).AddSeconds(-1));
+            
+            SelectedDateDiary = entries.FirstOrDefault();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error cargando diario del día: {ex}");
+            SelectedDateDiary = null;
         }
     }
 
