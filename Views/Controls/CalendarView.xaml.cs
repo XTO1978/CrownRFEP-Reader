@@ -15,11 +15,20 @@ public class CalendarDayModel : INotifyPropertyChanged
     private bool _hasSession;
     private bool _hasDiary;
     private bool _hasValoraciones;
+    private bool _hasWellness;
+    private int? _wellnessScore;
+    private string? _moodSymbol;
+    private Color? _moodColor;
+    private double? _sleepHours;
+    private int? _restingHeartRate;
+    private int? _hrv;
 
     public DateTime Date { get; set; }
     public string DayNumber => Date.Day.ToString();
     public bool IsVisible { get; set; } = true;
     public bool IsToday => Date.Date == DateTime.Today;
+    public bool IsFuture => Date.Date > DateTime.Today;
+    public bool IsEnabled => !IsFuture;
 
     public bool IsSelected
     {
@@ -45,22 +54,96 @@ public class CalendarDayModel : INotifyPropertyChanged
         set { _hasValoraciones = value; OnPropertyChanged(); }
     }
 
-    // Colores calculados
-    public Color BackgroundColor => IsSelected ? Color.FromArgb("#FF6DDDFF") :
-                                    (IsToday ? Color.FromArgb("#FF3A3A3A") : Colors.Transparent);
+    public bool HasWellness
+    {
+        get => _hasWellness;
+        set { _hasWellness = value; OnPropertyChanged(); }
+    }
 
-    public Color StrokeColor => IsSelected ? Colors.Transparent :
-                                (IsToday ? Color.FromArgb("#FF6DDDFF") : Color.FromArgb("#FF2A2A2A"));
+    public int? WellnessScore
+    {
+        get => _wellnessScore;
+        set { _wellnessScore = value; OnPropertyChanged(); OnPropertyChanged(nameof(WellnessScoreText)); }
+    }
+
+    public string WellnessScoreText => WellnessScore.HasValue ? WellnessScore.Value.ToString() : "";
+
+    public string? MoodSymbol
+    {
+        get => _moodSymbol;
+        set { _moodSymbol = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasMood)); }
+    }
+
+    public bool HasMood => !string.IsNullOrEmpty(MoodSymbol);
+
+    public Color? MoodColor
+    {
+        get => _moodColor;
+        set { _moodColor = value; OnPropertyChanged(); OnPropertyChanged(nameof(DisplayMoodColor)); }
+    }
+
+    public Color DisplayMoodColor => IsSelected ? Colors.Black : (MoodColor ?? Color.FromArgb("#FF888888"));
+
+    public double? SleepHours
+    {
+        get => _sleepHours;
+        set { _sleepHours = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasSleep)); OnPropertyChanged(nameof(SleepText)); }
+    }
+
+    public bool HasSleep => SleepHours.HasValue && SleepHours > 0;
+
+    public string SleepText => SleepHours.HasValue ? $"{SleepHours:F0}h" : "";
+
+    public int? RestingHeartRate
+    {
+        get => _restingHeartRate;
+        set { _restingHeartRate = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasHeartRate)); OnPropertyChanged(nameof(HeartRateText)); }
+    }
+
+    public bool HasHeartRate => RestingHeartRate.HasValue && RestingHeartRate > 0;
+
+    public string HeartRateText => RestingHeartRate.HasValue ? RestingHeartRate.Value.ToString() : "";
+
+    public int? HRV
+    {
+        get => _hrv;
+        set { _hrv = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasHRV)); OnPropertyChanged(nameof(HRVText)); }
+    }
+
+    public bool HasHRV => HRV.HasValue && HRV > 0;
+
+    public string HRVText => HRV.HasValue ? HRV.Value.ToString() : "";
+
+    // Opacidad para días futuros (desactivados)
+    public double DayOpacity => IsFuture ? 0.3 : 1.0;
+
+    // Colores calculados
+    public Color BackgroundColor => IsFuture ? Colors.Transparent :
+                                    (IsSelected ? Color.FromArgb("#FF6DDDFF") :
+                                    (IsToday ? Color.FromArgb("#FF3A3A3A") : Colors.Transparent));
+
+    public Color StrokeColor => IsFuture ? Color.FromArgb("#FF1A1A1A") :
+                                (IsSelected ? Colors.Transparent :
+                                (IsToday ? Color.FromArgb("#FF6DDDFF") : Color.FromArgb("#FF2A2A2A")));
 
     public double StrokeThickness => IsToday && !IsSelected ? 2 : 1;
 
-    public Color TextColor => IsSelected ? Colors.Black : Colors.White;
+    public Color TextColor => IsFuture ? Color.FromArgb("#FF444444") :
+                              (IsSelected ? Colors.Black : Colors.White);
 
     public Color VideoIconColor => IsSelected ? Colors.Black : Color.FromArgb("#FF6DDDFF");
 
     public Color DiaryIconColor => IsSelected ? Colors.Black : Color.FromArgb("#FF8DD3C7");
 
     public Color ValoracionesIconColor => IsSelected ? Colors.Black : Color.FromArgb("#FFFFED6F");
+
+    public Color WellnessIconColor => IsSelected ? Colors.Black : Color.FromArgb("#FFFF6B6B");
+
+    public Color SleepIconColor => IsSelected ? Colors.Black : Color.FromArgb("#FF5856D6");
+
+    public Color HeartRateIconColor => IsSelected ? Colors.Black : Color.FromArgb("#FFFF6B6B");
+
+    public Color HRVIconColor => IsSelected ? Colors.Black : Color.FromArgb("#FFAEADFF");
 
     private void UpdateColors()
     {
@@ -71,6 +154,11 @@ public class CalendarDayModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(VideoIconColor));
         OnPropertyChanged(nameof(DiaryIconColor));
         OnPropertyChanged(nameof(ValoracionesIconColor));
+        OnPropertyChanged(nameof(WellnessIconColor));
+        OnPropertyChanged(nameof(SleepIconColor));
+        OnPropertyChanged(nameof(HeartRateIconColor));
+        OnPropertyChanged(nameof(HRVIconColor));
+        OnPropertyChanged(nameof(DisplayMoodColor));
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -103,6 +191,10 @@ public partial class CalendarView : ContentView, INotifyPropertyChanged
         BindableProperty.Create(nameof(Sessions), typeof(IList<Session>), typeof(CalendarView),
             propertyChanged: OnDataChanged);
 
+    public static readonly BindableProperty WellnessDataProperty =
+        BindableProperty.Create(nameof(WellnessData), typeof(IList<DailyWellness>), typeof(CalendarView),
+            propertyChanged: OnDataChanged);
+
     public DateTime SelectedDate
     {
         get => (DateTime)GetValue(SelectedDateProperty);
@@ -125,6 +217,12 @@ public partial class CalendarView : ContentView, INotifyPropertyChanged
     {
         get => (IList<Session>)GetValue(SessionsProperty);
         set => SetValue(SessionsProperty, value);
+    }
+
+    public IList<DailyWellness> WellnessData
+    {
+        get => (IList<DailyWellness>)GetValue(WellnessDataProperty);
+        set => SetValue(WellnessDataProperty, value);
     }
 
     #endregion
@@ -207,6 +305,10 @@ public partial class CalendarView : ContentView, INotifyPropertyChanged
 
     private void OnDateTapped(DateTime date)
     {
+        // No permitir seleccionar días futuros
+        if (date.Date > DateTime.Today)
+            return;
+            
         SelectedDate = date;
         DateSelectedCommand?.Execute(date);
     }
@@ -244,13 +346,21 @@ public partial class CalendarView : ContentView, INotifyPropertyChanged
         for (int day = 1; day <= daysInMonth; day++)
         {
             var date = new DateTime(_displayMonth.Year, _displayMonth.Month, day);
+            var wellness = GetWellnessForDate(date);
             var dayModel = new CalendarDayModel
             {
                 Date = date,
                 IsSelected = date.Date == SelectedDate.Date,
                 HasSession = HasSessionOnDate(date),
                 HasDiary = HasDiaryEntry(date),
-                HasValoraciones = HasValoracionesOnDate(date)
+                HasValoraciones = HasValoracionesOnDate(date),
+                HasWellness = wellness != null && wellness.HasData,
+                WellnessScore = wellness?.WellnessScore,
+                MoodSymbol = wellness?.MoodSymbol,
+                MoodColor = wellness?.MoodColor,
+                SleepHours = wellness?.SleepHours,
+                RestingHeartRate = wellness?.RestingHeartRate,
+                HRV = wellness?.HeartRateVariability
             };
             CalendarDays.Add(dayModel);
         }
@@ -276,6 +386,15 @@ public partial class CalendarView : ContentView, INotifyPropertyChanged
                 day.HasSession = HasSessionOnDate(day.Date);
                 day.HasDiary = HasDiaryEntry(day.Date);
                 day.HasValoraciones = HasValoracionesOnDate(day.Date);
+                
+                var wellness = GetWellnessForDate(day.Date);
+                day.HasWellness = wellness != null && wellness.HasData;
+                day.WellnessScore = wellness?.WellnessScore;
+                day.MoodSymbol = wellness?.MoodSymbol;
+                day.MoodColor = wellness?.MoodColor;
+                day.SleepHours = wellness?.SleepHours;
+                day.RestingHeartRate = wellness?.RestingHeartRate;
+                day.HRV = wellness?.HeartRateVariability;
             }
         }
     }
@@ -319,6 +438,14 @@ public partial class CalendarView : ContentView, INotifyPropertyChanged
             }
         }
         return false;
+    }
+
+    private DailyWellness? GetWellnessForDate(DateTime date)
+    {
+        if (WellnessData == null || WellnessData.Count == 0)
+            return null;
+
+        return WellnessData.FirstOrDefault(w => w.Date.Date == date.Date);
     }
 
     #endregion

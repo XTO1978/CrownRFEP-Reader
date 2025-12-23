@@ -94,15 +94,16 @@
                         BackgroundColor="{Binding BackgroundColor}"
                         Stroke="{Binding StrokeColor}"
                         StrokeThickness="{Binding StrokeThickness}"
-                        StrokeShape="RoundRectangle 4">
+                        StrokeShape="RoundRectangle 4"
+                        Opacity="{Binding DayOpacity}">
                         <Border.GestureRecognizers>
                             <TapGestureRecognizer 
                                 Command="{Binding TapCommand, Source={x:Reference CalendarRoot}}"
                                 CommandParameter="{Binding Date}" />
                         </Border.GestureRecognizers>
                         
-                        <Grid IsVisible="{Binding IsVisible}">
-                            <!--  Fila superior: Número del día + Iconos  -->
+                        <VerticalStackLayout IsVisible="{Binding IsVisible}" Spacing="4">
+                            <!--  Fila superior: Número del día + Iconos de sesión  -->
                             <HorizontalStackLayout
                                 HorizontalOptions="Start"
                                 VerticalOptions="Start"
@@ -144,7 +145,69 @@
                                     VerticalOptions="Center" />
                                 
                             </HorizontalStackLayout>
-                        </Grid>
+                            
+                            <!--  Indicadores de bienestar  -->
+                            <VerticalStackLayout 
+                                IsVisible="{Binding HasWellness}"
+                                Spacing="3"
+                                Margin="0,4,0,0">
+                                
+                                <!--  Estado de ánimo (icono de tiempo)  -->
+                                <HorizontalStackLayout Spacing="4" IsVisible="{Binding HasMood}">
+                                    <controls:SymbolIcon
+                                        SymbolName="{Binding MoodSymbol}"
+                                        TintColor="{Binding DisplayMoodColor}"
+                                        WidthRequest="16"
+                                        HeightRequest="16"
+                                        VerticalOptions="Center" />
+                                </HorizontalStackLayout>
+                                
+                                <!--  Sueño  -->
+                                <HorizontalStackLayout Spacing="4" IsVisible="{Binding HasSleep}">
+                                    <controls:SymbolIcon
+                                        SymbolName="moon.fill"
+                                        TintColor="{Binding SleepIconColor}"
+                                        WidthRequest="14"
+                                        HeightRequest="14"
+                                        VerticalOptions="Center" />
+                                    <Label
+                                        Text="{Binding SleepText}"
+                                        FontSize="11"
+                                        TextColor="{Binding TextColor}"
+                                        VerticalOptions="Center" />
+                                </HorizontalStackLayout>
+                                
+                                <!--  PPM Basal  -->
+                                <HorizontalStackLayout Spacing="4" IsVisible="{Binding HasHeartRate}">
+                                    <controls:SymbolIcon
+                                        SymbolName="heart.fill"
+                                        TintColor="{Binding HeartRateIconColor}"
+                                        WidthRequest="14"
+                                        HeightRequest="14"
+                                        VerticalOptions="Center" />
+                                    <Label
+                                        Text="{Binding HeartRateText}"
+                                        FontSize="11"
+                                        TextColor="{Binding TextColor}"
+                                        VerticalOptions="Center" />
+                                </HorizontalStackLayout>
+                                
+                                <!--  HRV  -->
+                                <HorizontalStackLayout Spacing="4" IsVisible="{Binding HasHRV}">
+                                    <controls:SymbolIcon
+                                        SymbolName="waveform.path.ecg"
+                                        TintColor="{Binding HRVIconColor}"
+                                        WidthRequest="14"
+                                        HeightRequest="14"
+                                        VerticalOptions="Center" />
+                                    <Label
+                                        Text="{Binding HRVText}"
+                                        FontSize="11"
+                                        TextColor="{Binding TextColor}"
+                                        VerticalOptions="Center" />
+                                </HorizontalStackLayout>
+                            </VerticalStackLayout>
+                        </VerticalStackLayout>
                     </Border>
                 </DataTemplate>
             </CollectionView.ItemTemplate>

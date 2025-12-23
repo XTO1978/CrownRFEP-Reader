@@ -46,6 +46,14 @@
         <true/>
         <key>com.apple.security.device.microphone</key>
         <true/>
+        
+        <!-- HealthKit - comentado hasta que se configure el perfil de aprovisionamiento -->
+        <!-- Para habilitar HealthKit, descomenta estas líneas y configura el perfil:
+        <key>com.apple.developer.healthkit</key>
+        <true/>
+        <key>com.apple.developer.healthkit.access</key>
+        <array/>
+        -->
     </dict>
 </plist>
 

@@ -65,12 +65,19 @@ public static class MauiProgram
 		builder.Services.AddSingleton<StatisticsService>();
 		builder.Services.AddSingleton<ThumbnailService>();
 
-#if MACCATALYST
+#if MACCATALYST || IOS
 		builder.Services.AddSingleton<IVideoLessonRecorder, ReplayKitVideoLessonRecorder>();
 #elif WINDOWS
 		builder.Services.AddSingleton<IVideoLessonRecorder, CrownRFEP_Reader.Platforms.Windows.WindowsVideoLessonRecorder>();
 #else
 		builder.Services.AddSingleton<IVideoLessonRecorder, NullVideoLessonRecorder>();
+#endif
+
+		// HealthKit solo está disponible en iOS real (iPhone/iPad), no en macOS/MacCatalyst
+#if IOS && !MACCATALYST
+		builder.Services.AddSingleton<IHealthKitService, AppleHealthKitService>();
+#else
+		builder.Services.AddSingleton<IHealthKitService, StubHealthKitService>();
 #endif
 
 		// ViewModels

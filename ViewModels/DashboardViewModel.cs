@@ -44,8 +44,29 @@ public class SessionWithDiary : INotifyPropertyChanged
     private int _editValoracionMental = 3;
     private int _editValoracionTecnica = 3;
     private string _editNotas = "";
+    private ObservableCollection<VideoClip> _videos = new();
 
     public Session Session { get; set; } = null!;
+    
+    /// <summary>Vídeos de la sesión (máximo 6 para la mini galería)</summary>
+    public ObservableCollection<VideoClip> Videos
+    {
+        get => _videos;
+        set
+        {
+            _videos = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(HasVideos));
+            OnPropertyChanged(nameof(VideoCount));
+            OnPropertyChanged(nameof(ExtraVideosCount));
+            OnPropertyChanged(nameof(HasExtraVideos));
+        }
+    }
+    
+    public bool HasVideos => Videos.Count > 0;
+    public int VideoCount { get; set; }
+    public int ExtraVideosCount => Math.Max(0, VideoCount - 6);
+    public bool HasExtraVideos => ExtraVideosCount > 0;
     
     public SessionDiary? Diary
     {
@@ -111,6 +132,7 @@ public class DashboardViewModel : BaseViewModel
     private readonly CrownFileService _crownFileService;
     private readonly StatisticsService _statisticsService;
     private readonly ThumbnailService _thumbnailService;
+    private readonly IHealthKitService _healthKitService;
 
     private DashboardStats? _stats;
     private Session? _selectedSession;
@@ -128,6 +150,7 @@ public class DashboardViewModel : BaseViewModel
     private DateTime _selectedDiaryDate = DateTime.Today;
     private List<SessionDiary> _diaryEntriesForMonth = new();
     private List<Session> _sessionsForMonth = new();
+    private List<DailyWellness> _wellnessDataForMonth = new();
     private SessionDiary? _selectedDateDiary;
     private ObservableCollection<SessionWithDiary> _selectedDateSessionsWithDiary = new();
     private int _importProgressValue;
@@ -138,6 +161,23 @@ public class DashboardViewModel : BaseViewModel
     private string _newSessionName = "";
     private string _newSessionType = "Gimnasio";
     private string _newSessionLugar = "";
+
+    // HealthKit / Datos de Salud (solo iOS) y Bienestar manual
+    private DailyHealthData? _selectedDateHealthData;
+    private bool _isHealthKitAuthorized;
+    private bool _isLoadingHealthData;
+    
+    // Bienestar diario (entrada manual)
+    private DailyWellness? _selectedDateWellness;
+    private bool _isEditingWellness;
+    private double? _wellnessSleepHours;
+    private int? _wellnessSleepQuality;
+    private int? _wellnessRecoveryFeeling;
+    private int? _wellnessMuscleFatigue;
+    private int? _wellnessMoodRating;
+    private int? _wellnessRestingHeartRate;
+    private int? _wellnessHRV;
+    private string? _wellnessNotes;
 
     // Pestañas columna derecha
     private bool _isStatsTabSelected;
@@ -421,6 +461,7 @@ public class DashboardViewModel : BaseViewModel
             if (SetProperty(ref _selectedDiaryDate, value))
             {
                 _ = LoadDiaryForDateAsync(value);
+                _ = LoadWellnessDataForDateAsync(value);
             }
         }
     }
@@ -435,6 +476,12 @@ public class DashboardViewModel : BaseViewModel
     {
         get => _sessionsForMonth;
         set => SetProperty(ref _sessionsForMonth, value);
+    }
+
+    public List<DailyWellness> WellnessDataForMonth
+    {
+        get => _wellnessDataForMonth;
+        set => SetProperty(ref _wellnessDataForMonth, value);
     }
 
     public SessionDiary? SelectedDateDiary
@@ -495,6 +542,125 @@ public class DashboardViewModel : BaseViewModel
         new SessionTypeOption { Name = "Recuperación" },
         new SessionTypeOption { Name = "Otro" }
     };
+
+    // Propiedades HealthKit
+    public DailyHealthData? SelectedDateHealthData
+    {
+        get => _selectedDateHealthData;
+        set
+        {
+            if (SetProperty(ref _selectedDateHealthData, value))
+            {
+                OnPropertyChanged(nameof(HasHealthData));
+            }
+        }
+    }
+
+    public bool HasHealthData => SelectedDateHealthData?.HasData == true;
+    public bool IsHealthKitAvailable => _healthKitService.IsAvailable;
+
+    public bool IsHealthKitAuthorized
+    {
+        get => _isHealthKitAuthorized;
+        set => SetProperty(ref _isHealthKitAuthorized, value);
+    }
+
+    public bool IsLoadingHealthData
+    {
+        get => _isLoadingHealthData;
+        set => SetProperty(ref _isLoadingHealthData, value);
+    }
+
+    // Propiedades Bienestar Diario (entrada manual)
+    public DailyWellness? SelectedDateWellness
+    {
+        get => _selectedDateWellness;
+        set
+        {
+            if (SetProperty(ref _selectedDateWellness, value))
+            {
+                OnPropertyChanged(nameof(HasWellnessData));
+                // Sincronizar campos de edición
+                if (value != null)
+                {
+                    WellnessSleepHours = value.SleepHours;
+                    WellnessSleepQuality = value.SleepQuality;
+                    WellnessRecoveryFeeling = value.RecoveryFeeling;
+                    WellnessMuscleFatigue = value.MuscleFatigue;
+                    WellnessMoodRating = value.MoodRating;
+                    WellnessRestingHeartRate = value.RestingHeartRate;
+                    WellnessHRV = value.HeartRateVariability;
+                    WellnessNotes = value.Notes;
+                }
+                else
+                {
+                    ClearWellnessFields();
+                }
+            }
+        }
+    }
+
+    public bool HasWellnessData => SelectedDateWellness?.HasData == true;
+
+    public bool IsEditingWellness
+    {
+        get => _isEditingWellness;
+        set => SetProperty(ref _isEditingWellness, value);
+    }
+
+    public double? WellnessSleepHours
+    {
+        get => _wellnessSleepHours;
+        set => SetProperty(ref _wellnessSleepHours, value);
+    }
+
+    public int? WellnessSleepQuality
+    {
+        get => _wellnessSleepQuality;
+        set => SetProperty(ref _wellnessSleepQuality, value);
+    }
+
+    public int? WellnessRecoveryFeeling
+    {
+        get => _wellnessRecoveryFeeling;
+        set => SetProperty(ref _wellnessRecoveryFeeling, value);
+    }
+
+    public int? WellnessMuscleFatigue
+    {
+        get => _wellnessMuscleFatigue;
+        set => SetProperty(ref _wellnessMuscleFatigue, value);
+    }
+
+    public int? WellnessMoodRating
+    {
+        get => _wellnessMoodRating;
+        set => SetProperty(ref _wellnessMoodRating, value);
+    }
+
+    public int? WellnessRestingHeartRate
+    {
+        get => _wellnessRestingHeartRate;
+        set => SetProperty(ref _wellnessRestingHeartRate, value);
+    }
+
+    public int? WellnessHRV
+    {
+        get => _wellnessHRV;
+        set => SetProperty(ref _wellnessHRV, value);
+    }
+
+    public string? WellnessNotes
+    {
+        get => _wellnessNotes;
+        set => SetProperty(ref _wellnessNotes, value);
+    }
+
+    // Opciones para selectores de bienestar
+    public List<int> SleepQualityOptions { get; } = new() { 1, 2, 3, 4, 5 };
+    public List<int> RecoveryFeelingOptions { get; } = new() { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+    public List<int> MuscleFatigueOptions { get; } = new() { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+    public List<int> MoodRatingOptions { get; } = new() { 1, 2, 3, 4, 5 };
 
     public GridLength RightPanelWidth
     {
@@ -1561,6 +1727,14 @@ public class DashboardViewModel : BaseViewModel
     public ICommand SelectDiaryTabCommand { get; }
     public ICommand SaveDiaryCommand { get; }
     public ICommand SaveCalendarDiaryCommand { get; }
+    public ICommand ViewSessionAsPlaylistCommand { get; }
+    public ICommand ConnectHealthKitCommand { get; }
+    public ICommand SaveWellnessCommand { get; }
+    public ICommand StartEditWellnessCommand { get; }
+    public ICommand CancelEditWellnessCommand { get; }
+    public ICommand SetMoodCommand { get; }
+    public ICommand ShowPPMInfoCommand { get; }
+    public ICommand ShowHRVInfoCommand { get; }
     public ICommand ToggleAddNewSessionCommand { get; }
     public ICommand CreateNewSessionCommand { get; }
     public ICommand CancelNewSessionCommand { get; }
@@ -1637,12 +1811,14 @@ public class DashboardViewModel : BaseViewModel
         DatabaseService databaseService,
         CrownFileService crownFileService,
         StatisticsService statisticsService,
-        ThumbnailService thumbnailService)
+        ThumbnailService thumbnailService,
+        IHealthKitService healthKitService)
     {
         _databaseService = databaseService;
         _crownFileService = crownFileService;
         _statisticsService = statisticsService;
         _thumbnailService = thumbnailService;
+        _healthKitService = healthKitService;
 
         Title = "Dashboard";
 
@@ -1670,6 +1846,18 @@ public class DashboardViewModel : BaseViewModel
         SelectDiaryTabCommand = new RelayCommand(() => IsDiaryTabSelected = true);
         SaveDiaryCommand = new AsyncRelayCommand(SaveDiaryAsync);
         SaveCalendarDiaryCommand = new AsyncRelayCommand<SessionWithDiary>(SaveCalendarDiaryAsync);
+        ViewSessionAsPlaylistCommand = new AsyncRelayCommand<SessionWithDiary>(ViewSessionAsPlaylistAsync);
+        ConnectHealthKitCommand = new AsyncRelayCommand(ConnectHealthKitAsync);
+        SaveWellnessCommand = new AsyncRelayCommand(SaveWellnessAsync);
+        StartEditWellnessCommand = new RelayCommand(() => IsEditingWellness = true);
+        CancelEditWellnessCommand = new RelayCommand(CancelEditWellness);
+        SetMoodCommand = new RelayCommand<string>(mood => 
+        {
+            if (int.TryParse(mood, out int moodValue))
+                WellnessMoodRating = moodValue;
+        });
+        ShowPPMInfoCommand = new AsyncRelayCommand(ShowPPMInfoAsync);
+        ShowHRVInfoCommand = new AsyncRelayCommand(ShowHRVInfoAsync);
         ToggleAddNewSessionCommand = new RelayCommand(() => 
         {
             IsAddingNewSession = !IsAddingNewSession;
@@ -2815,8 +3003,8 @@ public class DashboardViewModel : BaseViewModel
                 SelectedSession = null;
             }
 
-            // Por defecto, mostrar Galería General al iniciar
-            if (SelectedSession == null && !IsAllGallerySelected && !IsVideoLessonsSelected)
+            // Por defecto, mostrar Galería General al iniciar (solo si no hay ninguna vista activa)
+            if (SelectedSession == null && !IsAllGallerySelected && !IsVideoLessonsSelected && !IsDiaryViewSelected)
             {
                 await SelectAllGalleryAsync();
             }
@@ -3454,6 +3642,235 @@ public class DashboardViewModel : BaseViewModel
         }
     }
 
+    private async Task ViewSessionAsPlaylistAsync(SessionWithDiary? sessionWithDiary)
+    {
+        if (sessionWithDiary == null || !sessionWithDiary.HasVideos) return;
+
+        try
+        {
+            // Cargar todos los vídeos de la sesión (no solo los 6 de preview)
+            var allVideos = await _databaseService.GetVideoClipsBySessionAsync(sessionWithDiary.Session.Id);
+            
+            if (allVideos.Count == 0)
+            {
+                await Shell.Current.DisplayAlert("Sesión", "Esta sesión no tiene vídeos.", "OK");
+                return;
+            }
+
+            // Ordenar por fecha de creación
+            var orderedVideos = allVideos.OrderBy(v => v.CreationDate).ToList();
+
+            // Navegar a SinglePlayerPage con la playlist
+            var singlePage = App.Current?.Handler?.MauiContext?.Services.GetService<Views.SinglePlayerPage>();
+            if (singlePage?.BindingContext is SinglePlayerViewModel singleVm)
+            {
+                await singleVm.InitializeWithPlaylistAsync(orderedVideos, 0);
+                await Shell.Current.Navigation.PushAsync(singlePage);
+            }
+            else
+            {
+                // Fallback: reproducir el primer video
+                var firstVideo = orderedVideos.First();
+                if (!string.IsNullOrEmpty(firstVideo.LocalClipPath))
+                {
+                    await Shell.Current.GoToAsync($"{nameof(Views.SinglePlayerPage)}?videoPath={Uri.EscapeDataString(firstVideo.LocalClipPath)}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error abriendo playlist de sesión: {ex}");
+            await Shell.Current.DisplayAlert("Error", $"No se pudo abrir la sesión: {ex.Message}", "OK");
+        }
+    }
+
+    private async Task ConnectHealthKitAsync()
+    {
+        if (!_healthKitService.IsAvailable)
+        {
+            await Shell.Current.DisplayAlert("No disponible", "La app Salud no está disponible en este dispositivo.", "OK");
+            return;
+        }
+
+        try
+        {
+            var authorized = await _healthKitService.RequestAuthorizationAsync();
+            IsHealthKitAuthorized = authorized;
+
+            if (authorized)
+            {
+                await Shell.Current.DisplayAlert("Conectado", "Se han conectado correctamente los datos de la app Salud.", "OK");
+                // Recargar datos del día seleccionado
+                await LoadHealthDataForDateAsync(SelectedDiaryDate);
+            }
+            else
+            {
+                await Shell.Current.DisplayAlert("Permiso denegado", 
+                    "Para ver tus datos de salud, ve a Ajustes > Privacidad > Salud y permite el acceso a CrownRFEP Reader.", "OK");
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error conectando HealthKit: {ex}");
+            await Shell.Current.DisplayAlert("Error", $"No se pudo conectar con la app Salud: {ex.Message}", "OK");
+        }
+    }
+
+    private async Task LoadHealthDataForDateAsync(DateTime date)
+    {
+        if (!_healthKitService.IsAvailable || !IsHealthKitAuthorized)
+        {
+            SelectedDateHealthData = null;
+            return;
+        }
+
+        try
+        {
+            IsLoadingHealthData = true;
+            SelectedDateHealthData = await _healthKitService.GetHealthDataForDateAsync(date);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error cargando datos de salud: {ex}");
+            SelectedDateHealthData = null;
+        }
+        finally
+        {
+            IsLoadingHealthData = false;
+        }
+    }
+
+    #region Bienestar Diario (Entrada Manual)
+
+    private async Task LoadWellnessDataForDateAsync(DateTime date)
+    {
+        try
+        {
+            SelectedDateWellness = await _databaseService.GetDailyWellnessAsync(date);
+            if (SelectedDateWellness == null)
+            {
+                // Crear uno vacío para la fecha seleccionada
+                SelectedDateWellness = new DailyWellness { Date = date };
+            }
+            OnPropertyChanged(nameof(HasWellnessData));
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error cargando datos de bienestar: {ex}");
+            SelectedDateWellness = new DailyWellness { Date = date };
+        }
+    }
+
+    private async Task SaveWellnessAsync()
+    {
+        try
+        {
+            var wellness = new DailyWellness
+            {
+                Date = SelectedDiaryDate,
+                SleepHours = WellnessSleepHours,
+                SleepQuality = WellnessSleepQuality,
+                RecoveryFeeling = WellnessRecoveryFeeling,
+                MuscleFatigue = WellnessMuscleFatigue,
+                MoodRating = WellnessMoodRating,
+                RestingHeartRate = WellnessRestingHeartRate,
+                HeartRateVariability = WellnessHRV,
+                Notes = WellnessNotes
+            };
+
+            SelectedDateWellness = await _databaseService.SaveDailyWellnessAsync(wellness);
+            IsEditingWellness = false;
+            OnPropertyChanged(nameof(HasWellnessData));
+
+            // Actualizar el calendario para reflejar los nuevos datos de bienestar
+            var startOfMonth = new DateTime(SelectedDiaryDate.Year, SelectedDiaryDate.Month, 1);
+            var endOfMonth = startOfMonth.AddMonths(1).AddDays(-1);
+            WellnessDataForMonth = await _databaseService.GetDailyWellnessRangeAsync(startOfMonth, endOfMonth);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error guardando bienestar: {ex}");
+            await Shell.Current.DisplayAlert("Error", $"No se pudo guardar: {ex.Message}", "OK");
+        }
+    }
+
+    private void CancelEditWellness()
+    {
+        IsEditingWellness = false;
+        // Restaurar valores originales
+        if (SelectedDateWellness != null)
+        {
+            WellnessSleepHours = SelectedDateWellness.SleepHours;
+            WellnessSleepQuality = SelectedDateWellness.SleepQuality;
+            WellnessRecoveryFeeling = SelectedDateWellness.RecoveryFeeling;
+            WellnessMuscleFatigue = SelectedDateWellness.MuscleFatigue;
+            WellnessMoodRating = SelectedDateWellness.MoodRating;
+            WellnessRestingHeartRate = SelectedDateWellness.RestingHeartRate;
+            WellnessHRV = SelectedDateWellness.HeartRateVariability;
+            WellnessNotes = SelectedDateWellness.Notes;
+        }
+        else
+        {
+            ClearWellnessFields();
+        }
+    }
+
+    private void ClearWellnessFields()
+    {
+        WellnessSleepHours = null;
+        WellnessSleepQuality = null;
+        WellnessRecoveryFeeling = null;
+        WellnessMuscleFatigue = null;
+        WellnessMoodRating = null;
+        WellnessRestingHeartRate = null;
+        WellnessHRV = null;
+        WellnessNotes = null;
+    }
+
+    private async Task ShowPPMInfoAsync()
+    {
+        await Shell.Current.DisplayAlert(
+            "PPM Basal (Frecuencia Cardíaca en Reposo)",
+            "La frecuencia cardíaca en reposo (FCR) o PPM basal es el número de latidos por minuto cuando estás completamente relajado.\n\n" +
+            "📊 VALORES DE REFERENCIA:\n" +
+            "• Atletas de élite: 40-50 bpm\n" +
+            "• Muy en forma: 50-60 bpm\n" +
+            "• En forma: 60-70 bpm\n" +
+            "• Promedio: 70-80 bpm\n" +
+            "• Por encima de 80 bpm: mejorable\n\n" +
+            "📈 INTERPRETACIÓN:\n" +
+            "• Una FCR más baja indica mejor condición cardiovascular\n" +
+            "• Si sube 5-10 bpm sobre tu media, puede indicar fatiga, estrés o enfermedad incipiente\n" +
+            "• Mídela siempre en las mismas condiciones (al despertar, antes de levantarte)\n\n" +
+            "💡 CONSEJO:\n" +
+            "Lleva un registro diario para detectar tendencias y ajustar tu entrenamiento.",
+            "Entendido");
+    }
+
+    private async Task ShowHRVInfoAsync()
+    {
+        await Shell.Current.DisplayAlert(
+            "HRV (Variabilidad de Frecuencia Cardíaca)",
+            "La HRV mide la variación en el tiempo entre latidos consecutivos. Se expresa en milisegundos (ms).\n\n" +
+            "📊 VALORES DE REFERENCIA:\n" +
+            "• Excelente: > 70 ms\n" +
+            "• Bueno: 50-70 ms\n" +
+            "• Normal: 30-50 ms\n" +
+            "• Bajo: < 30 ms\n\n" +
+            "📈 INTERPRETACIÓN:\n" +
+            "• HRV ALTA = Sistema nervioso equilibrado, buena recuperación, listo para entrenar fuerte\n" +
+            "• HRV BAJA = Estrés, fatiga acumulada, necesitas descanso o entrenamiento suave\n\n" +
+            "⚠️ IMPORTANTE:\n" +
+            "• La HRV es muy individual - compara con TU propia media\n" +
+            "• Varía con edad, sexo, genética y estilo de vida\n" +
+            "• Una caída del 10-15% respecto a tu media sugiere reducir intensidad\n\n" +
+            "💡 CONSEJO:\n" +
+            "Mídela cada mañana al despertar con apps como Elite HRV, HRV4Training u Oura Ring.",
+            "Entendido");
+    }
+
+    #endregion
+
     private async Task CreateNewSessionAsync()
     {
         try
@@ -3536,12 +3953,16 @@ public class DashboardViewModel : BaseViewModel
             var sessionIds = SessionsForMonth.Select(s => s.Id).ToHashSet();
             var allDiaries = await _databaseService.GetAllSessionDiariesForAthleteAsync(athleteId);
             DiaryEntriesForMonth = allDiaries.Where(d => sessionIds.Contains(d.SessionId)).ToList();
+
+            // Cargar datos de bienestar del mes
+            WellnessDataForMonth = await _databaseService.GetDailyWellnessRangeAsync(startOfMonth, endOfMonth);
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Error cargando entradas del mes: {ex}");
             DiaryEntriesForMonth = new List<SessionDiary>();
             SessionsForMonth = new List<Session>();
+            WellnessDataForMonth = new List<DailyWellness>();
         }
     }
 
@@ -3578,16 +3999,27 @@ public class DashboardViewModel : BaseViewModel
                 // Buscar el diario correspondiente a esta sesión
                 var diary = DiaryEntriesForMonth.FirstOrDefault(d => d.SessionId == session.Id);
                 
+                // Cargar los vídeos de la sesión (máximo 6 para la mini galería)
+                var allVideos = await _databaseService.GetVideoClipsBySessionAsync(session.Id);
+                var previewVideos = allVideos.Take(6).ToList();
+                
                 var sessionWithDiary = new SessionWithDiary
                 {
                     Session = session,
-                    Diary = diary
+                    Diary = diary,
+                    VideoCount = allVideos.Count
                 };
+                
+                foreach (var video in previewVideos)
+                    sessionWithDiary.Videos.Add(video);
 
                 SelectedDateSessionsWithDiary.Add(sessionWithDiary);
             }
 
             OnPropertyChanged(nameof(HasSelectedDateSessions));
+            
+            // Cargar datos de salud si HealthKit está autorizado
+            await LoadHealthDataForDateAsync(date);
         }
         catch (Exception ex)
         {

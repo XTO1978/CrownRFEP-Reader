@@ -561,3 +561,72 @@ public class AllTrueMultiConverter : IMultiValueConverter
         throw new NotImplementedException();
     }
 }
+
+/// <summary>
+/// Converter que devuelve un texto diferente según el valor booleano
+/// Uso: ConverterParameter='TextoTrue|TextoFalse'
+/// </summary>
+public class BoolToTextConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        var paramStr = parameter?.ToString() ?? "True|False";
+        var parts = paramStr.Split('|');
+        
+        if (parts.Length != 2)
+            return value?.ToString() ?? "";
+            
+        bool boolValue = value is bool b && b;
+        return boolValue ? parts[0] : parts[1];
+    }
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+/// <summary>
+/// Converter que devuelve un ancho de borde si el valor es igual al parámetro
+/// Útil para selección de opciones
+/// </summary>
+public class EqualityToBorderWidthConverter : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value == null || parameter == null)
+            return 0;
+
+        // Intentar comparar como enteros
+        if (int.TryParse(value.ToString(), out int intValue) &&
+            int.TryParse(parameter.ToString(), out int intParam))
+        {
+            return intValue == intParam ? 2 : 0;
+        }
+
+        return value.Equals(parameter) ? 2 : 0;
+    }
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+/// <summary>
+/// Converter que devuelve true si la cadena no es null ni está vacía
+/// </summary>
+public class NotNullOrEmptyBoolConverter : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is string str)
+            return !string.IsNullOrWhiteSpace(str);
+        return value != null;
+    }
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}

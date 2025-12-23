@@ -6,13 +6,24 @@
     xmlns:behaviors="clr-namespace:CrownRFEP_Reader.Behaviors"
     xmlns:controls="clr-namespace:CrownRFEP_Reader.Views.Controls"
     xmlns:appcontrols="clr-namespace:CrownRFEP_Reader.Controls"
+    xmlns:converters="clr-namespace:CrownRFEP_Reader.Converters"
     xmlns:models="clr-namespace:CrownRFEP_Reader.Models"
     xmlns:services="clr-namespace:CrownRFEP_Reader.Services"
     xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+    xmlns:viewmodels="clr-namespace:CrownRFEP_Reader.ViewModels"
     xmlns:vm="clr-namespace:CrownRFEP_Reader.ViewModels"
     Title="{Binding Title}"
     x:DataType="vm:DashboardViewModel"
     BackgroundColor="#FF121212">
+
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <converters:BoolToTextConverter x:Key="BoolToTextConverter" />
+            <converters:EqualityToBorderWidthConverter x:Key="EqualityToBorderWidthConverter" />
+            <converters:NotNullOrEmptyBoolConverter x:Key="NotNullOrEmptyBoolConverter" />
+            <converters:IsNotNullConverter x:Key="IsNotNullConverter" />
+        </ResourceDictionary>
+    </ContentPage.Resources>
 
     <Grid
         Padding="0"
@@ -772,6 +783,7 @@
                 DateSelectedCommand="{Binding SelectDiaryDateCommand}"
                 DiaryEntries="{Binding DiaryEntriesForMonth}"
                 Sessions="{Binding SessionsForMonth}"
+                WellnessData="{Binding WellnessDataForMonth}"
                 HorizontalOptions="Fill"
                 VerticalOptions="Fill" />
         </Grid>
@@ -2835,10 +2847,40 @@
                                                         TextColor="#FF888888" />
                                                 </VerticalStackLayout>
                                             </HorizontalStackLayout>
-                                            
-                                            <!--  Botón Ver sesión  -->
+                                        </Grid>
+
+                                        <!--  Mini galería de vídeos  -->
+                                        <VerticalStackLayout Spacing="8" IsVisible="{Binding HasVideos}">
+                                            <Label
+                                                FontSize="12"
+                                                Text="{Binding VideoCount, StringFormat='{0} vídeos'}"
+                                                TextColor="#FF888888" />
+                                            <FlexLayout
+                                                Wrap="Wrap"
+                                                JustifyContent="Start"
+                                                BindableLayout.ItemsSource="{Binding Videos}">
+                                                <BindableLayout.ItemTemplate>
+                                                    <DataTemplate x:DataType="models:VideoClip">
+                                                        <Border
+                                                            Margin="0,0,2,6"
+                                                            WidthRequest="60"
+                                                            HeightRequest="40"
+                                                            StrokeShape="RoundRectangle 2"
+                                                            StrokeThickness="0"
+                                                            BackgroundColor="#FF2A2A2A">
+                                                            <Image
+                                                                Source="{Binding LocalThumbnailPath}"
+                                                                Aspect="AspectFill" />
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </BindableLayout.ItemTemplate>
+                                            </FlexLayout>
+                                            <Label
+                                                FontSize="11"
+                                                Text="{Binding ExtraVideosCount, StringFormat='+ {0} más'}"
+                                                TextColor="#FF6DDDFF"
+                                                IsVisible="{Binding HasExtraVideos}" />
                                             <Button
-                                                Grid.Column="1"
                                                 Text="Ver sesión"
                                                 BackgroundColor="#FF2A2A2A"
                                                 TextColor="#FF6DDDFF"
@@ -2846,10 +2888,10 @@
                                                 CornerRadius="6"
                                                 Padding="12,6"
                                                 HeightRequest="32"
-                                                VerticalOptions="Center"
-                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=ViewSessionCommand}"
-                                                CommandParameter="{Binding Session}" />
-                                        </Grid>
+                                                HorizontalOptions="Start"
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=ViewSessionAsPlaylistCommand}"
+                                                CommandParameter="{Binding .}" />
+                                        </VerticalStackLayout>
 
                                         <!--  Valoraciones existentes (solo lectura)  -->
                                         <VerticalStackLayout Spacing="12" IsVisible="{Binding HasValoraciones}">
@@ -3058,6 +3100,616 @@
                             </DataTemplate>
                         </BindableLayout.ItemTemplate>
                     </VerticalStackLayout>
+                    
+                    <!--  ===== SECCIÓN BIENESTAR DIARIO (Entrada Manual) =====  -->
+                    <Border
+                        Padding="16"
+                        BackgroundColor="#FF1E1E1E"
+                        StrokeShape="RoundRectangle 12"
+                        StrokeThickness="0">
+                        <VerticalStackLayout Spacing="12">
+                            
+                            <!--  Título y botón editar  -->
+                            <Grid ColumnDefinitions="*,Auto">
+                                <HorizontalStackLayout Spacing="10">
+                                    <controls:SymbolIcon
+                                        HeightRequest="30"
+                                        SymbolName="heart.fill"
+                                        TintColor="#FFFF6B6B"
+                                        VerticalOptions="Center"
+                                        WidthRequest="30" />
+                                    <Label
+                                        FontAttributes="Bold"
+                                        FontSize="16"
+                                        Text="Bienestar"
+                                        TextColor="White"
+                                        VerticalOptions="Center" />
+                                </HorizontalStackLayout>
+                                
+                                <Button
+                                    Grid.Column="1"
+                                    Text="{Binding HasWellnessData, Converter={StaticResource BoolToTextConverter}, ConverterParameter='Editar|Añadir'}"
+                                    BackgroundColor="#FF2A2A2A"
+                                    TextColor="#FFFF6B6B"
+                                    FontSize="12"
+                                    CornerRadius="6"
+                                    Padding="12,6"
+                                    HeightRequest="32"
+                                    VerticalOptions="Center"
+                                    Command="{Binding StartEditWellnessCommand}"
+                                    IsVisible="{Binding IsEditingWellness, Converter={toolkit:InvertedBoolConverter}}" />
+                            </Grid>
+
+                            <!--  Formulario de edición  -->
+                            <VerticalStackLayout 
+                                Spacing="12"
+                                IsVisible="{Binding IsEditingWellness}">
+                                
+                                <!--  Sueño  -->
+                                <Border
+                                    Padding="12"
+                                    BackgroundColor="#FF2A2A2A"
+                                    StrokeShape="RoundRectangle 8"
+                                    StrokeThickness="0">
+                                    <VerticalStackLayout Spacing="8">
+                                        <Label Text="Horas de sueño" TextColor="#FF888888" FontSize="12" />
+                                        <Grid ColumnDefinitions="*,80">
+                                            <Slider
+                                                Minimum="0"
+                                                Maximum="12"
+                                                Value="{Binding WellnessSleepHours, Mode=TwoWay, TargetNullValue=7}"
+                                                MinimumTrackColor="#FF5856D6"
+                                                MaximumTrackColor="#FF555555"
+                                                ThumbColor="#FF5856D6" />
+                                            <Label
+                                                Grid.Column="1"
+                                                Text="{Binding WellnessSleepHours, StringFormat='{0:F1} h'}"
+                                                TextColor="White"
+                                                FontSize="16"
+                                                FontAttributes="Bold"
+                                                HorizontalOptions="End"
+                                                VerticalOptions="Center" />
+                                        </Grid>
+                                    </VerticalStackLayout>
+                                </Border>
+
+                                <!--  Sensación de recuperación  -->
+                                <Border
+                                    Padding="12"
+                                    BackgroundColor="#FF2A2A2A"
+                                    StrokeShape="RoundRectangle 8"
+                                    StrokeThickness="0">
+                                    <VerticalStackLayout Spacing="8">
+                                        <Label Text="¿Cómo te sientes hoy? (1-10)" TextColor="#FF888888" FontSize="12" />
+                                        <Grid ColumnDefinitions="*,60">
+                                            <Slider
+                                                Minimum="1"
+                                                Maximum="10"
+                                                Value="{Binding WellnessRecoveryFeeling, Mode=TwoWay, TargetNullValue=5}"
+                                                MinimumTrackColor="#FF4CD964"
+                                                MaximumTrackColor="#FF555555"
+                                                ThumbColor="#FF4CD964" />
+                                            <Label
+                                                Grid.Column="1"
+                                                Text="{Binding WellnessRecoveryFeeling}"
+                                                TextColor="White"
+                                                FontSize="20"
+                                                FontAttributes="Bold"
+                                                HorizontalOptions="End"
+                                                VerticalOptions="Center" />
+                                        </Grid>
+                                    </VerticalStackLayout>
+                                </Border>
+
+                                <!--  Fatiga muscular  -->
+                                <Border
+                                    Padding="12"
+                                    BackgroundColor="#FF2A2A2A"
+                                    StrokeShape="RoundRectangle 8"
+                                    StrokeThickness="0">
+                                    <VerticalStackLayout Spacing="8">
+                                        <Label Text="Fatiga muscular (1=ninguna, 10=mucha)" TextColor="#FF888888" FontSize="12" />
+                                        <Grid ColumnDefinitions="*,60">
+                                            <Slider
+                                                Minimum="1"
+                                                Maximum="10"
+                                                Value="{Binding WellnessMuscleFatigue, Mode=TwoWay, TargetNullValue=3}"
+                                                MinimumTrackColor="#FFFF9500"
+                                                MaximumTrackColor="#FF555555"
+                                                ThumbColor="#FFFF9500" />
+                                            <Label
+                                                Grid.Column="1"
+                                                Text="{Binding WellnessMuscleFatigue}"
+                                                TextColor="White"
+                                                FontSize="20"
+                                                FontAttributes="Bold"
+                                                HorizontalOptions="End"
+                                                VerticalOptions="Center" />
+                                        </Grid>
+                                    </VerticalStackLayout>
+                                </Border>
+
+                                <!--  Estado de ánimo  -->
+                                <Border
+                                    Padding="12"
+                                    BackgroundColor="#FF2A2A2A"
+                                    StrokeShape="RoundRectangle 8"
+                                    StrokeThickness="0">
+                                    <VerticalStackLayout Spacing="8">
+                                        <Label Text="Estado de ánimo" TextColor="#FF888888" FontSize="12" />
+                                        <HorizontalStackLayout HorizontalOptions="Center" Spacing="8">
+                                            <Border
+                                                Padding="8"
+                                                WidthRequest="50"
+                                                HeightRequest="50"
+                                                StrokeShape="RoundRectangle 4"
+                                                BackgroundColor="Transparent"
+                                                StrokeThickness="{Binding WellnessMoodRating, Converter={StaticResource EqualityToBorderWidthConverter}, ConverterParameter=1}"
+                                                Stroke="#FFFF6B6B">
+                                                <Border.GestureRecognizers>
+                                                    <TapGestureRecognizer 
+                                                        Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:DashboardViewModel}}, Path=SetMoodCommand}"
+                                                        CommandParameter="1" />
+                                                </Border.GestureRecognizers>
+                                                <controls:SymbolIcon
+                                                    HeightRequest="28"
+                                                    WidthRequest="28"
+                                                    SymbolName="cloud.heavyrain.fill"
+                                                    TintColor="#FFFF6B6B"
+                                                    HorizontalOptions="Center"
+                                                    VerticalOptions="Center" />
+                                            </Border>
+                                            <Border
+                                                Padding="8"
+                                                WidthRequest="50"
+                                                HeightRequest="50"
+                                                StrokeShape="RoundRectangle 4"
+                                                BackgroundColor="Transparent"
+                                                StrokeThickness="{Binding WellnessMoodRating, Converter={StaticResource EqualityToBorderWidthConverter}, ConverterParameter=2}"
+                                                Stroke="#FFFF9500">
+                                                <Border.GestureRecognizers>
+                                                    <TapGestureRecognizer 
+                                                        Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:DashboardViewModel}}, Path=SetMoodCommand}"
+                                                        CommandParameter="2" />
+                                                </Border.GestureRecognizers>
+                                                <controls:SymbolIcon
+                                                    HeightRequest="28"
+                                                    WidthRequest="28"
+                                                    SymbolName="cloud.fill"
+                                                    TintColor="#FFFF9500"
+                                                    HorizontalOptions="Center"
+                                                    VerticalOptions="Center" />
+                                            </Border>
+                                            <Border
+                                                Padding="8"
+                                                WidthRequest="50"
+                                                HeightRequest="50"
+                                                StrokeShape="RoundRectangle 4"
+                                                BackgroundColor="Transparent"
+                                                StrokeThickness="{Binding WellnessMoodRating, Converter={StaticResource EqualityToBorderWidthConverter}, ConverterParameter=3}"
+                                                Stroke="#FFFFC107">
+                                                <Border.GestureRecognizers>
+                                                    <TapGestureRecognizer 
+                                                        Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:DashboardViewModel}}, Path=SetMoodCommand}"
+                                                        CommandParameter="3" />
+                                                </Border.GestureRecognizers>
+                                                <controls:SymbolIcon
+                                                    HeightRequest="28"
+                                                    WidthRequest="28"
+                                                    SymbolName="cloud.sun.fill"
+                                                    TintColor="#FFFFC107"
+                                                    HorizontalOptions="Center"
+                                                    VerticalOptions="Center" />
+                                            </Border>
+                                            <Border
+                                                Padding="8"
+                                                WidthRequest="50"
+                                                HeightRequest="50"
+                                                StrokeShape="RoundRectangle 4"
+                                                BackgroundColor="Transparent"
+                                                StrokeThickness="{Binding WellnessMoodRating, Converter={StaticResource EqualityToBorderWidthConverter}, ConverterParameter=4}"
+                                                Stroke="#FF8BC34A">
+                                                <Border.GestureRecognizers>
+                                                    <TapGestureRecognizer 
+                                                        Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:DashboardViewModel}}, Path=SetMoodCommand}"
+                                                        CommandParameter="4" />
+                                                </Border.GestureRecognizers>
+                                                <controls:SymbolIcon
+                                                    HeightRequest="28"
+                                                    WidthRequest="28"
+                                                    SymbolName="sun.max.fill"
+                                                    TintColor="#FF8BC34A"
+                                                    HorizontalOptions="Center"
+                                                    VerticalOptions="Center" />
+                                            </Border>
+                                            <Border
+                                                Padding="8"
+                                                WidthRequest="50"
+                                                HeightRequest="50"
+                                                StrokeShape="RoundRectangle 4"
+                                                BackgroundColor="Transparent"
+                                                StrokeThickness="{Binding WellnessMoodRating, Converter={StaticResource EqualityToBorderWidthConverter}, ConverterParameter=5}"
+                                                Stroke="#FF4CD964">
+                                                <Border.GestureRecognizers>
+                                                    <TapGestureRecognizer 
+                                                        Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:DashboardViewModel}}, Path=SetMoodCommand}"
+                                                        CommandParameter="5" />
+                                                </Border.GestureRecognizers>
+                                                <controls:SymbolIcon
+                                                    HeightRequest="28"
+                                                    WidthRequest="28"
+                                                    SymbolName="sparkles"
+                                                    TintColor="#FF4CD964"
+                                                    HorizontalOptions="Center"
+                                                    VerticalOptions="Center" />
+                                            </Border>
+                                        </HorizontalStackLayout>
+                                    </VerticalStackLayout>
+                                </Border>
+
+                                <!--  PPM Basal y HRV  -->
+                                <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                                    <!--  PPM Basal  -->
+                                    <Border
+                                        Padding="12"
+                                        BackgroundColor="#FF2A2A2A"
+                                        StrokeShape="RoundRectangle 8"
+                                        StrokeThickness="0">
+                                        <VerticalStackLayout Spacing="8">
+                                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                                <HorizontalStackLayout Spacing="6">
+                                                    <controls:SymbolIcon
+                                                        HeightRequest="24"
+                                                        SymbolName="heart.fill"
+                                                        TintColor="#FFFF6B6B"
+                                                        VerticalOptions="Center"
+                                                        WidthRequest="24" />
+                                                    <Label Text="PPM Basal" TextColor="#FF888888" FontSize="12" VerticalOptions="Center" />
+                                                </HorizontalStackLayout>
+                                                <Button
+                                                    Grid.Column="2"
+                                                    Text="?"
+                                                    FontSize="14"
+                                                    FontAttributes="Bold"
+                                                    BackgroundColor="Transparent"
+                                                    TextColor="#FFABABAB"
+                                                    CornerRadius="4"
+                                                    Padding="0"
+                                                    WidthRequest="20"
+                                                    HeightRequest="20"
+                                                    Command="{Binding ShowPPMInfoCommand}" />
+                                            </Grid>
+                                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                                <Entry
+                                                    Text="{Binding WellnessRestingHeartRate}"
+                                                    Placeholder="60"
+                                                    PlaceholderColor="#FF555555"
+                                                    TextColor="White"
+                                                    BackgroundColor="#FF1E1E1E"
+                                                    Keyboard="Numeric"
+                                                    HorizontalTextAlignment="Center"
+                                                    FontSize="18"
+                                                    FontAttributes="Bold" />
+                                                <Label
+                                                    Grid.Column="1"
+                                                    Text="bpm"
+                                                    TextColor="#FF888888"
+                                                    FontSize="14"
+                                                    VerticalOptions="Center" />
+                                            </Grid>
+                                        </VerticalStackLayout>
+                                    </Border>
+
+                                    <!--  HRV  -->
+                                    <Border
+                                        Grid.Column="1"
+                                        Padding="12"
+                                        BackgroundColor="#FF2A2A2A"
+                                        StrokeShape="RoundRectangle 8"
+                                        StrokeThickness="0">
+                                        <VerticalStackLayout Spacing="8">
+                                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                                <HorizontalStackLayout Spacing="6">
+                                                    <controls:SymbolIcon
+                                                        HeightRequest="24"
+                                                        SymbolName="waveform.path.ecg"
+                                                        TintColor="#FFAEADFF"
+                                                        VerticalOptions="Center"
+                                                        WidthRequest="24" />
+                                                    <Label Text="HRV" TextColor="#FF888888" FontSize="12" VerticalOptions="Center" />
+                                                </HorizontalStackLayout>
+                                                <Button
+                                                    Grid.Column="2"
+                                                    Text="?"
+                                                    FontSize="14"
+                                                    FontAttributes="Bold"
+                                                    BackgroundColor="Transparent"
+                                                    TextColor="#FFADADAD"
+                                                    CornerRadius="4"
+                                                    Padding="0"
+                                                    WidthRequest="20"
+                                                    HeightRequest="20"
+                                                    Command="{Binding ShowHRVInfoCommand}" />
+                                            </Grid>
+                                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                                <Entry
+                                                    Text="{Binding WellnessHRV}"
+                                                    Placeholder="50"
+                                                    PlaceholderColor="#FF555555"
+                                                    TextColor="White"
+                                                    BackgroundColor="#FF1E1E1E"
+                                                    Keyboard="Numeric"
+                                                    HorizontalTextAlignment="Center"
+                                                    FontSize="18"
+                                                    FontAttributes="Bold" />
+                                                <Label
+                                                    Grid.Column="1"
+                                                    Text="ms"
+                                                    TextColor="#FF888888"
+                                                    FontSize="14"
+                                                    VerticalOptions="Center" />
+                                            </Grid>
+                                        </VerticalStackLayout>
+                                    </Border>
+                                </Grid>
+
+                                <!--  Notas  -->
+                                <Border
+                                    Padding="12"
+                                    BackgroundColor="#FF2A2A2A"
+                                    StrokeShape="RoundRectangle 8"
+                                    StrokeThickness="0">
+                                    <VerticalStackLayout Spacing="8">
+                                        <Label Text="Notas (opcional)" TextColor="#FF888888" FontSize="12" />
+                                        <Editor
+                                            Text="{Binding WellnessNotes}"
+                                            Placeholder="¿Algo que destacar sobre tu estado hoy?"
+                                            PlaceholderColor="#FF555555"
+                                            TextColor="White"
+                                            BackgroundColor="#FF1E1E1E"
+                                            HeightRequest="80"
+                                            AutoSize="TextChanges" />
+                                    </VerticalStackLayout>
+                                </Border>
+
+                                <!--  Botones guardar/cancelar  -->
+                                <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                                    <Button
+                                        Text="Cancelar"
+                                        BackgroundColor="#FF3A3A3A"
+                                        TextColor="#FF888888"
+                                        CornerRadius="8"
+                                        Command="{Binding CancelEditWellnessCommand}" />
+                                    <Button
+                                        Grid.Column="1"
+                                        Text="Guardar"
+                                        BackgroundColor="#FF4CD964"
+                                        TextColor="White"
+                                        CornerRadius="8"
+                                        Command="{Binding SaveWellnessCommand}" />
+                                </Grid>
+                            </VerticalStackLayout>
+
+                            <!--  Vista de datos guardados (cuando no está editando)  -->
+                            <VerticalStackLayout 
+                                Spacing="12"
+                                IsVisible="{Binding IsEditingWellness, Converter={toolkit:InvertedBoolConverter}}">
+                                
+                                <!--  Indicador de bienestar si hay datos  -->
+                                <Border
+                                    Padding="12"
+                                    BackgroundColor="{Binding SelectedDateWellness.WellnessColor}"
+                                    StrokeShape="RoundRectangle 8"
+                                    StrokeThickness="0"
+                                    IsVisible="{Binding HasWellnessData}">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <VerticalStackLayout>
+                                            <Label
+                                                FontSize="12"
+                                                Text="Nivel de bienestar"
+                                                TextColor="#FF121212"
+                                                Opacity="0.7" />
+                                            <Label
+                                                FontAttributes="Bold"
+                                                FontSize="18"
+                                                Text="{Binding SelectedDateWellness.WellnessText}"
+                                                TextColor="#FF121212" />
+                                        </VerticalStackLayout>
+                                        <Label
+                                            Grid.Column="1"
+                                            FontAttributes="Bold"
+                                            FontSize="32"
+                                            Text="{Binding SelectedDateWellness.WellnessScore}"
+                                            TextColor="#FF121212"
+                                            VerticalOptions="Center" />
+                                    </Grid>
+                                </Border>
+
+                                <!--  Métricas si hay datos  -->
+                                <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8"
+                                      IsVisible="{Binding HasWellnessData}">
+                                    <!--  Sueño  -->
+                                    <Border
+                                        Padding="10"
+                                        BackgroundColor="#FF2A2A2A"
+                                        StrokeShape="RoundRectangle 8"
+                                        StrokeThickness="0">
+                                        <VerticalStackLayout HorizontalOptions="Center" Spacing="2">
+                                            <controls:SymbolIcon
+                                                HeightRequest="20"
+                                                SymbolName="moon.fill"
+                                                TintColor="#FF5856D6"
+                                                HorizontalOptions="Center"
+                                                WidthRequest="20" />
+                                            <Label
+                                                FontAttributes="Bold"
+                                                FontSize="16"
+                                                Text="{Binding SelectedDateWellness.SleepFormatted}"
+                                                TextColor="White"
+                                                HorizontalOptions="Center" />
+                                            <Label
+                                                FontSize="10"
+                                                Text="sueño"
+                                                TextColor="#FF888888"
+                                                HorizontalOptions="Center" />
+                                        </VerticalStackLayout>
+                                    </Border>
+                                    
+                                    <!--  Recuperación  -->
+                                    <Border
+                                        Grid.Column="1"
+                                        Padding="10"
+                                        BackgroundColor="#FF2A2A2A"
+                                        StrokeShape="RoundRectangle 8"
+                                        StrokeThickness="0">
+                                        <VerticalStackLayout HorizontalOptions="Center" Spacing="2">
+                                            <controls:SymbolIcon
+                                                HeightRequest="20"
+                                                SymbolName="bolt.fill"
+                                                TintColor="#FF4CD964"
+                                                HorizontalOptions="Center"
+                                                WidthRequest="20" />
+                                            <Label
+                                                FontAttributes="Bold"
+                                                FontSize="16"
+                                                Text="{Binding SelectedDateWellness.RecoveryFeeling, StringFormat='{0}/10'}"
+                                                TextColor="White"
+                                                HorizontalOptions="Center" />
+                                            <Label
+                                                FontSize="10"
+                                                Text="energía"
+                                                TextColor="#FF888888"
+                                                HorizontalOptions="Center" />
+                                        </VerticalStackLayout>
+                                    </Border>
+                                    
+                                    <!--  Ánimo  -->
+                                    <Border
+                                        Grid.Column="2"
+                                        Padding="10"
+                                        BackgroundColor="#FF2A2A2A"
+                                        StrokeShape="RoundRectangle 8"
+                                        StrokeThickness="0">
+                                        <VerticalStackLayout HorizontalOptions="Center" Spacing="2">
+                                            <controls:SymbolIcon
+                                                HeightRequest="24"
+                                                WidthRequest="24"
+                                                SymbolName="{Binding SelectedDateWellness.MoodSymbol}"
+                                                TintColor="{Binding SelectedDateWellness.MoodColor}"
+                                                HorizontalOptions="Center" />
+                                            <Label
+                                                FontSize="10"
+                                                Text="ánimo"
+                                                TextColor="#FF888888"
+                                                HorizontalOptions="Center" />
+                                        </VerticalStackLayout>
+                                    </Border>
+                                </Grid>
+
+                                <!--  PPM Basal y HRV (si están registrados)  -->
+                                <Grid ColumnDefinitions="*,*" ColumnSpacing="8"
+                                      IsVisible="{Binding HasWellnessData}">
+                                    <!--  PPM Basal  -->
+                                    <Border
+                                        Padding="10"
+                                        BackgroundColor="#FF2A2A2A"
+                                        StrokeShape="RoundRectangle 8"
+                                        StrokeThickness="0"
+                                        IsVisible="{Binding SelectedDateWellness.RestingHeartRate, Converter={StaticResource IsNotNullConverter}}">
+                                        <HorizontalStackLayout HorizontalOptions="Center" Spacing="8">
+                                            <controls:SymbolIcon
+                                                HeightRequest="18"
+                                                SymbolName="heart.fill"
+                                                TintColor="#FFFF6B6B"
+                                                VerticalOptions="Center"
+                                                WidthRequest="18" />
+                                            <VerticalStackLayout Spacing="0">
+                                                <HorizontalStackLayout Spacing="4">
+                                                    <Label
+                                                        FontAttributes="Bold"
+                                                        FontSize="16"
+                                                        Text="{Binding SelectedDateWellness.RestingHeartRate}"
+                                                        TextColor="White"
+                                                        VerticalOptions="Center" />
+                                                    <Label
+                                                        FontSize="12"
+                                                        Text="bpm"
+                                                        TextColor="#FF888888"
+                                                        VerticalOptions="Center" />
+                                                </HorizontalStackLayout>
+                                                <Label
+                                                    FontSize="10"
+                                                    Text="PPM basal"
+                                                    TextColor="#FF888888" />
+                                            </VerticalStackLayout>
+                                        </HorizontalStackLayout>
+                                    </Border>
+                                    
+                                    <!--  HRV  -->
+                                    <Border
+                                        Grid.Column="1"
+                                        Padding="10"
+                                        BackgroundColor="#FF2A2A2A"
+                                        StrokeShape="RoundRectangle 8"
+                                        StrokeThickness="0"
+                                        IsVisible="{Binding SelectedDateWellness.HeartRateVariability, Converter={StaticResource IsNotNullConverter}}">
+                                        <HorizontalStackLayout HorizontalOptions="Center" Spacing="8">
+                                            <controls:SymbolIcon
+                                                HeightRequest="18"
+                                                SymbolName="waveform.path.ecg"
+                                                TintColor="#FF5856D6"
+                                                VerticalOptions="Center"
+                                                WidthRequest="18" />
+                                            <VerticalStackLayout Spacing="0">
+                                                <HorizontalStackLayout Spacing="4">
+                                                    <Label
+                                                        FontAttributes="Bold"
+                                                        FontSize="16"
+                                                        Text="{Binding SelectedDateWellness.HeartRateVariability}"
+                                                        TextColor="White"
+                                                        VerticalOptions="Center" />
+                                                    <Label
+                                                        FontSize="12"
+                                                        Text="ms"
+                                                        TextColor="#FF888888"
+                                                        VerticalOptions="Center" />
+                                                </HorizontalStackLayout>
+                                                <Label
+                                                    FontSize="10"
+                                                    Text="HRV"
+                                                    TextColor="#FF888888" />
+                                            </VerticalStackLayout>
+                                        </HorizontalStackLayout>
+                                    </Border>
+                                </Grid>
+
+                                <!--  Notas si existen  -->
+                                <Border
+                                    Padding="12"
+                                    BackgroundColor="#FF2A2A2A"
+                                    StrokeShape="RoundRectangle 8"
+                                    StrokeThickness="0"
+                                    IsVisible="{Binding SelectedDateWellness.Notes, Converter={StaticResource NotNullOrEmptyBoolConverter}}">
+                                    <VerticalStackLayout Spacing="4">
+                                        <Label Text="Notas" TextColor="#FF888888" FontSize="11" />
+                                        <Label 
+                                            Text="{Binding SelectedDateWellness.Notes}" 
+                                            TextColor="White" 
+                                            FontSize="13"
+                                            LineBreakMode="WordWrap" />
+                                    </VerticalStackLayout>
+                                </Border>
+
+                                <!--  Mensaje si no hay datos  -->
+                                <Label
+                                    Text="Pulsa 'Añadir' para registrar tu bienestar del día"
+                                    TextColor="#FF666666"
+                                    FontSize="13"
+                                    HorizontalTextAlignment="Center"
+                                    IsVisible="{Binding HasWellnessData, Converter={toolkit:InvertedBoolConverter}}" />
+                            </VerticalStackLayout>
+                        </VerticalStackLayout>
+                    </Border>
                     
                     <!--  Mensaje cuando no hay sesiones para la fecha  -->
                     <Border

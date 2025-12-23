@@ -116,6 +116,7 @@ public class DatabaseService
         await _database.CreateTableAsync<UserProfile>();
         await _database.CreateTableAsync<VideoLesson>();
         await _database.CreateTableAsync<SessionDiary>();
+        await _database.CreateTableAsync<DailyWellness>();
 
         // Migraciones ligeras: columnas nuevas en videoClip
         await EnsureColumnExistsAsync(_database, "videoClip", "localClipPath", "TEXT");
@@ -1515,6 +1516,93 @@ public class DatabaseService
     {
         var db = await GetConnectionAsync();
         await db.ExecuteAsync("DELETE FROM \"SessionDiary\" WHERE SessionId = ? AND AthleteId = ?", sessionId, athleteId);
+    }
+
+    #endregion
+
+    #region DailyWellness (Bienestar diario)
+
+    /// <summary>
+    /// Obtiene los datos de bienestar para una fecha específica
+    /// </summary>
+    public async Task<DailyWellness?> GetDailyWellnessAsync(DateTime date)
+    {
+        var db = await GetConnectionAsync();
+        var dateOnly = date.Date;
+        return await db.Table<DailyWellness>()
+            .Where(w => w.Date == dateOnly)
+            .FirstOrDefaultAsync();
+    }
+
+    /// <summary>
+    /// Guarda o actualiza los datos de bienestar para una fecha
+    /// </summary>
+    public async Task<DailyWellness> SaveDailyWellnessAsync(DailyWellness wellness)
+    {
+        var db = await GetConnectionAsync();
+        wellness.Date = wellness.Date.Date; // Asegurar solo fecha
+        wellness.UpdatedAt = DateTime.Now;
+        
+        // Buscar si ya existe un registro para esta fecha
+        var existing = await db.Table<DailyWellness>()
+            .Where(w => w.Date == wellness.Date)
+            .FirstOrDefaultAsync();
+        
+        if (existing != null)
+        {
+            wellness.Id = existing.Id;
+            wellness.CreatedAt = existing.CreatedAt;
+            await db.UpdateAsync(wellness);
+        }
+        else
+        {
+            wellness.CreatedAt = DateTime.Now;
+            await db.InsertAsync(wellness);
+        }
+        
+        return wellness;
+    }
+
+    /// <summary>
+    /// Obtiene los datos de bienestar para un rango de fechas
+    /// </summary>
+    public async Task<List<DailyWellness>> GetDailyWellnessRangeAsync(DateTime startDate, DateTime endDate)
+    {
+        var db = await GetConnectionAsync();
+        var start = startDate.Date;
+        var end = endDate.Date;
+        
+        return await db.Table<DailyWellness>()
+            .Where(w => w.Date >= start && w.Date <= end)
+            .OrderBy(w => w.Date)
+            .ToListAsync();
+    }
+
+    /// <summary>
+    /// Elimina los datos de bienestar de una fecha
+    /// </summary>
+    public async Task DeleteDailyWellnessAsync(DateTime date)
+    {
+        var db = await GetConnectionAsync();
+        var dateOnly = date.Date;
+        await db.ExecuteAsync("DELETE FROM \"DailyWellness\" WHERE Date = ?", dateOnly);
+    }
+
+    /// <summary>
+    /// Obtiene las fechas que tienen datos de bienestar en un mes
+    /// </summary>
+    public async Task<List<DateTime>> GetWellnessDatesInMonthAsync(int year, int month)
+    {
+        var db = await GetConnectionAsync();
+        var startOfMonth = new DateTime(year, month, 1);
+        var endOfMonth = startOfMonth.AddMonths(1).AddDays(-1);
+        
+        var records = await db.Table<DailyWellness>()
+            .Where(w => w.Date >= startOfMonth && w.Date <= endOfMonth && 
+                       (w.SleepHours != null || w.RecoveryFeeling != null || w.Notes != null))
+            .ToListAsync();
+        
+        return records.Select(w => w.Date).ToList();
     }
 
     #endregion

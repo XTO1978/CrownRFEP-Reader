@@ -38,5 +38,9 @@
 	<string>Se requiere acceso a la cámara para grabar videolecciones.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Se requiere acceso al micrófono para grabar el audio de las videolecciones.</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>CrownRFEP Reader usa tus datos de salud para mostrar métricas de entrenamiento, recuperación y sueño en tu diario personal.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>CrownRFEP Reader no escribe datos en la app Salud.</string>
 </dict>
 </plist>
