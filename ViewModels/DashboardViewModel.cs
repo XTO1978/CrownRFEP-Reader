@@ -32,8 +32,8 @@ public class DashboardViewModel : BaseViewModel
     private bool _isImporting;
 
     // Pestañas columna derecha
-    private bool _isStatsTabSelected = true;
-    private bool _isCrudTechTabSelected;
+    private bool _isStatsTabSelected;
+    private bool _isCrudTechTabSelected = true;
     private bool _isDiaryTabSelected;
 
     // Diario de sesión
