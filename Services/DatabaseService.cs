@@ -115,6 +115,7 @@ public class DatabaseService
         await _database.CreateTableAsync<AthleteWorkGroup>();
         await _database.CreateTableAsync<UserProfile>();
         await _database.CreateTableAsync<VideoLesson>();
+        await _database.CreateTableAsync<SessionDiary>();
 
         // Migraciones ligeras: columnas nuevas en videoClip
         await EnsureColumnExistsAsync(_database, "videoClip", "localClipPath", "TEXT");
@@ -940,6 +941,12 @@ public class DatabaseService
         return await db.Table<Valoracion>().Where(v => v.SessionId == sessionId).ToListAsync();
     }
 
+    public async Task<List<Valoracion>> GetValoracionesByAthleteAsync(int athleteId)
+    {
+        var db = await GetConnectionAsync();
+        return await db.Table<Valoracion>().Where(v => v.AthleteId == athleteId).ToListAsync();
+    }
+
     public async Task<int> SaveValoracionAsync(Valoracion valoracion)
     {
         var db = await GetConnectionAsync();
@@ -1399,4 +1406,101 @@ public class DatabaseService
             .Where(i => i.SessionId == sessionId && i.InputTypeId == SplitTimeInputTypeId)
             .ToListAsync();
     }
+
+    #region Session Diary
+
+    /// <summary>
+    /// Obtiene el diario de sesión para una sesión y atleta específicos
+    /// </summary>
+    public async Task<SessionDiary?> GetSessionDiaryAsync(int sessionId, int athleteId)
+    {
+        var db = await GetConnectionAsync();
+        return await db.Table<SessionDiary>()
+            .Where(d => d.SessionId == sessionId && d.AthleteId == athleteId)
+            .FirstOrDefaultAsync();
+    }
+
+    /// <summary>
+    /// Guarda o actualiza el diario de sesión
+    /// </summary>
+    public async Task<int> SaveSessionDiaryAsync(SessionDiary diary)
+    {
+        var db = await GetConnectionAsync();
+        var existing = await db.Table<SessionDiary>()
+            .Where(d => d.SessionId == diary.SessionId && d.AthleteId == diary.AthleteId)
+            .FirstOrDefaultAsync();
+
+        if (existing != null)
+        {
+            diary.Id = existing.Id;
+            diary.CreatedAt = existing.CreatedAt;
+            diary.UpdatedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            return await db.UpdateAsync(diary);
+        }
+        else
+        {
+            diary.CreatedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            diary.UpdatedAt = diary.CreatedAt;
+            return await db.InsertAsync(diary);
+        }
+    }
+
+    /// <summary>
+    /// Obtiene las medias de valoraciones para un atleta en los últimos N días
+    /// </summary>
+    public async Task<(double Fisica, double Mental, double Tecnica, int Count)> GetValoracionAveragesAsync(int athleteId, int days = 30)
+    {
+        var db = await GetConnectionAsync();
+        var cutoffDate = DateTimeOffset.UtcNow.AddDays(-days).ToUnixTimeMilliseconds();
+        
+        var diaries = await db.Table<SessionDiary>()
+            .Where(d => d.AthleteId == athleteId && d.CreatedAt >= cutoffDate && 
+                   (d.ValoracionFisica > 0 || d.ValoracionMental > 0 || d.ValoracionTecnica > 0))
+            .ToListAsync();
+
+        if (diaries.Count == 0)
+            return (0, 0, 0, 0);
+
+        var avgFisica = diaries.Average(d => d.ValoracionFisica);
+        var avgMental = diaries.Average(d => d.ValoracionMental);
+        var avgTecnica = diaries.Average(d => d.ValoracionTecnica);
+
+        return (avgFisica, avgMental, avgTecnica, diaries.Count);
+    }
+
+    /// <summary>
+    /// Obtiene la evolución de valoraciones para un atleta en un rango de fechas
+    /// </summary>
+    public async Task<List<SessionDiary>> GetValoracionEvolutionAsync(int athleteId, long startDate, long endDate)
+    {
+        var db = await GetConnectionAsync();
+        return await db.Table<SessionDiary>()
+            .Where(d => d.AthleteId == athleteId && d.CreatedAt >= startDate && d.CreatedAt <= endDate && 
+                   (d.ValoracionFisica > 0 || d.ValoracionMental > 0 || d.ValoracionTecnica > 0))
+            .OrderBy(d => d.CreatedAt)
+            .ToListAsync();
+    }
+
+    /// <summary>
+    /// Obtiene todos los diarios de sesión para un atleta
+    /// </summary>
+    public async Task<List<SessionDiary>> GetAllSessionDiariesForAthleteAsync(int athleteId)
+    {
+        var db = await GetConnectionAsync();
+        return await db.Table<SessionDiary>()
+            .Where(d => d.AthleteId == athleteId)
+            .OrderByDescending(d => d.CreatedAt)
+            .ToListAsync();
+    }
+
+    /// <summary>
+    /// Elimina el diario de una sesión
+    /// </summary>
+    public async Task DeleteSessionDiaryAsync(int sessionId, int athleteId)
+    {
+        var db = await GetConnectionAsync();
+        await db.ExecuteAsync("DELETE FROM \"SessionDiary\" WHERE SessionId = ? AND AthleteId = ?", sessionId, athleteId);
+    }
+
+    #endregion
 }

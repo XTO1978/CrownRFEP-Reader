@@ -24,6 +24,10 @@
             <converters:CrownFileColorConverter x:Key="CrownFileColorConverter"/>
             <converters:CrownFileFontConverter x:Key="CrownFileFontConverter"/>
             <converters:IsZeroConverter x:Key="IsZeroConverter"/>
+            <converters:BoolToFontAttributesConverter x:Key="BoolToFontAttributesConverter"/>
+            <converters:IntToBoolConverter x:Key="IntToBoolConverter"/>
+            <converters:IntEqualityToColorConverter x:Key="IntEqualityToColorConverter"/>
+            <converters:TimestampToDateConverter x:Key="TimestampToDateConverter"/>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

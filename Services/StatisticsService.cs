@@ -181,6 +181,7 @@ public class StatisticsService
             {
                 AthleteId = video.AtletaId,
                 AthleteName = athleteName,
+                CategoryName = athlete?.CategoriaNombre ?? "",
                 Section = video.Section,
                 SectionName = GetSectionName(video.Section),
                 VideoId = video.Id,
@@ -435,6 +436,231 @@ public class StatisticsService
             return result;
         }
     }
+
+    /// <summary>
+    /// Obtiene estadísticas personales extendidas para el atleta de referencia
+    /// </summary>
+    public async Task<UserPersonalStats> GetUserPersonalStatsAsync(int referenceAthleteId, int? currentSessionId = null)
+    {
+        var result = new UserPersonalStats();
+
+        try
+        {
+            // 1. Media de resultados de las últimas 3 sesiones
+            result.SessionAverages = await GetSessionAveragesAsync(referenceAthleteId, 3);
+
+            // 2. Evolución de valoraciones
+            result.ValoracionEvolution = await GetValoracionEvolutionAsync(referenceAthleteId);
+
+            // 3. Tiempos por sección con diferencias (solo si hay sesión seleccionada)
+            if (currentSessionId.HasValue)
+            {
+                result.SectionTimesWithDiff = await GetSectionTimesWithDiffAsync(referenceAthleteId, currentSessionId.Value);
+            }
+
+            // 4. Evolución de penalizaciones +2 última semana
+            result.PenaltyEvolution = await GetPenaltyEvolutionAsync(referenceAthleteId, 7);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error obteniendo estadísticas personales: {ex.Message}");
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Obtiene la media de tiempos de las últimas N sesiones para un atleta
+    /// </summary>
+    private async Task<List<SessionAverageData>> GetSessionAveragesAsync(int athleteId, int lastNSessions)
+    {
+        var videos = await _databaseService.GetVideoClipsByAthleteAsync(athleteId);
+        var allInputs = await _databaseService.GetAllInputsAsync();
+        
+        // Obtener sesiones únicas ordenadas por fecha (más recientes primero)
+        var sessions = await _databaseService.GetAllSessionsAsync();
+        var sessionDict = sessions.ToDictionary(s => s.Id, s => s);
+        
+        var athleteSessionIds = videos
+            .Where(v => sessionDict.ContainsKey(v.SessionId))
+            .Select(v => v.SessionId)
+            .Distinct()
+            .OrderByDescending(sid => sessionDict[sid].FechaDateTime)
+            .Take(lastNSessions)
+            .ToList();
+
+        var result = new List<SessionAverageData>();
+        
+        foreach (var sessionId in athleteSessionIds)
+        {
+            if (!sessionDict.TryGetValue(sessionId, out var session)) continue;
+            
+            var sessionVideos = videos.Where(v => v.SessionId == sessionId).ToList();
+            var videoIds = sessionVideos.Select(v => v.Id).ToHashSet();
+            
+            // Obtener split times para estos videos
+            var splitInputs = allInputs
+                .Where(i => i.InputTypeId == -1 && videoIds.Contains(i.VideoId))
+                .ToList();
+
+            var times = new List<long>();
+            foreach (var split in splitInputs)
+            {
+                if (!string.IsNullOrEmpty(split.InputValue))
+                {
+                    try
+                    {
+                        var splitData = System.Text.Json.JsonSerializer.Deserialize<SplitTimeData>(split.InputValue);
+                        if (splitData != null && splitData.DurationMs > 0)
+                            times.Add(splitData.DurationMs);
+                    }
+                    catch { }
+                }
+            }
+
+            // Contar penalizaciones
+            var systemEventTags = await _databaseService.GetSystemEventTagsAsync();
+            var penaltyTagIds = systemEventTags.Where(t => t.PenaltySeconds > 0).Select(t => t.Id).ToHashSet();
+            var penaltyCount = allInputs
+                .Count(i => i.IsEvent == 1 && penaltyTagIds.Contains(i.InputTypeId) && videoIds.Contains(i.VideoId));
+
+            if (times.Count > 0)
+            {
+                result.Add(new SessionAverageData
+                {
+                    SessionName = session.NombreSesion ?? $"Sesión {session.Id}",
+                    SessionDate = session.FechaDateTime,
+                    AverageTimeMs = times.Average(),
+                    SectionCount = times.Count,
+                    PenaltyCount = penaltyCount
+                });
+            }
+        }
+
+        return result.OrderBy(s => s.SessionDate).ToList();
+    }
+
+    /// <summary>
+    /// Obtiene la evolución de valoraciones (físico, mental, técnico) para un atleta
+    /// </summary>
+    private async Task<ValoracionEvolution> GetValoracionEvolutionAsync(int athleteId)
+    {
+        var valoraciones = await _databaseService.GetValoracionesByAthleteAsync(athleteId);
+        var sessions = await _databaseService.GetAllSessionsAsync();
+        var sessionDict = sessions.ToDictionary(s => s.Id, s => s);
+
+        var result = new ValoracionEvolution();
+
+        // InputTypeId: 1 = Físico, 2 = Mental, 3 = Técnico (ajustar según tu esquema)
+        foreach (var val in valoraciones.OrderBy(v => v.InputDateTime))
+        {
+            if (!sessionDict.TryGetValue(val.SessionId, out var session)) continue;
+            
+            var point = new ValoracionPoint
+            {
+                Date = val.InputDateTimeLocal,
+                Value = val.InputValue,
+                SessionName = session.NombreSesion ?? ""
+            };
+
+            switch (val.InputTypeId)
+            {
+                case 1:
+                    result.Fisico.Add(point);
+                    break;
+                case 2:
+                    result.Mental.Add(point);
+                    break;
+                case 3:
+                    result.Tecnico.Add(point);
+                    break;
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Obtiene los tiempos por sección del usuario con diferencias respecto al mejor de la sesión
+    /// </summary>
+    private async Task<List<UserSectionTimeWithDiff>> GetSectionTimesWithDiffAsync(int athleteId, int sessionId)
+    {
+        var allSectionTimes = await GetAthleteSectionTimesAsync(sessionId);
+        var result = new List<UserSectionTimeWithDiff>();
+
+        foreach (var section in allSectionTimes)
+        {
+            var userRow = section.Athletes.FirstOrDefault(a => a.AthleteId == athleteId);
+            var bestRow = section.Athletes.OrderBy(a => a.TotalMs).FirstOrDefault();
+
+            if (userRow != null)
+            {
+                result.Add(new UserSectionTimeWithDiff
+                {
+                    Section = section.Section,
+                    SectionName = section.SectionName,
+                    UserTimeMs = userRow.DurationMs,
+                    UserPenaltyMs = userRow.PenaltyMs,
+                    BestTimeMs = bestRow?.TotalMs,
+                    DifferenceMs = bestRow != null ? userRow.TotalMs - bestRow.TotalMs : null,
+                    IsBestTime = bestRow != null && userRow.AthleteId == bestRow.AthleteId
+                });
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Obtiene la evolución de penalizaciones +2 en los últimos N días
+    /// </summary>
+    private async Task<List<PenaltyEvolutionPoint>> GetPenaltyEvolutionAsync(int athleteId, int lastNDays)
+    {
+        var cutoffDate = DateTime.Now.AddDays(-lastNDays);
+        var videos = await _databaseService.GetVideoClipsByAthleteAsync(athleteId);
+        var allInputs = await _databaseService.GetAllInputsAsync();
+        var sessions = await _databaseService.GetAllSessionsAsync();
+        var sessionDict = sessions.ToDictionary(s => s.Id, s => s);
+
+        // Filtrar sesiones recientes
+        var recentSessionIds = sessions
+            .Where(s => s.FechaDateTime >= cutoffDate)
+            .Select(s => s.Id)
+            .ToHashSet();
+
+        var athleteVideoIds = videos
+            .Where(v => recentSessionIds.Contains(v.SessionId))
+            .Select(v => v.Id)
+            .ToHashSet();
+
+        // Obtener tag de penalización +2
+        var systemEventTags = await _databaseService.GetSystemEventTagsAsync();
+        var penalty2TagId = systemEventTags.FirstOrDefault(t => t.PenaltySeconds == 2)?.Id ?? 0;
+
+        if (penalty2TagId == 0)
+            return new List<PenaltyEvolutionPoint>();
+
+        // Agrupar penalizaciones por sesión
+        var penaltyInputs = allInputs
+            .Where(i => i.IsEvent == 1 && i.InputTypeId == penalty2TagId && athleteVideoIds.Contains(i.VideoId))
+            .ToList();
+
+        var videoToSession = videos.ToDictionary(v => v.Id, v => v.SessionId);
+        
+        var result = penaltyInputs
+            .GroupBy(i => videoToSession.TryGetValue(i.VideoId, out var sid) ? sid : 0)
+            .Where(g => g.Key > 0 && sessionDict.ContainsKey(g.Key))
+            .Select(g => new PenaltyEvolutionPoint
+            {
+                Date = sessionDict[g.Key].FechaDateTime,
+                PenaltyCount = g.Count(),
+                SessionName = sessionDict[g.Key].NombreSesion ?? ""
+            })
+            .OrderBy(p => p.Date)
+            .ToList();
+
+        return result;
+    }
 }
 
 /// <summary>
@@ -612,10 +838,11 @@ public class SectionWithAthleteRows
 /// <summary>
 /// Fila para tabla de tiempos por atleta y sección
 /// </summary>
-public class AthleteSectionTimeRow
+public class AthleteSectionTimeRow : System.ComponentModel.INotifyPropertyChanged
 {
     public int AthleteId { get; set; }
     public string AthleteName { get; set; } = "";
+    public string CategoryName { get; set; } = "";
     public int Section { get; set; }
     public string SectionName { get; set; } = "";
     public int VideoId { get; set; }
@@ -639,9 +866,207 @@ public class AthleteSectionTimeRow
     /// <summary>Total formateado</summary>
     public string TotalFormatted => FormatTime(TotalMs);
 
+    // ==================== PROPIEDADES DE DIFERENCIA ====================
+    
+    private long _differenceMs;
+    private bool _isReferenceAthlete;
+    private bool _hasDifference;
+    
+    /// <summary>Diferencia respecto al atleta de referencia en ms</summary>
+    public long DifferenceMs
+    {
+        get => _differenceMs;
+        private set
+        {
+            _differenceMs = value;
+            PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(DifferenceMs)));
+            PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(DifferenceFormatted)));
+            PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(DifferenceColor)));
+        }
+    }
+    
+    /// <summary>Indica si este atleta es el de referencia</summary>
+    public bool IsReferenceAthlete
+    {
+        get => _isReferenceAthlete;
+        private set
+        {
+            _isReferenceAthlete = value;
+            PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(IsReferenceAthlete)));
+            PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(DifferenceFormatted)));
+            PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(DifferenceColor)));
+            PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(RowBackgroundColor)));
+        }
+    }
+    
+    /// <summary>Indica si hay un atleta de referencia para calcular diferencias</summary>
+    public bool HasDifference
+    {
+        get => _hasDifference;
+        private set
+        {
+            _hasDifference = value;
+            PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(HasDifference)));
+        }
+    }
+    
+    /// <summary>Diferencia formateada con signo</summary>
+    public string DifferenceFormatted
+    {
+        get
+        {
+            if (IsReferenceAthlete) return "REF";
+            if (!HasDifference) return "-";
+            if (DifferenceMs == 0) return "0.000";
+            var sign = DifferenceMs > 0 ? "+" : "-";
+            return $"{sign}{FormatTime(Math.Abs(DifferenceMs))}";
+        }
+    }
+    
+    /// <summary>Color según la diferencia (verde si es mejor, rojo si es peor)</summary>
+    public string DifferenceColor
+    {
+        get
+        {
+            if (IsReferenceAthlete) return "#FF6DDDFF"; // Azul para referencia
+            if (!HasDifference) return "#FF808080";
+            if (DifferenceMs < 0) return "#FF4CAF50"; // Verde - mejor tiempo
+            if (DifferenceMs > 0) return "#FFFF6B6B"; // Rojo - peor tiempo
+            return "#FFFFD700"; // Dorado - igual
+        }
+    }
+    
+    /// <summary>Color de fondo de la fila (destacar atleta de referencia)</summary>
+    public string RowBackgroundColor => IsReferenceAthlete ? "#FF2A3A4A" : "Transparent";
+    
+    /// <summary>Establece la diferencia respecto al tiempo de referencia</summary>
+    public void SetReferenceDifference(long referenceTotalMs, bool isReference)
+    {
+        IsReferenceAthlete = isReference;
+        HasDifference = referenceTotalMs > 0;
+        DifferenceMs = HasDifference ? TotalMs - referenceTotalMs : 0;
+    }
+    
+    public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
+
     private static string FormatTime(long ms)
     {
         var ts = TimeSpan.FromMilliseconds(ms);
         return $"{(int)ts.TotalMinutes}:{ts.Seconds:D2}.{ts.Milliseconds:D3}";
     }
+}
+
+/// <summary>
+/// Datos de media de tiempos para las últimas N sesiones
+/// </summary>
+public class SessionAverageData
+{
+    public string SessionName { get; set; } = "";
+    public DateTime SessionDate { get; set; }
+    public double AverageTimeMs { get; set; }
+    public int SectionCount { get; set; }
+    public int PenaltyCount { get; set; }
+    
+    public string AverageTimeFormatted
+    {
+        get
+        {
+            var ts = TimeSpan.FromMilliseconds(AverageTimeMs);
+            return $"{(int)ts.TotalMinutes}:{ts.Seconds:D2}.{ts.Milliseconds / 100:D1}";
+        }
+    }
+    
+    public string SessionDateShort => SessionDate.ToString("dd/MM");
+}
+
+/// <summary>
+/// Punto de datos para evolución de valoraciones
+/// </summary>
+public class ValoracionPoint
+{
+    public DateTime Date { get; set; }
+    public int Value { get; set; }
+    public string SessionName { get; set; } = "";
+    
+    public string DateShort => Date.ToString("dd/MM");
+}
+
+/// <summary>
+/// Evolución de valoraciones (físico, mental, técnico)
+/// </summary>
+public class ValoracionEvolution
+{
+    public List<ValoracionPoint> Fisico { get; set; } = new();
+    public List<ValoracionPoint> Mental { get; set; } = new();
+    public List<ValoracionPoint> Tecnico { get; set; } = new();
+    
+    public bool HasData => Fisico.Count > 0 || Mental.Count > 0 || Tecnico.Count > 0;
+}
+
+/// <summary>
+/// Tabla de tiempos del usuario con diferencias respecto a otros atletas
+/// </summary>
+public class UserSectionTimeWithDiff
+{
+    public int Section { get; set; }
+    public string SectionName { get; set; } = "";
+    public long UserTimeMs { get; set; }
+    public long UserPenaltyMs { get; set; }
+    public long UserTotalMs => UserTimeMs + UserPenaltyMs;
+    public long? BestTimeMs { get; set; }
+    public long? DifferenceMs { get; set; }
+    public bool IsBestTime { get; set; }
+    
+    public string UserTimeFormatted => FormatTime(UserTotalMs);
+    public string DifferenceFormatted => DifferenceMs.HasValue 
+        ? (DifferenceMs.Value > 0 ? $"+{FormatTime(DifferenceMs.Value)}" : FormatTime(DifferenceMs.Value))
+        : "-";
+    public string DifferenceColor => DifferenceMs switch
+    {
+        null => "#FF808080",
+        0 => "#FF4CAF50",
+        < 0 => "#FF4CAF50",
+        _ => "#FFFF6B6B"
+    };
+    
+    private static string FormatTime(long ms)
+    {
+        var ts = TimeSpan.FromMilliseconds(Math.Abs(ms));
+        return $"{(int)ts.TotalMinutes}:{ts.Seconds:D2}.{ts.Milliseconds / 100:D1}";
+    }
+}
+
+/// <summary>
+/// Punto de datos para evolución de penalizaciones
+/// </summary>
+public class PenaltyEvolutionPoint
+{
+    public DateTime Date { get; set; }
+    public int PenaltyCount { get; set; }
+    public string SessionName { get; set; } = "";
+    
+    public string DateShort => Date.ToString("dd/MM");
+}
+
+/// <summary>
+/// Estadísticas personales extendidas
+/// </summary>
+public class UserPersonalStats
+{
+    /// <summary>Media de tiempos de las últimas N sesiones</summary>
+    public List<SessionAverageData> SessionAverages { get; set; } = new();
+    
+    /// <summary>Evolución de valoraciones</summary>
+    public ValoracionEvolution ValoracionEvolution { get; set; } = new();
+    
+    /// <summary>Tiempos por sección con diferencia respecto al mejor</summary>
+    public List<UserSectionTimeWithDiff> SectionTimesWithDiff { get; set; } = new();
+    
+    /// <summary>Evolución de penalizaciones +2</summary>
+    public List<PenaltyEvolutionPoint> PenaltyEvolution { get; set; } = new();
+    
+    public bool HasSessionAverages => SessionAverages.Count > 0;
+    public bool HasValoraciones => ValoracionEvolution.HasData;
+    public bool HasSectionTimes => SectionTimesWithDiff.Count > 0;
+    public bool HasPenaltyEvolution => PenaltyEvolution.Count > 0;
 }

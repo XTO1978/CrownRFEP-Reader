@@ -430,3 +430,95 @@ public class NormalizedPositionToTickRectConverter : IValueConverter
         throw new NotImplementedException();
     }
 }
+
+/// <summary>
+/// Convierte un booleano a FontAttributes (Bold si es true, None si es false)
+/// </summary>
+public class BoolToFontAttributesConverter : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is bool b && b)
+            return FontAttributes.Bold;
+        return FontAttributes.None;
+    }
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+/// <summary>
+/// Convierte un int a bool (true si > 0, false si = 0)
+/// Parámetro "invert" para invertir la lógica
+/// </summary>
+public class IntToBoolConverter : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        var count = 0;
+        if (value is int i) count = i;
+        else if (value is long l) count = (int)l;
+        
+        var result = count > 0;
+        
+        if (parameter is string s && s.Equals("invert", StringComparison.OrdinalIgnoreCase))
+            result = !result;
+            
+        return result;
+    }
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+/// <summary>
+/// Convierte un int a color basado en igualdad con un parámetro
+/// Formato del parámetro: "valor:colorSiIgual:colorSiDiferente"
+/// </summary>
+public class IntEqualityToColorConverter : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is not int currentValue || parameter is not string param)
+            return Colors.Transparent;
+
+        var parts = param.Split(':');
+        if (parts.Length != 3 || !int.TryParse(parts[0], out var targetValue))
+            return Colors.Transparent;
+
+        var colorIfEqual = parts[1];
+        var colorIfDifferent = parts[2];
+
+        return Color.FromArgb(currentValue == targetValue ? colorIfEqual : colorIfDifferent);
+    }
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+/// <summary>
+/// Convierte un timestamp Unix (long) a fecha legible
+/// </summary>
+public class TimestampToDateConverter : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is long timestamp && timestamp > 0)
+        {
+            var date = DateTimeOffset.FromUnixTimeMilliseconds(timestamp).LocalDateTime;
+            return date.ToString("dd/MM/yyyy");
+        }
+        return "-";
+    }
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}

@@ -34,6 +34,26 @@ public class DashboardViewModel : BaseViewModel
     // Pestañas columna derecha
     private bool _isStatsTabSelected = true;
     private bool _isCrudTechTabSelected;
+    private bool _isDiaryTabSelected;
+
+    // Diario de sesión
+    private SessionDiary? _currentSessionDiary;
+    private int _diaryValoracionFisica = 3;
+    private int _diaryValoracionMental = 3;
+    private int _diaryValoracionTecnica = 3;
+    private string _diaryNotas = "";
+    private double _avgValoracionFisica;
+    private double _avgValoracionMental;
+    private double _avgValoracionTecnica;
+    private int _avgValoracionCount;
+    private int _selectedEvolutionPeriod = 1; // 0=Semana, 1=Mes, 2=Año, 3=Todo
+    private ObservableCollection<SessionDiary> _valoracionEvolution = new();
+    
+    // Datos para el gráfico de líneas múltiples
+    private ObservableCollection<int> _evolutionFisicaValues = new();
+    private ObservableCollection<int> _evolutionMentalValues = new();
+    private ObservableCollection<int> _evolutionTecnicaValues = new();
+    private ObservableCollection<string> _evolutionLabels = new();
 
     // Selección múltiple de videos
     private bool _isMultiSelectMode;
@@ -325,6 +345,7 @@ public class DashboardViewModel : BaseViewModel
                 if (value)
                 {
                     IsCrudTechTabSelected = false;
+                    IsDiaryTabSelected = false;
                 }
             }
         }
@@ -340,10 +361,121 @@ public class DashboardViewModel : BaseViewModel
                 if (value)
                 {
                     IsStatsTabSelected = false;
+                    IsDiaryTabSelected = false;
                 }
             }
         }
     }
+
+    public bool IsDiaryTabSelected
+    {
+        get => _isDiaryTabSelected;
+        set
+        {
+            if (SetProperty(ref _isDiaryTabSelected, value))
+            {
+                if (value)
+                {
+                    IsStatsTabSelected = false;
+                    IsCrudTechTabSelected = false;
+                    _ = LoadSessionDiaryAsync();
+                }
+            }
+        }
+    }
+
+    // Propiedades del Diario de Sesión
+    public int DiaryValoracionFisica
+    {
+        get => _diaryValoracionFisica;
+        set => SetProperty(ref _diaryValoracionFisica, Math.Clamp(value, 1, 5));
+    }
+
+    public int DiaryValoracionMental
+    {
+        get => _diaryValoracionMental;
+        set => SetProperty(ref _diaryValoracionMental, Math.Clamp(value, 1, 5));
+    }
+
+    public int DiaryValoracionTecnica
+    {
+        get => _diaryValoracionTecnica;
+        set => SetProperty(ref _diaryValoracionTecnica, Math.Clamp(value, 1, 5));
+    }
+
+    public string DiaryNotas
+    {
+        get => _diaryNotas;
+        set => SetProperty(ref _diaryNotas, value ?? "");
+    }
+
+    public double AvgValoracionFisica
+    {
+        get => _avgValoracionFisica;
+        set => SetProperty(ref _avgValoracionFisica, value);
+    }
+
+    public double AvgValoracionMental
+    {
+        get => _avgValoracionMental;
+        set => SetProperty(ref _avgValoracionMental, value);
+    }
+
+    public double AvgValoracionTecnica
+    {
+        get => _avgValoracionTecnica;
+        set => SetProperty(ref _avgValoracionTecnica, value);
+    }
+
+    public int AvgValoracionCount
+    {
+        get => _avgValoracionCount;
+        set => SetProperty(ref _avgValoracionCount, value);
+    }
+
+    public int SelectedEvolutionPeriod
+    {
+        get => _selectedEvolutionPeriod;
+        set
+        {
+            if (SetProperty(ref _selectedEvolutionPeriod, value))
+            {
+                _ = LoadValoracionEvolutionAsync();
+            }
+        }
+    }
+
+    public ObservableCollection<SessionDiary> ValoracionEvolution
+    {
+        get => _valoracionEvolution;
+        set => SetProperty(ref _valoracionEvolution, value);
+    }
+
+    public ObservableCollection<int> EvolutionFisicaValues
+    {
+        get => _evolutionFisicaValues;
+        set => SetProperty(ref _evolutionFisicaValues, value);
+    }
+
+    public ObservableCollection<int> EvolutionMentalValues
+    {
+        get => _evolutionMentalValues;
+        set => SetProperty(ref _evolutionMentalValues, value);
+    }
+
+    public ObservableCollection<int> EvolutionTecnicaValues
+    {
+        get => _evolutionTecnicaValues;
+        set => SetProperty(ref _evolutionTecnicaValues, value);
+    }
+
+    public ObservableCollection<string> EvolutionLabels
+    {
+        get => _evolutionLabels;
+        set => SetProperty(ref _evolutionLabels, value);
+    }
+
+    public bool HasDiaryData => _currentSessionDiary != null;
 
     public bool IsMultiSelectMode
     {
@@ -799,29 +931,35 @@ public class DashboardViewModel : BaseViewModel
     /// <summary>Indica si se debe mostrar la tabla de tiempos (solo para sesiones específicas, no Galería General ni Videolecciones)</summary>
     public bool ShowSectionTimesTable => !IsAllGallerySelected && !IsVideoLessonsSelected && SelectedSession != null && HasSectionTimes;
 
-    // ==================== ESTADÍSTICAS RELATIVAS (USUARIO) ====================
-    private bool _isAbsoluteStatsMode = true;
-    private UserAthleteStats? _userAthleteStats;
-    private int? _referenceAthleteId;
-    private string? _referenceAthleteName;
-
-    public bool IsAbsoluteStatsMode
+    private bool _showSectionTimesDifferences;
+    /// <summary>Indica si se muestran las diferencias respecto al usuario de referencia</summary>
+    public bool ShowSectionTimesDifferences
     {
-        get => _isAbsoluteStatsMode;
+        get => _showSectionTimesDifferences;
         set
         {
-            if (SetProperty(ref _isAbsoluteStatsMode, value))
+            if (SetProperty(ref _showSectionTimesDifferences, value))
             {
-                OnPropertyChanged(nameof(IsRelativeStatsMode));
-                if (!value)
+                OnPropertyChanged(nameof(ShowSectionTimesAbsolute));
+                // Recalcular diferencias cuando se activa el modo
+                if (value && ReferenceAthleteId.HasValue)
                 {
-                    _ = LoadUserAthleteStatsAsync();
+                    UpdateSectionTimeDifferences();
                 }
             }
         }
     }
 
-    public bool IsRelativeStatsMode => !IsAbsoluteStatsMode;
+    /// <summary>Indica si se muestran los tiempos absolutos (inverso de diferencias)</summary>
+    public bool ShowSectionTimesAbsolute => !ShowSectionTimesDifferences;
+
+    /// <summary>Comando para alternar entre vista de tiempos y diferencias</summary>
+    public ICommand ToggleSectionTimesViewCommand { get; }
+
+    // ==================== ESTADÍSTICAS USUARIO ====================
+    private UserAthleteStats? _userAthleteStats;
+    private int? _referenceAthleteId;
+    private string? _referenceAthleteName;
 
     public UserAthleteStats? UserAthleteStats
     {
@@ -846,12 +984,38 @@ public class DashboardViewModel : BaseViewModel
 
     public ObservableCollection<AthleteComparisonRow> AthleteComparison { get; } = new();
 
+    // Estadísticas personales extendidas
+    private UserPersonalStats? _userPersonalStats;
+    public UserPersonalStats? UserPersonalStats
+    {
+        get => _userPersonalStats;
+        set => SetProperty(ref _userPersonalStats, value);
+    }
+    
+    // Propiedades para binding de gráficos de valoraciones
+    public ObservableCollection<double> ValoracionFisicoValues { get; } = new();
+    public ObservableCollection<string> ValoracionFisicoLabels { get; } = new();
+    public ObservableCollection<double> ValoracionMentalValues { get; } = new();
+    public ObservableCollection<string> ValoracionMentalLabels { get; } = new();
+    public ObservableCollection<double> ValoracionTecnicoValues { get; } = new();
+    public ObservableCollection<string> ValoracionTecnicoLabels { get; } = new();
+    
+    // Propiedades para binding de gráfico de medias por sesión
+    public ObservableCollection<double> SessionAverageValues { get; } = new();
+    public ObservableCollection<string> SessionAverageLabels { get; } = new();
+    
+    // Propiedades para binding de evolución de penalizaciones
+    public ObservableCollection<double> PenaltyEvolutionValues { get; } = new();
+    public ObservableCollection<string> PenaltyEvolutionLabels { get; } = new();
+
     private async Task LoadUserAthleteStatsAsync()
     {
         if (!ReferenceAthleteId.HasValue)
         {
             UserAthleteStats = null;
+            UserPersonalStats = null;
             AthleteComparison.Clear();
+            ClearPersonalStatsCharts();
             return;
         }
 
@@ -870,11 +1034,71 @@ public class DashboardViewModel : BaseViewModel
                 AthleteComparison.Add(row);
             }
 
+            // Cargar estadísticas personales extendidas
+            UserPersonalStats = await _statisticsService.GetUserPersonalStatsAsync(ReferenceAthleteId.Value, sessionId);
+            UpdatePersonalStatsCharts();
+
             OnPropertyChanged(nameof(HasUserStats));
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Error cargando estadísticas de usuario: {ex.Message}");
+        }
+    }
+
+    private void ClearPersonalStatsCharts()
+    {
+        ValoracionFisicoValues.Clear();
+        ValoracionFisicoLabels.Clear();
+        ValoracionMentalValues.Clear();
+        ValoracionMentalLabels.Clear();
+        ValoracionTecnicoValues.Clear();
+        ValoracionTecnicoLabels.Clear();
+        SessionAverageValues.Clear();
+        SessionAverageLabels.Clear();
+        PenaltyEvolutionValues.Clear();
+        PenaltyEvolutionLabels.Clear();
+    }
+
+    private void UpdatePersonalStatsCharts()
+    {
+        ClearPersonalStatsCharts();
+        
+        if (UserPersonalStats == null) return;
+
+        // Medias por sesión
+        foreach (var avg in UserPersonalStats.SessionAverages)
+        {
+            SessionAverageValues.Add(avg.AverageTimeMs / 1000.0); // Convertir a segundos
+            SessionAverageLabels.Add(avg.SessionDateShort);
+        }
+
+        // Evolución de valoraciones - Físico
+        foreach (var point in UserPersonalStats.ValoracionEvolution.Fisico)
+        {
+            ValoracionFisicoValues.Add(point.Value);
+            ValoracionFisicoLabels.Add(point.DateShort);
+        }
+
+        // Evolución de valoraciones - Mental
+        foreach (var point in UserPersonalStats.ValoracionEvolution.Mental)
+        {
+            ValoracionMentalValues.Add(point.Value);
+            ValoracionMentalLabels.Add(point.DateShort);
+        }
+
+        // Evolución de valoraciones - Técnico
+        foreach (var point in UserPersonalStats.ValoracionEvolution.Tecnico)
+        {
+            ValoracionTecnicoValues.Add(point.Value);
+            ValoracionTecnicoLabels.Add(point.DateShort);
+        }
+
+        // Evolución de penalizaciones
+        foreach (var point in UserPersonalStats.PenaltyEvolution)
+        {
+            PenaltyEvolutionValues.Add(point.PenaltyCount);
+            PenaltyEvolutionLabels.Add(point.DateShort);
         }
     }
 
@@ -980,6 +1204,31 @@ public class DashboardViewModel : BaseViewModel
     }
 
     /// <summary>
+    /// Actualiza las diferencias de tiempos respecto al atleta de referencia
+    /// </summary>
+    private void UpdateSectionTimeDifferences()
+    {
+        if (!ReferenceAthleteId.HasValue) return;
+        
+        var refAthleteId = ReferenceAthleteId.Value;
+        
+        foreach (var section in SectionTimes)
+        {
+            // Buscar el tiempo del atleta de referencia en esta sección
+            var refAthleteRow = section.Athletes.FirstOrDefault(a => a.AthleteId == refAthleteId);
+            long refTotalMs = refAthleteRow?.TotalMs ?? 0;
+            
+            foreach (var athlete in section.Athletes)
+            {
+                athlete.SetReferenceDifference(refTotalMs, athlete.AthleteId == refAthleteId);
+            }
+        }
+        
+        // Forzar actualización de la UI
+        OnPropertyChanged(nameof(SectionTimes));
+    }
+
+    /// <summary>
     /// Refresca las estadísticas si hay actualizaciones pendientes (llamar desde OnAppearing)
     /// </summary>
     public async Task RefreshPendingStatsAsync()
@@ -1070,6 +1319,9 @@ public class DashboardViewModel : BaseViewModel
     public ICommand ToggleTagsExpandedCommand { get; }
     public ICommand SelectStatsTabCommand { get; }
     public ICommand SelectCrudTechTabCommand { get; }
+    public ICommand SelectDiaryTabCommand { get; }
+    public ICommand SaveDiaryCommand { get; }
+    public ICommand SetEvolutionPeriodCommand { get; }
     public ICommand ToggleMultiSelectModeCommand { get; }
     public ICommand ToggleSelectAllCommand { get; }
     public ICommand ToggleVideoSelectionCommand { get; }
@@ -1093,10 +1345,6 @@ public class DashboardViewModel : BaseViewModel
     public ICommand ApplyBatchEditCommand { get; }
     public ICommand ToggleBatchTagCommand { get; }
     public ICommand SelectBatchAthleteCommand { get; }
-
-    // Comandos de estadísticas relativas
-    public ICommand SetAbsoluteStatsModeCommand { get; }
-    public ICommand SetRelativeStatsModeCommand { get; }
 
     // Propiedades de edición en lote
     public bool ShowBatchEditPopup
@@ -1173,6 +1421,13 @@ public class DashboardViewModel : BaseViewModel
 
         SelectStatsTabCommand = new RelayCommand(() => IsStatsTabSelected = true);
         SelectCrudTechTabCommand = new RelayCommand(() => IsCrudTechTabSelected = true);
+        SelectDiaryTabCommand = new RelayCommand(() => IsDiaryTabSelected = true);
+        SaveDiaryCommand = new AsyncRelayCommand(SaveDiaryAsync);
+        SetEvolutionPeriodCommand = new RelayCommand<string>(period => 
+        {
+            if (int.TryParse(period, out var p))
+                SelectedEvolutionPeriod = p;
+        });
 
         ToggleMultiSelectModeCommand = new RelayCommand(() =>
         {
@@ -1206,9 +1461,8 @@ public class DashboardViewModel : BaseViewModel
         ToggleBatchTagCommand = new RelayCommand<Tag>(ToggleBatchTag);
         SelectBatchAthleteCommand = new RelayCommand<Athlete>(SelectBatchAthlete);
         
-        // Comandos de estadísticas relativas
-        SetAbsoluteStatsModeCommand = new RelayCommand(() => IsAbsoluteStatsMode = true);
-        SetRelativeStatsModeCommand = new RelayCommand(() => IsAbsoluteStatsMode = false);
+        // Comando para alternar vista de tiempos
+        ToggleSectionTimesViewCommand = new RelayCommand(() => ShowSectionTimesDifferences = !ShowSectionTimesDifferences);
         
         // Notificar cambios en VideoCountDisplayText cuando cambie la colección
         SelectedSessionVideos.CollectionChanged += (s, e) => OnPropertyChanged(nameof(VideoCountDisplayText));
@@ -2716,4 +2970,171 @@ public class DashboardViewModel : BaseViewModel
     {
         await Shell.Current.GoToAsync(nameof(AthletesPage));
     }
+
+    #region Session Diary Methods
+
+    private async Task LoadSessionDiaryAsync()
+    {
+        if (SelectedSession == null) return;
+
+        try
+        {
+            // Obtener el atleta de referencia del perfil de usuario
+            var profile = await _databaseService.GetUserProfileAsync();
+            if (profile?.ReferenceAthleteId == null) return;
+
+            var athleteId = profile.ReferenceAthleteId.Value;
+
+            // Cargar diario existente o crear uno nuevo
+            _currentSessionDiary = await _databaseService.GetSessionDiaryAsync(SelectedSession.Id, athleteId);
+            
+            if (_currentSessionDiary != null)
+            {
+                DiaryValoracionFisica = _currentSessionDiary.ValoracionFisica;
+                DiaryValoracionMental = _currentSessionDiary.ValoracionMental;
+                DiaryValoracionTecnica = _currentSessionDiary.ValoracionTecnica;
+                DiaryNotas = _currentSessionDiary.Notas ?? "";
+            }
+            else
+            {
+                // Valores por defecto
+                DiaryValoracionFisica = 3;
+                DiaryValoracionMental = 3;
+                DiaryValoracionTecnica = 3;
+                DiaryNotas = "";
+            }
+
+            OnPropertyChanged(nameof(HasDiaryData));
+
+            // Cargar promedios
+            await LoadValoracionAveragesAsync(athleteId);
+
+            // Cargar evolución
+            await LoadValoracionEvolutionAsync();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error cargando diario: {ex}");
+        }
+    }
+
+    private async Task LoadValoracionAveragesAsync(int athleteId)
+    {
+        try
+        {
+            var (fisica, mental, tecnica, count) = await _databaseService.GetValoracionAveragesAsync(athleteId, 30);
+            AvgValoracionFisica = fisica;
+            AvgValoracionMental = mental;
+            AvgValoracionTecnica = tecnica;
+            AvgValoracionCount = count;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error cargando promedios: {ex}");
+        }
+    }
+
+    private async Task LoadValoracionEvolutionAsync()
+    {
+        try
+        {
+            var profile = await _databaseService.GetUserProfileAsync();
+            if (profile?.ReferenceAthleteId == null) return;
+
+            var athleteId = profile.ReferenceAthleteId.Value;
+            var now = DateTimeOffset.UtcNow;
+            long startDate;
+
+            switch (SelectedEvolutionPeriod)
+            {
+                case 0: // Semana
+                    startDate = now.AddDays(-7).ToUnixTimeMilliseconds();
+                    break;
+                case 1: // Mes
+                    startDate = now.AddMonths(-1).ToUnixTimeMilliseconds();
+                    break;
+                case 2: // Año
+                    startDate = now.AddYears(-1).ToUnixTimeMilliseconds();
+                    break;
+                default: // Todo
+                    startDate = 0;
+                    break;
+            }
+
+            var endDate = now.ToUnixTimeMilliseconds();
+            var evolution = await _databaseService.GetValoracionEvolutionAsync(athleteId, startDate, endDate);
+            
+            ValoracionEvolution = new ObservableCollection<SessionDiary>(evolution);
+            
+            // Poblar colecciones para el gráfico de evolución
+            var fisicaValues = new ObservableCollection<int>();
+            var mentalValues = new ObservableCollection<int>();
+            var tecnicaValues = new ObservableCollection<int>();
+            var labels = new ObservableCollection<string>();
+            
+            foreach (var diary in evolution.OrderBy(d => d.CreatedAt))
+            {
+                fisicaValues.Add(diary.ValoracionFisica);
+                mentalValues.Add(diary.ValoracionMental);
+                tecnicaValues.Add(diary.ValoracionTecnica);
+                
+                // Formatear fecha como etiqueta
+                var date = DateTimeOffset.FromUnixTimeMilliseconds(diary.CreatedAt).LocalDateTime;
+                labels.Add(date.ToString("dd/MM"));
+            }
+            
+            EvolutionFisicaValues = fisicaValues;
+            EvolutionMentalValues = mentalValues;
+            EvolutionTecnicaValues = tecnicaValues;
+            EvolutionLabels = labels;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error cargando evolución: {ex}");
+        }
+    }
+
+    private async Task SaveDiaryAsync()
+    {
+        if (SelectedSession == null) return;
+
+        try
+        {
+            var profile = await _databaseService.GetUserProfileAsync();
+            if (profile?.ReferenceAthleteId == null)
+            {
+                await Shell.Current.DisplayAlert("Error", "No hay un atleta de referencia configurado en tu perfil.", "OK");
+                return;
+            }
+
+            var athleteId = profile.ReferenceAthleteId.Value;
+
+            var diary = new SessionDiary
+            {
+                SessionId = SelectedSession.Id,
+                AthleteId = athleteId,
+                ValoracionFisica = DiaryValoracionFisica,
+                ValoracionMental = DiaryValoracionMental,
+                ValoracionTecnica = DiaryValoracionTecnica,
+                Notas = DiaryNotas
+            };
+
+            await _databaseService.SaveSessionDiaryAsync(diary);
+            _currentSessionDiary = diary;
+            OnPropertyChanged(nameof(HasDiaryData));
+
+            // Recargar promedios y evolución
+            await LoadValoracionAveragesAsync(athleteId);
+            await LoadValoracionEvolutionAsync();
+
+            await Shell.Current.DisplayAlert("Guardado", "Tu diario de sesión se ha guardado correctamente.", "OK");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error guardando diario: {ex}");
+            await Shell.Current.DisplayAlert("Error", $"No se pudo guardar el diario: {ex.Message}", "OK");
+        }
+    }
+
+    #endregion
 }

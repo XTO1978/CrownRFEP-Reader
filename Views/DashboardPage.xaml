@@ -754,8 +754,8 @@
             </ScrollView.IsVisible>
             <VerticalStackLayout Spacing="12">
 
-                <!--  Pestañas: Acciones / Estadísticas  -->
-                <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                <!--  Pestañas: Acciones / Estadísticas / Diario  -->
+                <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
                     <Border
                         Padding="10,8"
                         BackgroundColor="#FF2A2A2A"
@@ -769,7 +769,7 @@
                         <Border.GestureRecognizers>
                             <TapGestureRecognizer Command="{Binding SelectCrudTechTabCommand}" />
                         </Border.GestureRecognizers>
-                        <Label Text="Acciones y Análisis Técnico" TextColor="White" HorizontalOptions="Center">
+                        <Label Text="Acciones y Análisis" TextColor="White" HorizontalOptions="Center" FontSize="12">
                             <Label.Triggers>
                                 <DataTrigger TargetType="Label" Binding="{Binding IsCrudTechTabSelected}" Value="True">
                                     <Setter Property="FontAttributes" Value="Bold" />
@@ -795,12 +795,38 @@
                         <Border.GestureRecognizers>
                             <TapGestureRecognizer Command="{Binding SelectStatsTabCommand}" />
                         </Border.GestureRecognizers>
-                        <Label Text="Filtros y Estadísticas" TextColor="White" HorizontalOptions="Center">
+                        <Label Text="Filtros y Estadísticas" TextColor="White" HorizontalOptions="Center" FontSize="12">
                             <Label.Triggers>
                                 <DataTrigger TargetType="Label" Binding="{Binding IsStatsTabSelected}" Value="True">
                                     <Setter Property="FontAttributes" Value="Bold" />
                                 </DataTrigger>
                                 <DataTrigger TargetType="Label" Binding="{Binding IsStatsTabSelected}" Value="False">
+                                    <Setter Property="FontAttributes" Value="None" />
+                                </DataTrigger>
+                            </Label.Triggers>
+                        </Label>
+                    </Border>
+
+                    <Border
+                        Grid.Column="2"
+                        Padding="10,8"
+                        BackgroundColor="#FF2A2A2A"
+                        Stroke="Transparent"
+                        StrokeShape="RoundRectangle 6">
+                        <Border.Triggers>
+                            <DataTrigger TargetType="Border" Binding="{Binding IsDiaryTabSelected}" Value="True">
+                                <Setter Property="BackgroundColor" Value="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BackgroundColor}" />
+                            </DataTrigger>
+                        </Border.Triggers>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding SelectDiaryTabCommand}" />
+                        </Border.GestureRecognizers>
+                        <Label Text="Diario de Sesión" TextColor="White" HorizontalOptions="Center" FontSize="12">
+                            <Label.Triggers>
+                                <DataTrigger TargetType="Label" Binding="{Binding IsDiaryTabSelected}" Value="True">
+                                    <Setter Property="FontAttributes" Value="Bold" />
+                                </DataTrigger>
+                                <DataTrigger TargetType="Label" Binding="{Binding IsDiaryTabSelected}" Value="False">
                                     <Setter Property="FontAttributes" Value="None" />
                                 </DataTrigger>
                             </Label.Triggers>
@@ -1852,59 +1878,12 @@
                         WidthRequest="24" />
                     <Label
                         FontSize="24"
-                        Text="Estadísticas"
+                        Text="Datos y Estadísticas"
                         TextColor="White" />
                 </HorizontalStackLayout>
 
-                <!--  Tabs: Absolutas / Relativas  -->
-                <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
-                    <!--  Tab Absolutas  -->
-                    <Border
-                        Padding="12,8"
-                        BackgroundColor="{Binding IsAbsoluteStatsMode, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF2A2A2A,#FF1A1A1A'}"
-                        StrokeShape="RoundRectangle 8"
-                        StrokeThickness="0">
-                        <Border.GestureRecognizers>
-                            <TapGestureRecognizer Command="{Binding SetAbsoluteStatsModeCommand}" />
-                        </Border.GestureRecognizers>
-                        <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
-                            <controls:SymbolIcon
-                                HeightRequest="16"
-                                SymbolName="chart.bar"
-                                TintColor="{Binding IsAbsoluteStatsMode, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF6DDDFF,#FF808080'}"
-                                WidthRequest="16" />
-                            <Label
-                                FontSize="14"
-                                Text="Absolutas"
-                                TextColor="{Binding IsAbsoluteStatsMode, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#FF808080'}" />
-                        </HorizontalStackLayout>
-                    </Border>
-                    <!--  Tab Relativas (Usuario)  -->
-                    <Border
-                        Grid.Column="1"
-                        Padding="12,8"
-                        BackgroundColor="{Binding IsRelativeStatsMode, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF2A2A2A,#FF1A1A1A'}"
-                        StrokeShape="RoundRectangle 8"
-                        StrokeThickness="0">
-                        <Border.GestureRecognizers>
-                            <TapGestureRecognizer Command="{Binding SetRelativeStatsModeCommand}" />
-                        </Border.GestureRecognizers>
-                        <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
-                            <controls:SymbolIcon
-                                HeightRequest="16"
-                                SymbolName="person"
-                                TintColor="{Binding IsRelativeStatsMode, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF6DDDFF,#FF808080'}"
-                                WidthRequest="16" />
-                            <Label
-                                FontSize="14"
-                                Text="Relativas"
-                                TextColor="{Binding IsRelativeStatsMode, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#FF808080'}" />
-                        </HorizontalStackLayout>
-                    </Border>
-                </Grid>
-
-                <!--  ===== VISTA ABSOLUTAS =====  -->
-                <VerticalStackLayout IsVisible="{Binding IsAbsoluteStatsMode}" Spacing="12">
+                <!--  ===== ESTADÍSTICAS =====  -->
+                <VerticalStackLayout Spacing="12">
 
                 <Label
                     FontSize="14"
@@ -2151,11 +2130,52 @@
 
                 <!--  ===== TABLA DE TIEMPOS POR SECCIÓN =====  -->
                 <VerticalStackLayout IsVisible="{Binding ShowSectionTimesTable}" Spacing="8" Margin="0,16,0,0">
-                    <Label
-                        FontAttributes="Bold"
-                        FontSize="16"
-                        Text="⏱ Tiempos por Sección"
-                        TextColor="White" />
+                    <!--  Cabecera con título y toggle  -->
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                        <Label
+                            FontAttributes="Bold"
+                            FontSize="16"
+                            Text="⏱ Tiempos por Sección"
+                            TextColor="White"
+                            VerticalOptions="Center" />
+                        
+                        <!--  Toggle entre Tiempos y Diferencias  -->
+                        <Grid Grid.Column="1" ColumnDefinitions="Auto,Auto" ColumnSpacing="4" IsVisible="{Binding HasReferenceAthlete}">
+                            <!--  Botón Tiempos  -->
+                            <Border
+                                Padding="16,6"
+                                BackgroundColor="{Binding ShowSectionTimesAbsolute, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF2A2A2A,#FF1A1A1A'}"
+                                StrokeShape="RoundRectangle 4"
+                                StrokeThickness="0"
+                                MinimumWidthRequest="80">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding ToggleSectionTimesViewCommand}" />
+                                </Border.GestureRecognizers>
+                                <Label
+                                    FontSize="12"
+                                    Text="Tiempos"
+                                    HorizontalOptions="Center"
+                                    TextColor="White" />
+                            </Border>
+                            <!--  Botón Diferencias  -->
+                            <Border
+                                Grid.Column="1"
+                                Padding="16,6"
+                                BackgroundColor="{Binding ShowSectionTimesDifferences, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF2A2A2A,#FF1A1A1A'}"
+                                StrokeShape="RoundRectangle 4"
+                                StrokeThickness="0"
+                                MinimumWidthRequest="80">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding ToggleSectionTimesViewCommand}" />
+                                </Border.GestureRecognizers>
+                                <Label
+                                    FontSize="12"
+                                    Text="vs Tú"
+                                    HorizontalOptions="Center"
+                                    TextColor="White" />
+                            </Border>
+                        </Grid>
+                    </Grid>
                     
                     <!--  Iteramos por cada sección  -->
                     <VerticalStackLayout Spacing="12">
@@ -2177,62 +2197,64 @@
                                             Text="{Binding SectionName}"
                                             TextColor="#FF6DDDFF" />
                                         
-                                        <!--  Cabecera de tabla  -->
-                                        <Grid ColumnDefinitions="2*,*,*,*" ColumnSpacing="4" Padding="4,2" BackgroundColor="#FF252525">
-                                            <Label Grid.Column="0" FontSize="11" FontAttributes="Bold" Text="ATLETA" TextColor="#FFB1B1B1" />
-                                            <Label Grid.Column="1" FontSize="11" FontAttributes="Bold" Text="TIEMPO" TextColor="#FFB1B1B1" HorizontalTextAlignment="End" />
-                                            <Label Grid.Column="2" FontSize="11" FontAttributes="Bold" Text="PENAL." TextColor="#FFB1B1B1" HorizontalTextAlignment="End" />
-                                            <Label Grid.Column="3" FontSize="11" FontAttributes="Bold" Text="TOTAL" TextColor="#FFB1B1B1" HorizontalTextAlignment="End" />
-                                        </Grid>
-                                        
-                                        <!--  Filas de atletas  -->
-                                        <VerticalStackLayout Spacing="2">
-                                            <BindableLayout.ItemsSource>
-                                                <Binding Path="Athletes" />
-                                            </BindableLayout.ItemsSource>
-                                            <BindableLayout.ItemTemplate>
-                                                <DataTemplate x:DataType="services:AthleteSectionTimeRow">
-                                                    <Grid ColumnDefinitions="2*,*,*,*" ColumnSpacing="4" Padding="4,3">
-                                                        <!--  Nombre del atleta  -->
-                                                        <Label
-                                                            Grid.Column="0"
-                                                            FontSize="12"
-                                                            Text="{Binding AthleteName}"
-                                                            TextColor="White"
-                                                            LineBreakMode="TailTruncation"
-                                                            VerticalOptions="Center" />
-                                                        
-                                                        <!--  Tiempo (split)  -->
-                                                        <Label
-                                                            Grid.Column="1"
-                                                            FontSize="12"
-                                                            Text="{Binding DurationFormatted}"
-                                                            TextColor="#FF4CAF50"
-                                                            HorizontalTextAlignment="End"
-                                                            VerticalOptions="Center" />
-                                                        
-                                                        <!--  Penalizaciones  -->
-                                                        <Label
-                                                            Grid.Column="2"
-                                                            FontSize="12"
-                                                            Text="{Binding PenaltyFormatted}"
-                                                            TextColor="#FFFF6B6B"
-                                                            HorizontalTextAlignment="End"
-                                                            VerticalOptions="Center" />
-                                                        
-                                                        <!--  Tiempo total  -->
-                                                        <Label
-                                                            Grid.Column="3"
-                                                            FontSize="12"
-                                                            FontAttributes="Bold"
-                                                            Text="{Binding TotalFormatted}"
-                                                            TextColor="#FFFFD700"
-                                                            HorizontalTextAlignment="End"
-                                                            VerticalOptions="Center" />
-                                                    </Grid>
-                                                </DataTemplate>
-                                            </BindableLayout.ItemTemplate>
+                                        <!--  ===== VISTA TIEMPOS ABSOLUTOS =====  -->
+                                        <VerticalStackLayout Spacing="4" IsVisible="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=ShowSectionTimesAbsolute}">
+                                            <!--  Cabecera de tabla (absoluta)  -->
+                                            <Grid ColumnDefinitions="2*,*,*,*,*" ColumnSpacing="4" Padding="4,2" BackgroundColor="#FF252525">
+                                                <Label Grid.Column="0" FontSize="11" FontAttributes="Bold" Text="ATLETA" TextColor="#FFB1B1B1" />
+                                                <Label Grid.Column="1" FontSize="11" FontAttributes="Bold" Text="CAT." TextColor="#FFB1B1B1" />
+                                                <Label Grid.Column="2" FontSize="11" FontAttributes="Bold" Text="TIEMPO" TextColor="#FFB1B1B1" HorizontalTextAlignment="End" />
+                                                <Label Grid.Column="3" FontSize="11" FontAttributes="Bold" Text="PENAL." TextColor="#FFB1B1B1" HorizontalTextAlignment="End" />
+                                                <Label Grid.Column="4" FontSize="11" FontAttributes="Bold" Text="TOTAL" TextColor="#FFB1B1B1" HorizontalTextAlignment="End" />
+                                            </Grid>
+                                            
+                                            <!--  Filas de atletas (tiempos absolutos)  -->
+                                            <VerticalStackLayout Spacing="2">
+                                                <BindableLayout.ItemsSource>
+                                                    <Binding Path="Athletes" />
+                                                </BindableLayout.ItemsSource>
+                                                <BindableLayout.ItemTemplate>
+                                                    <DataTemplate x:DataType="services:AthleteSectionTimeRow">
+                                                        <Grid ColumnDefinitions="2*,*,*,*,*" ColumnSpacing="4" Padding="4,3" BackgroundColor="{Binding RowBackgroundColor}">
+                                                            <Label Grid.Column="0" FontSize="12" Text="{Binding AthleteName}" TextColor="White" LineBreakMode="TailTruncation" VerticalOptions="Center" />
+                                                            <Label Grid.Column="1" FontSize="11" Text="{Binding CategoryName}" TextColor="#FF808080" LineBreakMode="TailTruncation" VerticalOptions="Center" />
+                                                            <Label Grid.Column="2" FontSize="12" Text="{Binding DurationFormatted}" TextColor="#FF4CAF50" HorizontalTextAlignment="End" VerticalOptions="Center" />
+                                                            <Label Grid.Column="3" FontSize="12" Text="{Binding PenaltyFormatted}" TextColor="#FFFF6B6B" HorizontalTextAlignment="End" VerticalOptions="Center" />
+                                                            <Label Grid.Column="4" FontSize="12" FontAttributes="Bold" Text="{Binding TotalFormatted}" TextColor="#FFFFD700" HorizontalTextAlignment="End" VerticalOptions="Center" />
+                                                        </Grid>
+                                                    </DataTemplate>
+                                                </BindableLayout.ItemTemplate>
+                                            </VerticalStackLayout>
                                         </VerticalStackLayout>
+                                        
+                                        <!--  ===== VISTA DIFERENCIAS =====  -->
+                                        <VerticalStackLayout Spacing="4" IsVisible="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=ShowSectionTimesDifferences}">
+                                            <!--  Cabecera de tabla (diferencias)  -->
+                                            <Grid ColumnDefinitions="2*,*,*,*" ColumnSpacing="4" Padding="4,2" BackgroundColor="#FF252525">
+                                                <Label Grid.Column="0" FontSize="11" FontAttributes="Bold" Text="ATLETA" TextColor="#FFB1B1B1" />
+                                                <Label Grid.Column="1" FontSize="11" FontAttributes="Bold" Text="CAT." TextColor="#FFB1B1B1" />
+                                                <Label Grid.Column="2" FontSize="11" FontAttributes="Bold" Text="TOTAL" TextColor="#FFB1B1B1" HorizontalTextAlignment="End" />
+                                                <Label Grid.Column="3" FontSize="11" FontAttributes="Bold" Text="vs TÚ" TextColor="#FFB1B1B1" HorizontalTextAlignment="End" />
+                                            </Grid>
+                                            
+                                            <!--  Filas de atletas (diferencias)  -->
+                                            <VerticalStackLayout Spacing="2">
+                                                <BindableLayout.ItemsSource>
+                                                    <Binding Path="Athletes" />
+                                                </BindableLayout.ItemsSource>
+                                                <BindableLayout.ItemTemplate>
+                                                    <DataTemplate x:DataType="services:AthleteSectionTimeRow">
+                                                        <Grid ColumnDefinitions="2*,*,*,*" ColumnSpacing="4" Padding="4,3" BackgroundColor="{Binding RowBackgroundColor}">
+                                                            <Label Grid.Column="0" FontSize="12" Text="{Binding AthleteName}" TextColor="White" LineBreakMode="TailTruncation" VerticalOptions="Center" FontAttributes="{Binding IsReferenceAthlete, Converter={StaticResource BoolToFontAttributesConverter}}" />
+                                                            <Label Grid.Column="1" FontSize="11" Text="{Binding CategoryName}" TextColor="#FF808080" LineBreakMode="TailTruncation" VerticalOptions="Center" />
+                                                            <Label Grid.Column="2" FontSize="12" Text="{Binding TotalFormatted}" TextColor="#FFFFD700" HorizontalTextAlignment="End" VerticalOptions="Center" />
+                                                            <Label Grid.Column="3" FontSize="12" FontAttributes="Bold" Text="{Binding DifferenceFormatted}" TextColor="{Binding DifferenceColor}" HorizontalTextAlignment="End" VerticalOptions="Center" />
+                                                        </Grid>
+                                                    </DataTemplate>
+                                                </BindableLayout.ItemTemplate>
+                                            </VerticalStackLayout>
+                                        </VerticalStackLayout>
+                                        
                                     </VerticalStackLayout>
                                 </Border>
                             </DataTemplate>
@@ -2242,254 +2264,344 @@
 
                 </VerticalStackLayout>
 
-                <!--  ===== VISTA RELATIVAS (USUARIO) =====  -->
-                <VerticalStackLayout IsVisible="{Binding IsRelativeStatsMode}" Spacing="12">
-                    <!--  Mensaje si no hay atleta de referencia configurado  -->
-                    <VerticalStackLayout IsVisible="{Binding HasReferenceAthlete, Converter={StaticResource InvertedBoolConverter}}" Spacing="12">
-                        <Border
-                            Padding="16"
-                            BackgroundColor="#FF1A1A1A"
-                            StrokeShape="RoundRectangle 12"
-                            StrokeThickness="0">
-                            <VerticalStackLayout HorizontalOptions="Center" Spacing="8">
-                                <controls:SymbolIcon
-                                    HeightRequest="48"
-                                    HorizontalOptions="Center"
-                                    SymbolName="person.crop.circle.badge.questionmark"
-                                    TintColor="#FF808080"
-                                    WidthRequest="48" />
-                                <Label
-                                    FontSize="16"
-                                    HorizontalOptions="Center"
-                                    Text="No has configurado tu atleta de referencia"
-                                    TextColor="White" />
-                                <Label
-                                    FontSize="13"
-                                    HorizontalOptions="Center"
-                                    HorizontalTextAlignment="Center"
-                                    Text="Para ver tus estadísticas personales, ve a tu perfil y selecciona tu atleta correspondiente en la base de datos."
-                                    TextColor="#FFB1B1B1" />
-                            </VerticalStackLayout>
-                        </Border>
-                    </VerticalStackLayout>
-
-                    <!--  Estadísticas del usuario (si tiene atleta de referencia)  -->
-                    <VerticalStackLayout IsVisible="{Binding HasReferenceAthlete}" Spacing="12">
-                        <!--  Cabecera con nombre del atleta  -->
-                        <Border
-                            Padding="12"
-                            BackgroundColor="#FF1F1F1F"
-                            StrokeShape="RoundRectangle 10"
-                            StrokeThickness="0">
-                            <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
-                                <controls:SymbolIcon
-                                    HeightRequest="24"
-                                    SymbolName="person.fill"
-                                    TintColor="#FF6DDDFF"
-                                    WidthRequest="24" />
-                                <VerticalStackLayout>
-                                    <Label
-                                        FontAttributes="Bold"
-                                        FontSize="16"
-                                        Text="{Binding ReferenceAthleteName}"
-                                        TextColor="White" />
-                                    <Label
-                                        FontSize="12"
-                                        Text="Tu atleta de referencia"
-                                        TextColor="#FFB1B1B1" />
-                                </VerticalStackLayout>
-                            </HorizontalStackLayout>
-                        </Border>
-
-                        <!--  Estadísticas principales  -->
-                        <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
-                            <!--  Ranking  -->
-                            <Border
-                                Padding="12"
-                                BackgroundColor="#FF2A2A2A"
-                                StrokeShape="RoundRectangle 10"
-                                StrokeThickness="0">
-                                <VerticalStackLayout HorizontalOptions="Center" Spacing="4">
-                                    <Label
-                                        FontAttributes="Bold"
-                                        FontSize="22"
-                                        HorizontalOptions="Center"
-                                        Text="{Binding UserAthleteStats.RankText}"
-                                        TextColor="#FF6DDDFF" />
-                                    <Label
-                                        FontSize="11"
-                                        HorizontalOptions="Center"
-                                        Text="Ranking"
-                                        TextColor="#FFB1B1B1" />
-                                </VerticalStackLayout>
-                            </Border>
-                            <!--  Vídeos  -->
-                            <Border
-                                Grid.Column="1"
-                                Padding="12"
-                                BackgroundColor="#FF2A2A2A"
-                                StrokeShape="RoundRectangle 10"
-                                StrokeThickness="0">
-                                <VerticalStackLayout HorizontalOptions="Center" Spacing="4">
-                                    <Label
-                                        FontAttributes="Bold"
-                                        FontSize="22"
-                                        HorizontalOptions="Center"
-                                        Text="{Binding UserAthleteStats.TotalVideos}"
-                                        TextColor="White" />
-                                    <Label
-                                        FontSize="11"
-                                        HorizontalOptions="Center"
-                                        Text="Vídeos"
-                                        TextColor="#FFB1B1B1" />
-                                </VerticalStackLayout>
-                            </Border>
-                            <!--  Tiempo Total  -->
-                            <Border
-                                Grid.Column="2"
-                                Padding="12"
-                                BackgroundColor="#FF2A2A2A"
-                                StrokeShape="RoundRectangle 10"
-                                StrokeThickness="0">
-                                <VerticalStackLayout HorizontalOptions="Center" Spacing="4">
-                                    <Label
-                                        FontAttributes="Bold"
-                                        FontSize="22"
-                                        HorizontalOptions="Center"
-                                        Text="{Binding UserAthleteStats.TotalDurationFormatted}"
-                                        TextColor="White" />
-                                    <Label
-                                        FontSize="11"
-                                        HorizontalOptions="Center"
-                                        Text="Tiempo"
-                                        TextColor="#FFB1B1B1" />
-                                </VerticalStackLayout>
-                            </Border>
-                        </Grid>
-
-                        <!--  Mensaje si no hay datos  -->
-                        <Border
-                            IsVisible="{Binding HasUserStats, Converter={StaticResource InvertedBoolConverter}}"
-                            Padding="16"
-                            BackgroundColor="#FF1A1A1A"
-                            StrokeShape="RoundRectangle 12"
-                            StrokeThickness="0">
-                            <VerticalStackLayout HorizontalOptions="Center" Spacing="8">
-                                <controls:SymbolIcon
-                                    HeightRequest="32"
-                                    HorizontalOptions="Center"
-                                    SymbolName="video.slash"
-                                    TintColor="#FF808080"
-                                    WidthRequest="32" />
-                                <Label
-                                    FontSize="14"
-                                    HorizontalOptions="Center"
-                                    Text="No hay vídeos para este atleta en la selección actual"
-                                    TextColor="#FFB1B1B1" />
-                            </VerticalStackLayout>
-                        </Border>
-
-                        <!--  Comparativa con otros atletas  -->
-                        <VerticalStackLayout IsVisible="{Binding HasUserStats}" Spacing="8">
-                            <Label
-                                FontSize="14"
-                                Text="Comparativa con otros atletas"
-                                TextColor="#FFB1B1B1" />
-                            <CollectionView ItemsSource="{Binding AthleteComparison}" SelectionMode="None">
-                                <CollectionView.ItemTemplate>
-                                    <DataTemplate x:DataType="services:AthleteComparisonRow">
-                                        <Border
-                                            Margin="0,2"
-                                            Padding="12,10"
-                                            BackgroundColor="{Binding IsReferenceAthlete, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF2A3A4A,#FF1F1F1F'}"
-                                            StrokeShape="RoundRectangle 8"
-                                            StrokeThickness="0">
-                                            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
-                                                <Label
-                                                    FontAttributes="Bold"
-                                                    FontSize="16"
-                                                    Text="{Binding Rank, StringFormat='#{0}'}"
-                                                    TextColor="{Binding IsReferenceAthlete, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF6DDDFF,#FF808080'}"
-                                                    VerticalOptions="Center"
-                                                    WidthRequest="36" />
-                                                <Label
-                                                    Grid.Column="1"
-                                                    FontSize="14"
-                                                    LineBreakMode="TailTruncation"
-                                                    Text="{Binding AthleteName}"
-                                                    TextColor="{Binding IsReferenceAthlete, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#FFB1B1B1'}"
-                                                    VerticalOptions="Center" />
-                                                <Label
-                                                    Grid.Column="2"
-                                                    FontSize="13"
-                                                    Text="{Binding VideoCount, StringFormat='{0} vídeos'}"
-                                                    TextColor="#FF808080"
-                                                    VerticalOptions="Center" />
-                                                <Label
-                                                    Grid.Column="3"
-                                                    Margin="12,0,0,0"
-                                                    FontSize="13"
-                                                    Text="{Binding TotalDurationFormatted}"
-                                                    TextColor="#FFB1B1B1"
-                                                    VerticalOptions="Center" />
-                                            </Grid>
-                                        </Border>
-                                    </DataTemplate>
-                                </CollectionView.ItemTemplate>
-
-                                <CollectionView.EmptyView>
-                                    <Label
-                                        FontSize="14"
-                                        Text="Cargando comparativa..."
-                                        TextColor="Gray" />
-                                </CollectionView.EmptyView>
-                            </CollectionView>
-
-                            <!--  Desglose por secciones del usuario  -->
-                            <Label
-                                FontSize="14"
-                                Margin="0,8,0,0"
-                                Text="Tus tiempos por sección"
-                                TextColor="#FFB1B1B1" />
-                            <CollectionView ItemsSource="{Binding UserAthleteStats.SectionBreakdown}" SelectionMode="None">
-                                <CollectionView.ItemTemplate>
-                                    <DataTemplate x:DataType="services:SectionStats">
-                                        <Grid Padding="0,6" ColumnDefinitions="*,Auto,Auto">
-                                            <Label
-                                                LineBreakMode="TailTruncation"
-                                                Text="{Binding SectionName}"
-                                                TextColor="White" />
-                                            <Label
-                                                Grid.Column="1"
-                                                Margin="10,0,0,0"
-                                                Text="{Binding VideoCount, StringFormat='{0} vídeos'}"
-                                                TextColor="#FFB1B1B1" />
-                                            <Label
-                                                Grid.Column="2"
-                                                Margin="10,0,0,0"
-                                                Text="{Binding TotalDuration, Converter={StaticResource DurationToMinutesConverter}}"
-                                                TextColor="#FFB1B1B1" />
-                                        </Grid>
-                                    </DataTemplate>
-                                </CollectionView.ItemTemplate>
-
-                                <CollectionView.EmptyView>
-                                    <Label
-                                        FontSize="14"
-                                        Text="Sin datos por sección"
-                                        TextColor="Gray" />
-                                </CollectionView.EmptyView>
-                            </CollectionView>
-                        </VerticalStackLayout>
-                    </VerticalStackLayout>
                 </VerticalStackLayout>
 
+                <!--  ===== PESTAÑA: DIARIO DE SESIÓN =====  -->
+                <VerticalStackLayout IsVisible="{Binding IsDiaryTabSelected}" Spacing="16">
+                    
+                    <!--  Título  -->
+                    <Label
+                        FontAttributes="Bold"
+                        FontSize="18"
+                        Text="Diario de Sesión"
+                        TextColor="White" />
+                    
+                    <!--  Cuestionario de valoraciones  -->
+                    <Border
+                        Padding="16"
+                        BackgroundColor="Transparent"
+                        StrokeShape="RoundRectangle 12"
+                        StrokeThickness="0">
+                        <VerticalStackLayout Spacing="16">
+                            <Label
+                                FontAttributes="Bold"
+                                FontSize="14"
+                                Text="¿Cómo te has sentido hoy?"
+                                TextColor="White" />
+                            
+                            <!--  Valoración Física  -->
+                            <Grid ColumnDefinitions="100,*,40" ColumnSpacing="12">
+                                <Label
+                                    FontSize="14"
+                                    Text="Físico"
+                                    TextColor="#FFB1B1B1"
+                                    VerticalOptions="Center" />
+                                <Slider
+                                    Grid.Column="1"
+                                    Maximum="5"
+                                    Minimum="1"
+                                    MinimumTrackColor="#FF8DD3C7"
+                                    MaximumTrackColor="#FF404040"
+                                    ThumbColor="#FF8DD3C7"
+                                    Value="{Binding DiaryValoracionFisica}" />
+                                <Label
+                                    Grid.Column="2"
+                                    FontAttributes="Bold"
+                                    FontSize="16"
+                                    HorizontalOptions="Center"
+                                    Text="{Binding DiaryValoracionFisica}"
+                                    TextColor="#FF8DD3C7"
+                                    VerticalOptions="Center" />
+                            </Grid>
+                            
+                            <!--  Valoración Mental  -->
+                            <Grid ColumnDefinitions="100,*,40" ColumnSpacing="12">
+                                <Label
+                                    FontSize="14"
+                                    Text="Mental"
+                                    TextColor="#FFB1B1B1"
+                                    VerticalOptions="Center" />
+                                <Slider
+                                    Grid.Column="1"
+                                    Maximum="5"
+                                    Minimum="1"
+                                    MinimumTrackColor="#FFFFED6F"
+                                    MaximumTrackColor="#FF404040"
+                                    ThumbColor="#FFFFED6F"
+                                    Value="{Binding DiaryValoracionMental}" />
+                                <Label
+                                    Grid.Column="2"
+                                    FontAttributes="Bold"
+                                    FontSize="16"
+                                    HorizontalOptions="Center"
+                                    Text="{Binding DiaryValoracionMental}"
+                                    TextColor="#FFFFED6F"
+                                    VerticalOptions="Center" />
+                            </Grid>
+                            
+                            <!--  Valoración Técnica  -->
+                            <Grid ColumnDefinitions="100,*,40" ColumnSpacing="12">
+                                <Label
+                                    FontSize="14"
+                                    Text="Técnico"
+                                    TextColor="#FFB1B1B1"
+                                    VerticalOptions="Center" />
+                                <Slider
+                                    Grid.Column="1"
+                                    Maximum="5"
+                                    Minimum="1"
+                                    MinimumTrackColor="#FFBEBADA"
+                                    MaximumTrackColor="#FF404040"
+                                    ThumbColor="#FFBEBADA"
+                                    Value="{Binding DiaryValoracionTecnica}" />
+                                <Label
+                                    Grid.Column="2"
+                                    FontAttributes="Bold"
+                                    FontSize="16"
+                                    HorizontalOptions="Center"
+                                    Text="{Binding DiaryValoracionTecnica}"
+                                    TextColor="#FFBEBADA"
+                                    VerticalOptions="Center" />
+                            </Grid>
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <Border HeightRequest="0.4" BackgroundColor="#FF0A0A0A"/>
+                    <!--  Notas de sesión  -->
+                    
+                    <!--  Promedios últimos 30 días  -->
+                    <Border
+                        Padding="16"
+                        BackgroundColor="Transparent"
+                        StrokeShape="RoundRectangle 12"
+                        StrokeThickness="0">
+                        <VerticalStackLayout Spacing="12">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <Label
+                                    FontAttributes="Bold"
+                                    FontSize="14"
+                                    Text="Promedios (últimos 30 días)"
+                                    TextColor="White"
+                                    VerticalOptions="Center" />
+                                <Label
+                                    Grid.Column="1"
+                                    FontSize="12"
+                                    Text="{Binding AvgValoracionCount, StringFormat='{0} sesiones'}"
+                                    TextColor="#FF808080"
+                                    VerticalOptions="Center" />
+                            </Grid>
+                            
+                            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12">
+                                <!--  Promedio Físico  -->
+                                <Border
+                                    Padding="12"
+                                    BackgroundColor="#FF1E1E1E"
+                                    StrokeShape="RoundRectangle 8"
+                                    StrokeThickness="0">
+                                    <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
+                                        <Label
+                                            FontAttributes="Bold"
+                                            FontSize="24"
+                                            HorizontalOptions="Center"
+                                            Text="{Binding AvgValoracionFisica, StringFormat='{0:F1}'}"
+                                            TextColor="#FF8DD3C7" />
+                                        <Label
+                                            FontSize="11"
+                                            HorizontalOptions="Center"
+                                            Text="Físico"
+                                            TextColor="#FF808080" />
+                                    </VerticalStackLayout>
+                                </Border>
+                                
+                                <!--  Promedio Mental  -->
+                                <Border
+                                    Grid.Column="1"
+                                    Padding="12"
+                                    BackgroundColor="#FF1E1E1E"
+                                    StrokeShape="RoundRectangle 8"
+                                    StrokeThickness="0">
+                                    <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
+                                        <Label
+                                            FontAttributes="Bold"
+                                            FontSize="24"
+                                            HorizontalOptions="Center"
+                                            Text="{Binding AvgValoracionMental, StringFormat='{0:F1}'}"
+                                            TextColor="#FFFFED6F" />
+                                        <Label
+                                            FontSize="11"
+                                            HorizontalOptions="Center"
+                                            Text="Mental"
+                                            TextColor="#FF808080" />
+                                    </VerticalStackLayout>
+                                </Border>
+                                
+                                <!--  Promedio Técnico  -->
+                                <Border
+                                    Grid.Column="2"
+                                    Padding="12"
+                                    BackgroundColor="#FF1E1E1E"
+                                    StrokeShape="RoundRectangle 8"
+                                    StrokeThickness="0">
+                                    <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
+                                        <Label
+                                            FontAttributes="Bold"
+                                            FontSize="24"
+                                            HorizontalOptions="Center"
+                                            Text="{Binding AvgValoracionTecnica, StringFormat='{0:F1}'}"
+                                            TextColor="#FFBEBADA" />
+                                        <Label
+                                            FontSize="11"
+                                            HorizontalOptions="Center"
+                                            Text="Técnico"
+                                            TextColor="#FF808080" />
+                                    </VerticalStackLayout>
+                                </Border>
+                            </Grid>
+                        </VerticalStackLayout>
+                    </Border>
+                    <Border HeightRequest="0.4" BackgroundColor="#FF0A0A0A"/>
+                    
+                    <!--  Gráfico de evolución  -->
+                    <Border
+                        Padding="16"
+                        BackgroundColor="Transparent"
+                        StrokeShape="RoundRectangle 12"
+                        StrokeThickness="0">
+                        <VerticalStackLayout Spacing="12">
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                                <Label
+                                    FontAttributes="Bold"
+                                    FontSize="14"
+                                    Text="Evolución"
+                                    TextColor="White"
+                                    VerticalOptions="Center" />
+                                
+                                <!--  Selector de periodo  -->
+                                <Grid Grid.Column="1" ColumnDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="4">
+                                    <Border
+                                        Padding="8,4"
+                                        BackgroundColor="{Binding SelectedEvolutionPeriod, Converter={StaticResource IntEqualityToColorConverter}, ConverterParameter='0:#FF3A3A3A:#FF1E1E1E'}"
+                                        StrokeShape="RoundRectangle 4"
+                                        StrokeThickness="0">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer Command="{Binding SetEvolutionPeriodCommand}" CommandParameter="0" />
+                                        </Border.GestureRecognizers>
+                                        <Label FontSize="11" Text="Semana" TextColor="White" />
+                                    </Border>
+                                    <Border
+                                        Grid.Column="1"
+                                        Padding="8,4"
+                                        BackgroundColor="{Binding SelectedEvolutionPeriod, Converter={StaticResource IntEqualityToColorConverter}, ConverterParameter='1:#FF3A3A3A:#FF1E1E1E'}"
+                                        StrokeShape="RoundRectangle 4"
+                                        StrokeThickness="0">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer Command="{Binding SetEvolutionPeriodCommand}" CommandParameter="1" />
+                                        </Border.GestureRecognizers>
+                                        <Label FontSize="11" Text="Mes" TextColor="White" />
+                                    </Border>
+                                    <Border
+                                        Grid.Column="2"
+                                        Padding="8,4"
+                                        BackgroundColor="{Binding SelectedEvolutionPeriod, Converter={StaticResource IntEqualityToColorConverter}, ConverterParameter='2:#FF3A3A3A:#FF1E1E1E'}"
+                                        StrokeShape="RoundRectangle 4"
+                                        StrokeThickness="0">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer Command="{Binding SetEvolutionPeriodCommand}" CommandParameter="2" />
+                                        </Border.GestureRecognizers>
+                                        <Label FontSize="11" Text="Año" TextColor="White" />
+                                    </Border>
+                                    <Border
+                                        Grid.Column="3"
+                                        Padding="8,4"
+                                        BackgroundColor="{Binding SelectedEvolutionPeriod, Converter={StaticResource IntEqualityToColorConverter}, ConverterParameter='3:#FF3A3A3A:#FF1E1E1E'}"
+                                        StrokeShape="RoundRectangle 4"
+                                        StrokeThickness="0">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer Command="{Binding SetEvolutionPeriodCommand}" CommandParameter="3" />
+                                        </Border.GestureRecognizers>
+                                        <Label FontSize="11" Text="Todo" TextColor="White" />
+                                    </Border>
+                                </Grid>
+                            </Grid>
+                            
+                            <!--  Leyenda  -->
+                            <HorizontalStackLayout Spacing="16" HorizontalOptions="Center">
+                                <HorizontalStackLayout Spacing="4">
+                                    <BoxView WidthRequest="12" HeightRequest="12" Color="#FF8DD3C7" CornerRadius="2" />
+                                    <Label FontSize="11" Text="Físico" TextColor="#FF808080" />
+                                </HorizontalStackLayout>
+                                <HorizontalStackLayout Spacing="4">
+                                    <BoxView WidthRequest="12" HeightRequest="12" Color="#FFFFED6F" CornerRadius="2" />
+                                    <Label FontSize="11" Text="Mental" TextColor="#FF808080" />
+                                </HorizontalStackLayout>
+                                <HorizontalStackLayout Spacing="4">
+                                    <BoxView WidthRequest="12" HeightRequest="12" Color="#FFBEBADA" CornerRadius="2" />
+                                    <Label FontSize="11" Text="Técnico" TextColor="#FF808080" />
+                                </HorizontalStackLayout>
+                            </HorizontalStackLayout>
+                            
+                            <!--  Mensaje si no hay datos  -->
+                            <Label
+                                IsVisible="{Binding ValoracionEvolution.Count, Converter={StaticResource IntToBoolConverter}, ConverterParameter=invert}"
+                                FontSize="14"
+                                HorizontalOptions="Center"
+                                Text="No hay datos de evolución para el periodo seleccionado"
+                                TextColor="#FF808080" />
+                            
+                            <!--  Gráfico de evolución de valoraciones  -->
+                            <controls:MultiLineChart 
+                                IsVisible="{Binding ValoracionEvolution.Count, Converter={StaticResource IntToBoolConverter}}"
+                                HeightRequest="180"
+                                Values1="{Binding EvolutionFisicaValues}"
+                                Values2="{Binding EvolutionMentalValues}"
+                                Values3="{Binding EvolutionTecnicaValues}"
+                                Labels="{Binding EvolutionLabels}"
+                                MinValue="1"
+                                MaxValue="5" />
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <Border HeightRequest="0.4" BackgroundColor="#FF0A0A0A"/>
+                    
+                    
+                    <!--  Notas de sesión  -->
+                    <Border
+                        Padding="16"
+                        BackgroundColor="#FF1E1E1E"
+                        StrokeShape="RoundRectangle 12"
+                        StrokeThickness="0">
+                        <VerticalStackLayout Spacing="12">
+                            <Label
+                                FontAttributes="Bold"
+                                FontSize="14"
+                                Text="Notas de sesión"
+                                TextColor="White" />
+                            
+                            <Editor
+                                AutoSize="TextChanges"
+                                BackgroundColor="#FF1E1E1E"
+                                MinimumHeightRequest="500"
+                                Placeholder="Escribe tus notas sobre la sesión...&#x0a;Cómo te has sentido, qué esperas de tu siguiente sesión, etc."
+                                PlaceholderColor="#FF606060"
+                                Text="{Binding DiaryNotas}"
+                                TextColor="White" />
+                        </VerticalStackLayout>
+                    </Border>
+                    
+                    <!--  Botón Guardar  -->
+                    <Button
+                        Padding="20,12"
+                        BackgroundColor="#FF252525"
+                        Command="{Binding SaveDiaryCommand}"
+                        CornerRadius="4"
+                        HorizontalOptions="Fill"
+                        Text="Guardar Diario"
+                        TextColor="White" />
+                    
                 </VerticalStackLayout>
 
             </VerticalStackLayout>
         </ScrollView>
-
-        <!--  MediaElement flotante para preview en hover (sobre todas las columnas)  -->
         <Border
             x:Name="HoverPreviewContainer"
             Grid.Row="1"
