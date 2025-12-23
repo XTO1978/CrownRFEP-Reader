@@ -223,7 +223,14 @@ public class DashboardViewModel : BaseViewModel
                     IsVideoLessonsSelected = false;
                 }
                 OnPropertyChanged(nameof(SelectedSessionTitle));
+                OnPropertyChanged(nameof(HasSpecificSessionSelected));
                 _ = LoadSelectedSessionVideosAsync(value);
+                
+                // Recargar datos de la pestaña activa
+                if (IsDiaryTabSelected)
+                {
+                    _ = LoadSessionDiaryAsync();
+                }
             }
         }
     }
@@ -243,6 +250,7 @@ public class DashboardViewModel : BaseViewModel
                 OnPropertyChanged(nameof(SelectedSessionTitle));
                 OnPropertyChanged(nameof(VideoCountDisplayText));
                 OnPropertyChanged(nameof(ShowSectionTimesTable));
+                OnPropertyChanged(nameof(HasSpecificSessionSelected));
             }
         }
     }
@@ -263,6 +271,7 @@ public class DashboardViewModel : BaseViewModel
                 OnPropertyChanged(nameof(SelectedSessionTitle));
                 OnPropertyChanged(nameof(VideoCountDisplayText));
                 OnPropertyChanged(nameof(ShowSectionTimesTable));
+                OnPropertyChanged(nameof(HasSpecificSessionSelected));
             }
         }
     }
@@ -930,6 +939,9 @@ public class DashboardViewModel : BaseViewModel
 
     /// <summary>Indica si se debe mostrar la tabla de tiempos (solo para sesiones específicas, no Galería General ni Videolecciones)</summary>
     public bool ShowSectionTimesTable => !IsAllGallerySelected && !IsVideoLessonsSelected && SelectedSession != null && HasSectionTimes;
+
+    /// <summary>Indica si hay una sesión específica seleccionada (no Galería General ni Videolecciones)</summary>
+    public bool HasSpecificSessionSelected => !IsAllGallerySelected && !IsVideoLessonsSelected && SelectedSession != null;
 
     private bool _showSectionTimesDifferences;
     /// <summary>Indica si se muestran las diferencias respecto al usuario de referencia</summary>

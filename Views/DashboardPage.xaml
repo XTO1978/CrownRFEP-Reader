@@ -812,7 +812,8 @@
                         Padding="10,8"
                         BackgroundColor="#FF2A2A2A"
                         Stroke="Transparent"
-                        StrokeShape="RoundRectangle 6">
+                        StrokeShape="RoundRectangle 6"
+                        IsVisible="{Binding HasSpecificSessionSelected}">
                         <Border.Triggers>
                             <DataTrigger TargetType="Border" Binding="{Binding IsDiaryTabSelected}" Value="True">
                                 <Setter Property="BackgroundColor" Value="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BackgroundColor}" />
@@ -2591,7 +2592,7 @@
                     <!--  Botón Guardar  -->
                     <Button
                         Padding="20,12"
-                        BackgroundColor="#FF252525"
+                        BackgroundColor="#FF303030"
                         Command="{Binding SaveDiaryCommand}"
                         CornerRadius="4"
                         HorizontalOptions="Fill"
