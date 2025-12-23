@@ -2663,19 +2663,35 @@
                 <!--  ===== VISTA: DIARIO PERSONAL (CALENDARIO) =====  -->
                 <VerticalStackLayout IsVisible="{Binding IsDiaryViewSelected}" Spacing="16">
                     
-                    <!--  Título  -->
-                    <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
-                        <controls:SymbolIcon
-                            HeightRequest="24"
-                            SymbolName="book"
-                            TintColor="#FF6DDDFF"
+                    <!--  Título y botón agregar sesión  -->
+                    <Grid ColumnDefinitions="*,Auto">
+                        <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                            <controls:SymbolIcon
+                                HeightRequest="24"
+                                SymbolName="book"
+                                TintColor="#FF6DDDFF"
+                                VerticalOptions="Center"
+                                WidthRequest="24" />
+                            <Label
+                                FontSize="24"
+                                Text="Diario Personal"
+                                TextColor="White" />
+                        </HorizontalStackLayout>
+                        
+                        <!--  Botón agregar sesión  -->
+                        <Button
+                            Grid.Column="1"
+                            Text="+ Nueva sesión"
+                            BackgroundColor="#FF2A2A2A"
+                            TextColor="#FF6DDDFF"
+                            FontSize="12"
+                            CornerRadius="6"
+                            Padding="12,6"
+                            HeightRequest="32"
                             VerticalOptions="Center"
-                            WidthRequest="24" />
-                        <Label
-                            FontSize="24"
-                            Text="Diario Personal"
-                            TextColor="White" />
-                    </HorizontalStackLayout>
+                            Command="{Binding ToggleAddNewSessionCommand}"
+                            IsVisible="{Binding IsAddingNewSession, Converter={toolkit:InvertedBoolConverter}}" />
+                    </Grid>
                     
                     <!--  Fecha seleccionada  -->
                     <Label
@@ -2683,131 +2699,402 @@
                         Text="{Binding SelectedDiaryDate, StringFormat='{0:dddd, dd MMMM yyyy}'}"
                         TextColor="#FFB1B1B1" />
 
-                    <!--  Contenido del diario del día seleccionado  -->
+                    <!--  Formulario nueva sesión  -->
                     <Border
                         Padding="16"
                         BackgroundColor="#FF1E1E1E"
                         StrokeShape="RoundRectangle 12"
-                        StrokeThickness="0"
-                        IsVisible="{Binding HasSelectedDateDiary}">
+                        Stroke="#FF6DDDFF"
+                        StrokeThickness="1"
+                        IsVisible="{Binding IsAddingNewSession}">
                         <VerticalStackLayout Spacing="16">
-                            
-                            <!--  Valoraciones  -->
                             <Label
                                 FontAttributes="Bold"
                                 FontSize="16"
-                                Text="Valoraciones"
+                                Text="Nueva sesión"
                                 TextColor="White" />
                             
-                            <!--  Valoración Física  -->
-                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                            <!--  Nombre de la sesión  -->
+                            <VerticalStackLayout Spacing="4">
                                 <Label
-                                    Text="Físico"
-                                    TextColor="#FFB1B1B1"
-                                    VerticalOptions="Center"
-                                    WidthRequest="60" />
-                                <ProgressBar
-                                    Grid.Column="1"
-                                    Progress="{Binding SelectedDateDiary.ValoracionFisica, Converter={StaticResource ProgressConverter}, ConverterParameter=5}"
-                                    ProgressColor="#FF8DD3C7"
-                                    VerticalOptions="Center" />
-                                <Label
-                                    Grid.Column="2"
-                                    FontAttributes="Bold"
-                                    Text="{Binding SelectedDateDiary.ValoracionFisica}"
-                                    TextColor="#FF8DD3C7"
-                                    VerticalOptions="Center" />
-                            </Grid>
+                                    FontSize="12"
+                                    Text="Nombre de la sesión"
+                                    TextColor="#FFB1B1B1" />
+                                <Entry
+                                    Placeholder="Ej: Entrenamiento de fuerza"
+                                    PlaceholderColor="#FF666666"
+                                    Text="{Binding NewSessionName}"
+                                    TextColor="White"
+                                    BackgroundColor="#FF2A2A2A" />
+                            </VerticalStackLayout>
                             
-                            <!--  Valoración Mental  -->
-                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                            <!--  Tipo de sesión  -->
+                            <VerticalStackLayout Spacing="8">
                                 <Label
-                                    Text="Mental"
-                                    TextColor="#FFB1B1B1"
-                                    VerticalOptions="Center"
-                                    WidthRequest="60" />
-                                <ProgressBar
-                                    Grid.Column="1"
-                                    Progress="{Binding SelectedDateDiary.ValoracionMental, Converter={StaticResource ProgressConverter}, ConverterParameter=5}"
-                                    ProgressColor="#FFFFED6F"
-                                    VerticalOptions="Center" />
-                                <Label
-                                    Grid.Column="2"
-                                    FontAttributes="Bold"
-                                    Text="{Binding SelectedDateDiary.ValoracionMental}"
-                                    TextColor="#FFFFED6F"
-                                    VerticalOptions="Center" />
-                            </Grid>
+                                    FontSize="12"
+                                    Text="Tipo de sesión"
+                                    TextColor="#FFB1B1B1" />
+                                <FlexLayout 
+                                    Wrap="Wrap" 
+                                    JustifyContent="Start"
+                                    BindableLayout.ItemsSource="{Binding SessionTypeOptions}">
+                                    <BindableLayout.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:SessionTypeOption">
+                                            <Border
+                                                Margin="0,0,8,8"
+                                                Padding="12,6"
+                                                StrokeShape="RoundRectangle 6"
+                                                StrokeThickness="0"
+                                                BackgroundColor="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF6DDDFF|#FF2A2A2A}"
+                                                Stroke="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF6DDDFF|#FF404040}">
+                                                <Border.GestureRecognizers>
+                                                    <TapGestureRecognizer 
+                                                        Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=SelectSessionTypeCommand}"
+                                                        CommandParameter="{Binding .}" />
+                                                </Border.GestureRecognizers>
+                                                <Label
+                                                    FontSize="12"
+                                                    Text="{Binding Name}"
+                                                    TextColor="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF121212|#FFB1B1B1}"
+                                                    FontAttributes="{Binding IsSelected, Converter={StaticResource BoolToFontAttributesConverter}}"
+                                                    VerticalOptions="Center" />
+                                            </Border>
+                                        </DataTemplate>
+                                    </BindableLayout.ItemTemplate>
+                                </FlexLayout>
+                            </VerticalStackLayout>
                             
-                            <!--  Valoración Técnica  -->
-                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                            <!--  Lugar  -->
+                            <VerticalStackLayout Spacing="4">
                                 <Label
-                                    Text="Técnico"
-                                    TextColor="#FFB1B1B1"
-                                    VerticalOptions="Center"
-                                    WidthRequest="60" />
-                                <ProgressBar
-                                    Grid.Column="1"
-                                    Progress="{Binding SelectedDateDiary.ValoracionTecnica, Converter={StaticResource ProgressConverter}, ConverterParameter=5}"
-                                    ProgressColor="#FFBEBADA"
-                                    VerticalOptions="Center" />
-                                <Label
-                                    Grid.Column="2"
-                                    FontAttributes="Bold"
-                                    Text="{Binding SelectedDateDiary.ValoracionTecnica}"
-                                    TextColor="#FFBEBADA"
-                                    VerticalOptions="Center" />
-                            </Grid>
+                                    FontSize="12"
+                                    Text="Lugar (opcional)"
+                                    TextColor="#FFB1B1B1" />
+                                <Entry
+                                    Placeholder="Ej: Gimnasio municipal"
+                                    PlaceholderColor="#FF666666"
+                                    Text="{Binding NewSessionLugar}"
+                                    TextColor="White"
+                                    BackgroundColor="#FF2A2A2A" />
+                            </VerticalStackLayout>
                             
+                            <!--  Botones  -->
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                                <Button
+                                    Text="Cancelar"
+                                    BackgroundColor="#FF2A2A2A"
+                                    TextColor="#FFB1B1B1"
+                                    CornerRadius="8"
+                                    HeightRequest="40"
+                                    Command="{Binding CancelNewSessionCommand}" />
+                                <Button
+                                    Grid.Column="1"
+                                    Text="Crear sesión"
+                                    BackgroundColor="#FF6DDDFF"
+                                    TextColor="#FF121212"
+                                    FontAttributes="Bold"
+                                    CornerRadius="8"
+                                    HeightRequest="40"
+                                    Command="{Binding CreateNewSessionCommand}" />
+                            </Grid>
                         </VerticalStackLayout>
                     </Border>
+
+                    <!--  Lista de sesiones del día seleccionado  -->
+                    <VerticalStackLayout 
+                        BindableLayout.ItemsSource="{Binding SelectedDateSessionsWithDiary}"
+                        Spacing="16"
+                        IsVisible="{Binding HasSelectedDateSessions}">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate x:DataType="vm:SessionWithDiary">
+                                <Border
+                                    Padding="16"
+                                    BackgroundColor="#FF1E1E1E"
+                                    StrokeShape="RoundRectangle 12"
+                                    StrokeThickness="0">
+                                    <VerticalStackLayout Spacing="16">
+                                        
+                                        <!--  Título de la sesión  -->
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <HorizontalStackLayout Spacing="10">
+                                                <controls:SymbolIcon
+                                                    HeightRequest="20"
+                                                    SymbolName="figure.pool.swim"
+                                                    TintColor="#FF6DDDFF"
+                                                    VerticalOptions="Center"
+                                                    WidthRequest="20" />
+                                                <VerticalStackLayout>
+                                                    <Label
+                                                        FontAttributes="Bold"
+                                                        FontSize="16"
+                                                        Text="{Binding Session.DisplayName}"
+                                                        TextColor="White" />
+                                                    <Label
+                                                        FontSize="12"
+                                                        Text="{Binding Session.FechaDateTime, StringFormat='{0:HH:mm}'}"
+                                                        TextColor="#FF888888" />
+                                                </VerticalStackLayout>
+                                            </HorizontalStackLayout>
+                                            
+                                            <!--  Botón Ver sesión  -->
+                                            <Button
+                                                Grid.Column="1"
+                                                Text="Ver sesión"
+                                                BackgroundColor="#FF2A2A2A"
+                                                TextColor="#FF6DDDFF"
+                                                FontSize="12"
+                                                CornerRadius="6"
+                                                Padding="12,6"
+                                                HeightRequest="32"
+                                                VerticalOptions="Center"
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=ViewSessionCommand}"
+                                                CommandParameter="{Binding Session}" />
+                                        </Grid>
+
+                                        <!--  Valoraciones existentes (solo lectura)  -->
+                                        <VerticalStackLayout Spacing="12" IsVisible="{Binding HasValoraciones}">
+                                            <Label
+                                                FontAttributes="Bold"
+                                                FontSize="14"
+                                                Text="Valoraciones"
+                                                TextColor="White" />
+                                            
+                                            <!--  Valoración Física  -->
+                                            <Grid ColumnDefinitions="80,*,40" ColumnSpacing="12">
+                                                <Label
+                                                    FontSize="14"
+                                                    Text="Físico"
+                                                    TextColor="#FFB1B1B1"
+                                                    VerticalOptions="Center" />
+                                                <ProgressBar
+                                                    Grid.Column="1"
+                                                    Progress="{Binding Diary.ValoracionFisica, Converter={StaticResource ProgressConverter}, ConverterParameter=5}"
+                                                    ProgressColor="#FF8DD3C7"
+                                                    VerticalOptions="Center" />
+                                                <Label
+                                                    Grid.Column="2"
+                                                    FontAttributes="Bold"
+                                                    FontSize="16"
+                                                    HorizontalOptions="Center"
+                                                    Text="{Binding Diary.ValoracionFisica}"
+                                                    TextColor="#FF8DD3C7"
+                                                    VerticalOptions="Center" />
+                                            </Grid>
+                                            
+                                            <!--  Valoración Mental  -->
+                                            <Grid ColumnDefinitions="80,*,40" ColumnSpacing="12">
+                                                <Label
+                                                    FontSize="14"
+                                                    Text="Mental"
+                                                    TextColor="#FFB1B1B1"
+                                                    VerticalOptions="Center" />
+                                                <ProgressBar
+                                                    Grid.Column="1"
+                                                    Progress="{Binding Diary.ValoracionMental, Converter={StaticResource ProgressConverter}, ConverterParameter=5}"
+                                                    ProgressColor="#FFFFED6F"
+                                                    VerticalOptions="Center" />
+                                                <Label
+                                                    Grid.Column="2"
+                                                    FontAttributes="Bold"
+                                                    FontSize="16"
+                                                    HorizontalOptions="Center"
+                                                    Text="{Binding Diary.ValoracionMental}"
+                                                    TextColor="#FFFFED6F"
+                                                    VerticalOptions="Center" />
+                                            </Grid>
+                                            
+                                            <!--  Valoración Técnica  -->
+                                            <Grid ColumnDefinitions="80,*,40" ColumnSpacing="12">
+                                                <Label
+                                                    FontSize="14"
+                                                    Text="Técnico"
+                                                    TextColor="#FFB1B1B1"
+                                                    VerticalOptions="Center" />
+                                                <ProgressBar
+                                                    Grid.Column="1"
+                                                    Progress="{Binding Diary.ValoracionTecnica, Converter={StaticResource ProgressConverter}, ConverterParameter=5}"
+                                                    ProgressColor="#FFBEBADA"
+                                                    VerticalOptions="Center" />
+                                                <Label
+                                                    Grid.Column="2"
+                                                    FontAttributes="Bold"
+                                                    FontSize="16"
+                                                    HorizontalOptions="Center"
+                                                    Text="{Binding Diary.ValoracionTecnica}"
+                                                    TextColor="#FFBEBADA"
+                                                    VerticalOptions="Center" />
+                                            </Grid>
+                                        </VerticalStackLayout>
+
+                                        <!--  Formulario de valoraciones (si no existen)  -->
+                                        <VerticalStackLayout Spacing="12" IsVisible="{Binding HasValoraciones, Converter={toolkit:InvertedBoolConverter}}">
+                                            <Label
+                                                FontAttributes="Bold"
+                                                FontSize="14"
+                                                Text="¿Cómo te sentiste en esta sesión?"
+                                                TextColor="White" />
+                                            
+                                            <!--  Valoración Física  -->
+                                            <Grid ColumnDefinitions="80,*,40" ColumnSpacing="12">
+                                                <Label
+                                                    FontSize="14"
+                                                    Text="Físico"
+                                                    TextColor="#FFB1B1B1"
+                                                    VerticalOptions="Center" />
+                                                <Slider
+                                                    Grid.Column="1"
+                                                    Maximum="5"
+                                                    Minimum="1"
+                                                    MinimumTrackColor="#FF8DD3C7"
+                                                    MaximumTrackColor="#FF404040"
+                                                    ThumbColor="#FF8DD3C7"
+                                                    Value="{Binding EditValoracionFisica}" />
+                                                <Label
+                                                    Grid.Column="2"
+                                                    FontAttributes="Bold"
+                                                    FontSize="16"
+                                                    HorizontalOptions="Center"
+                                                    Text="{Binding EditValoracionFisica}"
+                                                    TextColor="#FF8DD3C7"
+                                                    VerticalOptions="Center" />
+                                            </Grid>
+                                            
+                                            <!--  Valoración Mental  -->
+                                            <Grid ColumnDefinitions="80,*,40" ColumnSpacing="12">
+                                                <Label
+                                                    FontSize="14"
+                                                    Text="Mental"
+                                                    TextColor="#FFB1B1B1"
+                                                    VerticalOptions="Center" />
+                                                <Slider
+                                                    Grid.Column="1"
+                                                    Maximum="5"
+                                                    Minimum="1"
+                                                    MinimumTrackColor="#FFFFED6F"
+                                                    MaximumTrackColor="#FF404040"
+                                                    ThumbColor="#FFFFED6F"
+                                                    Value="{Binding EditValoracionMental}" />
+                                                <Label
+                                                    Grid.Column="2"
+                                                    FontAttributes="Bold"
+                                                    FontSize="16"
+                                                    HorizontalOptions="Center"
+                                                    Text="{Binding EditValoracionMental}"
+                                                    TextColor="#FFFFED6F"
+                                                    VerticalOptions="Center" />
+                                            </Grid>
+                                            
+                                            <!--  Valoración Técnica  -->
+                                            <Grid ColumnDefinitions="80,*,40" ColumnSpacing="12">
+                                                <Label
+                                                    FontSize="14"
+                                                    Text="Técnico"
+                                                    TextColor="#FFB1B1B1"
+                                                    VerticalOptions="Center" />
+                                                <Slider
+                                                    Grid.Column="1"
+                                                    Maximum="5"
+                                                    Minimum="1"
+                                                    MinimumTrackColor="#FFBEBADA"
+                                                    MaximumTrackColor="#FF404040"
+                                                    ThumbColor="#FFBEBADA"
+                                                    Value="{Binding EditValoracionTecnica}" />
+                                                <Label
+                                                    Grid.Column="2"
+                                                    FontAttributes="Bold"
+                                                    FontSize="16"
+                                                    HorizontalOptions="Center"
+                                                    Text="{Binding EditValoracionTecnica}"
+                                                    TextColor="#FFBEBADA"
+                                                    VerticalOptions="Center" />
+                                            </Grid>
+                                        </VerticalStackLayout>
+
+                                        <!--  Notas existentes  -->
+                                        <VerticalStackLayout Spacing="8" IsVisible="{Binding HasNotas}">
+                                            <Label
+                                                FontAttributes="Bold"
+                                                FontSize="14"
+                                                Text="Notas"
+                                                TextColor="White" />
+                                            <Label
+                                                FontSize="14"
+                                                Text="{Binding Diary.Notas}"
+                                                TextColor="#FFB1B1B1"
+                                                LineBreakMode="WordWrap" />
+                                        </VerticalStackLayout>
+
+                                        <!--  Editor de notas (si no hay valoraciones o no hay notas)  -->
+                                        <VerticalStackLayout Spacing="8" IsVisible="{Binding HasValoraciones, Converter={toolkit:InvertedBoolConverter}}">
+                                            <Label
+                                                FontAttributes="Bold"
+                                                FontSize="14"
+                                                Text="Notas"
+                                                TextColor="White" />
+                                            <Editor
+                                                Placeholder="Escribe tus notas sobre esta sesión..."
+                                                PlaceholderColor="#FF666666"
+                                                Text="{Binding EditNotas}"
+                                                TextColor="White"
+                                                BackgroundColor="#FF2A2A2A"
+                                                HeightRequest="100"
+                                                AutoSize="TextChanges" />
+                                        </VerticalStackLayout>
+
+                                        <!--  Botón guardar (si no hay valoraciones)  -->
+                                        <Button
+                                            Text="Guardar"
+                                            BackgroundColor="#FF6DDDFF"
+                                            TextColor="#FF121212"
+                                            FontAttributes="Bold"
+                                            CornerRadius="8"
+                                            HeightRequest="40"
+                                            Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=SaveCalendarDiaryCommand}"
+                                            CommandParameter="{Binding .}"
+                                            IsVisible="{Binding HasValoraciones, Converter={toolkit:InvertedBoolConverter}}" />
+
+                                    </VerticalStackLayout>
+                                </Border>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
                     
-                    <!--  Notas  -->
-                    <Border
-                        Padding="16"
-                        BackgroundColor="#FF1E1E1E"
-                        StrokeShape="RoundRectangle 12"
-                        StrokeThickness="0"
-                        IsVisible="{Binding HasSelectedDateDiary}">
-                        <VerticalStackLayout Spacing="8">
-                            <Label
-                                FontAttributes="Bold"
-                                FontSize="16"
-                                Text="Notas"
-                                TextColor="White" />
-                            <Label
-                                FontSize="14"
-                                Text="{Binding SelectedDateDiary.Notas}"
-                                TextColor="#FFB1B1B1"
-                                LineBreakMode="WordWrap" />
-                        </VerticalStackLayout>
-                    </Border>
-                    
-                    <!--  Mensaje cuando no hay diario para la fecha  -->
+                    <!--  Mensaje cuando no hay sesiones para la fecha  -->
                     <Border
                         Padding="24"
                         BackgroundColor="#FF1E1E1E"
                         StrokeShape="RoundRectangle 12"
                         StrokeThickness="0"
-                        IsVisible="{Binding HasSelectedDateDiary, Converter={toolkit:InvertedBoolConverter}}">
+                        IsVisible="{Binding HasSelectedDateSessions, Converter={toolkit:InvertedBoolConverter}}">
                         <VerticalStackLayout HorizontalOptions="Center" Spacing="12">
                             <controls:SymbolIcon
                                 HeightRequest="48"
-                                SymbolName="book.closed"
+                                SymbolName="calendar.badge.exclamationmark"
                                 TintColor="#FF555555"
                                 HorizontalOptions="Center"
                                 WidthRequest="48" />
                             <Label
                                 FontSize="16"
-                                Text="No hay entrada para este día"
+                                Text="No hay sesiones para este día"
                                 TextColor="#FF888888"
                                 HorizontalOptions="Center" />
                             <Label
                                 FontSize="14"
-                                Text="Las entradas del diario se crean automáticamente&#x0a;cuando guardas las valoraciones de una sesión."
+                                Text="Puedes crear una sesión manual para registrar&#x0a;entrenamientos sin vídeo (gimnasio, agua tranquila, etc.)"
                                 TextColor="#FF666666"
                                 HorizontalOptions="Center"
                                 HorizontalTextAlignment="Center" />
+                            <Button
+                                Text="+ Crear nueva sesión"
+                                BackgroundColor="#FF6DDDFF"
+                                TextColor="#FF121212"
+                                FontAttributes="Bold"
+                                CornerRadius="8"
+                                Padding="24,0"
+                                HeightRequest="40"
+                                Margin="0,8,0,0"
+                                HorizontalOptions="Center"
+                                Command="{Binding ToggleAddNewSessionCommand}" />
                         </VerticalStackLayout>
                     </Border>
                     

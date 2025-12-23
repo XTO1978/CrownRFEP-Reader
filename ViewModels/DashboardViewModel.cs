@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using CrownRFEP_Reader.Models;
 using CrownRFEP_Reader.Services;
@@ -7,6 +9,98 @@ using Microsoft.Maui.Controls;
 using Microsoft.Maui.Storage;
 
 namespace CrownRFEP_Reader.ViewModels;
+
+/// <summary>
+/// Modelo que combina una sesión con su diario asociado para la vista del calendario
+/// </summary>
+public class SessionTypeOption : INotifyPropertyChanged
+{
+    private bool _isSelected;
+    
+    public string Name { get; set; } = "";
+    
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set
+        {
+            if (_isSelected != value)
+            {
+                _isSelected = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+    
+    public event PropertyChangedEventHandler? PropertyChanged;
+    protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+}
+
+public class SessionWithDiary : INotifyPropertyChanged
+{
+    private SessionDiary? _diary;
+    private int _editValoracionFisica = 3;
+    private int _editValoracionMental = 3;
+    private int _editValoracionTecnica = 3;
+    private string _editNotas = "";
+
+    public Session Session { get; set; } = null!;
+    
+    public SessionDiary? Diary
+    {
+        get => _diary;
+        set
+        {
+            _diary = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(HasDiary));
+            OnPropertyChanged(nameof(HasValoraciones));
+            // Inicializar valores de edición desde el diario existente
+            if (_diary != null)
+            {
+                EditValoracionFisica = _diary.ValoracionFisica > 0 ? _diary.ValoracionFisica : 3;
+                EditValoracionMental = _diary.ValoracionMental > 0 ? _diary.ValoracionMental : 3;
+                EditValoracionTecnica = _diary.ValoracionTecnica > 0 ? _diary.ValoracionTecnica : 3;
+                EditNotas = _diary.Notas ?? "";
+            }
+        }
+    }
+
+    public bool HasDiary => Diary != null;
+    public bool HasValoraciones => Diary != null && 
+        (Diary.ValoracionFisica > 0 || Diary.ValoracionMental > 0 || Diary.ValoracionTecnica > 0);
+    public bool HasNotas => Diary != null && !string.IsNullOrWhiteSpace(Diary.Notas);
+
+    // Propiedades para el formulario de edición
+    public int EditValoracionFisica
+    {
+        get => _editValoracionFisica;
+        set { _editValoracionFisica = value; OnPropertyChanged(); }
+    }
+
+    public int EditValoracionMental
+    {
+        get => _editValoracionMental;
+        set { _editValoracionMental = value; OnPropertyChanged(); }
+    }
+
+    public int EditValoracionTecnica
+    {
+        get => _editValoracionTecnica;
+        set { _editValoracionTecnica = value; OnPropertyChanged(); }
+    }
+
+    public string EditNotas
+    {
+        get => _editNotas;
+        set { _editNotas = value; OnPropertyChanged(); }
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+    protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+}
 
 /// <summary>
 /// ViewModel para la página principal / Dashboard
@@ -35,8 +129,15 @@ public class DashboardViewModel : BaseViewModel
     private List<SessionDiary> _diaryEntriesForMonth = new();
     private List<Session> _sessionsForMonth = new();
     private SessionDiary? _selectedDateDiary;
+    private ObservableCollection<SessionWithDiary> _selectedDateSessionsWithDiary = new();
     private int _importProgressValue;
     private bool _isImporting;
+
+    // Nueva sesión manual
+    private bool _isAddingNewSession;
+    private string _newSessionName = "";
+    private string _newSessionType = "Gimnasio";
+    private string _newSessionLugar = "";
 
     // Pestañas columna derecha
     private bool _isStatsTabSelected;
@@ -349,6 +450,51 @@ public class DashboardViewModel : BaseViewModel
     }
 
     public bool HasSelectedDateDiary => SelectedDateDiary != null;
+
+    public ObservableCollection<SessionWithDiary> SelectedDateSessionsWithDiary
+    {
+        get => _selectedDateSessionsWithDiary;
+        set => SetProperty(ref _selectedDateSessionsWithDiary, value);
+    }
+
+    public bool HasSelectedDateSessions => SelectedDateSessionsWithDiary.Count > 0;
+
+    // Propiedades para nueva sesión manual
+    public bool IsAddingNewSession
+    {
+        get => _isAddingNewSession;
+        set => SetProperty(ref _isAddingNewSession, value);
+    }
+
+    public string NewSessionName
+    {
+        get => _newSessionName;
+        set => SetProperty(ref _newSessionName, value);
+    }
+
+    public string NewSessionType
+    {
+        get => _newSessionType;
+        set => SetProperty(ref _newSessionType, value);
+    }
+
+    public string NewSessionLugar
+    {
+        get => _newSessionLugar;
+        set => SetProperty(ref _newSessionLugar, value);
+    }
+
+    public ObservableCollection<SessionTypeOption> SessionTypeOptions { get; } = new()
+    {
+        new SessionTypeOption { Name = "Gimnasio", IsSelected = true },
+        new SessionTypeOption { Name = "Aguas tranquilas" },
+        new SessionTypeOption { Name = "Carrera" },
+        new SessionTypeOption { Name = "Ciclismo" },
+        new SessionTypeOption { Name = "Esquí de fondo" },
+        new SessionTypeOption { Name = "Natación" },
+        new SessionTypeOption { Name = "Recuperación" },
+        new SessionTypeOption { Name = "Otro" }
+    };
 
     public GridLength RightPanelWidth
     {
@@ -1414,6 +1560,11 @@ public class DashboardViewModel : BaseViewModel
     public ICommand SelectCrudTechTabCommand { get; }
     public ICommand SelectDiaryTabCommand { get; }
     public ICommand SaveDiaryCommand { get; }
+    public ICommand SaveCalendarDiaryCommand { get; }
+    public ICommand ToggleAddNewSessionCommand { get; }
+    public ICommand CreateNewSessionCommand { get; }
+    public ICommand CancelNewSessionCommand { get; }
+    public ICommand SelectSessionTypeCommand { get; }
     public ICommand SetEvolutionPeriodCommand { get; }
     public ICommand ToggleMultiSelectModeCommand { get; }
     public ICommand ToggleSelectAllCommand { get; }
@@ -1518,6 +1669,32 @@ public class DashboardViewModel : BaseViewModel
         SelectCrudTechTabCommand = new RelayCommand(() => IsCrudTechTabSelected = true);
         SelectDiaryTabCommand = new RelayCommand(() => IsDiaryTabSelected = true);
         SaveDiaryCommand = new AsyncRelayCommand(SaveDiaryAsync);
+        SaveCalendarDiaryCommand = new AsyncRelayCommand<SessionWithDiary>(SaveCalendarDiaryAsync);
+        ToggleAddNewSessionCommand = new RelayCommand(() => 
+        {
+            IsAddingNewSession = !IsAddingNewSession;
+            if (IsAddingNewSession)
+            {
+                // Valores por defecto
+                NewSessionName = "";
+                NewSessionType = "Gimnasio";
+                NewSessionLugar = "";
+                // Reset selection
+                foreach (var opt in SessionTypeOptions)
+                    opt.IsSelected = opt.Name == "Gimnasio";
+            }
+        });
+        CreateNewSessionCommand = new AsyncRelayCommand(CreateNewSessionAsync);
+        CancelNewSessionCommand = new RelayCommand(() => IsAddingNewSession = false);
+        SelectSessionTypeCommand = new RelayCommand<SessionTypeOption>(option => 
+        {
+            if (option != null)
+            {
+                foreach (var opt in SessionTypeOptions)
+                    opt.IsSelected = opt == option;
+                NewSessionType = option.Name;
+            }
+        });
         SetEvolutionPeriodCommand = new RelayCommand<string>(period => 
         {
             if (int.TryParse(period, out var p))
@@ -3231,6 +3408,94 @@ public class DashboardViewModel : BaseViewModel
         }
     }
 
+    private async Task SaveCalendarDiaryAsync(SessionWithDiary? sessionWithDiary)
+    {
+        if (sessionWithDiary == null) return;
+
+        try
+        {
+            var profile = await _databaseService.GetUserProfileAsync();
+            if (profile?.ReferenceAthleteId == null)
+            {
+                await Shell.Current.DisplayAlert("Error", "No hay un atleta de referencia configurado en tu perfil.", "OK");
+                return;
+            }
+
+            var athleteId = profile.ReferenceAthleteId.Value;
+
+            var diary = new SessionDiary
+            {
+                SessionId = sessionWithDiary.Session.Id,
+                AthleteId = athleteId,
+                ValoracionFisica = sessionWithDiary.EditValoracionFisica,
+                ValoracionMental = sessionWithDiary.EditValoracionMental,
+                ValoracionTecnica = sessionWithDiary.EditValoracionTecnica,
+                Notas = sessionWithDiary.EditNotas
+            };
+
+            await _databaseService.SaveSessionDiaryAsync(diary);
+            
+            // Actualizar el diario en el objeto
+            sessionWithDiary.Diary = diary;
+
+            // Recargar los datos del mes para actualizar indicadores del calendario
+            await LoadDiaryEntriesForMonthAsync(SelectedDiaryDate, athleteId);
+            
+            // Recargar promedios
+            await LoadValoracionAveragesAsync(athleteId);
+            await LoadValoracionEvolutionAsync();
+
+            await Shell.Current.DisplayAlert("Guardado", "Tu diario de sesión se ha guardado correctamente.", "OK");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error guardando diario desde calendario: {ex}");
+            await Shell.Current.DisplayAlert("Error", $"No se pudo guardar el diario: {ex.Message}", "OK");
+        }
+    }
+
+    private async Task CreateNewSessionAsync()
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(NewSessionName))
+            {
+                await Shell.Current.DisplayAlert("Error", "Por favor, introduce un nombre para la sesión.", "OK");
+                return;
+            }
+
+            // Crear la nueva sesión con la fecha seleccionada en el calendario
+            var newSession = new Session
+            {
+                NombreSesion = NewSessionName,
+                TipoSesion = NewSessionType,
+                Lugar = NewSessionLugar,
+                Fecha = new DateTimeOffset(SelectedDiaryDate.Date.AddHours(DateTime.Now.Hour).AddMinutes(DateTime.Now.Minute)).ToUnixTimeSeconds(),
+                IsMerged = 0
+            };
+
+            await _databaseService.SaveSessionAsync(newSession);
+
+            // Cerrar el formulario
+            IsAddingNewSession = false;
+
+            // Recargar los datos del mes
+            var profile = await _databaseService.GetUserProfileAsync();
+            if (profile?.ReferenceAthleteId != null)
+            {
+                await LoadDiaryEntriesForMonthAsync(SelectedDiaryDate, profile.ReferenceAthleteId.Value);
+                await LoadDiaryForDateAsync(SelectedDiaryDate);
+            }
+
+            await Shell.Current.DisplayAlert("Sesión creada", $"La sesión '{NewSessionName}' se ha creado correctamente. Ahora puedes añadir tus valoraciones y notas.", "OK");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error creando sesión: {ex}");
+            await Shell.Current.DisplayAlert("Error", $"No se pudo crear la sesión: {ex.Message}", "OK");
+        }
+    }
+
     #endregion
 
     #region Diary View Methods (Calendar)
@@ -3288,21 +3553,48 @@ public class DashboardViewModel : BaseViewModel
             if (profile?.ReferenceAthleteId == null)
             {
                 SelectedDateDiary = null;
+                SelectedDateSessionsWithDiary.Clear();
+                OnPropertyChanged(nameof(HasSelectedDateSessions));
                 return;
             }
 
             var athleteId = profile.ReferenceAthleteId.Value;
 
-            // Buscar un diario para esa fecha específica
+            // Buscar un diario para esa fecha específica (mantener compatibilidad)
             var entries = await _databaseService.GetSessionDiariesForPeriodAsync(
                 athleteId, date.Date, date.Date.AddDays(1).AddSeconds(-1));
             
             SelectedDateDiary = entries.FirstOrDefault();
+
+            // Cargar todas las sesiones del día con sus diarios
+            var sessionsForDate = SessionsForMonth
+                .Where(s => s.FechaDateTime.Date == date.Date)
+                .ToList();
+
+            SelectedDateSessionsWithDiary.Clear();
+
+            foreach (var session in sessionsForDate)
+            {
+                // Buscar el diario correspondiente a esta sesión
+                var diary = DiaryEntriesForMonth.FirstOrDefault(d => d.SessionId == session.Id);
+                
+                var sessionWithDiary = new SessionWithDiary
+                {
+                    Session = session,
+                    Diary = diary
+                };
+
+                SelectedDateSessionsWithDiary.Add(sessionWithDiary);
+            }
+
+            OnPropertyChanged(nameof(HasSelectedDateSessions));
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Error cargando diario del día: {ex}");
             SelectedDateDiary = null;
+            SelectedDateSessionsWithDiary.Clear();
+            OnPropertyChanged(nameof(HasSelectedDateSessions));
         }
     }
 
