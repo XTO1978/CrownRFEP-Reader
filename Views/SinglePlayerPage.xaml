@@ -43,7 +43,7 @@
             <Grid>
                 <precision:PrecisionVideoPlayer
                     x:Name="MediaPlayer"
-                    Aspect="AspectFill"
+                    Aspect="{Binding VideoAspect}"
                     IsMuted="False"
                     Source="{Binding VideoPath}" />
                 

@@ -493,6 +493,9 @@ public partial class SinglePlayerPage : ContentPage
         VideoScrubBehavior.ScrubEnded += OnScrubEnded;
 
     #if MACCATALYST
+        KeyPressHandler.SpaceBarPressed += OnSpaceBarPressed;
+        KeyPressHandler.ArrowLeftPressed += OnArrowLeftPressed;
+        KeyPressHandler.ArrowRightPressed += OnArrowRightPressed;
         KeyPressHandler.DeletePressed += OnDeletePressed;
         KeyPressHandler.BackspacePressed += OnBackspacePressed;
     #endif
@@ -513,6 +516,9 @@ public partial class SinglePlayerPage : ContentPage
         VideoScrubBehavior.ScrubEnded -= OnScrubEnded;
 
 #if MACCATALYST
+        KeyPressHandler.SpaceBarPressed -= OnSpaceBarPressed;
+        KeyPressHandler.ArrowLeftPressed -= OnArrowLeftPressed;
+        KeyPressHandler.ArrowRightPressed -= OnArrowRightPressed;
         KeyPressHandler.DeletePressed -= OnDeletePressed;
         KeyPressHandler.BackspacePressed -= OnBackspacePressed;
 #endif
@@ -523,6 +529,39 @@ public partial class SinglePlayerPage : ContentPage
     }
 
 #if MACCATALYST
+    private void OnSpaceBarPressed(object? sender, EventArgs e)
+    {
+        if (!_isPageActive || _isTextPromptOpen)
+            return;
+
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            _viewModel.PlayPauseCommand.Execute(null);
+        });
+    }
+
+    private void OnArrowLeftPressed(object? sender, EventArgs e)
+    {
+        if (!_isPageActive || _isTextPromptOpen)
+            return;
+
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            _viewModel.FrameBackwardCommand.Execute(null);
+        });
+    }
+
+    private void OnArrowRightPressed(object? sender, EventArgs e)
+    {
+        if (!_isPageActive || _isTextPromptOpen)
+            return;
+
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            _viewModel.FrameForwardCommand.Execute(null);
+        });
+    }
+
     private void OnDeletePressed(object? sender, EventArgs e)
     {
         if (!_isPageActive || !_isDrawingMode || _isTextPromptOpen)

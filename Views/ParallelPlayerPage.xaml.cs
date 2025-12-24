@@ -2,6 +2,10 @@ using CrownRFEP_Reader.Behaviors;
 using CrownRFEP_Reader.Controls;
 using CrownRFEP_Reader.ViewModels;
 
+#if MACCATALYST
+using CrownRFEP_Reader.Platforms.MacCatalyst;
+#endif
+
 namespace CrownRFEP_Reader.Views;
 
 public partial class ParallelPlayerPage : ContentPage
@@ -132,6 +136,12 @@ public partial class ParallelPlayerPage : ContentPage
         // Suscribirse a eventos de scrubbing (trackpad/mouse wheel)
         VideoScrubBehavior.ScrubUpdated += OnScrubUpdated;
         VideoScrubBehavior.ScrubEnded += OnScrubEnded;
+
+#if MACCATALYST
+        KeyPressHandler.SpaceBarPressed += OnSpaceBarPressed;
+        KeyPressHandler.ArrowLeftPressed += OnArrowLeftPressed;
+        KeyPressHandler.ArrowRightPressed += OnArrowRightPressed;
+#endif
     }
 
     protected override void OnDisappearing()
@@ -141,9 +151,59 @@ public partial class ParallelPlayerPage : ContentPage
         // Desuscribirse de eventos de scrubbing
         VideoScrubBehavior.ScrubUpdated -= OnScrubUpdated;
         VideoScrubBehavior.ScrubEnded -= OnScrubEnded;
+
+#if MACCATALYST
+        KeyPressHandler.SpaceBarPressed -= OnSpaceBarPressed;
+        KeyPressHandler.ArrowLeftPressed -= OnArrowLeftPressed;
+        KeyPressHandler.ArrowRightPressed -= OnArrowRightPressed;
+#endif
         
         CleanupResources();
     }
+
+#if MACCATALYST
+    private void OnSpaceBarPressed(object? sender, EventArgs e)
+    {
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            // En modo simultáneo usar el comando global, en modo individual usar el del player seleccionado
+            if (_viewModel.IsSimultaneousMode)
+                _viewModel.PlayPauseCommand.Execute(null);
+            else if (_viewModel.SelectedPlayer == 1)
+                _viewModel.PlayPauseCommand1.Execute(null);
+            else
+                _viewModel.PlayPauseCommand2.Execute(null);
+        });
+    }
+
+    private void OnArrowLeftPressed(object? sender, EventArgs e)
+    {
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            // En modo simultáneo usar el comando global, en modo individual usar el del player seleccionado
+            if (_viewModel.IsSimultaneousMode)
+                _viewModel.FrameBackwardCommand.Execute(null);
+            else if (_viewModel.SelectedPlayer == 1)
+                _viewModel.FrameBackwardCommand1.Execute(null);
+            else
+                _viewModel.FrameBackwardCommand2.Execute(null);
+        });
+    }
+
+    private void OnArrowRightPressed(object? sender, EventArgs e)
+    {
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            // En modo simultáneo usar el comando global, en modo individual usar el del player seleccionado
+            if (_viewModel.IsSimultaneousMode)
+                _viewModel.FrameForwardCommand.Execute(null);
+            else if (_viewModel.SelectedPlayer == 1)
+                _viewModel.FrameForwardCommand1.Execute(null);
+            else
+                _viewModel.FrameForwardCommand2.Execute(null);
+        });
+    }
+#endif
 
     private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {

@@ -1840,13 +1840,20 @@ public class DashboardViewModel : BaseViewModel
         CrownFileService crownFileService,
         StatisticsService statisticsService,
         ThumbnailService thumbnailService,
-        IHealthKitService healthKitService)
+        IHealthKitService healthKitService,
+        VideoExportNotifier? videoExportNotifier = null)
     {
         _databaseService = databaseService;
         _crownFileService = crownFileService;
         _statisticsService = statisticsService;
         _thumbnailService = thumbnailService;
         _healthKitService = healthKitService;
+
+        // Suscribirse a eventos de exportación de video
+        if (videoExportNotifier != null)
+        {
+            videoExportNotifier.VideoExported += OnVideoExported;
+        }
 
         Title = "Dashboard";
 
@@ -1964,6 +1971,42 @@ public class DashboardViewModel : BaseViewModel
             _modifiedVideoIds.Add(videoId);
             _hasStatsUpdatePending = true;
         });
+    }
+
+    /// <summary>
+    /// Manejador para cuando se exporta un video comparativo
+    /// </summary>
+    private async void OnVideoExported(object? sender, VideoExportedEventArgs e)
+    {
+        try
+        {
+            System.Diagnostics.Debug.WriteLine($"[DashboardViewModel] Video exportado: SessionId={e.SessionId}, ClipId={e.VideoClipId}");
+            
+            // Si estamos viendo la galería general, recargar
+            if (IsAllGallerySelected)
+            {
+                await LoadAllVideosAsync();
+            }
+            // Si estamos viendo la sesión donde se exportó el video, recargar esa sesión
+            else if (SelectedSession?.Id == e.SessionId)
+            {
+                await LoadSelectedSessionVideosAsync(SelectedSession);
+            }
+            // Si no estamos viendo esa sesión, agregar el video al cache para que aparezca cuando se seleccione
+            else if (_allVideosCache != null)
+            {
+                // Cargar el nuevo clip de la base de datos
+                var newClip = await _databaseService.GetVideoClipByIdAsync(e.VideoClipId);
+                if (newClip != null)
+                {
+                    _allVideosCache.Insert(0, newClip);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[DashboardViewModel] Error al procesar video exportado: {ex.Message}");
+        }
     }
 
     private async Task OnVideoLessonTappedAsync(VideoLesson? lesson)

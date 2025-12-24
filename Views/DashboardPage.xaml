@@ -507,6 +507,33 @@
                                                 VerticalOptions="Center"
                                                 WidthRequest="20" />
                                         </Border>
+                                        
+                                        <!--  Indicador de video comparativo  -->
+                                        <Border
+                                            BackgroundColor="#CC000000"
+                                            HeightRequest="28"
+                                            HorizontalOptions="Start"
+                                            IsVisible="{Binding IsComparisonVideo}"
+                                            Margin="6"
+                                            Padding="6,4"
+                                            StrokeShape="RoundRectangle 4"
+                                            StrokeThickness="0"
+                                            VerticalOptions="Start">
+                                            <HorizontalStackLayout Spacing="4">
+                                                <controls:SymbolIcon
+                                                    HeightRequest="16"
+                                                    SymbolName="rectangle.on.rectangle"
+                                                    TintColor="#FF6DDDFF"
+                                                    VerticalOptions="Center"
+                                                    WidthRequest="16" />
+                                                <Label
+                                                    FontSize="10"
+                                                    Text="VS"
+                                                    TextColor="#FF6DDDFF"
+                                                    VerticalOptions="Center"
+                                                    FontAttributes="Bold" />
+                                            </HorizontalStackLayout>
+                                        </Border>
                                     </Grid>
                                 </controls:AspectRatioContainer>
 

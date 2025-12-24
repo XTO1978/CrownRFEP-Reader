@@ -292,7 +292,7 @@ public class CrownFileService
                         ClipSize = clipJson.ClipSize,
                         LocalClipPath = extractedClipPath,
                         LocalThumbnailPath = extractedThumbPath,
-                        IsComparisonVideo = clipJson.IsComparisonVideo,
+                        // IsComparisonVideo se calcula automáticamente a partir de ComparisonName
                         BadgeText = clipJson.BadgeText,
                         BadgeBackgroundColor = clipJson.BadgeBackgroundColor
                     };

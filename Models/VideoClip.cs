@@ -45,8 +45,11 @@ public class VideoClip : INotifyPropertyChanged
     public long ClipSize { get; set; }
 
     // Propiedades adicionales del JSON de exportación
+    /// <summary>
+    /// Indica si es un video de comparación (calculado a partir de ComparisonName)
+    /// </summary>
     [Ignore]
-    public bool IsComparisonVideo { get; set; }
+    public bool IsComparisonVideo => !string.IsNullOrEmpty(ComparisonName);
 
     [Ignore]
     public string? BadgeText { get; set; }
@@ -59,13 +62,19 @@ public class VideoClip : INotifyPropertyChanged
     public DateTime CreationDateTime => DateTimeOffset.FromUnixTimeSeconds(CreationDate).LocalDateTime;
 
     /// <summary>
-    /// Primera línea de display: APELLIDOS Nombre - Sesión
+    /// Primera línea de display: APELLIDOS Nombre - Sesión (o ComparisonName para videos comparativos)
     /// </summary>
     [Ignore]
     public string DisplayLine1
     {
         get
         {
+            // Si es un video de comparación, mostrar el ComparisonName
+            if (IsComparisonVideo && !string.IsNullOrWhiteSpace(ComparisonName))
+            {
+                return ComparisonName;
+            }
+            
             var parts = new List<string>();
             
             // Atleta: APELLIDO Nombre

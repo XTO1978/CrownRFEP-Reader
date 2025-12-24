@@ -60,6 +60,7 @@ public static class MauiProgram
 		// Servicios
 		builder.Services.AddSingleton<DatabaseService>();
 		builder.Services.AddSingleton<UserProfileNotifier>();
+		builder.Services.AddSingleton<VideoExportNotifier>();
 		builder.Services.AddSingleton<StatusBarService>();
 		builder.Services.AddSingleton<CrownFileService>();
 		builder.Services.AddSingleton<StatisticsService>();
@@ -78,6 +79,11 @@ public static class MauiProgram
 		builder.Services.AddSingleton<IHealthKitService, AppleHealthKitService>();
 #else
 		builder.Services.AddSingleton<IHealthKitService, StubHealthKitService>();
+#endif
+
+		// Servicio de composición de video
+#if MACCATALYST
+		builder.Services.AddSingleton<IVideoCompositionService, MacVideoCompositionService>();
 #endif
 
 		// ViewModels
