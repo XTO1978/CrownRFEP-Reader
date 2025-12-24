@@ -37,7 +37,7 @@
 		{
 			"label": "MAUI: Build MacCatalyst",
 			"type": "shell",
-			"command": "dotnet build -f net9.0-maccatalyst",
+			"command": "dotnet build '${workspaceFolder}/CrownRFEP Reader.csproj' -f net9.0-maccatalyst",
 			"problemMatcher": "$msCompile",
 			"group": {
 				"kind": "build",
@@ -52,142 +52,33 @@
 		{
 			"label": "MAUI: Clean",
 			"type": "shell",
-			"command": "dotnet clean",
+			"command": "dotnet clean '${workspaceFolder}/CrownRFEP Reader.csproj'",
 			"problemMatcher": [],
 			"presentation": {
 				"reveal": "always"
 			}
 		},
 		{
-			"label": "iOS: Build for Device",
+			"label": "MAUI: Run with Hot Reload (MacCatalyst)",
 			"type": "shell",
-			"command": "dotnet build '${workspaceFolder}/CrownRFEP Reader.csproj' -f net9.0-ios -c Debug",
-			"problemMatcher": "$msCompile",
-			"group": "build",
-			"presentation": {
-				"reveal": "always",
-				"panel": "shared",
-				"focus": true
-			}
-		},
-		{
-			"label": "iOS: Build for Simulator",
-			"type": "shell",
-			"command": "dotnet build '${workspaceFolder}/CrownRFEP Reader.csproj' -f net9.0-ios -c Debug -p:RuntimeIdentifier=iossimulator-arm64",
-			"problemMatcher": "$msCompile",
-			"group": "build",
-			"presentation": {
-				"reveal": "always",
-				"panel": "shared",
-				"focus": true
-			}
-		},
-		{
-			"label": "iOS: Run on iPad Simulator",
-			"type": "shell",
-			"command": "dotnet build '${workspaceFolder}/CrownRFEP Reader.csproj' -f net9.0-ios -c Debug -p:RuntimeIdentifier=iossimulator-arm64 -t:Run -p:_DeviceName=':v2:udid=${input:ipadSimulatorUDID}'",
-			"problemMatcher": "$msCompile",
-			"group": "build",
-			"presentation": {
-				"reveal": "always",
-				"panel": "dedicated",
-				"focus": true
-			},
-			"dependsOn": "iOS: List Available Simulators"
-		},
-		{
-			"label": "iOS: Run on Connected Device",
-			"type": "shell",
-			"command": "dotnet build '${workspaceFolder}/CrownRFEP Reader.csproj' -f net9.0-ios -c Debug -t:Run",
-			"problemMatcher": "$msCompile",
-			"group": "build",
-			"presentation": {
-				"reveal": "always",
-				"panel": "dedicated",
-				"focus": true
-			}
-		},
-		{
-			"label": "iOS: Run with Hot Reload (Simulator)",
-			"type": "shell",
-			"command": "DOTNET_WATCH_RESTART_ON_RUDE_EDIT=true dotnet watch --project '${workspaceFolder}/CrownRFEP Reader.csproj' run -f net9.0-ios -p:RuntimeIdentifier=iossimulator-arm64 --property:EnableHotReload=true --verbose",
+			"command": "DOTNET_WATCH_RESTART_ON_RUDE_EDIT=true dotnet watch --project '${workspaceFolder}/CrownRFEP Reader.csproj' run -f net9.0-maccatalyst -r maccatalyst-arm64 --launch-profile MacCatalyst --property:EnableHotReload=true --verbose",
 			"isBackground": true,
-			"problemMatcher": {
-				"pattern": {
-					"regexp": "^(.*):(\\d+):(\\d+): (error|warning) (.*)$",
-					"file": 1,
-					"line": 2,
-					"column": 3,
-					"severity": 4,
-					"message": 5
-				},
-				"background": {
-					"activeOnStart": true,
-					"beginsPattern": "^dotnet watch ⌚",
-					"endsPattern": "^dotnet watch (🔨|❌|⏳)"
-				}
-			},
-			"group": "build",
-			"presentation": {
-				"reveal": "always",
-				"panel": "dedicated",
-				"focus": true,
-				"clear": false,
-				"showReuseMessage": false
-			},
-			"runOptions": {
-				"instanceLimit": 1
-			}
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "build"
 		},
 		{
-			"label": "iOS: List Available Simulators",
+			"label": "MAUI: Run MacCatalyst",
 			"type": "shell",
-			"command": "xcrun simctl list devices available | grep -E 'iPad|iPhone'",
-			"problemMatcher": [],
+			"command": "dotnet run --project '${workspaceFolder}/CrownRFEP Reader.csproj' -f net9.0-maccatalyst",
+			"problemMatcher": "$msCompile",
+			"group": "build",
 			"presentation": {
 				"reveal": "always",
 				"panel": "shared",
 				"focus": true
 			}
-		},
-		{
-			"label": "iOS: Boot iPad Pro Simulator",
-			"type": "shell",
-			"command": "xcrun simctl boot 'iPad Pro 13-inch (M4)' 2>/dev/null || echo 'Simulator already booted or not found. Run iOS: List Available Simulators to see available devices.'",
-			"problemMatcher": [],
-			"presentation": {
-				"reveal": "always",
-				"panel": "shared"
-			}
-		},
-		{
-			"label": "iOS: Open Simulator App",
-			"type": "shell",
-			"command": "open -a Simulator",
-			"problemMatcher": [],
-			"presentation": {
-				"reveal": "silent"
-			}
-		},
-		{
-			"label": "iOS: Deploy to iPad (Full)",
-			"type": "shell",
-			"command": "echo '🚀 Starting iPad deployment...' && xcrun simctl boot 'iPad Pro 13-inch (M4)' 2>/dev/null; open -a Simulator && dotnet build '${workspaceFolder}/CrownRFEP Reader.csproj' -f net9.0-ios -c Debug -p:RuntimeIdentifier=iossimulator-arm64 -t:Run",
-			"problemMatcher": "$msCompile",
-			"group": "build",
-			"presentation": {
-				"reveal": "always",
-				"panel": "dedicated",
-				"focus": true
-			}
-		}
-	],
-	"inputs": [
-		{
-			"id": "ipadSimulatorUDID",
-			"type": "promptString",
-			"description": "Enter the UDID of the iPad simulator (run 'iOS: List Available Simulators' to find it)",
-			"default": ""
 		}
 	]
 }

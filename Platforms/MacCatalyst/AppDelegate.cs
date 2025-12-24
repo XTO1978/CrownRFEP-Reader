@@ -9,54 +9,75 @@ public class AppDelegate : MauiUIApplicationDelegate
 {
 	protected override MauiApp CreateMauiApp() => MauiProgram.CreateMauiApp();
 
-	public override void BuildMenu(IUIMenuBuilder builder)
+	public override UIKeyCommand[] KeyCommands
 	{
-		base.BuildMenu(builder);
-		
-		// Añadir comando de teclado para barra espaciadora (Play/Pause)
-		var playPauseCommand = UIKeyCommand.Create(
-			new NSString(" "),
-			0,
-			new Selector("handleSpaceKeyPress"));
-		playPauseCommand.Title = "Play/Pause";
-
-		var deleteCommand = UIKeyCommand.Create(
-			new NSString("\u007F"),
-			0,
-			new Selector("handleDeleteKeyPress"));
-		deleteCommand.Title = "Delete";
-
-		var backspaceCommand = UIKeyCommand.Create(
-			new NSString("\b"),
-			0,
-			new Selector("handleBackspaceKeyPress"));
-		backspaceCommand.Title = "Backspace";
-		
-		var playPauseMenu = UIMenu.Create(
-			"",  // Título vacío para que sea invisible
-			null,
-			UIMenuIdentifier.None,
-			UIMenuOptions.DisplayInline,
-			new UIMenuElement[] { playPauseCommand, deleteCommand, backspaceCommand });
-		
-		// Insertar después del menú View
-		builder.InsertSiblingMenuBefore(playPauseMenu, UIMenuIdentifier.View.GetConstant()!);
+		get
+		{
+			var commands = new List<UIKeyCommand>();
+			
+			// Espacio para Play/Pause
+			var spaceCommand = UIKeyCommand.Create(
+				new NSString(" "), 0, new Selector("handleSpaceKey"));
+			spaceCommand.Title = "Play/Pause";
+			commands.Add(spaceCommand);
+			
+			// Flechas izquierda/derecha para frame by frame
+			var leftCommand = UIKeyCommand.Create(
+				UIKeyCommand.LeftArrow, 0, new Selector("handleLeftArrowKey"));
+			leftCommand.Title = "Frame Backward";
+			commands.Add(leftCommand);
+			
+			var rightCommand = UIKeyCommand.Create(
+				UIKeyCommand.RightArrow, 0, new Selector("handleRightArrowKey"));
+			rightCommand.Title = "Frame Forward";
+			commands.Add(rightCommand);
+			
+			// Delete y Backspace
+			var deleteCommand = UIKeyCommand.Create(
+				new NSString("\u007F"), 0, new Selector("handleDeleteKey"));
+			deleteCommand.Title = "Delete";
+			commands.Add(deleteCommand);
+			
+			var backspaceCommand = UIKeyCommand.Create(
+				new NSString("\b"), 0, new Selector("handleBackspaceKey"));
+			backspaceCommand.Title = "Backspace";
+			commands.Add(backspaceCommand);
+			
+			return commands.ToArray();
+		}
 	}
 
-	[Export("handleSpaceKeyPress")]
-	public void HandleSpaceKeyPress()
+	public override bool CanBecomeFirstResponder => true;
+
+	[Export("handleSpaceKey")]
+	public void HandleSpaceKey()
 	{
+		System.Diagnostics.Debug.WriteLine(">>> AppDelegate: Space key pressed!");
 		CrownRFEP_Reader.Platforms.MacCatalyst.KeyPressHandler.OnSpaceBarPressed();
 	}
 
-	[Export("handleDeleteKeyPress")]
-	public void HandleDeleteKeyPress()
+	[Export("handleLeftArrowKey")]
+	public void HandleLeftArrowKey()
+	{
+		System.Diagnostics.Debug.WriteLine(">>> AppDelegate: Left Arrow key pressed!");
+		CrownRFEP_Reader.Platforms.MacCatalyst.KeyPressHandler.OnArrowLeftPressed();
+	}
+
+	[Export("handleRightArrowKey")]
+	public void HandleRightArrowKey()
+	{
+		System.Diagnostics.Debug.WriteLine(">>> AppDelegate: Right Arrow key pressed!");
+		CrownRFEP_Reader.Platforms.MacCatalyst.KeyPressHandler.OnArrowRightPressed();
+	}
+
+	[Export("handleDeleteKey")]
+	public void HandleDeleteKey()
 	{
 		CrownRFEP_Reader.Platforms.MacCatalyst.KeyPressHandler.OnDeletePressed();
 	}
 
-	[Export("handleBackspaceKeyPress")]
-	public void HandleBackspaceKeyPress()
+	[Export("handleBackspaceKey")]
+	public void HandleBackspaceKey()
 	{
 		CrownRFEP_Reader.Platforms.MacCatalyst.KeyPressHandler.OnBackspacePressed();
 	}

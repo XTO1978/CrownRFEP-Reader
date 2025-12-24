@@ -64,6 +64,7 @@ public static class MauiProgram
 		// Servicios
 		builder.Services.AddSingleton<DatabaseService>();
 		builder.Services.AddSingleton<UserProfileNotifier>();
+		builder.Services.AddSingleton<VideoExportNotifier>();
 		builder.Services.AddSingleton<StatusBarService>();
 		builder.Services.AddSingleton<CrownFileService>();
 		builder.Services.AddSingleton<StatisticsService>();
@@ -84,6 +85,11 @@ public static class MauiProgram
 		builder.Services.AddSingleton<IHealthKitService, StubHealthKitService>();
 #endif
 
+		// Servicio de composición de video
+#if MACCATALYST
+		builder.Services.AddSingleton<IVideoCompositionService, MacVideoCompositionService>();
+#endif
+
 		// ViewModels
 		builder.Services.AddSingleton<DashboardViewModel>();
 		builder.Services.AddSingleton<ImportViewModel>();
@@ -93,6 +99,7 @@ public static class MauiProgram
 		builder.Services.AddTransient<AthleteDetailViewModel>();
 		builder.Services.AddTransient<VideoPlayerViewModel>();
 		builder.Services.AddTransient<ParallelPlayerViewModel>();
+		builder.Services.AddTransient<QuadPlayerViewModel>();
 		builder.Services.AddTransient<SinglePlayerViewModel>();
 		builder.Services.AddSingleton<StatisticsViewModel>();
 		builder.Services.AddSingleton<UserProfileViewModel>();
@@ -107,6 +114,7 @@ public static class MauiProgram
 		builder.Services.AddTransient<AthleteDetailPage>();
 		builder.Services.AddTransient<VideoPlayerPage>();
 		builder.Services.AddTransient<ParallelPlayerPage>();
+		builder.Services.AddTransient<QuadPlayerPage>();
 		builder.Services.AddTransient<SinglePlayerPage>();
 		builder.Services.AddSingleton<StatisticsPage>();
 		builder.Services.AddSingleton<UserProfilePage>();

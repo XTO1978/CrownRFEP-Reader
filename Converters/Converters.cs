@@ -23,6 +23,39 @@ public class InvertedBoolConverter : IValueConverter
 }
 
 /// <summary>
+/// Convierte un booleano a un valor double.
+/// Por defecto: true = 1.0, false = 0.5
+/// Parámetro opcional: "trueValue|falseValue" (ej: "1.0|0.3")
+/// </summary>
+public class BoolToDoubleConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        double trueValue = 1.0;
+        double falseValue = 0.5;
+
+        if (parameter is string paramStr)
+        {
+            var parts = paramStr.Split('|');
+            if (parts.Length >= 2)
+            {
+                double.TryParse(parts[0], NumberStyles.Any, CultureInfo.InvariantCulture, out trueValue);
+                double.TryParse(parts[1], NumberStyles.Any, CultureInfo.InvariantCulture, out falseValue);
+            }
+        }
+
+        if (value is bool boolValue)
+            return boolValue ? trueValue : falseValue;
+        return falseValue;
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+/// <summary>
 /// Convierte un valor numérico a un valor de progreso (0-1)
 /// El parámetro indica el valor máximo (por defecto 100)
 /// </summary>

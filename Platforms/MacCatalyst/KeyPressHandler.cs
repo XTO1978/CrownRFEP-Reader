@@ -25,6 +25,16 @@ public static class KeyPressHandler
     public static event EventHandler? BackspacePressed;
 
     /// <summary>
+    /// Evento que se dispara cuando se presiona la flecha izquierda
+    /// </summary>
+    public static event EventHandler? ArrowLeftPressed;
+
+    /// <summary>
+    /// Evento que se dispara cuando se presiona la flecha derecha
+    /// </summary>
+    public static event EventHandler? ArrowRightPressed;
+
+    /// <summary>
     /// Invocar el evento de barra espaciadora
     /// </summary>
     public static void OnSpaceBarPressed()
@@ -40,6 +50,20 @@ public static class KeyPressHandler
     public static void OnBackspacePressed()
     {
         BackspacePressed?.Invoke(null, EventArgs.Empty);
+    }
+
+    public static void OnArrowLeftPressed()
+    {
+        System.Diagnostics.Debug.WriteLine(">>> KeyPressHandler: ArrowLeft pressed!");
+        Console.WriteLine(">>> KeyPressHandler: ArrowLeft pressed!");
+        ArrowLeftPressed?.Invoke(null, EventArgs.Empty);
+    }
+
+    public static void OnArrowRightPressed()
+    {
+        System.Diagnostics.Debug.WriteLine(">>> KeyPressHandler: ArrowRight pressed!");
+        Console.WriteLine(">>> KeyPressHandler: ArrowRight pressed!");
+        ArrowRightPressed?.Invoke(null, EventArgs.Empty);
     }
 }
 
@@ -78,7 +102,19 @@ public class KeyboardAwareWindow : UIWindow
                 new Selector("handleBackspaceKey"));
             backspaceCommand.Title = "Backspace";
 
-            return new[] { playPauseCommand, deleteCommand, backspaceCommand };
+            var arrowLeftCommand = UIKeyCommand.Create(
+                UIKeyCommand.LeftArrow,
+                0,
+                new Selector("handleArrowLeftKey"));
+            arrowLeftCommand.Title = "Frame Backward";
+
+            var arrowRightCommand = UIKeyCommand.Create(
+                UIKeyCommand.RightArrow,
+                0,
+                new Selector("handleArrowRightKey"));
+            arrowRightCommand.Title = "Frame Forward";
+
+            return new[] { playPauseCommand, deleteCommand, backspaceCommand, arrowLeftCommand, arrowRightCommand };
         }
     }
 
@@ -98,5 +134,17 @@ public class KeyboardAwareWindow : UIWindow
     public void HandleBackspaceKey()
     {
         KeyPressHandler.OnBackspacePressed();
+    }
+
+    [Export("handleArrowLeftKey")]
+    public void HandleArrowLeftKey()
+    {
+        KeyPressHandler.OnArrowLeftPressed();
+    }
+
+    [Export("handleArrowRightKey")]
+    public void HandleArrowRightKey()
+    {
+        KeyPressHandler.OnArrowRightPressed();
     }
 }

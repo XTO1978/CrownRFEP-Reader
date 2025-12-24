@@ -209,4 +209,171 @@ public class ThumbnailService
         return await Task.FromResult(0.0);
 #endif
     }
+
+    /// <summary>
+    /// Genera un thumbnail para un video comparativo/paralelo con fondo negro
+    /// respetando las proporciones del video original
+    /// </summary>
+    public async Task<bool> GenerateComparisonThumbnailAsync(string videoPath, string outputPath)
+    {
+        if (string.IsNullOrEmpty(videoPath) || !File.Exists(videoPath))
+        {
+            System.Diagnostics.Debug.WriteLine($"ThumbnailService: Video file not found: {videoPath}");
+            return false;
+        }
+
+        // Si ya existe el thumbnail, retornar true
+        if (File.Exists(outputPath))
+            return true;
+
+        try
+        {
+            await _generationSemaphore.WaitAsync();
+            try
+            {
+                // Asegurar que el directorio existe
+                var outputDir = Path.GetDirectoryName(outputPath);
+                if (!string.IsNullOrEmpty(outputDir) && !Directory.Exists(outputDir))
+                {
+                    Directory.CreateDirectory(outputDir);
+                }
+
+#if MACCATALYST
+                return await GenerateComparisonThumbnailMacAsync(videoPath, outputPath);
+#else
+                return false;
+#endif
+            }
+            finally
+            {
+                _generationSemaphore.Release();
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"ThumbnailService: Error generating comparison thumbnail: {ex.Message}");
+            return false;
+        }
+    }
+
+#if MACCATALYST
+    /// <summary>
+    /// Genera miniatura con fondo negro para videos comparativos en MacCatalyst
+    /// </summary>
+    private async Task<bool> GenerateComparisonThumbnailMacAsync(string videoPath, string outputPath)
+    {
+        return await Task.Run(() =>
+        {
+            try
+            {
+                var url = Foundation.NSUrl.FromFilename(videoPath);
+                if (url == null) return false;
+
+                using var asset = AVAsset.FromUrl(url);
+                if (asset == null) return false;
+
+                // Obtener dimensiones reales del video
+                var videoTrack = asset.TracksWithMediaType(AVMediaTypes.Video.GetConstant()!).FirstOrDefault();
+                CGSize videoSize;
+                if (videoTrack != null)
+                {
+                    videoSize = videoTrack.NaturalSize;
+                    // Aplicar transformación si es necesario (videos rotados)
+                    var transform = videoTrack.PreferredTransform;
+                    if (Math.Abs(transform.A) < 0.1 && Math.Abs(transform.D) < 0.1)
+                    {
+                        videoSize = new CGSize(videoSize.Height, videoSize.Width);
+                    }
+                }
+                else
+                {
+                    videoSize = new CGSize(ThumbnailWidth, ThumbnailHeight);
+                }
+
+                using var imageGenerator = new AVAssetImageGenerator(asset);
+                imageGenerator.AppliesPreferredTrackTransform = true;
+                // No limitar tamaño para obtener mejor calidad
+                imageGenerator.MaximumSize = CGSize.Empty;
+
+                var time = CMTime.FromSeconds(ThumbnailTimeSeconds, 600);
+                var cgImage = imageGenerator.CopyCGImageAtTime(time, out _, out var error);
+                
+                if (cgImage == null)
+                {
+                    time = CMTime.Zero;
+                    cgImage = imageGenerator.CopyCGImageAtTime(time, out _, out error);
+                }
+
+                if (cgImage == null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"ThumbnailService: Could not generate image: {error?.LocalizedDescription}");
+                    return false;
+                }
+
+                // Calcular proporciones para centrar en canvas negro
+                var canvasWidth = ThumbnailWidth;
+                var canvasHeight = ThumbnailHeight;
+                
+                var videoAspect = videoSize.Width / videoSize.Height;
+                var canvasAspect = (double)canvasWidth / canvasHeight;
+                
+                nfloat drawWidth, drawHeight, drawX, drawY;
+                
+                if (videoAspect > canvasAspect)
+                {
+                    // Video más ancho que el canvas - ajustar por ancho
+                    drawWidth = canvasWidth;
+                    drawHeight = (nfloat)(canvasWidth / videoAspect);
+                    drawX = 0;
+                    drawY = (canvasHeight - drawHeight) / 2;
+                }
+                else
+                {
+                    // Video más alto que el canvas - ajustar por alto
+                    drawHeight = canvasHeight;
+                    drawWidth = (nfloat)(canvasHeight * videoAspect);
+                    drawX = (canvasWidth - drawWidth) / 2;
+                    drawY = 0;
+                }
+
+                // Crear imagen con fondo negro
+                UIGraphics.BeginImageContextWithOptions(new CGSize(canvasWidth, canvasHeight), true, 1.0f);
+                var context = UIGraphics.GetCurrentContext();
+                
+                if (context == null)
+                {
+                    UIGraphics.EndImageContext();
+                    return false;
+                }
+
+                // Fondo negro
+                context.SetFillColor(UIColor.Black.CGColor);
+                context.FillRect(new CGRect(0, 0, canvasWidth, canvasHeight));
+
+                // Dibujar el frame del video centrado
+                using var frameImage = new UIImage(cgImage);
+                frameImage.Draw(new CGRect(drawX, drawY, drawWidth, drawHeight));
+
+                var finalImage = UIGraphics.GetImageFromCurrentImageContext();
+                UIGraphics.EndImageContext();
+
+                if (finalImage == null) return false;
+
+                // Guardar como JPEG
+                var jpegData = finalImage.AsJPEG(0.85f);
+                if (jpegData == null) return false;
+
+                jpegData.Save(outputPath, atomically: true);
+                
+                System.Diagnostics.Debug.WriteLine($"ThumbnailService: Comparison thumbnail generated: {outputPath}");
+                return File.Exists(outputPath);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"ThumbnailService: Error in GenerateComparisonThumbnailMacAsync: {ex.Message}");
+                return false;
+            }
+        });
+    }
+#endif
 }

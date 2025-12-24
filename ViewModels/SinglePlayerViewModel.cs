@@ -271,6 +271,8 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(CurrentAthleteText));
             OnPropertyChanged(nameof(HasTagEvents));
             OnPropertyChanged(nameof(TagEventsCountText));
+            OnPropertyChanged(nameof(IsComparisonVideo));
+            OnPropertyChanged(nameof(VideoAspect));
             
             // Actualizar el path del video si viene en el clip
             if (value?.LocalClipPath != null)
@@ -291,6 +293,16 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     }
 
     public bool HasVideoInfo => _videoClip != null;
+
+    /// <summary>
+    /// Indica si el video es una comparación (paralelo) para ajustar el modo de aspecto
+    /// </summary>
+    public bool IsComparisonVideo => _videoClip?.IsComparisonVideo ?? false;
+    
+    /// <summary>
+    /// Aspecto del video: AspectFit para comparaciones, AspectFill para videos normales
+    /// </summary>
+    public Aspect VideoAspect => IsComparisonVideo ? Aspect.AspectFit : Aspect.AspectFill;
 
     public string AthleteName => _videoClip?.Atleta?.NombreCompleto ?? "—";
     

@@ -208,15 +208,18 @@ public class DashboardViewModel : BaseViewModel
     private bool _isSelectAllActive;
     private readonly HashSet<int> _selectedVideoIds = new();
 
-    // Modo de análisis: único o paralelo (paralelo por defecto)
+    // Modo de análisis: único, paralelo o cuádruple (paralelo por defecto)
     private bool _isSingleVideoMode = false;
+    private bool _isQuadVideoMode = false;
     
     // Orientación análisis paralelo
     private bool _isHorizontalOrientation = false;
 
-    // Vídeos para análisis paralelo
+    // Vídeos para análisis paralelo/cuádruple
     private VideoClip? _parallelVideo1;
     private VideoClip? _parallelVideo2;
+    private VideoClip? _parallelVideo3;
+    private VideoClip? _parallelVideo4;
     private bool _isPreviewMode;
 
     // Flag para indicar si hay actualizaciones de estadísticas pendientes
@@ -481,7 +484,35 @@ public class DashboardViewModel : BaseViewModel
     public List<DailyWellness> WellnessDataForMonth
     {
         get => _wellnessDataForMonth;
-        set => SetProperty(ref _wellnessDataForMonth, value);
+        set
+        {
+            if (SetProperty(ref _wellnessDataForMonth, value))
+            {
+                OnPropertyChanged(nameof(AverageWellnessScore));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Media del WellnessScore de todos los datos del mes
+    /// </summary>
+    public int? AverageWellnessScore
+    {
+        get
+        {
+            if (_wellnessDataForMonth == null || _wellnessDataForMonth.Count == 0)
+                return null;
+            
+            var scoresWithData = _wellnessDataForMonth
+                .Where(w => w.HasData && w.WellnessScore > 0)
+                .Select(w => w.WellnessScore)
+                .ToList();
+            
+            if (scoresWithData.Count == 0)
+                return null;
+            
+            return (int)Math.Round(scoresWithData.Average());
+        }
     }
 
     public SessionDiary? SelectedDateDiary
@@ -939,7 +970,7 @@ public class DashboardViewModel : BaseViewModel
         }
     }
 
-    // Modo único (un solo video) vs paralelo (dos videos)
+    // Modo único (un solo video) vs paralelo (dos videos) vs cuádruple (cuatro videos)
     public bool IsSingleVideoMode
     {
         get => _isSingleVideoMode;
@@ -947,11 +978,18 @@ public class DashboardViewModel : BaseViewModel
         {
             if (SetProperty(ref _isSingleVideoMode, value))
             {
+                if (value)
+                {
+                    _isQuadVideoMode = false;
+                    OnPropertyChanged(nameof(IsQuadVideoMode));
+                }
                 OnPropertyChanged(nameof(IsParallelVideoMode));
-                // Limpiar segundo slot si cambiamos a modo único
-                if (value && _parallelVideo2 != null)
+                // Limpiar slots extra si cambiamos a modo único
+                if (value)
                 {
                     ParallelVideo2 = null;
+                    ParallelVideo3 = null;
+                    ParallelVideo4 = null;
                 }
             }
         }
@@ -959,12 +997,36 @@ public class DashboardViewModel : BaseViewModel
 
     public bool IsParallelVideoMode
     {
-        get => !_isSingleVideoMode;
+        get => !_isSingleVideoMode && !_isQuadVideoMode;
         set
         {
-            if (value != !_isSingleVideoMode)
+            if (value && (!IsParallelVideoMode))
             {
-                IsSingleVideoMode = !value;
+                _isSingleVideoMode = false;
+                _isQuadVideoMode = false;
+                OnPropertyChanged(nameof(IsSingleVideoMode));
+                OnPropertyChanged(nameof(IsQuadVideoMode));
+                OnPropertyChanged(nameof(IsParallelVideoMode));
+                // Limpiar slots 3 y 4 si pasamos a paralelo
+                ParallelVideo3 = null;
+                ParallelVideo4 = null;
+            }
+        }
+    }
+
+    public bool IsQuadVideoMode
+    {
+        get => _isQuadVideoMode;
+        set
+        {
+            if (SetProperty(ref _isQuadVideoMode, value))
+            {
+                if (value)
+                {
+                    _isSingleVideoMode = false;
+                    OnPropertyChanged(nameof(IsSingleVideoMode));
+                }
+                OnPropertyChanged(nameof(IsParallelVideoMode));
             }
         }
     }
@@ -1007,6 +1069,40 @@ public class DashboardViewModel : BaseViewModel
 
     public bool HasParallelVideo1 => _parallelVideo1 != null;
     public bool HasParallelVideo2 => _parallelVideo2 != null;
+    public bool HasParallelVideo3 => _parallelVideo3 != null;
+    public bool HasParallelVideo4 => _parallelVideo4 != null;
+
+    public VideoClip? ParallelVideo3
+    {
+        get => _parallelVideo3;
+        set
+        {
+            if (SetProperty(ref _parallelVideo3, value))
+            {
+                OnPropertyChanged(nameof(HasParallelVideo3));
+                if (value != null)
+                {
+                    IsPreviewMode = true;
+                }
+            }
+        }
+    }
+
+    public VideoClip? ParallelVideo4
+    {
+        get => _parallelVideo4;
+        set
+        {
+            if (SetProperty(ref _parallelVideo4, value))
+            {
+                OnPropertyChanged(nameof(HasParallelVideo4));
+                if (value != null)
+                {
+                    IsPreviewMode = true;
+                }
+            }
+        }
+    }
 
     /// <summary>
     /// Limpia los videos de preview (recuadros de arrastrar)
@@ -1015,6 +1111,8 @@ public class DashboardViewModel : BaseViewModel
     {
         ParallelVideo1 = null;
         ParallelVideo2 = null;
+        ParallelVideo3 = null;
+        ParallelVideo4 = null;
         IsPreviewMode = false;
     }
 
@@ -1812,13 +1910,20 @@ public class DashboardViewModel : BaseViewModel
         CrownFileService crownFileService,
         StatisticsService statisticsService,
         ThumbnailService thumbnailService,
-        IHealthKitService healthKitService)
+        IHealthKitService healthKitService,
+        VideoExportNotifier? videoExportNotifier = null)
     {
         _databaseService = databaseService;
         _crownFileService = crownFileService;
         _statisticsService = statisticsService;
         _thumbnailService = thumbnailService;
         _healthKitService = healthKitService;
+
+        // Suscribirse a eventos de exportación de video
+        if (videoExportNotifier != null)
+        {
+            videoExportNotifier.VideoExported += OnVideoExported;
+        }
 
         Title = "Dashboard";
 
@@ -1936,6 +2041,42 @@ public class DashboardViewModel : BaseViewModel
             _modifiedVideoIds.Add(videoId);
             _hasStatsUpdatePending = true;
         });
+    }
+
+    /// <summary>
+    /// Manejador para cuando se exporta un video comparativo
+    /// </summary>
+    private async void OnVideoExported(object? sender, VideoExportedEventArgs e)
+    {
+        try
+        {
+            System.Diagnostics.Debug.WriteLine($"[DashboardViewModel] Video exportado: SessionId={e.SessionId}, ClipId={e.VideoClipId}");
+            
+            // Si estamos viendo la galería general, recargar
+            if (IsAllGallerySelected)
+            {
+                await LoadAllVideosAsync();
+            }
+            // Si estamos viendo la sesión donde se exportó el video, recargar esa sesión
+            else if (SelectedSession?.Id == e.SessionId)
+            {
+                await LoadSelectedSessionVideosAsync(SelectedSession);
+            }
+            // Si no estamos viendo esa sesión, agregar el video al cache para que aparezca cuando se seleccione
+            else if (_allVideosCache != null)
+            {
+                // Cargar el nuevo clip de la base de datos
+                var newClip = await _databaseService.GetVideoClipByIdAsync(e.VideoClipId);
+                if (newClip != null)
+                {
+                    _allVideosCache.Insert(0, newClip);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[DashboardViewModel] Error al procesar video exportado: {ex.Message}");
+        }
     }
 
     private async Task OnVideoLessonTappedAsync(VideoLesson? lesson)
@@ -2427,7 +2568,7 @@ public class DashboardViewModel : BaseViewModel
     private async Task PlayParallelAnalysisAsync()
     {
         // Verificar que hay al menos un vídeo
-        if (!HasParallelVideo1 && !HasParallelVideo2)
+        if (!HasParallelVideo1 && !HasParallelVideo2 && !HasParallelVideo3 && !HasParallelVideo4)
         {
             await Shell.Current.DisplayAlert("Análisis", 
                 "Arrastra al menos un vídeo a las áreas de análisis.", "OK");
@@ -2445,6 +2586,18 @@ public class DashboardViewModel : BaseViewModel
             {
                 await singleVm.InitializeWithVideoAsync(ParallelVideo1!);
                 await Shell.Current.Navigation.PushAsync(singlePage);
+            }
+            return;
+        }
+
+        // Modo cuádruple: usar QuadPlayerPage
+        if (IsQuadVideoMode)
+        {
+            var quadPage = App.Current?.Handler?.MauiContext?.Services.GetService<Views.QuadPlayerPage>();
+            if (quadPage?.BindingContext is QuadPlayerViewModel quadVm)
+            {
+                quadVm.Initialize(ParallelVideo1, ParallelVideo2, ParallelVideo3, ParallelVideo4);
+                await Shell.Current.Navigation.PushAsync(quadPage);
             }
             return;
         }
@@ -2470,6 +2623,8 @@ public class DashboardViewModel : BaseViewModel
         IsPreviewMode = false;
         ParallelVideo1 = null;
         ParallelVideo2 = null;
+        ParallelVideo3 = null;
+        ParallelVideo4 = null;
     }
 
     private async Task OnVideoTappedAsync(VideoClip? video)

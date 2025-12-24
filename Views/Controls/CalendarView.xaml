@@ -152,13 +152,24 @@
                                 Spacing="3"
                                 Margin="0,4,0,0">
                                 
-                                <!--  Estado de ánimo (icono de tiempo)  -->
-                                <HorizontalStackLayout Spacing="4" IsVisible="{Binding HasMood}">
+                                <!--  Fila: Estado de ánimo + Indicador de media  -->
+                                <HorizontalStackLayout Spacing="4">
+                                    <!--  Estado de ánimo (icono de tiempo)  -->
                                     <controls:SymbolIcon
+                                        IsVisible="{Binding HasMood}"
                                         SymbolName="{Binding MoodSymbol}"
                                         TintColor="{Binding DisplayMoodColor}"
                                         WidthRequest="16"
                                         HeightRequest="16"
+                                        VerticalOptions="Center" />
+                                    
+                                    <!--  Indicador de comparación con la media  -->
+                                    <controls:SymbolIcon
+                                        IsVisible="{Binding ShowWellnessComparison}"
+                                        SymbolName="{Binding WellnessComparisonSymbol}"
+                                        TintColor="{Binding WellnessComparisonColor}"
+                                        WidthRequest="12"
+                                        HeightRequest="12"
                                         VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                                 

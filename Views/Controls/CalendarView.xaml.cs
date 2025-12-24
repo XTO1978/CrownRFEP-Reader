@@ -7,6 +7,17 @@ using CrownRFEP_Reader.Models;
 namespace CrownRFEP_Reader.Views.Controls;
 
 /// <summary>
+/// Comparación del bienestar con la media del atleta
+/// </summary>
+public enum WellnessComparison
+{
+    None,       // Sin datos o sin media
+    BelowAverage,
+    Average,
+    AboveAverage
+}
+
+/// <summary>
 /// Modelo de datos para cada día del calendario
 /// </summary>
 public class CalendarDayModel : INotifyPropertyChanged
@@ -22,6 +33,8 @@ public class CalendarDayModel : INotifyPropertyChanged
     private double? _sleepHours;
     private int? _restingHeartRate;
     private int? _hrv;
+    private int? _averageWellnessScore;
+    private WellnessComparison _wellnessComparison = WellnessComparison.None;
 
     public DateTime Date { get; set; }
     public string DayNumber => Date.Day.ToString();
@@ -114,6 +127,61 @@ public class CalendarDayModel : INotifyPropertyChanged
 
     public string HRVText => HRV.HasValue ? HRV.Value.ToString() : "";
 
+    // Comparación con la media del atleta
+    public int? AverageWellnessScore
+    {
+        get => _averageWellnessScore;
+        set 
+        { 
+            _averageWellnessScore = value; 
+            OnPropertyChanged(); 
+            UpdateWellnessComparison();
+        }
+    }
+
+    public WellnessComparison WellnessComparison
+    {
+        get => _wellnessComparison;
+        set { _wellnessComparison = value; OnPropertyChanged(); OnPropertyChanged(nameof(ShowWellnessComparison)); OnPropertyChanged(nameof(WellnessComparisonSymbol)); OnPropertyChanged(nameof(WellnessComparisonColor)); }
+    }
+
+    public bool ShowWellnessComparison => WellnessComparison != WellnessComparison.None && HasWellness;
+
+    public string WellnessComparisonSymbol => WellnessComparison switch
+    {
+        WellnessComparison.AboveAverage => "arrow.up",
+        WellnessComparison.BelowAverage => "arrow.down",
+        WellnessComparison.Average => "equal",
+        _ => ""
+    };
+
+    public Color WellnessComparisonColor => WellnessComparison switch
+    {
+        WellnessComparison.AboveAverage => IsSelected ? Colors.Black : Color.FromArgb("#FF4CAF50"), // Verde
+        WellnessComparison.BelowAverage => IsSelected ? Colors.Black : Color.FromArgb("#FFF44336"), // Rojo
+        WellnessComparison.Average => IsSelected ? Colors.Black : Color.FromArgb("#FFFFC107"),      // Amarillo
+        _ => Colors.Transparent
+    };
+
+    private void UpdateWellnessComparison()
+    {
+        if (!WellnessScore.HasValue || !AverageWellnessScore.HasValue || AverageWellnessScore.Value == 0)
+        {
+            WellnessComparison = WellnessComparison.None;
+            return;
+        }
+
+        var diff = WellnessScore.Value - AverageWellnessScore.Value;
+        const int threshold = 5; // Margen para considerar "igual"
+
+        if (diff > threshold)
+            WellnessComparison = WellnessComparison.AboveAverage;
+        else if (diff < -threshold)
+            WellnessComparison = WellnessComparison.BelowAverage;
+        else
+            WellnessComparison = WellnessComparison.Average;
+    }
+
     // Opacidad para días futuros (desactivados)
     public double DayOpacity => IsFuture ? 0.3 : 1.0;
 
@@ -159,6 +227,7 @@ public class CalendarDayModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(HeartRateIconColor));
         OnPropertyChanged(nameof(HRVIconColor));
         OnPropertyChanged(nameof(DisplayMoodColor));
+        OnPropertyChanged(nameof(WellnessComparisonColor));
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -195,6 +264,10 @@ public partial class CalendarView : ContentView, INotifyPropertyChanged
         BindableProperty.Create(nameof(WellnessData), typeof(IList<DailyWellness>), typeof(CalendarView),
             propertyChanged: OnDataChanged);
 
+    public static readonly BindableProperty AverageWellnessScoreProperty =
+        BindableProperty.Create(nameof(AverageWellnessScore), typeof(int?), typeof(CalendarView),
+            propertyChanged: OnAverageWellnessChanged);
+
     public DateTime SelectedDate
     {
         get => (DateTime)GetValue(SelectedDateProperty);
@@ -223,6 +296,12 @@ public partial class CalendarView : ContentView, INotifyPropertyChanged
     {
         get => (IList<DailyWellness>)GetValue(WellnessDataProperty);
         set => SetValue(WellnessDataProperty, value);
+    }
+
+    public int? AverageWellnessScore
+    {
+        get => (int?)GetValue(AverageWellnessScoreProperty);
+        set => SetValue(AverageWellnessScoreProperty, value);
     }
 
     #endregion
@@ -282,6 +361,14 @@ public partial class CalendarView : ContentView, INotifyPropertyChanged
         if (bindable is CalendarView calendar)
         {
             calendar.UpdateDayIndicators();
+        }
+    }
+
+    private static void OnAverageWellnessChanged(BindableObject bindable, object oldValue, object newValue)
+    {
+        if (bindable is CalendarView calendar)
+        {
+            calendar.UpdateWellnessComparisons();
         }
     }
 
@@ -360,7 +447,8 @@ public partial class CalendarView : ContentView, INotifyPropertyChanged
                 MoodColor = wellness?.MoodColor,
                 SleepHours = wellness?.SleepHours,
                 RestingHeartRate = wellness?.RestingHeartRate,
-                HRV = wellness?.HeartRateVariability
+                HRV = wellness?.HeartRateVariability,
+                AverageWellnessScore = AverageWellnessScore
             };
             CalendarDays.Add(dayModel);
         }
@@ -395,6 +483,18 @@ public partial class CalendarView : ContentView, INotifyPropertyChanged
                 day.SleepHours = wellness?.SleepHours;
                 day.RestingHeartRate = wellness?.RestingHeartRate;
                 day.HRV = wellness?.HeartRateVariability;
+                day.AverageWellnessScore = AverageWellnessScore;
+            }
+        }
+    }
+
+    private void UpdateWellnessComparisons()
+    {
+        foreach (var day in CalendarDays)
+        {
+            if (day.IsVisible && day.Date != DateTime.MinValue)
+            {
+                day.AverageWellnessScore = AverageWellnessScore;
             }
         }
     }

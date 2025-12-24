@@ -1,4 +1,5 @@
 using CrownRFEP_Reader.Models;
+using CrownRFEP_Reader.Services;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
@@ -44,6 +45,9 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
     private TimeSpan _syncPoint2 = TimeSpan.Zero;
     private TimeSpan _syncDuration = TimeSpan.Zero; // Duración efectiva en modo sincronizado
 
+    // Reproductor seleccionado en modo individual (1 o 2)
+    private int _selectedPlayer = 1;
+
     public ParallelPlayerViewModel()
     {
         // Comandos globales (modo simultáneo)
@@ -75,7 +79,235 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
         ToggleOrientationCommand = new Command(ToggleOrientation);
         ToggleModeCommand = new Command(ToggleMode);
         CloseCommand = new Command(async () => await CloseAsync());
+
+        // Comandos de selección de reproductor
+        SelectPlayer1Command = new Command(() => SelectedPlayer = 1);
+        SelectPlayer2Command = new Command(() => SelectedPlayer = 2);
+        
+        // Comando de exportación
+        ExportCommand = new Command(async () => await ExportParallelVideosAsync(), () => CanExport);
     }
+
+    #region Export Methods
+
+    private async Task ExportParallelVideosAsync()
+    {
+        if (Video1 == null || Video2 == null || IsExporting)
+            return;
+
+        try
+        {
+            IsExporting = true;
+            ExportStatus = "Preparando exportación...";
+            ExportProgress = 0;
+
+            // Obtener servicios necesarios
+            var services = Application.Current?.Handler?.MauiContext?.Services;
+            var compositionService = services?.GetService<IVideoCompositionService>();
+            var databaseService = services?.GetService<DatabaseService>();
+            var exportNotifier = services?.GetService<VideoExportNotifier>();
+            
+            if (compositionService == null)
+            {
+                ExportStatus = "Error: Servicio de composición no disponible";
+                return;
+            }
+            
+            if (databaseService == null)
+            {
+                ExportStatus = "Error: Servicio de base de datos no disponible";
+                return;
+            }
+
+            // Determinar la sesión y carpeta de destino
+            var session = Video1.Session;
+            string outputFolder;
+            string sessionPath = "";
+            
+            if (session != null && !string.IsNullOrEmpty(session.PathSesion))
+            {
+                sessionPath = session.PathSesion;
+                // Guardar en la subcarpeta "videos" de la sesión
+                outputFolder = Path.Combine(sessionPath, "videos");
+                
+                // Crear la carpeta si no existe
+                if (!Directory.Exists(outputFolder))
+                {
+                    Directory.CreateDirectory(outputFolder);
+                }
+            }
+            else
+            {
+                outputFolder = Environment.GetFolderPath(Environment.SpecialFolder.MyVideos);
+            }
+
+            // Crear nombre de archivo descriptivo: "Atleta1 vs Atleta2"
+            var athlete1Name = Video1.Atleta?.NombreCompleto ?? "Atleta1";
+            var athlete2Name = Video2.Atleta?.NombreCompleto ?? "Atleta2";
+            var fileName = $"{athlete1Name} vs {athlete2Name}.mp4";
+            // Limpiar caracteres inválidos del nombre
+            fileName = string.Join("_", fileName.Split(Path.GetInvalidFileNameChars()));
+            var outputPath = Path.Combine(outputFolder, fileName);
+            
+            // Si ya existe un archivo con ese nombre, añadir timestamp
+            if (File.Exists(outputPath))
+            {
+                var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                fileName = $"{athlete1Name} vs {athlete2Name}_{timestamp}.mp4";
+                fileName = string.Join("_", fileName.Split(Path.GetInvalidFileNameChars()));
+                outputPath = Path.Combine(outputFolder, fileName);
+            }
+
+            // Determinar las rutas correctas de los videos (preferir LocalClipPath)
+            var video1Path = Video1.LocalClipPath ?? Video1.ClipPath ?? string.Empty;
+            var video2Path = Video2.LocalClipPath ?? Video2.ClipPath ?? string.Empty;
+            
+            System.Diagnostics.Debug.WriteLine($"[Export] Video1Path: {video1Path}");
+            System.Diagnostics.Debug.WriteLine($"[Export] Video2Path: {video2Path}");
+
+            // Configurar parámetros de exportación
+            var exportParams = new ParallelVideoExportParams
+            {
+                Video1Path = video1Path,
+                Video2Path = video2Path,
+                Video1StartPosition = CurrentPosition1,
+                Video2StartPosition = CurrentPosition2,
+                IsHorizontalLayout = IsHorizontalOrientation,
+                Video1AthleteName = Video1.Atleta?.NombreCompleto,
+                Video1Category = Video1.Atleta?.CategoriaNombre,
+                Video1Section = Video1.Section,
+                Video2AthleteName = Video2.Atleta?.NombreCompleto,
+                Video2Category = Video2.Atleta?.CategoriaNombre,
+                Video2Section = Video2.Section,
+                OutputPath = outputPath
+            };
+
+            ExportStatus = "Componiendo vídeos...";
+
+            // Ejecutar la exportación
+            var result = await compositionService.ExportParallelVideosAsync(
+                exportParams,
+                new Progress<double>(progress =>
+                {
+                    ExportProgress = progress;
+                    ExportStatus = $"Exportando... {progress:P0}";
+                }));
+
+            if (result.Success)
+            {
+                ExportStatus = "Generando miniatura...";
+                ExportProgress = 0.90;
+
+                // Generar miniatura para el video exportado
+                var thumbnailService = services?.GetService<ThumbnailService>();
+                string? thumbnailPath = null;
+                string? thumbnailFileName = null;
+                
+                if (thumbnailService != null && !string.IsNullOrEmpty(sessionPath))
+                {
+                    // Crear carpeta de thumbnails si no existe
+                    var thumbnailFolder = Path.Combine(sessionPath, "thumbnails");
+                    if (!Directory.Exists(thumbnailFolder))
+                    {
+                        Directory.CreateDirectory(thumbnailFolder);
+                    }
+                    
+                    // Nombre del thumbnail basado en el nombre del video
+                    thumbnailFileName = Path.GetFileNameWithoutExtension(fileName) + "_thumb.jpg";
+                    thumbnailPath = Path.Combine(thumbnailFolder, thumbnailFileName);
+                    
+                    try
+                    {
+                        var thumbResult = await thumbnailService.GenerateComparisonThumbnailAsync(result.OutputPath!, thumbnailPath);
+                        if (!thumbResult)
+                        {
+                            System.Diagnostics.Debug.WriteLine("[Export] No se pudo generar la miniatura");
+                            thumbnailPath = null;
+                            thumbnailFileName = null;
+                        }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[Export] Miniatura generada: {thumbnailPath}");
+                        }
+                    }
+                    catch (Exception thumbEx)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[Export] Error generando miniatura: {thumbEx.Message}");
+                        thumbnailPath = null;
+                        thumbnailFileName = null;
+                    }
+                }
+
+                ExportStatus = "Guardando en biblioteca...";
+                ExportProgress = 0.95;
+
+                // Crear VideoClip para guardar en la base de datos
+                // IsComparisonVideo se calcula automáticamente a partir de ComparisonName
+                var newClip = new VideoClip
+                {
+                    SessionId = session?.Id ?? Video1.SessionId,
+                    AtletaId = Video1.AtletaId, // Asociar al atleta principal
+                    Section = 0, // Las comparativas no tienen sección específica
+                    CreationDate = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                    ClipPath = fileName, // Solo el nombre del archivo (relativo a la carpeta de videos)
+                    LocalClipPath = result.OutputPath, // Ruta absoluta
+                    ThumbnailPath = thumbnailFileName, // Nombre del archivo de miniatura
+                    LocalThumbnailPath = thumbnailPath, // Ruta absoluta de la miniatura
+                    ClipDuration = result.Duration.TotalSeconds,
+                    ClipSize = result.FileSizeBytes,
+                    ComparisonName = $"{Video1.Atleta?.NombreCompleto ?? "Atleta 1"} vs {Video2.Atleta?.NombreCompleto ?? "Atleta 2"}"
+                };
+
+                // Guardar en la base de datos
+                try
+                {
+                    var clipId = await databaseService.InsertVideoClipAsync(newClip);
+                    System.Diagnostics.Debug.WriteLine($"[Export] VideoClip guardado con ID: {clipId}");
+                    
+                    // Notificar al Dashboard para que refresque la galería
+                    exportNotifier?.NotifyVideoExported(newClip.SessionId, clipId);
+                }
+                catch (Exception dbEx)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[Export] Error guardando en BD: {dbEx.Message}");
+                    // Continuar aunque falle la BD - el archivo ya está guardado
+                }
+
+                ExportStatus = "¡Exportación completada!";
+                ExportProgress = 1.0;
+            }
+            else
+            {
+                ExportStatus = $"Error: {result.ErrorMessage}";
+                if (Application.Current?.MainPage != null)
+                {
+                    await Application.Current.MainPage.DisplayAlert(
+                        "Error de exportación",
+                        result.ErrorMessage ?? "Error desconocido durante la exportación",
+                        "OK");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ExportStatus = $"Error: {ex.Message}";
+            if (Application.Current?.MainPage != null)
+            {
+                await Application.Current.MainPage.DisplayAlert(
+                    "Error",
+                    $"Error durante la exportación: {ex.Message}",
+                    "OK");
+            }
+        }
+        finally
+        {
+            IsExporting = false;
+            // Notificar cambio en CanExport
+            OnPropertyChanged(nameof(CanExport));
+        }
+    }
+
+    #endregion
 
     #region Propiedades de vídeos
 
@@ -123,6 +355,11 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
                 OnPropertyChanged(nameof(IsIndividualMode));
                 OnPropertyChanged(nameof(ModeIcon));
                 OnPropertyChanged(nameof(ModeText));
+                // Notificar cambio en propiedades de selección visual
+                OnPropertyChanged(nameof(ShowPlayer1Selected));
+                OnPropertyChanged(nameof(ShowPlayer2Selected));
+                // Notificar cambio en CanExport (solo se puede exportar en modo sincronizado)
+                OnPropertyChanged(nameof(CanExport));
                 ModeChanged?.Invoke(this, value);
             }
         }
@@ -131,6 +368,44 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
     public bool IsIndividualMode => !_isSimultaneousMode;
     public string ModeIcon => IsSimultaneousMode ? "link.badge.plus" : "link";
     public string ModeText => IsSimultaneousMode ? "Desincronizar" : "Sincronizar";
+
+    /// <summary>
+    /// Reproductor seleccionado en modo individual (1 o 2).
+    /// Los controles de teclado actuarán sobre este reproductor.
+    /// </summary>
+    public int SelectedPlayer
+    {
+        get => _selectedPlayer;
+        set
+        {
+            // Solo permitir cambio de selección en modo individual
+            if (IsSimultaneousMode)
+                return;
+                
+            if (_selectedPlayer != value)
+            {
+                _selectedPlayer = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(IsPlayer1Selected));
+                OnPropertyChanged(nameof(IsPlayer2Selected));
+                OnPropertyChanged(nameof(ShowPlayer1Selected));
+                OnPropertyChanged(nameof(ShowPlayer2Selected));
+            }
+        }
+    }
+
+    public bool IsPlayer1Selected => SelectedPlayer == 1;
+    public bool IsPlayer2Selected => SelectedPlayer == 2;
+    
+    /// <summary>
+    /// Indica si mostrar la selección visual del Player 1 (solo en modo individual)
+    /// </summary>
+    public bool ShowPlayer1Selected => IsIndividualMode && IsPlayer1Selected;
+    
+    /// <summary>
+    /// Indica si mostrar la selección visual del Player 2 (solo en modo individual)
+    /// </summary>
+    public bool ShowPlayer2Selected => IsIndividualMode && IsPlayer2Selected;
 
     #endregion
 
@@ -320,6 +595,39 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
     public ICommand ToggleOrientationCommand { get; }
     public ICommand ToggleModeCommand { get; }
     public ICommand CloseCommand { get; }
+    public ICommand SelectPlayer1Command { get; }
+    public ICommand SelectPlayer2Command { get; }
+    public ICommand ExportCommand { get; }
+
+    #endregion
+
+    #region Export Properties
+
+    private bool _isExporting;
+    public bool IsExporting
+    {
+        get => _isExporting;
+        set { _isExporting = value; OnPropertyChanged(); OnPropertyChanged(nameof(CanExport)); }
+    }
+
+    private double _exportProgress;
+    public double ExportProgress
+    {
+        get => _exportProgress;
+        set { _exportProgress = value; OnPropertyChanged(); }
+    }
+
+    private string _exportStatus = string.Empty;
+    public string ExportStatus
+    {
+        get => _exportStatus;
+        set { _exportStatus = value; OnPropertyChanged(); }
+    }
+
+    /// <summary>
+    /// Solo se puede exportar cuando hay dos videos y están sincronizados
+    /// </summary>
+    public bool CanExport => !IsExporting && HasVideo1 && HasVideo2 && IsSimultaneousMode;
 
     #endregion
 
