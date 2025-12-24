@@ -1,0 +1,31 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "MAUI: MacCatalyst Debug",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "MAUI: Build MacCatalyst",
+      "program": "open",
+      "args": [
+        "-a",
+        "${workspaceFolder}/bin/Debug/net9.0-maccatalyst/maccatalyst-arm64/CrownRFEP Reader.app"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "internalConsole",
+      "stopAtEntry": false
+    },
+    {
+      "name": "MAUI: MacCatalyst (Run Only)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "MAUI: Build MacCatalyst",
+      "program": "/usr/bin/open",
+      "args": [
+        "${workspaceFolder}/bin/Debug/net9.0-maccatalyst/maccatalyst-arm64/CrownRFEP Reader.app"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "internalConsole"
+    }
+  ]
+}

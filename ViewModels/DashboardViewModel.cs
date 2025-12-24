@@ -481,7 +481,35 @@ public class DashboardViewModel : BaseViewModel
     public List<DailyWellness> WellnessDataForMonth
     {
         get => _wellnessDataForMonth;
-        set => SetProperty(ref _wellnessDataForMonth, value);
+        set
+        {
+            if (SetProperty(ref _wellnessDataForMonth, value))
+            {
+                OnPropertyChanged(nameof(AverageWellnessScore));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Media del WellnessScore de todos los datos del mes
+    /// </summary>
+    public int? AverageWellnessScore
+    {
+        get
+        {
+            if (_wellnessDataForMonth == null || _wellnessDataForMonth.Count == 0)
+                return null;
+            
+            var scoresWithData = _wellnessDataForMonth
+                .Where(w => w.HasData && w.WellnessScore > 0)
+                .Select(w => w.WellnessScore)
+                .ToList();
+            
+            if (scoresWithData.Count == 0)
+                return null;
+            
+            return (int)Math.Round(scoresWithData.Average());
+        }
     }
 
     public SessionDiary? SelectedDateDiary

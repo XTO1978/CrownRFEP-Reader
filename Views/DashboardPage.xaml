@@ -784,6 +784,7 @@
                 DiaryEntries="{Binding DiaryEntriesForMonth}"
                 Sessions="{Binding SessionsForMonth}"
                 WellnessData="{Binding WellnessDataForMonth}"
+                AverageWellnessScore="{Binding AverageWellnessScore}"
                 HorizontalOptions="Fill"
                 VerticalOptions="Fill" />
         </Grid>

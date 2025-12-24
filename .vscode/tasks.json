@@ -37,7 +37,7 @@
 		{
 			"label": "MAUI: Build MacCatalyst",
 			"type": "shell",
-			"command": "dotnet build -f net9.0-maccatalyst",
+			"command": "dotnet build '${workspaceFolder}/CrownRFEP Reader.csproj' -f net9.0-maccatalyst",
 			"problemMatcher": "$msCompile",
 			"group": {
 				"kind": "build",
@@ -52,7 +52,7 @@
 		{
 			"label": "MAUI: Clean",
 			"type": "shell",
-			"command": "dotnet clean",
+			"command": "dotnet clean '${workspaceFolder}/CrownRFEP Reader.csproj'",
 			"problemMatcher": [],
 			"presentation": {
 				"reveal": "always"
@@ -67,6 +67,18 @@
 				"$msCompile"
 			],
 			"group": "build"
+		},
+		{
+			"label": "MAUI: Run MacCatalyst",
+			"type": "shell",
+			"command": "dotnet run --project '${workspaceFolder}/CrownRFEP Reader.csproj' -f net9.0-maccatalyst",
+			"problemMatcher": "$msCompile",
+			"group": "build",
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared",
+				"focus": true
+			}
 		}
 	]
 }
