@@ -9,8 +9,10 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Handlers;
 #if MACCATALYST
 using CrownRFEP_Reader.Platforms.MacCatalyst;
+#elif IOS
+using CrownRFEP_Reader.Platforms.iOS;
 #endif
-#if MACCATALYST
+#if MACCATALYST || IOS
 using UIKit;
 using Foundation;
 #endif
@@ -30,13 +32,15 @@ public static class MauiProgram
 			{
 				handlers.AddHandler(typeof(SymbolIcon), typeof(SymbolIconHandler));
 
-#if MACCATALYST
+#if MACCATALYST || IOS
 				handlers.AddHandler(typeof(ReplayKitCameraPreview), typeof(ReplayKitCameraPreviewHandler));
 #endif
 				
 #if MACCATALYST || IOS
 				handlers.AddHandler(typeof(PrecisionVideoPlayer), typeof(PrecisionVideoPlayerHandler));
-				
+#endif
+
+#if MACCATALYST
 				// Forzar texto blanco en DatePicker para MacCatalyst
 				DatePickerHandler.Mapper.AppendToMapping("WhiteTextColor", (handler, view) =>
 				{

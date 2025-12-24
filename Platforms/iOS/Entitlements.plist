@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- 
+    NOTA: HealthKit está comentado temporalmente para permitir instalación sin 
+    provisioning profile configurado en Apple Developer Portal.
+    
+    Para habilitar HealthKit:
+    1. Accede a https://developer.apple.com
+    2. Crea/edita un App ID con HealthKit capability
+    3. Genera un provisioning profile de desarrollo
+    4. Descomenta las líneas de HealthKit abajo
+    -->
+    
+    <!-- HealthKit - Descomentar cuando esté configurado en Apple Developer Portal
+    <key>com.apple.developer.healthkit</key>
+    <true/>
+    <key>com.apple.developer.healthkit.access</key>
+    <array/>
+    -->
+</dict>
+</plist>

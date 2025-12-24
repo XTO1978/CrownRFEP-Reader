@@ -1,3 +1,4 @@
+#if IOS && !MACCATALYST
 using System;
 using System.Threading.Tasks;
 using HealthKit;
@@ -7,7 +8,8 @@ using UIKit;
 namespace CrownRFEP_Reader.Services;
 
 /// <summary>
-/// Implementación de HealthKit para macOS Catalyst / iOS
+/// Implementación de HealthKit para iOS (iPhone/iPad).
+/// HealthKit NO está disponible en macOS/MacCatalyst.
 /// </summary>
 public class AppleHealthKitService : IHealthKitService
 {
@@ -302,3 +304,4 @@ public class AppleHealthKitService : IHealthKitService
         return NSDate.FromTimeIntervalSinceReferenceDate((utcDateTime - reference).TotalSeconds);
     }
 }
+#endif

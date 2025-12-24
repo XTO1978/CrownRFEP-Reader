@@ -6,6 +6,7 @@
 	<true/>
 	<key>UIDeviceFamily</key>
 	<array>
+		<!-- 1 = iPhone, 2 = iPad -->
 		<integer>1</integer>
 		<integer>2</integer>
 	</array>
@@ -28,5 +29,74 @@
 	</array>
 	<key>XSAppIconAssets</key>
 	<string>Assets.xcassets/appicon.appiconset</string>
+	
+	<!-- Permisos de cámara y micrófono -->
+	<key>NSCameraUsageDescription</key>
+	<string>Se requiere acceso a la cámara para grabar videolecciones.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Se requiere acceso al micrófono para grabar el audio de las videolecciones.</string>
+	
+	<!-- Permisos de fotos/archivos -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Se requiere acceso a la biblioteca de fotos para importar vídeos.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Se requiere acceso para guardar vídeos exportados.</string>
+	
+	<!-- HealthKit -->
+	<key>NSHealthShareUsageDescription</key>
+	<string>CrownRFEP Reader usa tus datos de salud para mostrar métricas de entrenamiento, recuperación y sueño en tu diario personal.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>CrownRFEP Reader no escribe datos en la app Salud.</string>
+	
+	<!-- Soporte para multitarea en iPad -->
+	<key>UIRequiresFullScreen</key>
+	<false/>
+	<key>UISupportsDocumentBrowser</key>
+	<true/>
+	
+	<!-- Soporte para archivos externos -->
+	<key>UIFileSharingEnabled</key>
+	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
+	
+	<!-- Tipos de documentos que puede abrir la app -->
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Crown Session</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Owner</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.crownrfep.session</string>
+			</array>
+		</dict>
+	</array>
+	
+	<!-- Tipos UTI personalizados -->
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.crownrfep.session</string>
+			<key>UTTypeDescription</key>
+			<string>Crown Session File</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>crown</string>
+				</array>
+			</dict>
+		</dict>
+	</array>
 </dict>
 </plist>

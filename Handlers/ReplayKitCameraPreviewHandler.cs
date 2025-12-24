@@ -1,4 +1,4 @@
-#if MACCATALYST
+#if MACCATALYST || IOS
 using AVFoundation;
 using CoreAnimation;
 using Foundation;
@@ -223,10 +223,19 @@ public sealed class ReplayKitCameraPreviewHandler : ViewHandler<ReplayKitCameraP
         StopFallbackCamera();
 
         // Quitamos subviews (por si el preview de ReplayKit estaba incrustado)
-        if (PlatformView != null)
+        // Usamos try-catch porque PlatformView puede lanzar si ya está desconectado
+        try
         {
-            foreach (var sub in PlatformView.Subviews)
-                sub.RemoveFromSuperview();
+            var platformView = PlatformView;
+            if (platformView != null)
+            {
+                foreach (var sub in platformView.Subviews)
+                    sub.RemoveFromSuperview();
+            }
+        }
+        catch
+        {
+            // Ignorar - el handler ya está desconectado
         }
     }
 
