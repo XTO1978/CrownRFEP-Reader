@@ -18,6 +18,8 @@ public partial class DashboardPage : ContentPage
     private double _currentPosition0;
     private double _currentPosition1;
     private double _currentPosition2;
+    private double _currentPosition3;
+    private double _currentPosition4;
     
     // Indica si esta página está activa
     private bool _isPageActive;
@@ -168,6 +170,22 @@ public partial class DashboardPage : ContentPage
         }
     }
 
+    private void OnDropScreen3(object? sender, DropEventArgs e)
+    {
+        if (e.Data.Properties.TryGetValue("VideoClip", out var data) && data is VideoClip video)
+        {
+            _viewModel.ParallelVideo3 = video;
+        }
+    }
+
+    private void OnDropScreen4(object? sender, DropEventArgs e)
+    {
+        if (e.Data.Properties.TryGetValue("VideoClip", out var data) && data is VideoClip video)
+        {
+            _viewModel.ParallelVideo4 = video;
+        }
+    }
+
     private void OnScrubUpdated(object? sender, VideoScrubEventArgs e)
     {
         if (!_isPageActive) return;
@@ -183,6 +201,8 @@ public partial class DashboardPage : ContentPage
                 case 0: _currentPosition0 = player.Position.TotalMilliseconds; break;
                 case 1: _currentPosition1 = player.Position.TotalMilliseconds; break;
                 case 2: _currentPosition2 = player.Position.TotalMilliseconds; break;
+                case 3: _currentPosition3 = player.Position.TotalMilliseconds; break;
+                case 4: _currentPosition4 = player.Position.TotalMilliseconds; break;
             }
             player.Pause();
         }
@@ -192,6 +212,8 @@ public partial class DashboardPage : ContentPage
             ref double currentPos = ref _currentPosition0;
             if (e.VideoIndex == 1) currentPos = ref _currentPosition1;
             else if (e.VideoIndex == 2) currentPos = ref _currentPosition2;
+            else if (e.VideoIndex == 3) currentPos = ref _currentPosition3;
+            else if (e.VideoIndex == 4) currentPos = ref _currentPosition4;
             
             currentPos += e.DeltaMilliseconds;
             
@@ -219,6 +241,20 @@ public partial class DashboardPage : ContentPage
 
     private PrecisionVideoPlayer? GetPlayerForIndex(int index)
     {
+        // Modo cuádruple
+        if (_viewModel.IsQuadVideoMode)
+        {
+            return index switch
+            {
+                1 => PreviewPlayer1Q,
+                2 => PreviewPlayer2Q,
+                3 => PreviewPlayer3Q,
+                4 => PreviewPlayer4Q,
+                _ => null
+            };
+        }
+        
+        // Modo único o paralelo
         return index switch
         {
             0 => PreviewPlayerSingle,
@@ -234,6 +270,14 @@ public partial class DashboardPage : ContentPage
         if (_viewModel.IsSingleVideoMode)
         {
             TogglePlayer(PreviewPlayerSingle);
+        }
+        else if (_viewModel.IsQuadVideoMode)
+        {
+            // Modo cuádruple: controlar los 4 videos
+            TogglePlayer(PreviewPlayer1Q);
+            TogglePlayer(PreviewPlayer2Q);
+            TogglePlayer(PreviewPlayer3Q);
+            TogglePlayer(PreviewPlayer4Q);
         }
         else
         {
@@ -272,5 +316,9 @@ public partial class DashboardPage : ContentPage
         PreviewPlayer2H?.Pause();
         PreviewPlayer1V?.Pause();
         PreviewPlayer2V?.Pause();
+        PreviewPlayer1Q?.Pause();
+        PreviewPlayer2Q?.Pause();
+        PreviewPlayer3Q?.Pause();
+        PreviewPlayer4Q?.Pause();
     }
 }

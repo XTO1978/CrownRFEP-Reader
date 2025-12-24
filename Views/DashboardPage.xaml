@@ -1128,7 +1128,7 @@
                         Text="Análisis rápido"
                         TextColor="#FFB1B1B1" />
 
-                    <!--  Toggle: Único / Paralelo  -->
+                    <!--  Toggle: Único / Paralelo / Cuádruple  -->
                     <HorizontalStackLayout Spacing="16" HorizontalOptions="Center" Margin="0,0,0,8">
                         <HorizontalStackLayout Spacing="6">
                             <RadioButton
@@ -1185,6 +1185,34 @@
                                 </RadioButton.ControlTemplate>
                             </RadioButton>
                             <Label Text="Paralelo" TextColor="White" VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                        <HorizontalStackLayout Spacing="6">
+                            <RadioButton
+                                GroupName="AnalysisMode"
+                                IsChecked="{Binding IsQuadVideoMode}"
+                                BackgroundColor="Transparent"
+                                VerticalOptions="Center">
+                                <RadioButton.ControlTemplate>
+                                    <ControlTemplate>
+                                        <Grid>
+                                            <Ellipse
+                                                WidthRequest="18"
+                                                HeightRequest="18"
+                                                Stroke="#FF888888"
+                                                StrokeThickness="2"
+                                                Fill="Transparent" />
+                                            <Ellipse
+                                                WidthRequest="10"
+                                                HeightRequest="10"
+                                                Fill="#FF6DDDFF"
+                                                HorizontalOptions="Center"
+                                                VerticalOptions="Center"
+                                                IsVisible="{TemplateBinding IsChecked}" />
+                                        </Grid>
+                                    </ControlTemplate>
+                                </RadioButton.ControlTemplate>
+                            </RadioButton>
+                            <Label Text="Cuádruple" TextColor="White" VerticalOptions="Center" />
                         </HorizontalStackLayout>
                     </HorizontalStackLayout>
 
@@ -1508,6 +1536,235 @@
                                         IsVisible="{Binding HasParallelVideo2}">
                                         <BoxView.Behaviors>
                                             <behaviors:VideoScrubBehavior VideoIndex="2" />
+                                        </BoxView.Behaviors>
+                                    </BoxView>
+                                </Grid>
+                            </Border>
+                        </controls:AspectRatioContainer>
+                    </Grid>
+
+                    <!--  Layout Cuádruple (2x2)  -->
+                    <Grid 
+                        RowDefinitions="*,*" 
+                        ColumnDefinitions="*,*" 
+                        RowSpacing="8" 
+                        ColumnSpacing="8"
+                        IsVisible="{Binding IsQuadVideoMode}">
+                        <!--  Video 1 (arriba izquierda)  -->
+                        <controls:AspectRatioContainer AspectRatio="1.777">
+                            <Border
+                                BackgroundColor="#FF2A2A2A"
+                                Stroke="Transparent"
+                                StrokeShape="RoundRectangle 6">
+                                <Border.GestureRecognizers>
+                                    <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen1" />
+                                </Border.GestureRecognizers>
+                                <Grid>
+                                    <Label
+                                        HorizontalOptions="Center"
+                                        VerticalOptions="Center"
+                                        Text="1"
+                                        TextColor="#FF666666"
+                                        FontSize="24"
+                                        FontAttributes="Bold"
+                                        IsVisible="{Binding HasParallelVideo1, Converter={StaticResource InvertedBoolConverter}}" />
+                                    <Image
+                                        Aspect="AspectFill"
+                                        Source="{Binding ParallelVideo1.LocalThumbnailPath}"
+                                        IsVisible="{Binding HasParallelVideo1}">
+                                        <Image.Triggers>
+                                            <DataTrigger TargetType="Image" Binding="{Binding IsPreviewMode}" Value="True">
+                                                <Setter Property="IsVisible" Value="False" />
+                                            </DataTrigger>
+                                        </Image.Triggers>
+                                    </Image>
+                                    <appcontrols:PrecisionVideoPlayer
+                                        x:Name="PreviewPlayer1Q"
+                                        Aspect="AspectFill"
+                                        IsMuted="True"
+                                        Source="{Binding ParallelVideo1.LocalClipPath}"
+                                        IsVisible="False">
+                                        <appcontrols:PrecisionVideoPlayer.Triggers>
+                                            <MultiTrigger TargetType="appcontrols:PrecisionVideoPlayer">
+                                                <MultiTrigger.Conditions>
+                                                    <BindingCondition Binding="{Binding HasParallelVideo1}" Value="True" />
+                                                    <BindingCondition Binding="{Binding IsPreviewMode}" Value="True" />
+                                                    <BindingCondition Binding="{Binding IsQuadVideoMode}" Value="True" />
+                                                </MultiTrigger.Conditions>
+                                                <Setter Property="IsVisible" Value="True" />
+                                            </MultiTrigger>
+                                        </appcontrols:PrecisionVideoPlayer.Triggers>
+                                    </appcontrols:PrecisionVideoPlayer>
+                                    <BoxView
+                                        BackgroundColor="Transparent"
+                                        IsVisible="{Binding HasParallelVideo1}">
+                                        <BoxView.Behaviors>
+                                            <behaviors:VideoScrubBehavior VideoIndex="1" />
+                                        </BoxView.Behaviors>
+                                    </BoxView>
+                                </Grid>
+                            </Border>
+                        </controls:AspectRatioContainer>
+                        <!--  Video 2 (arriba derecha)  -->
+                        <controls:AspectRatioContainer Grid.Column="1" AspectRatio="1.777">
+                            <Border
+                                BackgroundColor="#FF2A2A2A"
+                                Stroke="Transparent"
+                                StrokeShape="RoundRectangle 6">
+                                <Border.GestureRecognizers>
+                                    <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen2" />
+                                </Border.GestureRecognizers>
+                                <Grid>
+                                    <Label
+                                        HorizontalOptions="Center"
+                                        VerticalOptions="Center"
+                                        Text="2"
+                                        TextColor="#FF666666"
+                                        FontSize="24"
+                                        FontAttributes="Bold"
+                                        IsVisible="{Binding HasParallelVideo2, Converter={StaticResource InvertedBoolConverter}}" />
+                                    <Image
+                                        Aspect="AspectFill"
+                                        Source="{Binding ParallelVideo2.LocalThumbnailPath}"
+                                        IsVisible="{Binding HasParallelVideo2}">
+                                        <Image.Triggers>
+                                            <DataTrigger TargetType="Image" Binding="{Binding IsPreviewMode}" Value="True">
+                                                <Setter Property="IsVisible" Value="False" />
+                                            </DataTrigger>
+                                        </Image.Triggers>
+                                    </Image>
+                                    <appcontrols:PrecisionVideoPlayer
+                                        x:Name="PreviewPlayer2Q"
+                                        Aspect="AspectFill"
+                                        IsMuted="True"
+                                        Source="{Binding ParallelVideo2.LocalClipPath}"
+                                        IsVisible="False">
+                                        <appcontrols:PrecisionVideoPlayer.Triggers>
+                                            <MultiTrigger TargetType="appcontrols:PrecisionVideoPlayer">
+                                                <MultiTrigger.Conditions>
+                                                    <BindingCondition Binding="{Binding HasParallelVideo2}" Value="True" />
+                                                    <BindingCondition Binding="{Binding IsPreviewMode}" Value="True" />
+                                                    <BindingCondition Binding="{Binding IsQuadVideoMode}" Value="True" />
+                                                </MultiTrigger.Conditions>
+                                                <Setter Property="IsVisible" Value="True" />
+                                            </MultiTrigger>
+                                        </appcontrols:PrecisionVideoPlayer.Triggers>
+                                    </appcontrols:PrecisionVideoPlayer>
+                                    <BoxView
+                                        BackgroundColor="Transparent"
+                                        IsVisible="{Binding HasParallelVideo2}">
+                                        <BoxView.Behaviors>
+                                            <behaviors:VideoScrubBehavior VideoIndex="2" />
+                                        </BoxView.Behaviors>
+                                    </BoxView>
+                                </Grid>
+                            </Border>
+                        </controls:AspectRatioContainer>
+                        <!--  Video 3 (abajo izquierda)  -->
+                        <controls:AspectRatioContainer Grid.Row="1" AspectRatio="1.777">
+                            <Border
+                                BackgroundColor="#FF2A2A2A"
+                                Stroke="Transparent"
+                                StrokeShape="RoundRectangle 6">
+                                <Border.GestureRecognizers>
+                                    <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen3" />
+                                </Border.GestureRecognizers>
+                                <Grid>
+                                    <Label
+                                        HorizontalOptions="Center"
+                                        VerticalOptions="Center"
+                                        Text="3"
+                                        TextColor="#FF666666"
+                                        FontSize="24"
+                                        FontAttributes="Bold"
+                                        IsVisible="{Binding HasParallelVideo3, Converter={StaticResource InvertedBoolConverter}}" />
+                                    <Image
+                                        Aspect="AspectFill"
+                                        Source="{Binding ParallelVideo3.LocalThumbnailPath}"
+                                        IsVisible="{Binding HasParallelVideo3}">
+                                        <Image.Triggers>
+                                            <DataTrigger TargetType="Image" Binding="{Binding IsPreviewMode}" Value="True">
+                                                <Setter Property="IsVisible" Value="False" />
+                                            </DataTrigger>
+                                        </Image.Triggers>
+                                    </Image>
+                                    <appcontrols:PrecisionVideoPlayer
+                                        x:Name="PreviewPlayer3Q"
+                                        Aspect="AspectFill"
+                                        IsMuted="True"
+                                        Source="{Binding ParallelVideo3.LocalClipPath}"
+                                        IsVisible="False">
+                                        <appcontrols:PrecisionVideoPlayer.Triggers>
+                                            <MultiTrigger TargetType="appcontrols:PrecisionVideoPlayer">
+                                                <MultiTrigger.Conditions>
+                                                    <BindingCondition Binding="{Binding HasParallelVideo3}" Value="True" />
+                                                    <BindingCondition Binding="{Binding IsPreviewMode}" Value="True" />
+                                                    <BindingCondition Binding="{Binding IsQuadVideoMode}" Value="True" />
+                                                </MultiTrigger.Conditions>
+                                                <Setter Property="IsVisible" Value="True" />
+                                            </MultiTrigger>
+                                        </appcontrols:PrecisionVideoPlayer.Triggers>
+                                    </appcontrols:PrecisionVideoPlayer>
+                                    <BoxView
+                                        BackgroundColor="Transparent"
+                                        IsVisible="{Binding HasParallelVideo3}">
+                                        <BoxView.Behaviors>
+                                            <behaviors:VideoScrubBehavior VideoIndex="3" />
+                                        </BoxView.Behaviors>
+                                    </BoxView>
+                                </Grid>
+                            </Border>
+                        </controls:AspectRatioContainer>
+                        <!--  Video 4 (abajo derecha)  -->
+                        <controls:AspectRatioContainer Grid.Row="1" Grid.Column="1" AspectRatio="1.777">
+                            <Border
+                                BackgroundColor="#FF2A2A2A"
+                                Stroke="Transparent"
+                                StrokeShape="RoundRectangle 6">
+                                <Border.GestureRecognizers>
+                                    <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen4" />
+                                </Border.GestureRecognizers>
+                                <Grid>
+                                    <Label
+                                        HorizontalOptions="Center"
+                                        VerticalOptions="Center"
+                                        Text="4"
+                                        TextColor="#FF666666"
+                                        FontSize="24"
+                                        FontAttributes="Bold"
+                                        IsVisible="{Binding HasParallelVideo4, Converter={StaticResource InvertedBoolConverter}}" />
+                                    <Image
+                                        Aspect="AspectFill"
+                                        Source="{Binding ParallelVideo4.LocalThumbnailPath}"
+                                        IsVisible="{Binding HasParallelVideo4}">
+                                        <Image.Triggers>
+                                            <DataTrigger TargetType="Image" Binding="{Binding IsPreviewMode}" Value="True">
+                                                <Setter Property="IsVisible" Value="False" />
+                                            </DataTrigger>
+                                        </Image.Triggers>
+                                    </Image>
+                                    <appcontrols:PrecisionVideoPlayer
+                                        x:Name="PreviewPlayer4Q"
+                                        Aspect="AspectFill"
+                                        IsMuted="True"
+                                        Source="{Binding ParallelVideo4.LocalClipPath}"
+                                        IsVisible="False">
+                                        <appcontrols:PrecisionVideoPlayer.Triggers>
+                                            <MultiTrigger TargetType="appcontrols:PrecisionVideoPlayer">
+                                                <MultiTrigger.Conditions>
+                                                    <BindingCondition Binding="{Binding HasParallelVideo4}" Value="True" />
+                                                    <BindingCondition Binding="{Binding IsPreviewMode}" Value="True" />
+                                                    <BindingCondition Binding="{Binding IsQuadVideoMode}" Value="True" />
+                                                </MultiTrigger.Conditions>
+                                                <Setter Property="IsVisible" Value="True" />
+                                            </MultiTrigger>
+                                        </appcontrols:PrecisionVideoPlayer.Triggers>
+                                    </appcontrols:PrecisionVideoPlayer>
+                                    <BoxView
+                                        BackgroundColor="Transparent"
+                                        IsVisible="{Binding HasParallelVideo4}">
+                                        <BoxView.Behaviors>
+                                            <behaviors:VideoScrubBehavior VideoIndex="4" />
                                         </BoxView.Behaviors>
                                     </BoxView>
                                 </Grid>
