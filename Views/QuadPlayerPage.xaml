@@ -606,6 +606,42 @@
                                 TextColor="{Binding IsSimultaneousMode, Converter={StaticResource BoolToColorConverter}, ConverterParameter='Black|White'}" />
                         </HorizontalStackLayout>
                     </Border>
+
+                    <!--  Separador  -->
+                    <BoxView WidthRequest="1" HeightRequest="24" BackgroundColor="#FF3A3A3A" />
+
+                    <!--  Botón de exportación  -->
+                    <Border
+                        Padding="8,4"
+                        BackgroundColor="{Binding IsExporting, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF34C759|#FF2A2A2A'}"
+                        IsEnabled="{Binding CanExport}"
+                        Opacity="{Binding CanExport, Converter={StaticResource BoolToDoubleConverter}}"
+                        StrokeShape="RoundRectangle 6"
+                        StrokeThickness="0">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding ExportCommand}" />
+                        </Border.GestureRecognizers>
+                        <HorizontalStackLayout Spacing="6">
+                            <controls:SymbolIcon
+                                HeightRequest="16"
+                                IsVisible="{Binding IsExporting, Converter={StaticResource InvertedBoolConverter}}"
+                                SymbolName="square.and.arrow.up"
+                                TintColor="White"
+                                WidthRequest="16" />
+                            <Label
+                                Text="{Binding ExportStatus, TargetNullValue='Exportar'}"
+                                TextColor="White"
+                                FontSize="12"
+                                VerticalOptions="Center"
+                                IsVisible="{Binding IsExporting}" />
+                            <Label
+                                Text="Exportar"
+                                TextColor="White"
+                                FontSize="12"
+                                VerticalOptions="Center"
+                                IsVisible="{Binding IsExporting, Converter={StaticResource InvertedBoolConverter}}" />
+                        </HorizontalStackLayout>
+                    </Border>
                 </HorizontalStackLayout>
             </Grid>
         </Border>
