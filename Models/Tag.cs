@@ -83,6 +83,25 @@ public class Tag : INotifyPropertyChanged
     [Ignore]
     public string DisplayText => EventCount > 1 ? $"{EventCount}x {NombreTag}" : NombreTag ?? "";
 
+    private bool _isSelectedForMerge;
+
+    /// <summary>
+    /// Propiedad para selección en la UI de fusión (no persistida)
+    /// </summary>
+    [Ignore]
+    public bool IsSelectedForMerge
+    {
+        get => _isSelectedForMerge;
+        set
+        {
+            if (_isSelectedForMerge != value)
+            {
+                _isSelectedForMerge = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
     protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));

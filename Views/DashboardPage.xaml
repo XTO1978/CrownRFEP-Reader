@@ -485,7 +485,7 @@
                                        <controls:SymbolIcon
                             HeightRequest="50"
                             SymbolName="play.circle.fill"
-                            TintColor="Black" Opacity="0.5"
+                            TintColor="White" Opacity="0.5"
                             VerticalOptions="Center"
                             WidthRequest="50" />
 

@@ -104,6 +104,7 @@ public static class MauiProgram
 		builder.Services.AddSingleton<StatisticsViewModel>();
 		builder.Services.AddSingleton<UserProfileViewModel>();
 		builder.Services.AddSingleton<VideoLessonsViewModel>();
+		builder.Services.AddSingleton<DatabaseManagementViewModel>();
 
 		// Páginas
 		builder.Services.AddSingleton<DashboardPage>();
@@ -112,6 +113,7 @@ public static class MauiProgram
 		builder.Services.AddTransient<SessionDetailPage>();
 		builder.Services.AddSingleton<AthletesPage>();
 		builder.Services.AddTransient<AthleteDetailPage>();
+		builder.Services.AddSingleton<DatabaseManagementPage>();
 		builder.Services.AddTransient<VideoPlayerPage>();
 		builder.Services.AddTransient<ParallelPlayerPage>();
 		builder.Services.AddTransient<QuadPlayerPage>();

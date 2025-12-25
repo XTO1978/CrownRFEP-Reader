@@ -1,0 +1,321 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:CrownRFEP_Reader.ViewModels"
+             xmlns:models="clr-namespace:CrownRFEP_Reader.Models"
+             xmlns:controls="clr-namespace:CrownRFEP_Reader.Views.Controls"
+             x:Class="CrownRFEP_Reader.Views.DatabaseManagementPage"
+             x:DataType="vm:DatabaseManagementViewModel"
+             BackgroundColor="#FF121212"
+             Title="Gestión de Base de Datos">
+
+    <Grid RowDefinitions="Auto,Auto,Auto,*" Padding="0" BackgroundColor="#FF121212">
+
+        <controls:TopTabsBar Grid.Row="0" HorizontalOptions="Center" VerticalOptions="Start"/>
+
+        <!-- Título y acciones -->
+        <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto" Margin="30,15,30,5">
+            <HorizontalStackLayout Spacing="10">
+                <Label Text="Gestión de Base de Datos" 
+                       FontSize="24"
+                       VerticalOptions="Center" TextColor="White"/>
+            </HorizontalStackLayout>
+            
+            <Button Grid.Column="1"
+                    Text="{Binding CurrentSelectedCount, StringFormat='Son el mismo ({0})'}"
+                    Command="{Binding MergeSelectedCommand}"
+                    IsEnabled="{Binding CanMergeCurrentTab}"
+                    BackgroundColor="#FF2A2A2A"
+                    TextColor="White"
+                    FontSize="14"
+                    Padding="16,6"
+                    Margin="0,0,10,0"
+                    CornerRadius="4"/>
+            
+            <Button Grid.Column="2"
+                    Text="Consolidar atletas automático"
+                    Command="{Binding ConsolidateAthletesCommand}"
+                    IsVisible="{Binding IsAthletesTab}"
+                    BackgroundColor="#FF2A2A2A"
+                    TextColor="White"
+                    FontSize="14"
+                    Padding="16,6"
+                    CornerRadius="4"/>
+        </Grid>
+
+        <!-- Tabs de navegación -->
+        <HorizontalStackLayout Grid.Row="2" Margin="30,10" Spacing="8">
+            <Button Text="{Binding Athletes.Count, StringFormat='Atletas ({0})'}"
+                    Command="{Binding SelectTabCommand}"
+                    CommandParameter="0"
+                    BackgroundColor="{Binding IsAthletesTab, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF6DDDFF|#FF2A2A2A'}"
+                    TextColor="{Binding IsAthletesTab, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF000000|#FFFFFFFF'}"
+                    FontSize="13"
+                    Padding="14,8"
+                    CornerRadius="4"/>
+            
+            <Button Text="{Binding Places.Count, StringFormat='Lugares ({0})'}"
+                    Command="{Binding SelectTabCommand}"
+                    CommandParameter="1"
+                    BackgroundColor="{Binding IsPlacesTab, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF6DDDFF|#FF2A2A2A'}"
+                    TextColor="{Binding IsPlacesTab, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF000000|#FFFFFFFF'}"
+                    FontSize="13"
+                    Padding="14,8"
+                    CornerRadius="4"/>
+            
+            <Button Text="{Binding Categories.Count, StringFormat='Categorías ({0})'}"
+                    Command="{Binding SelectTabCommand}"
+                    CommandParameter="2"
+                    BackgroundColor="{Binding IsCategoriesTab, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF6DDDFF|#FF2A2A2A'}"
+                    TextColor="{Binding IsCategoriesTab, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF000000|#FFFFFFFF'}"
+                    FontSize="13"
+                    Padding="14,8"
+                    CornerRadius="4"/>
+            
+            <Button Text="{Binding Tags.Count, StringFormat='Tags ({0})'}"
+                    Command="{Binding SelectTabCommand}"
+                    CommandParameter="3"
+                    BackgroundColor="{Binding IsTagsTab, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF6DDDFF|#FF2A2A2A'}"
+                    TextColor="{Binding IsTagsTab, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF000000|#FFFFFFFF'}"
+                    FontSize="13"
+                    Padding="14,8"
+                    CornerRadius="4"/>
+            
+            <Button Text="{Binding SessionTypes.Count, StringFormat='Tipos Sesión ({0})'}"
+                    Command="{Binding SelectTabCommand}"
+                    CommandParameter="4"
+                    BackgroundColor="{Binding IsSessionTypesTab, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF6DDDFF|#FF2A2A2A'}"
+                    TextColor="{Binding IsSessionTypesTab, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF000000|#FFFFFFFF'}"
+                    FontSize="13"
+                    Padding="14,8"
+                    CornerRadius="4"/>
+        </HorizontalStackLayout>
+
+        <!-- Contenido de tabs - Usando ScrollView + BindableLayout en lugar de CollectionView -->
+        <Grid Grid.Row="3" Margin="30,10,30,20">
+            
+            <!-- Tab Atletas -->
+            <Border IsVisible="{Binding IsAthletesTab}"
+                    BackgroundColor="#FF1A1A1A"
+                    StrokeThickness="0"
+                    StrokeShape="RoundRectangle 8">
+                <Grid RowDefinitions="Auto,*">
+                    <Border BackgroundColor="#FF232323" StrokeThickness="0" Padding="0">
+                        <Grid ColumnDefinitions="50,80,*,*" Padding="12,10">
+                            <Label Text="✓" TextColor="White" HorizontalOptions="Center"/>
+                            <Label Grid.Column="1" Text="ID" TextColor="White"/>
+                            <Label Grid.Column="2" Text="Nombre" TextColor="White"/>
+                            <Label Grid.Column="3" Text="Apellido" TextColor="White"/>
+                        </Grid>
+                    </Border>
+                    
+                    <ScrollView Grid.Row="1">
+                        <VerticalStackLayout BindableLayout.ItemsSource="{Binding Athletes}" Spacing="0">
+                            <BindableLayout.EmptyView>
+                                <Label Text="No hay atletas registrados" TextColor="Gray" HorizontalOptions="Center" Margin="40"/>
+                            </BindableLayout.EmptyView>
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate x:DataType="models:Athlete">
+                                    <Border StrokeThickness="0,0,0,0.6" Stroke="#FF393939" BackgroundColor="Transparent">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer 
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DatabaseManagementViewModel}}, Path=ToggleAthleteSelectionCommand}"
+                                                CommandParameter="{Binding .}"/>
+                                        </Border.GestureRecognizers>
+                                        <Grid ColumnDefinitions="50,80,*,*" Padding="12,10">
+                                            <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                                      HorizontalOptions="Center" VerticalOptions="Center" Color="#FF6DDDFF"/>
+                                            <Border Grid.Column="1" BackgroundColor="#FF2A2A2A" StrokeThickness="0"
+                                                    StrokeShape="RoundRectangle 4" WidthRequest="45" HeightRequest="28" HorizontalOptions="Start">
+                                                <Label Text="{Binding Id}" TextColor="White" HorizontalOptions="Center" VerticalOptions="Center"/>
+                                            </Border>
+                                            <Label Grid.Column="2" Text="{Binding Nombre}" TextColor="White" FontSize="14" VerticalOptions="Center"/>
+                                            <Label Grid.Column="3" Text="{Binding Apellido}" TextColor="White" FontSize="14" VerticalOptions="Center"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </VerticalStackLayout>
+                    </ScrollView>
+                </Grid>
+            </Border>
+
+            <!-- Tab Lugares -->
+            <Border IsVisible="{Binding IsPlacesTab}"
+                    BackgroundColor="#FF1A1A1A"
+                    StrokeThickness="0"
+                    StrokeShape="RoundRectangle 8">
+                <Grid RowDefinitions="Auto,*">
+                    <Border BackgroundColor="#FF232323" StrokeThickness="0" Padding="0">
+                        <Grid ColumnDefinitions="50,80,*" Padding="12,10">
+                            <Label Text="✓" TextColor="White" HorizontalOptions="Center"/>
+                            <Label Grid.Column="1" Text="ID" TextColor="White"/>
+                            <Label Grid.Column="2" Text="Nombre del Lugar" TextColor="White"/>
+                        </Grid>
+                    </Border>
+                    
+                    <ScrollView Grid.Row="1">
+                        <VerticalStackLayout BindableLayout.ItemsSource="{Binding Places}" Spacing="0">
+                            <BindableLayout.EmptyView>
+                                <Label Text="No hay lugares registrados" TextColor="Gray" HorizontalOptions="Center" Margin="40"/>
+                            </BindableLayout.EmptyView>
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate x:DataType="models:Place">
+                                    <Border StrokeThickness="0,0,0,0.6" Stroke="#FF393939" BackgroundColor="Transparent">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer 
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DatabaseManagementViewModel}}, Path=TogglePlaceSelectionCommand}"
+                                                CommandParameter="{Binding .}"/>
+                                        </Border.GestureRecognizers>
+                                        <Grid ColumnDefinitions="50,80,*" Padding="12,10">
+                                            <CheckBox IsChecked="{Binding IsSelectedForMerge, Mode=TwoWay}"
+                                                      HorizontalOptions="Center" VerticalOptions="Center" Color="#FF6DDDFF"/>
+                                            <Border Grid.Column="1" BackgroundColor="#FF2A2A2A" StrokeThickness="0"
+                                                    StrokeShape="RoundRectangle 4" WidthRequest="45" HeightRequest="28" HorizontalOptions="Start">
+                                                <Label Text="{Binding Id}" TextColor="White" HorizontalOptions="Center" VerticalOptions="Center"/>
+                                            </Border>
+                                            <Label Grid.Column="2" Text="{Binding NombreLugar}" TextColor="White" FontSize="14" VerticalOptions="Center"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </VerticalStackLayout>
+                    </ScrollView>
+                </Grid>
+            </Border>
+
+            <!-- Tab Categorías -->
+            <Border IsVisible="{Binding IsCategoriesTab}"
+                    BackgroundColor="#FF1A1A1A"
+                    StrokeThickness="0"
+                    StrokeShape="RoundRectangle 8">
+                <Grid RowDefinitions="Auto,*">
+                    <Border BackgroundColor="#FF232323" StrokeThickness="0" Padding="0">
+                        <Grid ColumnDefinitions="50,80,*" Padding="12,10">
+                            <Label Text="✓" TextColor="White" HorizontalOptions="Center"/>
+                            <Label Grid.Column="1" Text="ID" TextColor="White"/>
+                            <Label Grid.Column="2" Text="Nombre de Categoría" TextColor="White"/>
+                        </Grid>
+                    </Border>
+                    
+                    <ScrollView Grid.Row="1">
+                        <VerticalStackLayout BindableLayout.ItemsSource="{Binding Categories}" Spacing="0">
+                            <BindableLayout.EmptyView>
+                                <Label Text="No hay categorías registradas" TextColor="Gray" HorizontalOptions="Center" Margin="40"/>
+                            </BindableLayout.EmptyView>
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate x:DataType="models:Category">
+                                    <Border StrokeThickness="0,0,0,0.6" Stroke="#FF393939" BackgroundColor="Transparent">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer 
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DatabaseManagementViewModel}}, Path=ToggleCategorySelectionCommand}"
+                                                CommandParameter="{Binding .}"/>
+                                        </Border.GestureRecognizers>
+                                        <Grid ColumnDefinitions="50,80,*" Padding="12,10">
+                                            <CheckBox IsChecked="{Binding IsSelectedForMerge, Mode=TwoWay}"
+                                                      HorizontalOptions="Center" VerticalOptions="Center" Color="#FF6DDDFF"/>
+                                            <Border Grid.Column="1" BackgroundColor="#FF2A2A2A" StrokeThickness="0"
+                                                    StrokeShape="RoundRectangle 4" WidthRequest="45" HeightRequest="28" HorizontalOptions="Start">
+                                                <Label Text="{Binding Id}" TextColor="White" HorizontalOptions="Center" VerticalOptions="Center"/>
+                                            </Border>
+                                            <Label Grid.Column="2" Text="{Binding NombreCategoria}" TextColor="White" FontSize="14" VerticalOptions="Center"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </VerticalStackLayout>
+                    </ScrollView>
+                </Grid>
+            </Border>
+
+            <!-- Tab Tags -->
+            <Border IsVisible="{Binding IsTagsTab}"
+                    BackgroundColor="#FF1A1A1A"
+                    StrokeThickness="0"
+                    StrokeShape="RoundRectangle 8">
+                <Grid RowDefinitions="Auto,*">
+                    <Border BackgroundColor="#FF232323" StrokeThickness="0" Padding="0">
+                        <Grid ColumnDefinitions="50,80,*" Padding="12,10">
+                            <Label Text="✓" TextColor="White" HorizontalOptions="Center"/>
+                            <Label Grid.Column="1" Text="ID" TextColor="White"/>
+                            <Label Grid.Column="2" Text="Nombre del Tag" TextColor="White"/>
+                        </Grid>
+                    </Border>
+                    
+                    <ScrollView Grid.Row="1">
+                        <VerticalStackLayout BindableLayout.ItemsSource="{Binding Tags}" Spacing="0">
+                            <BindableLayout.EmptyView>
+                                <Label Text="No hay tags registrados" TextColor="Gray" HorizontalOptions="Center" Margin="40"/>
+                            </BindableLayout.EmptyView>
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate x:DataType="models:Tag">
+                                    <Border StrokeThickness="0,0,0,0.6" Stroke="#FF393939" BackgroundColor="Transparent">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer 
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DatabaseManagementViewModel}}, Path=ToggleTagSelectionCommand}"
+                                                CommandParameter="{Binding .}"/>
+                                        </Border.GestureRecognizers>
+                                        <Grid ColumnDefinitions="50,80,*" Padding="12,10">
+                                            <CheckBox IsChecked="{Binding IsSelectedForMerge, Mode=TwoWay}"
+                                                      HorizontalOptions="Center" VerticalOptions="Center" Color="#FF6DDDFF"/>
+                                            <Border Grid.Column="1" BackgroundColor="#FF2A2A2A" StrokeThickness="0"
+                                                    StrokeShape="RoundRectangle 4" WidthRequest="45" HeightRequest="28" HorizontalOptions="Start">
+                                                <Label Text="{Binding Id}" TextColor="White" HorizontalOptions="Center" VerticalOptions="Center"/>
+                                            </Border>
+                                            <Label Grid.Column="2" Text="{Binding NombreTag}" TextColor="White" FontSize="14" VerticalOptions="Center"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </VerticalStackLayout>
+                    </ScrollView>
+                </Grid>
+            </Border>
+
+            <!-- Tab Tipos de Sesión -->
+            <Border IsVisible="{Binding IsSessionTypesTab}"
+                    BackgroundColor="#FF1A1A1A"
+                    StrokeThickness="0"
+                    StrokeShape="RoundRectangle 8">
+                <Grid RowDefinitions="Auto,*">
+                    <Border BackgroundColor="#FF232323" StrokeThickness="0" Padding="0">
+                        <Grid ColumnDefinitions="50,80,*" Padding="12,10">
+                            <Label Text="✓" TextColor="White" HorizontalOptions="Center"/>
+                            <Label Grid.Column="1" Text="ID" TextColor="White"/>
+                            <Label Grid.Column="2" Text="Tipo de Sesión" TextColor="White"/>
+                        </Grid>
+                    </Border>
+                    
+                    <ScrollView Grid.Row="1">
+                        <VerticalStackLayout BindableLayout.ItemsSource="{Binding SessionTypes}" Spacing="0">
+                            <BindableLayout.EmptyView>
+                                <Label Text="No hay tipos de sesión registrados" TextColor="Gray" HorizontalOptions="Center" Margin="40"/>
+                            </BindableLayout.EmptyView>
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate x:DataType="models:SessionType">
+                                    <Border StrokeThickness="0,0,0,0.6" Stroke="#FF393939" BackgroundColor="Transparent">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer 
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DatabaseManagementViewModel}}, Path=ToggleSessionTypeSelectionCommand}"
+                                                CommandParameter="{Binding .}"/>
+                                        </Border.GestureRecognizers>
+                                        <Grid ColumnDefinitions="50,80,*" Padding="12,10">
+                                            <CheckBox IsChecked="{Binding IsSelectedForMerge, Mode=TwoWay}"
+                                                      HorizontalOptions="Center" VerticalOptions="Center" Color="#FF6DDDFF"/>
+                                            <Border Grid.Column="1" BackgroundColor="#FF2A2A2A" StrokeThickness="0"
+                                                    StrokeShape="RoundRectangle 4" WidthRequest="45" HeightRequest="28" HorizontalOptions="Start">
+                                                <Label Text="{Binding Id}" TextColor="White" HorizontalOptions="Center" VerticalOptions="Center"/>
+                                            </Border>
+                                            <Label Grid.Column="2" Text="{Binding TipoSesion}" TextColor="White" FontSize="14" VerticalOptions="Center"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </VerticalStackLayout>
+                    </ScrollView>
+                </Grid>
+            </Border>
+
+        </Grid>
+    </Grid>
+</ContentPage>

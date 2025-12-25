@@ -891,10 +891,61 @@ public class DatabaseService
     }
 
     // ==================== CATEGORIES ====================
-    public async Task<List<Category>> GetAllCategoriesAsync()
+
+    /// <summary>
+    /// Sincroniza la tabla categoria con los CategoriaId únicos usados en atletas e inputs
+    /// </summary>
+    private async Task SyncCategoriesFromReferencesAsync()
     {
         var db = await GetConnectionAsync();
-        return await db.Table<Category>().ToListAsync();
+        
+        // Obtener todos los CategoriaId únicos de atletas
+        var athletes = await db.Table<Athlete>().ToListAsync();
+        var athleteCategoryIds = athletes
+            .Where(a => a.CategoriaId > 0)
+            .Select(a => a.CategoriaId)
+            .Distinct();
+
+        // Obtener todos los CategoriaId únicos de inputs
+        var inputs = await db.Table<Input>().ToListAsync();
+        var inputCategoryIds = inputs
+            .Where(i => i.CategoriaId > 0)
+            .Select(i => i.CategoriaId)
+            .Distinct();
+
+        // Unir todos los IDs únicos
+        var allCategoryIds = athleteCategoryIds.Union(inputCategoryIds).Distinct().ToList();
+
+        // Obtener categorías existentes
+        var existingCategories = await db.Table<Category>().ToListAsync();
+        var existingIds = existingCategories.Select(c => c.Id).ToHashSet();
+        
+        // También crear un set de nombres existentes para evitar duplicados
+        var existingNames = existingCategories
+            .Where(c => !string.IsNullOrWhiteSpace(c.NombreCategoria))
+            .Select(c => c.NombreCategoria!.Trim())
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        // Insertar categorías que no existen (ni por ID ni por nombre)
+        foreach (var categoryId in allCategoryIds)
+        {
+            var genericName = $"Categoría {categoryId}";
+            // Solo insertar si no existe el ID Y no existe ya una categoría con ese nombre genérico
+            if (!existingIds.Contains(categoryId) && !existingNames.Contains(genericName))
+            {
+                // Usar ExecuteAsync para insertar con ID específico
+                await db.ExecuteAsync(
+                    "INSERT OR IGNORE INTO categoria (id, nombreCategoria, isSystemDefault) VALUES (?, ?, 0)",
+                    categoryId, genericName);
+            }
+        }
+    }
+
+    public async Task<List<Category>> GetAllCategoriesAsync()
+    {
+        await SyncCategoriesFromReferencesAsync();
+        var db = await GetConnectionAsync();
+        return await db.Table<Category>().OrderBy(c => c.NombreCategoria).ToListAsync();
     }
 
     public async Task<int> SaveCategoryAsync(Category category)
@@ -964,10 +1015,87 @@ public class DatabaseService
     }
 
     // ==================== TAGS ====================
-    public async Task<List<Tag>> GetAllTagsAsync()
+
+    /// <summary>
+    /// Sincroniza la tabla tags con los InputTypeId únicos usados en inputs
+    /// </summary>
+    private async Task SyncTagsFromInputsAsync()
     {
         var db = await GetConnectionAsync();
-        return await db.Table<Tag>().ToListAsync();
+        
+        // Obtener todos los InputTypeId únicos de inputs
+        var inputs = await db.Table<Input>().ToListAsync();
+        var uniqueTagIds = inputs
+            .Where(i => i.InputTypeId > 0)
+            .Select(i => i.InputTypeId)
+            .Distinct()
+            .ToList();
+
+        // Obtener tags existentes
+        var existingTags = await db.Table<Tag>().ToListAsync();
+        var existingIds = existingTags.Select(t => t.Id).ToHashSet();
+        
+        // También crear un set de nombres existentes para evitar duplicados por nombre
+        var existingNames = existingTags
+            .Where(t => !string.IsNullOrWhiteSpace(t.NombreTag))
+            .Select(t => t.NombreTag!.Trim())
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        // Insertar tags que no existen (ni por ID ni por nombre)
+        foreach (var tagId in uniqueTagIds)
+        {
+            var genericName = $"Tag {tagId}";
+            // Solo insertar si no existe el ID Y no existe ya un tag con ese nombre genérico
+            if (!existingIds.Contains(tagId) && !existingNames.Contains(genericName))
+            {
+                // Usar ExecuteAsync para insertar con ID específico
+                await db.ExecuteAsync(
+                    "INSERT OR IGNORE INTO tags (id, nombreTag, IsSelected) VALUES (?, ?, 0)",
+                    tagId, genericName);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Elimina tags duplicados por nombre, manteniendo el de menor ID
+    /// </summary>
+    private async Task CleanDuplicateTagsAsync()
+    {
+        var db = await GetConnectionAsync();
+        var allTags = await db.Table<Tag>().ToListAsync();
+        
+        // Agrupar por nombre (case insensitive)
+        var duplicateGroups = allTags
+            .Where(t => !string.IsNullOrWhiteSpace(t.NombreTag))
+            .GroupBy(t => t.NombreTag!.Trim(), StringComparer.OrdinalIgnoreCase)
+            .Where(g => g.Count() > 1);
+
+        foreach (var group in duplicateGroups)
+        {
+            // Mantener el de menor ID, eliminar el resto
+            var toKeep = group.OrderBy(t => t.Id).First();
+            var toDelete = group.Where(t => t.Id != toKeep.Id).ToList();
+            
+            foreach (var tag in toDelete)
+            {
+                // Actualizar referencias en inputs
+                await db.ExecuteAsync(
+                    "UPDATE input SET InputTypeID = ? WHERE InputTypeID = ?",
+                    toKeep.Id, tag.Id);
+                
+                // Eliminar el duplicado
+                await db.DeleteAsync(tag);
+                System.Diagnostics.Debug.WriteLine($"[CleanDuplicateTags] Eliminado tag duplicado: ID={tag.Id}, Nombre='{tag.NombreTag}'");
+            }
+        }
+    }
+
+    public async Task<List<Tag>> GetAllTagsAsync()
+    {
+        await CleanDuplicateTagsAsync();
+        await SyncTagsFromInputsAsync();
+        var db = await GetConnectionAsync();
+        return await db.Table<Tag>().OrderBy(t => t.NombreTag).ToListAsync();
     }
 
     // ==================== EVENT TAG DEFINITIONS ====================
@@ -1603,6 +1731,293 @@ public class DatabaseService
             .ToListAsync();
         
         return records.Select(w => w.Date).ToList();
+    }
+
+    #endregion
+
+    #region Places CRUD & Merge
+
+    /// <summary>
+    /// Sincroniza la tabla lugar con los valores únicos de sesion.lugar
+    /// </summary>
+    private async Task SyncPlacesFromSessionsAsync()
+    {
+        try
+        {
+            var db = await GetConnectionAsync();
+            
+            // Obtener todos los lugares únicos de la tabla sesion
+            var sessions = await db.Table<Session>().ToListAsync();
+            System.Diagnostics.Debug.WriteLine($"[SyncPlaces] Total sesiones: {sessions.Count}");
+            
+            // Log de todos los lugares en sesiones (incluyendo vacíos)
+            foreach (var s in sessions)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SyncPlaces] Sesion ID={s.Id}, Lugar='{s.Lugar ?? "(null)"}'");
+            }
+            
+            var uniquePlaces = sessions
+                .Where(s => !string.IsNullOrWhiteSpace(s.Lugar))
+                .Select(s => s.Lugar!.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            
+            System.Diagnostics.Debug.WriteLine($"[SyncPlaces] Lugares únicos en sesiones: {uniquePlaces.Count}");
+            foreach (var p in uniquePlaces)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SyncPlaces] - '{p}'");
+            }
+
+            // Obtener lugares existentes en la tabla lugar
+            var existingPlaces = await db.Table<Place>().ToListAsync();
+            System.Diagnostics.Debug.WriteLine($"[SyncPlaces] Lugares existentes en tabla: {existingPlaces.Count}");
+            
+            var existingNames = existingPlaces
+                .Where(p => !string.IsNullOrWhiteSpace(p.NombreLugar))
+                .Select(p => p.NombreLugar!.Trim())
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            // Insertar lugares que no existen
+            int inserted = 0;
+            foreach (var placeName in uniquePlaces)
+            {
+                if (!existingNames.Contains(placeName))
+                {
+                    await db.InsertAsync(new Place { NombreLugar = placeName });
+                    inserted++;
+                    System.Diagnostics.Debug.WriteLine($"[SyncPlaces] Insertado: '{placeName}'");
+                }
+            }
+            System.Diagnostics.Debug.WriteLine($"[SyncPlaces] Total insertados: {inserted}");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[SyncPlaces] ERROR: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Obtiene todos los lugares (sincroniza primero desde sesiones)
+    /// </summary>
+    public async Task<List<Place>> GetAllPlacesAsync()
+    {
+        await SyncPlacesFromSessionsAsync();
+        var db = await GetConnectionAsync();
+        var result = await db.Table<Place>().OrderBy(p => p.NombreLugar).ToListAsync();
+        System.Diagnostics.Debug.WriteLine($"[GetAllPlacesAsync] Retornando {result.Count} lugares");
+        return result;
+    }
+
+    /// <summary>
+    /// Guarda un lugar (insert o update)
+    /// </summary>
+    public async Task<int> SavePlaceAsync(Place place)
+    {
+        var db = await GetConnectionAsync();
+        if (place.Id != 0)
+        {
+            await db.UpdateAsync(place);
+            return place.Id;
+        }
+        else
+        {
+            await db.InsertAsync(place);
+            return place.Id;
+        }
+    }
+
+    /// <summary>
+    /// Fusiona lugares: mantiene el de keepPlaceId y actualiza referencias.
+    /// Las sesiones que referencian los lugares duplicados (por nombre) 
+    /// se actualizan al nombre del lugar que se mantiene.
+    /// </summary>
+    public async Task<int> MergePlacesAsync(int keepPlaceId, List<int> mergePlaceIds)
+    {
+        var db = await GetConnectionAsync();
+        int merged = 0;
+
+        var keepPlace = await db.Table<Place>().FirstOrDefaultAsync(p => p.Id == keepPlaceId);
+        if (keepPlace == null) return 0;
+
+        foreach (var duplicateId in mergePlaceIds)
+        {
+            if (duplicateId == keepPlaceId) continue;
+
+            var duplicatePlace = await db.Table<Place>().FirstOrDefaultAsync(p => p.Id == duplicateId);
+            if (duplicatePlace == null) continue;
+
+            // Actualizar sesiones que referencian el lugar duplicado (por nombre)
+            await db.ExecuteAsync(
+                "UPDATE sesion SET lugar = ? WHERE lugar = ?",
+                keepPlace.NombreLugar, duplicatePlace.NombreLugar);
+
+            // Eliminar el lugar duplicado
+            await db.ExecuteAsync("DELETE FROM lugar WHERE id = ?", duplicateId);
+            merged++;
+        }
+
+        return merged;
+    }
+
+    #endregion
+
+    #region SessionTypes CRUD & Merge
+
+    /// <summary>
+    /// Sincroniza la tabla tipoSesion con los valores únicos de sesion.tipoSesion
+    /// </summary>
+    private async Task SyncSessionTypesFromSessionsAsync()
+    {
+        var db = await GetConnectionAsync();
+        
+        // Obtener todos los tipos únicos de la tabla sesion
+        var sessions = await db.Table<Session>().ToListAsync();
+        var uniqueTypes = sessions
+            .Where(s => !string.IsNullOrWhiteSpace(s.TipoSesion))
+            .Select(s => s.TipoSesion!.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        // Obtener tipos existentes en la tabla tipoSesion
+        var existingTypes = await db.Table<SessionType>().ToListAsync();
+        var existingNames = existingTypes
+            .Where(t => !string.IsNullOrWhiteSpace(t.TipoSesion))
+            .Select(t => t.TipoSesion!.Trim())
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        // Insertar tipos que no existen
+        foreach (var typeName in uniqueTypes)
+        {
+            if (!existingNames.Contains(typeName))
+            {
+                await db.InsertAsync(new SessionType { TipoSesion = typeName });
+            }
+        }
+    }
+
+    /// <summary>
+    /// Obtiene todos los tipos de sesión (sincroniza primero desde sesiones)
+    /// </summary>
+    public async Task<List<SessionType>> GetAllSessionTypesAsync()
+    {
+        await SyncSessionTypesFromSessionsAsync();
+        var db = await GetConnectionAsync();
+        return await db.Table<SessionType>().OrderBy(s => s.TipoSesion).ToListAsync();
+    }
+
+    /// <summary>
+    /// Guarda un tipo de sesión (insert o update)
+    /// </summary>
+    public async Task<int> SaveSessionTypeAsync(SessionType sessionType)
+    {
+        var db = await GetConnectionAsync();
+        if (sessionType.Id != 0)
+        {
+            await db.UpdateAsync(sessionType);
+            return sessionType.Id;
+        }
+        else
+        {
+            await db.InsertAsync(sessionType);
+            return sessionType.Id;
+        }
+    }
+
+    /// <summary>
+    /// Fusiona tipos de sesión: mantiene el de keepId y actualiza referencias.
+    /// </summary>
+    public async Task<int> MergeSessionTypesAsync(int keepSessionTypeId, List<int> mergeSessionTypeIds)
+    {
+        var db = await GetConnectionAsync();
+        int merged = 0;
+
+        var keepType = await db.Table<SessionType>().FirstOrDefaultAsync(s => s.Id == keepSessionTypeId);
+        if (keepType == null) return 0;
+
+        foreach (var duplicateId in mergeSessionTypeIds)
+        {
+            if (duplicateId == keepSessionTypeId) continue;
+
+            var duplicateType = await db.Table<SessionType>().FirstOrDefaultAsync(s => s.Id == duplicateId);
+            if (duplicateType == null) continue;
+
+            // Actualizar sesiones que referencian el tipo duplicado (por nombre)
+            await db.ExecuteAsync(
+                "UPDATE sesion SET tipoSesion = ? WHERE tipoSesion = ?",
+                keepType.TipoSesion, duplicateType.TipoSesion);
+
+            // Eliminar el tipo duplicado
+            await db.ExecuteAsync("DELETE FROM tipoSesion WHERE id = ?", duplicateId);
+            merged++;
+        }
+
+        return merged;
+    }
+
+    #endregion
+
+    #region Categories Merge
+
+    /// <summary>
+    /// Fusiona categorías: mantiene la de keepId y actualiza referencias en atletas.
+    /// </summary>
+    public async Task<int> MergeCategoriesAsync(int keepCategoryId, List<int> mergeCategoryIds)
+    {
+        var db = await GetConnectionAsync();
+        int merged = 0;
+
+        foreach (var duplicateId in mergeCategoryIds)
+        {
+            if (duplicateId == keepCategoryId) continue;
+
+            // Actualizar atletas que referencian la categoría duplicada
+            await db.ExecuteAsync(
+                "UPDATE Atleta SET categoriaId = ? WHERE categoriaId = ?",
+                keepCategoryId, duplicateId);
+
+            // Actualizar inputs que referencian la categoría duplicada
+            await db.ExecuteAsync(
+                "UPDATE \"input\" SET CategoriaID = ? WHERE CategoriaID = ?",
+                keepCategoryId, duplicateId);
+
+            // Eliminar la categoría duplicada
+            await db.ExecuteAsync("DELETE FROM categoria WHERE id = ?", duplicateId);
+            merged++;
+        }
+
+        // Invalidar caché de categorías
+        _categoryCache = null;
+
+        return merged;
+    }
+
+    #endregion
+
+    #region Tags Merge
+
+    /// <summary>
+    /// Fusiona tags: mantiene el de keepId y actualiza referencias en inputs.
+    /// </summary>
+    public async Task<int> MergeTagsAsync(int keepTagId, List<int> mergeTagIds)
+    {
+        var db = await GetConnectionAsync();
+        int merged = 0;
+
+        foreach (var duplicateId in mergeTagIds)
+        {
+            if (duplicateId == keepTagId) continue;
+
+            // Actualizar inputs que referencian el tag duplicado
+            await db.ExecuteAsync(
+                "UPDATE \"input\" SET InputTypeID = ? WHERE InputTypeID = ?",
+                keepTagId, duplicateId);
+
+            // Eliminar el tag duplicado
+            await db.ExecuteAsync("DELETE FROM tags WHERE id = ?", duplicateId);
+            merged++;
+        }
+
+        return merged;
     }
 
     #endregion

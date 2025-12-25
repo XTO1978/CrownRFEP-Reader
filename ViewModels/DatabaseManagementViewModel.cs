@@ -1,0 +1,619 @@
+using System.Collections.ObjectModel;
+using System.Windows.Input;
+using CrownRFEP_Reader.Models;
+using CrownRFEP_Reader.Services;
+
+namespace CrownRFEP_Reader.ViewModels;
+
+/// <summary>
+/// ViewModel para la gestión de base de datos.
+/// Permite fusionar entidades duplicadas: Atletas, Lugares, Categorías, Tags y Tipos de Sesión.
+/// </summary>
+public class DatabaseManagementViewModel : BaseViewModel
+{
+    private readonly DatabaseService _databaseService;
+    private int _selectedTabIndex;
+    
+    // Contadores de selección por entidad
+    private int _selectedAthletesCount;
+    private int _selectedPlacesCount;
+    private int _selectedCategoriesCount;
+    private int _selectedTagsCount;
+    private int _selectedSessionTypesCount;
+
+    // Colecciones
+    public ObservableCollection<Athlete> Athletes { get; } = new();
+    public ObservableCollection<Place> Places { get; } = new();
+    public ObservableCollection<Category> Categories { get; } = new();
+    public ObservableCollection<Tag> Tags { get; } = new();
+    public ObservableCollection<SessionType> SessionTypes { get; } = new();
+
+    #region Properties
+
+    public int SelectedTabIndex
+    {
+        get => _selectedTabIndex;
+        set
+        {
+            if (SetProperty(ref _selectedTabIndex, value))
+            {
+                OnPropertyChanged(nameof(IsAthletesTab));
+                OnPropertyChanged(nameof(IsPlacesTab));
+                OnPropertyChanged(nameof(IsCategoriesTab));
+                OnPropertyChanged(nameof(IsTagsTab));
+                OnPropertyChanged(nameof(IsSessionTypesTab));
+                OnPropertyChanged(nameof(CurrentTabTitle));
+                OnPropertyChanged(nameof(CanMergeCurrentTab));
+                OnPropertyChanged(nameof(CurrentSelectedCount));
+            }
+        }
+    }
+
+    public bool IsAthletesTab => SelectedTabIndex == 0;
+    public bool IsPlacesTab => SelectedTabIndex == 1;
+    public bool IsCategoriesTab => SelectedTabIndex == 2;
+    public bool IsTagsTab => SelectedTabIndex == 3;
+    public bool IsSessionTypesTab => SelectedTabIndex == 4;
+
+    public string CurrentTabTitle => SelectedTabIndex switch
+    {
+        0 => "Atletas",
+        1 => "Lugares",
+        2 => "Categorías",
+        3 => "Tags",
+        4 => "Tipos de Sesión",
+        _ => ""
+    };
+
+    public int SelectedAthletesCount
+    {
+        get => _selectedAthletesCount;
+        set { SetProperty(ref _selectedAthletesCount, value); OnPropertyChanged(nameof(CanMergeCurrentTab)); OnPropertyChanged(nameof(CurrentSelectedCount)); }
+    }
+
+    public int SelectedPlacesCount
+    {
+        get => _selectedPlacesCount;
+        set { SetProperty(ref _selectedPlacesCount, value); OnPropertyChanged(nameof(CanMergeCurrentTab)); OnPropertyChanged(nameof(CurrentSelectedCount)); }
+    }
+
+    public int SelectedCategoriesCount
+    {
+        get => _selectedCategoriesCount;
+        set { SetProperty(ref _selectedCategoriesCount, value); OnPropertyChanged(nameof(CanMergeCurrentTab)); OnPropertyChanged(nameof(CurrentSelectedCount)); }
+    }
+
+    public int SelectedTagsCount
+    {
+        get => _selectedTagsCount;
+        set { SetProperty(ref _selectedTagsCount, value); OnPropertyChanged(nameof(CanMergeCurrentTab)); OnPropertyChanged(nameof(CurrentSelectedCount)); }
+    }
+
+    public int SelectedSessionTypesCount
+    {
+        get => _selectedSessionTypesCount;
+        set { SetProperty(ref _selectedSessionTypesCount, value); OnPropertyChanged(nameof(CanMergeCurrentTab)); OnPropertyChanged(nameof(CurrentSelectedCount)); }
+    }
+
+    public int CurrentSelectedCount => SelectedTabIndex switch
+    {
+        0 => SelectedAthletesCount,
+        1 => SelectedPlacesCount,
+        2 => SelectedCategoriesCount,
+        3 => SelectedTagsCount,
+        4 => SelectedSessionTypesCount,
+        _ => 0
+    };
+
+    public bool CanMergeCurrentTab => CurrentSelectedCount >= 2;
+
+    #endregion
+
+    #region Commands
+
+    public ICommand RefreshCommand { get; }
+    public ICommand SelectTabCommand { get; }
+    public ICommand MergeSelectedCommand { get; }
+    
+    // Atletas
+    public ICommand ToggleAthleteSelectionCommand { get; }
+    public ICommand ConsolidateAthletesCommand { get; }
+    
+    // Lugares
+    public ICommand TogglePlaceSelectionCommand { get; }
+    
+    // Categorías
+    public ICommand ToggleCategorySelectionCommand { get; }
+    
+    // Tags
+    public ICommand ToggleTagSelectionCommand { get; }
+    
+    // Tipos de Sesión
+    public ICommand ToggleSessionTypeSelectionCommand { get; }
+
+    #endregion
+
+    public DatabaseManagementViewModel(DatabaseService databaseService)
+    {
+        _databaseService = databaseService;
+        Title = "Gestión de Base de Datos";
+
+        RefreshCommand = new AsyncRelayCommand(LoadAllDataAsync);
+        SelectTabCommand = new Command<string>(SelectTab);
+        MergeSelectedCommand = new AsyncRelayCommand(MergeSelectedAsync);
+        
+        // Atletas
+        ToggleAthleteSelectionCommand = new Command<Athlete>(ToggleAthleteSelection);
+        ConsolidateAthletesCommand = new AsyncRelayCommand(ConsolidateAthletesAsync);
+        
+        // Lugares
+        TogglePlaceSelectionCommand = new Command<Place>(TogglePlaceSelection);
+        
+        // Categorías
+        ToggleCategorySelectionCommand = new Command<Category>(ToggleCategorySelection);
+        
+        // Tags
+        ToggleTagSelectionCommand = new Command<Tag>(ToggleTagSelection);
+        
+        // Tipos de Sesión
+        ToggleSessionTypeSelectionCommand = new Command<SessionType>(ToggleSessionTypeSelection);
+    }
+
+    #region Data Loading
+
+    public async Task LoadAllDataAsync()
+    {
+        System.Diagnostics.Debug.WriteLine($"[LoadAllDataAsync] Iniciando... IsBusy={IsBusy}");
+        
+        if (IsBusy) 
+        {
+            System.Diagnostics.Debug.WriteLine("[LoadAllDataAsync] Ya está ocupado, saliendo");
+            return;
+        }
+
+        try
+        {
+            IsBusy = true;
+            
+            System.Diagnostics.Debug.WriteLine("[LoadAllDataAsync] Cargando atletas...");
+            // Cargar secuencialmente para evitar problemas con CollectionView en MacCatalyst
+            await LoadAthletesAsync();
+            
+            System.Diagnostics.Debug.WriteLine("[LoadAllDataAsync] Cargando lugares...");
+            await LoadPlacesAsync();
+            
+            System.Diagnostics.Debug.WriteLine("[LoadAllDataAsync] Cargando categorías...");
+            await LoadCategoriesAsync();
+            
+            System.Diagnostics.Debug.WriteLine("[LoadAllDataAsync] Cargando tags...");
+            await LoadTagsAsync();
+            
+            System.Diagnostics.Debug.WriteLine("[LoadAllDataAsync] Cargando tipos de sesión...");
+            await LoadSessionTypesAsync();
+            
+            System.Diagnostics.Debug.WriteLine("[LoadAllDataAsync] Completado");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[LoadAllDataAsync] ERROR: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[LoadAllDataAsync] StackTrace: {ex.StackTrace}");
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private async Task LoadAthletesAsync()
+    {
+        var athletes = await _databaseService.GetAllAthletesAsync();
+        await MainThread.InvokeOnMainThreadAsync(() =>
+        {
+            Athletes.Clear();
+            foreach (var athlete in athletes.OrderBy(a => a.Apellido).ThenBy(a => a.Nombre))
+            {
+                Athletes.Add(athlete);
+            }
+            UpdateAthletesSelectedCount();
+        });
+    }
+
+    private async Task LoadPlacesAsync()
+    {
+        try
+        {
+            System.Diagnostics.Debug.WriteLine("[LoadPlacesAsync] Iniciando carga...");
+            var places = await _databaseService.GetAllPlacesAsync();
+            System.Diagnostics.Debug.WriteLine($"[LoadPlacesAsync] Recibidos {places.Count} lugares");
+            
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                Places.Clear();
+                foreach (var place in places)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[LoadPlacesAsync] Añadiendo: ID={place.Id}, Nombre='{place.NombreLugar}'");
+                    Places.Add(place);
+                }
+                System.Diagnostics.Debug.WriteLine($"[LoadPlacesAsync] Total en colección: {Places.Count}");
+                UpdatePlacesSelectedCount();
+            });
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[LoadPlacesAsync] ERROR: {ex.Message}");
+        }
+    }
+
+    private async Task LoadCategoriesAsync()
+    {
+        var categories = await _databaseService.GetAllCategoriesAsync();
+        await MainThread.InvokeOnMainThreadAsync(() =>
+        {
+            Categories.Clear();
+            foreach (var category in categories.OrderBy(c => c.NombreCategoria))
+            {
+                Categories.Add(category);
+            }
+            UpdateCategoriesSelectedCount();
+        });
+    }
+
+    private async Task LoadTagsAsync()
+    {
+        var tags = await _databaseService.GetAllTagsAsync();
+        await MainThread.InvokeOnMainThreadAsync(() =>
+        {
+            Tags.Clear();
+            foreach (var tag in tags.OrderBy(t => t.NombreTag))
+            {
+                Tags.Add(tag);
+            }
+            UpdateTagsSelectedCount();
+        });
+    }
+
+    private async Task LoadSessionTypesAsync()
+    {
+        var sessionTypes = await _databaseService.GetAllSessionTypesAsync();
+        await MainThread.InvokeOnMainThreadAsync(() =>
+        {
+            SessionTypes.Clear();
+            foreach (var sessionType in sessionTypes)
+            {
+                SessionTypes.Add(sessionType);
+            }
+            UpdateSessionTypesSelectedCount();
+        });
+    }
+
+    #endregion
+
+    #region Tab Selection
+
+    private void SelectTab(string? tabIndex)
+    {
+        if (int.TryParse(tabIndex, out var index))
+        {
+            SelectedTabIndex = index;
+        }
+    }
+
+    #endregion
+
+    #region Toggle Selection
+
+    private void ToggleAthleteSelection(Athlete? athlete)
+    {
+        if (athlete == null) return;
+        athlete.IsSelected = !athlete.IsSelected;
+        UpdateAthletesSelectedCount();
+    }
+
+    private void TogglePlaceSelection(Place? place)
+    {
+        if (place == null) return;
+        place.IsSelectedForMerge = !place.IsSelectedForMerge;
+        UpdatePlacesSelectedCount();
+    }
+
+    private void ToggleCategorySelection(Category? category)
+    {
+        if (category == null) return;
+        category.IsSelectedForMerge = !category.IsSelectedForMerge;
+        UpdateCategoriesSelectedCount();
+    }
+
+    private void ToggleTagSelection(Tag? tag)
+    {
+        if (tag == null) return;
+        tag.IsSelectedForMerge = !tag.IsSelectedForMerge;
+        UpdateTagsSelectedCount();
+    }
+
+    private void ToggleSessionTypeSelection(SessionType? sessionType)
+    {
+        if (sessionType == null) return;
+        sessionType.IsSelectedForMerge = !sessionType.IsSelectedForMerge;
+        UpdateSessionTypesSelectedCount();
+    }
+
+    public void UpdateAthletesSelectedCount() => SelectedAthletesCount = Athletes.Count(a => a.IsSelected);
+    public void UpdatePlacesSelectedCount() => SelectedPlacesCount = Places.Count(p => p.IsSelectedForMerge);
+    public void UpdateCategoriesSelectedCount() => SelectedCategoriesCount = Categories.Count(c => c.IsSelectedForMerge);
+    public void UpdateTagsSelectedCount() => SelectedTagsCount = Tags.Count(t => t.IsSelectedForMerge);
+    public void UpdateSessionTypesSelectedCount() => SelectedSessionTypesCount = SessionTypes.Count(s => s.IsSelectedForMerge);
+
+    #endregion
+
+    #region Merge Operations
+
+    private async Task MergeSelectedAsync()
+    {
+        switch (SelectedTabIndex)
+        {
+            case 0: await MergeAthletesAsync(); break;
+            case 1: await MergePlacesAsync(); break;
+            case 2: await MergeCategoriesAsync(); break;
+            case 3: await MergeTagsAsync(); break;
+            case 4: await MergeSessionTypesAsync(); break;
+        }
+    }
+
+    private async Task MergeAthletesAsync()
+    {
+        var selected = Athletes.Where(a => a.IsSelected).OrderBy(a => a.Id).ToList();
+        if (selected.Count < 2)
+        {
+            await Shell.Current.DisplayAlert("Aviso", "Selecciona al menos 2 atletas para fusionar.", "OK");
+            return;
+        }
+
+        var options = selected
+            .Select(a => $"{a.Nombre} {a.Apellido}".Trim())
+            .Distinct()
+            .ToArray();
+
+        var chosenName = await Shell.Current.DisplayActionSheet(
+            "¿Qué nombre quieres usar para este atleta?",
+            "Cancelar", null, options);
+
+        if (string.IsNullOrEmpty(chosenName) || chosenName == "Cancelar") return;
+
+        var parts = chosenName.Split(' ', 2);
+        var nombre = parts.Length > 0 ? parts[0] : "";
+        var apellido = parts.Length > 1 ? parts[1] : "";
+
+        try
+        {
+            IsBusy = true;
+            var keepAthlete = selected.First();
+            keepAthlete.Nombre = nombre;
+            keepAthlete.Apellido = apellido;
+            await _databaseService.SaveAthleteAsync(keepAthlete);
+
+            var duplicates = selected.Skip(1).Select(a => a.Id).ToList();
+            var merged = await _databaseService.MergeAthletesAsync(keepAthlete.Id, duplicates);
+
+            await Shell.Current.DisplayAlert("Fusión completada",
+                $"Se han fusionado {merged + 1} atletas bajo el nombre '{chosenName}'.", "OK");
+            await LoadAthletesAsync();
+        }
+        catch (Exception ex)
+        {
+            await Shell.Current.DisplayAlert("Error", $"Error al fusionar: {ex.Message}", "OK");
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private async Task MergePlacesAsync()
+    {
+        var selected = Places.Where(p => p.IsSelectedForMerge).OrderBy(p => p.Id).ToList();
+        if (selected.Count < 2)
+        {
+            await Shell.Current.DisplayAlert("Aviso", "Selecciona al menos 2 lugares para fusionar.", "OK");
+            return;
+        }
+
+        var options = selected
+            .Select(p => p.NombreLugar ?? $"Lugar {p.Id}")
+            .Distinct()
+            .ToArray();
+
+        var chosenName = await Shell.Current.DisplayActionSheet(
+            "¿Qué nombre quieres usar para este lugar?",
+            "Cancelar", null, options);
+
+        if (string.IsNullOrEmpty(chosenName) || chosenName == "Cancelar") return;
+
+        try
+        {
+            IsBusy = true;
+            var keepPlace = selected.First(p => p.NombreLugar == chosenName) ?? selected.First();
+            keepPlace.NombreLugar = chosenName;
+            await _databaseService.SavePlaceAsync(keepPlace);
+
+            var duplicates = selected.Where(p => p.Id != keepPlace.Id).Select(p => p.Id).ToList();
+            var merged = await _databaseService.MergePlacesAsync(keepPlace.Id, duplicates);
+
+            await Shell.Current.DisplayAlert("Fusión completada",
+                $"Se han fusionado {merged + 1} lugares bajo el nombre '{chosenName}'.", "OK");
+            await LoadPlacesAsync();
+        }
+        catch (Exception ex)
+        {
+            await Shell.Current.DisplayAlert("Error", $"Error al fusionar: {ex.Message}", "OK");
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private async Task MergeCategoriesAsync()
+    {
+        var selected = Categories.Where(c => c.IsSelectedForMerge).OrderBy(c => c.Id).ToList();
+        if (selected.Count < 2)
+        {
+            await Shell.Current.DisplayAlert("Aviso", "Selecciona al menos 2 categorías para fusionar.", "OK");
+            return;
+        }
+
+        var options = selected
+            .Select(c => c.NombreCategoria ?? $"Categoría {c.Id}")
+            .Distinct()
+            .ToArray();
+
+        var chosenName = await Shell.Current.DisplayActionSheet(
+            "¿Qué nombre quieres usar para esta categoría?",
+            "Cancelar", null, options);
+
+        if (string.IsNullOrEmpty(chosenName) || chosenName == "Cancelar") return;
+
+        try
+        {
+            IsBusy = true;
+            var keepCategory = selected.FirstOrDefault(c => c.NombreCategoria == chosenName) ?? selected.First();
+            keepCategory.NombreCategoria = chosenName;
+            await _databaseService.SaveCategoryAsync(keepCategory);
+
+            var duplicates = selected.Where(c => c.Id != keepCategory.Id).Select(c => c.Id).ToList();
+            var merged = await _databaseService.MergeCategoriesAsync(keepCategory.Id, duplicates);
+
+            await Shell.Current.DisplayAlert("Fusión completada",
+                $"Se han fusionado {merged + 1} categorías bajo el nombre '{chosenName}'.", "OK");
+            await LoadCategoriesAsync();
+        }
+        catch (Exception ex)
+        {
+            await Shell.Current.DisplayAlert("Error", $"Error al fusionar: {ex.Message}", "OK");
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private async Task MergeTagsAsync()
+    {
+        var selected = Tags.Where(t => t.IsSelectedForMerge).OrderBy(t => t.Id).ToList();
+        if (selected.Count < 2)
+        {
+            await Shell.Current.DisplayAlert("Aviso", "Selecciona al menos 2 tags para fusionar.", "OK");
+            return;
+        }
+
+        var options = selected
+            .Select(t => t.NombreTag ?? $"Tag {t.Id}")
+            .Distinct()
+            .ToArray();
+
+        var chosenName = await Shell.Current.DisplayActionSheet(
+            "¿Qué nombre quieres usar para este tag?",
+            "Cancelar", null, options);
+
+        if (string.IsNullOrEmpty(chosenName) || chosenName == "Cancelar") return;
+
+        try
+        {
+            IsBusy = true;
+            var keepTag = selected.FirstOrDefault(t => t.NombreTag == chosenName) ?? selected.First();
+            // No actualizamos el nombre porque podría afectar a la lógica del tag
+
+            var duplicates = selected.Where(t => t.Id != keepTag.Id).Select(t => t.Id).ToList();
+            var merged = await _databaseService.MergeTagsAsync(keepTag.Id, duplicates);
+
+            await Shell.Current.DisplayAlert("Fusión completada",
+                $"Se han fusionado {merged + 1} tags bajo el nombre '{chosenName}'.", "OK");
+            await LoadTagsAsync();
+        }
+        catch (Exception ex)
+        {
+            await Shell.Current.DisplayAlert("Error", $"Error al fusionar: {ex.Message}", "OK");
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private async Task MergeSessionTypesAsync()
+    {
+        var selected = SessionTypes.Where(s => s.IsSelectedForMerge).OrderBy(s => s.Id).ToList();
+        if (selected.Count < 2)
+        {
+            await Shell.Current.DisplayAlert("Aviso", "Selecciona al menos 2 tipos de sesión para fusionar.", "OK");
+            return;
+        }
+
+        var options = selected
+            .Select(s => s.TipoSesion ?? $"Tipo {s.Id}")
+            .Distinct()
+            .ToArray();
+
+        var chosenName = await Shell.Current.DisplayActionSheet(
+            "¿Qué nombre quieres usar para este tipo de sesión?",
+            "Cancelar", null, options);
+
+        if (string.IsNullOrEmpty(chosenName) || chosenName == "Cancelar") return;
+
+        try
+        {
+            IsBusy = true;
+            var keepType = selected.FirstOrDefault(s => s.TipoSesion == chosenName) ?? selected.First();
+            keepType.TipoSesion = chosenName;
+            await _databaseService.SaveSessionTypeAsync(keepType);
+
+            var duplicates = selected.Where(s => s.Id != keepType.Id).Select(s => s.Id).ToList();
+            var merged = await _databaseService.MergeSessionTypesAsync(keepType.Id, duplicates);
+
+            await Shell.Current.DisplayAlert("Fusión completada",
+                $"Se han fusionado {merged + 1} tipos de sesión bajo el nombre '{chosenName}'.", "OK");
+            await LoadSessionTypesAsync();
+        }
+        catch (Exception ex)
+        {
+            await Shell.Current.DisplayAlert("Error", $"Error al fusionar: {ex.Message}", "OK");
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private async Task ConsolidateAthletesAsync()
+    {
+        if (IsBusy) return;
+
+        try
+        {
+            IsBusy = true;
+            var duplicatesRemoved = await _databaseService.ConsolidateDuplicateAthletesAsync();
+
+            if (duplicatesRemoved > 0)
+            {
+                await Shell.Current.DisplayAlert("Consolidación",
+                    $"Se han consolidado {duplicatesRemoved} atletas duplicados.", "OK");
+            }
+            else
+            {
+                await Shell.Current.DisplayAlert("Consolidación",
+                    "No se encontraron atletas duplicados.", "OK");
+            }
+
+            await LoadAthletesAsync();
+        }
+        catch (Exception ex)
+        {
+            await Shell.Current.DisplayAlert("Error", $"Error al consolidar: {ex.Message}", "OK");
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    #endregion
+}
