@@ -274,3 +274,33 @@ public sealed class ReplayKitCameraPreviewHandler : ViewHandler<ReplayKitCameraP
     }
 }
 #endif
+
+#if WINDOWS
+using Microsoft.Maui.Handlers;
+using CrownRFEP_Reader.Views.Controls;
+using WinBorder = Microsoft.UI.Xaml.Controls.Border;
+
+namespace CrownRFEP_Reader.Handlers;
+
+/// <summary>
+/// Handler stub para ReplayKitCameraPreview en Windows.
+/// ReplayKit no está disponible en Windows, este es solo un placeholder.
+/// </summary>
+public sealed class ReplayKitCameraPreviewHandler : ViewHandler<ReplayKitCameraPreview, WinBorder>
+{
+    public static IPropertyMapper<ReplayKitCameraPreview, ReplayKitCameraPreviewHandler> Mapper
+        = new PropertyMapper<ReplayKitCameraPreview, ReplayKitCameraPreviewHandler>(ViewMapper);
+
+    public ReplayKitCameraPreviewHandler() : base(Mapper)
+    {
+    }
+
+    protected override WinBorder CreatePlatformView()
+    {
+        return new WinBorder
+        {
+            Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Transparent)
+        };
+    }
+}
+#endif

@@ -19,10 +19,10 @@
             </Frame.GestureRecognizers>
 
             <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
-                <Label Text="🎥" FontSize="20" VerticalOptions="Center" />
+                <Label Text="🎥" FontSize="{StaticResource FontSizeTitle}" VerticalOptions="Center" />
                 <VerticalStackLayout Grid.Column="1" Spacing="2">
-                    <Label Text="Videolecciones" FontSize="16" TextColor="White" FontAttributes="Bold" />
-                    <Label Text="Todas las videolecciones guardadas" FontSize="12" TextColor="#FFAAAAAA" />
+                    <Label Text="Videolecciones" FontSize="{StaticResource FontSizeSubtitle}" TextColor="White" FontAttributes="Bold" />
+                    <Label Text="Todas las videolecciones guardadas" FontSize="{StaticResource FontSizeSmall}" TextColor="#FFAAAAAA" />
                 </VerticalStackLayout>
             </Grid>
         </Frame>
@@ -59,7 +59,7 @@
                                 </Frame.GestureRecognizers>
                                 
                                 <Grid Padding="0">
-                                    <Label FontSize="16"
+                                    <Label FontSize="{StaticResource FontSizeSubtitle}"
                                            TextColor="{AppThemeBinding Light={StaticResource PrimaryTextColor}, Dark={StaticResource PrimaryTextColor}}"
                                            LineBreakMode="TailTruncation">
                                         <Label.FormattedText>
@@ -80,9 +80,9 @@
                 
                 <CollectionView.EmptyView>
                     <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center" Padding="40">
-                        <Label Text="🔍" FontSize="48" HorizontalOptions="Center"/>
+                        <Label Text="🔍" FontSize="{StaticResource FontSizeDisplay}" HorizontalOptions="Center"/>
                         <Label Text="No se encontraron sesiones" 
-                               FontSize="18" 
+                               FontSize="{StaticResource FontSizeTitle}" 
                                HorizontalOptions="Center" 
                                TextColor="Gray"/>
                     </VerticalStackLayout>

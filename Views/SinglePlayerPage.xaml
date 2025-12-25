@@ -79,22 +79,22 @@
                         <!--  Nombre del atleta  -->
                         <Label
                             FontAttributes="Bold"
-                            FontSize="16"
+                            FontSize="{StaticResource FontSizeSubtitle}"
                             Text="{Binding AthleteName}"
                             TextColor="White" />
                         
                         <!--  Sesión  -->
                         <HorizontalStackLayout Spacing="8">
                             <Label
-                                FontSize="12"
+                                FontSize="{StaticResource FontSizeSmall}"
                                 Text="{Binding SessionName}"
                                 TextColor="#FFAAAAAA" />
                             <Label
-                                FontSize="12"
+                                FontSize="{StaticResource FontSizeSmall}"
                                 Text="•"
                                 TextColor="#FF666666" />
                             <Label
-                                FontSize="12"
+                                FontSize="{StaticResource FontSizeSmall}"
                                 Text="{Binding SessionPlace}"
                                 TextColor="#FFAAAAAA" />
                         </HorizontalStackLayout>
@@ -102,15 +102,15 @@
                         <!--  Fecha y sección  -->
                         <HorizontalStackLayout Spacing="8">
                             <Label
-                                FontSize="11"
+                                FontSize="{StaticResource FontSizeSmall}"
                                 Text="{Binding SessionDate}"
                                 TextColor="#FF888888" />
                             <Label
-                                FontSize="11"
+                                FontSize="{StaticResource FontSizeSmall}"
                                 Text="•"
                                 TextColor="#FF666666" />
                             <Label
-                                FontSize="11"
+                                FontSize="{StaticResource FontSizeSmall}"
                                 Text="{Binding SectionText}"
                                 TextColor="#FF888888" />
                         </HorizontalStackLayout>
@@ -118,11 +118,11 @@
                         <!--  Duración y tamaño  -->
                         <HorizontalStackLayout Spacing="8">
                             <Label
-                                FontSize="10"
+                                FontSize="{StaticResource FontSizeCaption}"
                                 Text="{Binding VideoDurationText, StringFormat='Duración: {0}'}"
                                 TextColor="#FF666666" />
                             <Label
-                                FontSize="10"
+                                FontSize="{StaticResource FontSizeCaption}"
                                 Text="{Binding VideoSizeText, StringFormat='({0})'}"
                                 TextColor="#FF666666" />
                         </HorizontalStackLayout>
@@ -130,7 +130,7 @@
                         <!--  Etiquetas asignadas (chips verdes con X)  -->
                         <VerticalStackLayout IsVisible="{Binding HasTags}" Spacing="2">
                             <Label
-                                FontSize="9"
+                                FontSize="{StaticResource FontSizeCaption}"
                                 Text="ETIQUETAS"
                                 TextColor="#FF666666" />
                             <FlexLayout
@@ -149,13 +149,13 @@
                                             StrokeThickness="0">
                                             <HorizontalStackLayout Spacing="4">
                                                 <controls:SymbolIcon
-                                                    HeightRequest="10"
+                                                    HeightRequest="{StaticResource IconSizeXSmall}"
                                                     SymbolName="tag.fill"
                                                     TintColor="White"
                                                     VerticalOptions="Center"
-                                                    WidthRequest="10" />
+                                                    WidthRequest="{StaticResource IconSizeXSmall}" />
                                                 <Label
-                                                    FontSize="10"
+                                                    FontSize="{StaticResource FontSizeCaption}"
                                                     Text="{Binding NombreTag}"
                                                     TextColor="White"
                                                     VerticalOptions="Center" />
@@ -171,10 +171,10 @@
                                                             CommandParameter="{Binding .}" />
                                                     </Border.GestureRecognizers>
                                                     <controls:SymbolIcon
-                                                        HeightRequest="8"
+                                                        HeightRequest="{StaticResource IconSizeXSmall}"
                                                         SymbolName="xmark"
                                                         TintColor="White"
-                                                        WidthRequest="8" />
+                                                        WidthRequest="{StaticResource IconSizeXSmall}" />
                                                 </Border>
                                             </HorizontalStackLayout>
                                         </Border>
@@ -186,7 +186,7 @@
                         <!--  Eventos (chips naranjas con X)  -->
                         <VerticalStackLayout IsVisible="{Binding HasEventTags}" Spacing="2">
                             <Label
-                                FontSize="9"
+                                FontSize="{StaticResource FontSizeCaption}"
                                 Text="EVENTOS"
                                 TextColor="#FF666666" />
                             <FlexLayout
@@ -205,13 +205,13 @@
                                             StrokeThickness="0">
                                             <HorizontalStackLayout Spacing="4">
                                                 <controls:SymbolIcon
-                                                    HeightRequest="10"
+                                                    HeightRequest="{StaticResource IconSizeXSmall}"
                                                     SymbolName="clock.badge.checkmark"
                                                     TintColor="White"
                                                     VerticalOptions="Center"
-                                                    WidthRequest="10" />
+                                                    WidthRequest="{StaticResource IconSizeXSmall}" />
                                                 <Label
-                                                    FontSize="10"
+                                                    FontSize="{StaticResource FontSizeCaption}"
                                                     Text="{Binding NombreTag}"
                                                     TextColor="White"
                                                     VerticalOptions="Center" />
@@ -227,10 +227,10 @@
                                                             CommandParameter="{Binding .}" />
                                                     </Border.GestureRecognizers>
                                                     <controls:SymbolIcon
-                                                        HeightRequest="8"
+                                                        HeightRequest="{StaticResource IconSizeXSmall}"
                                                         SymbolName="xmark"
                                                         TintColor="White"
-                                                        WidthRequest="8" />
+                                                        WidthRequest="{StaticResource IconSizeXSmall}" />
                                                 </Border>
                                             </HorizontalStackLayout>
                                         </Border>
@@ -248,7 +248,7 @@
                             StrokeShape="RoundRectangle 4"
                             StrokeThickness="0">
                             <Label
-                                FontSize="11"
+                                FontSize="{StaticResource FontSizeSmall}"
                                 Text="{Binding BadgeText}"
                                 TextColor="White" />
                         </Border>
@@ -256,7 +256,7 @@
                         <!--  Lista de eventos con timestamp  -->
                         <VerticalStackLayout IsVisible="{Binding HasTagEvents}" Spacing="4" Margin="0,8,0,0">
                             <Label
-                                FontSize="9"
+                                FontSize="{StaticResource FontSizeCaption}"
                                 Text="EVENTOS MARCADOS"
                                 TextColor="#FF666666" />
                             <VerticalStackLayout
@@ -284,13 +284,13 @@
                                                     </Border.GestureRecognizers>
                                                     <HorizontalStackLayout Spacing="3">
                                                         <controls:SymbolIcon
-                                                            HeightRequest="9"
+                                                            HeightRequest="{StaticResource IconSizeXSmall}"
                                                             SymbolName="play.fill"
                                                             TintColor="#FF6DDDFF"
-                                                            WidthRequest="9" />
+                                                            WidthRequest="{StaticResource IconSizeXSmall}" />
                                                         <Label
                                                             Text="{Binding TimestampFormatted}"
-                                                            FontSize="10"
+                                                            FontSize="{StaticResource FontSizeCaption}"
                                                             FontAttributes="Bold"
                                                             TextColor="#FF6DDDFF" />
                                                     </HorizontalStackLayout>
@@ -306,7 +306,7 @@
                                                     HorizontalOptions="Start">
                                                     <Label
                                                         Text="{Binding TagName}"
-                                                        FontSize="9"
+                                                        FontSize="{StaticResource FontSizeCaption}"
                                                         TextColor="White" />
                                                 </Border>
                                                 
@@ -323,10 +323,10 @@
                                                             CommandParameter="{Binding .}" />
                                                     </Border.GestureRecognizers>
                                                     <controls:SymbolIcon
-                                                        HeightRequest="8"
+                                                        HeightRequest="{StaticResource IconSizeXSmall}"
                                                         SymbolName="trash.fill"
                                                         TintColor="#FFFF6B6B"
-                                                        WidthRequest="8" />
+                                                        WidthRequest="{StaticResource IconSizeXSmall}" />
                                                 </Border>
                                             </Grid>
                                         </Border>
@@ -351,8 +351,8 @@
                         <!-- Videolección (toggle start/stop) - separado del resto -->
                         <Border
                             x:Name="VideoLessonRecordButton"
-                            WidthRequest="44"
-                            HeightRequest="44"
+                            WidthRequest="{StaticResource ElementHeightLarge}"
+                            HeightRequest="{StaticResource ElementHeightLarge}"
                             Padding="0"
                             BackgroundColor="#FF2A2A2A"
                             StrokeShape="RoundRectangle 22"
@@ -363,8 +363,8 @@
                             <Grid>
                                 <controls:SymbolIcon
                                     x:Name="VideoLessonRecordIcon"
-                                    WidthRequest="18"
-                                    HeightRequest="18"
+                                    WidthRequest="{StaticResource IconSizeDefault}"
+                                    HeightRequest="{StaticResource IconSizeDefault}"
                                     SymbolName="record.circle"
                                     TintColor="White"
                                     HorizontalOptions="Center"
@@ -389,8 +389,8 @@
                                     VerticalOptions="Center" />
                                 <Label
                                     x:Name="RecordingTimerLabel"
-                                    FontFamily="SF Pro Text"
-                                    FontSize="14"
+                                    FontFamily="{StaticResource AppFontBody}"
+                                    FontSize="{StaticResource FontSizeBody}"
                                     FontAttributes="Bold"
                                     Text="00:00"
                                     TextColor="White"
@@ -411,8 +411,8 @@
                             <HorizontalStackLayout Spacing="6">
                                 <Border
                                     x:Name="VideoLessonCameraToggle"
-                                    WidthRequest="34"
-                                    HeightRequest="34"
+                                    WidthRequest="{StaticResource ElementHeightDefault}"
+                                    HeightRequest="{StaticResource ElementHeightDefault}"
                                     Padding="0"
                                     BackgroundColor="#FF2A2A2A"
                                     StrokeShape="RoundRectangle 17"
@@ -423,8 +423,8 @@
                                     <Grid>
                                         <controls:SymbolIcon
                                             x:Name="VideoLessonCameraToggleIcon"
-                                            WidthRequest="16"
-                                            HeightRequest="16"
+                                            WidthRequest="{StaticResource IconSizeMedium}"
+                                            HeightRequest="{StaticResource IconSizeMedium}"
                                             SymbolName="video.fill"
                                             TintColor="White"
                                             HorizontalOptions="Center"
@@ -434,8 +434,8 @@
 
                                 <Border
                                     x:Name="VideoLessonMicToggle"
-                                    WidthRequest="34"
-                                    HeightRequest="34"
+                                    WidthRequest="{StaticResource ElementHeightDefault}"
+                                    HeightRequest="{StaticResource ElementHeightDefault}"
                                     Padding="0"
                                     BackgroundColor="#FF2A2A2A"
                                     StrokeShape="RoundRectangle 17"
@@ -446,8 +446,8 @@
                                     <Grid>
                                         <controls:SymbolIcon
                                             x:Name="VideoLessonMicToggleIcon"
-                                            WidthRequest="16"
-                                            HeightRequest="16"
+                                            WidthRequest="{StaticResource IconSizeMedium}"
+                                            HeightRequest="{StaticResource IconSizeMedium}"
                                             SymbolName="mic.fill"
                                             TintColor="White"
                                             HorizontalOptions="Center"
@@ -470,12 +470,12 @@
                             </Border.GestureRecognizers>
                             <HorizontalStackLayout Spacing="6">
                                 <controls:SymbolIcon
-                                    HeightRequest="16"
+                                    HeightRequest="{StaticResource IconSizeMedium}"
                                     SymbolName="person.badge.plus"
                                     TintColor="#FF6DDDFF"
-                                    WidthRequest="16" />
+                                    WidthRequest="{StaticResource IconSizeMedium}" />
                                 <Label
-                                    FontSize="11"
+                                    FontSize="{StaticResource FontSizeSmall}"
                                     Text="Atleta"
                                     TextColor="White"
                                     VerticalOptions="Center" />
@@ -495,12 +495,12 @@
                             </Border.GestureRecognizers>
                             <HorizontalStackLayout Spacing="6">
                                 <controls:SymbolIcon
-                                    HeightRequest="16"
+                                    HeightRequest="{StaticResource IconSizeMedium}"
                                     SymbolName="arrow.triangle.branch"
                                     TintColor="#FFFFA726"
-                                    WidthRequest="16" />
+                                    WidthRequest="{StaticResource IconSizeMedium}" />
                                 <Label
-                                    FontSize="11"
+                                    FontSize="{StaticResource FontSizeSmall}"
                                     Text="Tramo"
                                     TextColor="White"
                                     VerticalOptions="Center" />
@@ -520,12 +520,12 @@
                             </Border.GestureRecognizers>
                             <HorizontalStackLayout Spacing="6">
                                 <controls:SymbolIcon
-                                    HeightRequest="16"
+                                    HeightRequest="{StaticResource IconSizeMedium}"
                                     SymbolName="tag.fill"
                                     TintColor="#FF6DDDFF"
-                                    WidthRequest="16" />
+                                    WidthRequest="{StaticResource IconSizeMedium}" />
                                 <Label
-                                    FontSize="12"
+                                    FontSize="{StaticResource FontSizeSmall}"
                                     Text="Etiquetas"
                                     TextColor="White"
                                     VerticalOptions="Center" />
@@ -545,12 +545,12 @@
                             </Border.GestureRecognizers>
                             <HorizontalStackLayout Spacing="6">
                                 <controls:SymbolIcon
-                                    HeightRequest="16"
+                                    HeightRequest="{StaticResource IconSizeMedium}"
                                     SymbolName="clock.badge.checkmark"
                                     TintColor="#FFFF7043"
-                                    WidthRequest="16" />
+                                    WidthRequest="{StaticResource IconSizeMedium}" />
                                 <Label
-                                    FontSize="11"
+                                    FontSize="{StaticResource FontSizeSmall}"
                                     Text="Eventos"
                                     TextColor="White"
                                     VerticalOptions="Center" />
@@ -570,12 +570,12 @@
                             </Border.GestureRecognizers>
                             <HorizontalStackLayout Spacing="6">
                                 <controls:SymbolIcon
-                                    HeightRequest="16"
+                                    HeightRequest="{StaticResource IconSizeMedium}"
                                     SymbolName="pencil"
                                     TintColor="#FFFF7043"
-                                    WidthRequest="16" />
+                                    WidthRequest="{StaticResource IconSizeMedium}" />
                                 <Label
-                                    FontSize="11"
+                                    FontSize="{StaticResource FontSizeSmall}"
                                     Text="Dibujar"
                                     TextColor="White"
                                     VerticalOptions="Center" />
@@ -595,12 +595,12 @@
                             </Border.GestureRecognizers>
                             <HorizontalStackLayout Spacing="6">
                                 <controls:SymbolIcon
-                                    HeightRequest="16"
+                                    HeightRequest="{StaticResource IconSizeMedium}"
                                     SymbolName="timer"
                                     TintColor="#FF4FC3F7"
                                     WidthRequest="16" />
                                 <Label
-                                    FontSize="11"
+                                    FontSize="{StaticResource FontSizeSmall}"
                                     Text="Split"
                                     TextColor="White"
                                     VerticalOptions="Center" />
@@ -633,8 +633,8 @@
                                     <TapGestureRecognizer Tapped="OnSelectStrokeToolTapped" />
                                 </Border.GestureRecognizers>
                                 <controls:SymbolIcon
-                                    HeightRequest="16"
-                                    WidthRequest="16"
+                                    HeightRequest="{StaticResource IconSizeMedium}"
+                                    WidthRequest="{StaticResource IconSizeMedium}"
                                     SymbolName="scribble"
                                     TintColor="White" />
                             </Border>
@@ -649,8 +649,8 @@
                                     <TapGestureRecognizer Tapped="OnSelectTextToolTapped" />
                                 </Border.GestureRecognizers>
                                 <controls:SymbolIcon
-                                    HeightRequest="16"
-                                    WidthRequest="16"
+                                    HeightRequest="{StaticResource IconSizeMedium}"
+                                    WidthRequest="{StaticResource IconSizeMedium}"
                                     SymbolName="textformat"
                                     TintColor="White" />
                             </Border>
@@ -665,8 +665,8 @@
                                     <TapGestureRecognizer Tapped="OnSelectShapeToolTapped" />
                                 </Border.GestureRecognizers>
                                 <controls:SymbolIcon
-                                    HeightRequest="16"
-                                    WidthRequest="16"
+                                    HeightRequest="{StaticResource IconSizeMedium}"
+                                    WidthRequest="{StaticResource IconSizeMedium}"
                                     SymbolName="square.on.circle"
                                     TintColor="White" />
                             </Border>
@@ -683,8 +683,8 @@
                                 </Border.GestureRecognizers>
                                 <HorizontalStackLayout Spacing="6" VerticalOptions="Center">
                                     <controls:SymbolIcon
-                                        HeightRequest="16"
-                                        WidthRequest="16"
+                                        HeightRequest="{StaticResource IconSizeMedium}"
+                                        WidthRequest="{StaticResource IconSizeMedium}"
                                         SymbolName="paintpalette"
                                         TintColor="White" />
                                     <Border
@@ -844,7 +844,7 @@
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer Tapped="OnSelectTextSizeSmallTapped" />
                                         </Border.GestureRecognizers>
-                                        <Label Text="A" FontSize="12" TextColor="White" HorizontalOptions="Center" VerticalOptions="Center" />
+                                        <Label Text="A" FontSize="{StaticResource FontSizeSmall}" TextColor="White" HorizontalOptions="Center" VerticalOptions="Center" />
                                     </Border>
 
                                     <Border
@@ -856,7 +856,7 @@
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer Tapped="OnSelectTextSizeMediumTapped" />
                                         </Border.GestureRecognizers>
-                                        <Label Text="A" FontSize="16" TextColor="White" HorizontalOptions="Center" VerticalOptions="Center" />
+                                        <Label Text="A" FontSize="{StaticResource FontSizeSubtitle}" TextColor="White" HorizontalOptions="Center" VerticalOptions="Center" />
                                     </Border>
 
                                     <Border
@@ -868,7 +868,7 @@
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer Tapped="OnSelectTextSizeLargeTapped" />
                                         </Border.GestureRecognizers>
-                                        <Label Text="A" FontSize="22" TextColor="White" HorizontalOptions="Center" VerticalOptions="Center" />
+                                        <Label Text="A" FontSize="{StaticResource FontSizeHeader}" TextColor="White" HorizontalOptions="Center" VerticalOptions="Center" />
                                     </Border>
                                 </HorizontalStackLayout>
                             </VerticalStackLayout>
@@ -885,8 +885,8 @@
                                     <TapGestureRecognizer Tapped="OnSelectShapeRectTapped" />
                                 </Border.GestureRecognizers>
                                 <controls:SymbolIcon
-                                    HeightRequest="16"
-                                    WidthRequest="16"
+                                    HeightRequest="{StaticResource IconSizeMedium}"
+                                    WidthRequest="{StaticResource IconSizeMedium}"
                                     SymbolName="rectangle"
                                     TintColor="White" />
                             </Border>
@@ -901,8 +901,8 @@
                                     <TapGestureRecognizer Tapped="OnSelectShapeCircleTapped" />
                                 </Border.GestureRecognizers>
                                 <controls:SymbolIcon
-                                    HeightRequest="16"
-                                    WidthRequest="16"
+                                    HeightRequest="{StaticResource IconSizeMedium}"
+                                    WidthRequest="{StaticResource IconSizeMedium}"
                                     SymbolName="circle"
                                     TintColor="White" />
                             </Border>
@@ -917,8 +917,8 @@
                                     <TapGestureRecognizer Tapped="OnSelectShapeLineTapped" />
                                 </Border.GestureRecognizers>
                                 <controls:SymbolIcon
-                                    HeightRequest="16"
-                                    WidthRequest="16"
+                                    HeightRequest="{StaticResource IconSizeMedium}"
+                                    WidthRequest="{StaticResource IconSizeMedium}"
                                     SymbolName="line.diagonal"
                                     TintColor="White" />
                             </Border>
@@ -933,8 +933,8 @@
                                     <TapGestureRecognizer Tapped="OnSelectShapeArrowTapped" />
                                 </Border.GestureRecognizers>
                                 <controls:SymbolIcon
-                                    HeightRequest="16"
-                                    WidthRequest="16"
+                                    HeightRequest="{StaticResource IconSizeMedium}"
+                                    WidthRequest="{StaticResource IconSizeMedium}"
                                     SymbolName="arrow.right"
                                     TintColor="White" />
                             </Border>
@@ -952,11 +952,11 @@
                             </Border.GestureRecognizers>
                             <HorizontalStackLayout Spacing="8" HorizontalOptions="Center">
                                 <controls:SymbolIcon
-                                    HeightRequest="16"
-                                    WidthRequest="16"
+                                    HeightRequest="{StaticResource IconSizeMedium}"
+                                    WidthRequest="{StaticResource IconSizeMedium}"
                                     SymbolName="trash"
                                     TintColor="White" />
-                                <Label Text="Borrar" FontSize="12" TextColor="White" VerticalOptions="Center" />
+                                <Label Text="Borrar" FontSize="{StaticResource FontSizeSmall}" TextColor="White" VerticalOptions="Center" />
                             </HorizontalStackLayout>
                         </Border>
                     </VerticalStackLayout>
@@ -978,7 +978,7 @@
                         <Grid ColumnDefinitions="*,Auto">
                             <Label
                                 FontAttributes="Bold"
-                                FontSize="16"
+                                FontSize="{StaticResource FontSizeSubtitle}"
                                 Text="Asignar atleta al video"
                                 TextColor="White" />
                             <Border
@@ -990,21 +990,21 @@
                                     <TapGestureRecognizer Command="{Binding ToggleAthleteAssignPanelCommand}" />
                                 </Border.GestureRecognizers>
                                 <controls:SymbolIcon
-                                    HeightRequest="16"
+                                    HeightRequest="{StaticResource IconSizeMedium}"
                                     SymbolName="xmark.circle.fill"
                                     TintColor="#FF888888"
-                                    WidthRequest="16" />
+                                    WidthRequest="{StaticResource IconSizeMedium}" />
                             </Border>
                         </Grid>
                         
                         <!--  Atleta actual  -->
                         <HorizontalStackLayout Spacing="8">
                             <Label
-                                FontSize="12"
+                                FontSize="{StaticResource FontSizeSmall}"
                                 Text="Atleta actual:"
                                 TextColor="#FF888888" />
                             <Label
-                                FontSize="12"
+                                FontSize="{StaticResource FontSizeSmall}"
                                 FontAttributes="Bold"
                                 Text="{Binding CurrentAthleteText}"
                                 TextColor="#FFAAAAAA" />
@@ -1017,7 +1017,7 @@
                         
                         <!--  Seleccionar atleta existente  -->
                         <Label
-                            FontSize="13"
+                            FontSize="{StaticResource FontSizeBody}"
                             Text="Seleccionar atleta existente:"
                             TextColor="#FFCCCCCC" />
                         
@@ -1033,7 +1033,7 @@
                                     <BindableLayout.EmptyView>
                                         <Label
                                             Text="No hay atletas disponibles"
-                                            FontSize="12"
+                                            FontSize="{StaticResource FontSizeSmall}"
                                             TextColor="#FF666666"
                                             HorizontalOptions="Center"
                                             Margin="0,20" />
@@ -1053,7 +1053,7 @@
                                                 </Border.GestureRecognizers>
                                                 <Label
                                                     Text="{Binding NombreCompleto}"
-                                                    FontSize="13"
+                                                    FontSize="{StaticResource FontSizeBody}"
                                                     TextColor="White"
                                                     LineBreakMode="TailTruncation"
                                                     InputTransparent="True" />
@@ -1069,9 +1069,9 @@
                             Text="Asignar seleccionado"
                             BackgroundColor="#FF6DDDFF"
                             TextColor="Black"
-                            FontSize="13"
+                            FontSize="{StaticResource FontSizeBody}"
                             CornerRadius="6"
-                            HeightRequest="40" />
+                            HeightRequest="{StaticResource ElementHeightLarge}" />
                         
                         <!--  Separador con texto  -->
                         <Grid ColumnDefinitions="*,Auto,*" Margin="0,8">
@@ -1083,7 +1083,7 @@
                             <Label
                                 Grid.Column="1"
                                 Text="o crear nuevo"
-                                FontSize="11"
+                                FontSize="{StaticResource FontSizeSmall}"
                                 TextColor="#FF666666"
                                 Margin="8,0" />
                             <BoxView
@@ -1128,9 +1128,9 @@
                             Text="Crear y asignar"
                             BackgroundColor="#FF6DDDFF"
                             TextColor="White"
-                            FontSize="13"
+                            FontSize="{StaticResource FontSizeBody}"
                             CornerRadius="6"
-                            HeightRequest="40" />
+                            HeightRequest="{StaticResource ElementHeightLarge}" />
                     </VerticalStackLayout>
                 </Border>
                 
@@ -1150,7 +1150,7 @@
                         <Grid ColumnDefinitions="*,Auto">
                             <Label
                                 FontAttributes="Bold"
-                                FontSize="16"
+                                FontSize="{StaticResource FontSizeSubtitle}"
                                 Text="Asignar tramo/sección"
                                 TextColor="White" />
                             <Border
@@ -1162,21 +1162,21 @@
                                     <TapGestureRecognizer Command="{Binding ToggleSectionAssignPanelCommand}" />
                                 </Border.GestureRecognizers>
                                 <controls:SymbolIcon
-                                    HeightRequest="16"
+                                    HeightRequest="{StaticResource IconSizeMedium}"
                                     SymbolName="xmark.circle.fill"
                                     TintColor="#FF888888"
-                                    WidthRequest="16" />
+                                    WidthRequest="{StaticResource IconSizeMedium}" />
                             </Border>
                         </Grid>
                         
                         <!--  Sección actual  -->
                         <HorizontalStackLayout Spacing="8">
                             <Label
-                                FontSize="12"
+                                FontSize="{StaticResource FontSizeSmall}"
                                 Text="Tramo actual:"
                                 TextColor="#FF888888" />
                             <Label
-                                FontSize="12"
+                                FontSize="{StaticResource FontSizeSmall}"
                                 FontAttributes="Bold"
                                 Text="{Binding CurrentSectionText}"
                                 TextColor="#FFAAAAAA" />
@@ -1186,7 +1186,7 @@
                         
                         <!--  Selector de sección  -->
                         <Label
-                            FontSize="13"
+                            FontSize="{StaticResource FontSizeBody}"
                             Text="Seleccionar tramo:"
                             TextColor="#FFCCCCCC" />
                         
@@ -1202,7 +1202,7 @@
                                 </Border.GestureRecognizers>
                                 <Label
                                     Text="-"
-                                    FontSize="18"
+                                    FontSize="{StaticResource FontSizeTitle}"
                                     FontAttributes="Bold"
                                     TextColor="White"
                                     HorizontalOptions="Center" />
@@ -1211,7 +1211,7 @@
                             <Label
                                 Grid.Column="1"
                                 Text="{Binding SectionToAssign, StringFormat='Tramo {0}'}"
-                                FontSize="18"
+                                FontSize="{StaticResource FontSizeTitle}"
                                 FontAttributes="Bold"
                                 TextColor="#FFFFA726"
                                 VerticalOptions="Center"
@@ -1228,7 +1228,7 @@
                                 </Border.GestureRecognizers>
                                 <Label
                                     Text="+"
-                                    FontSize="18"
+                                    FontSize="{StaticResource FontSizeTitle}"
                                     FontAttributes="Bold"
                                     TextColor="White"
                                     HorizontalOptions="Center" />
@@ -1240,9 +1240,9 @@
                             Text="Asignar tramo"
                             BackgroundColor="#FFFFA726"
                             TextColor="Black"
-                            FontSize="13"
+                            FontSize="{StaticResource FontSizeBody}"
                             CornerRadius="6"
-                            HeightRequest="40" />
+                            HeightRequest="{StaticResource ElementHeightLarge}" />
                     </VerticalStackLayout>
                 </Border>
                 
@@ -1262,7 +1262,7 @@
                         <Grid ColumnDefinitions="*,Auto">
                             <Label
                                 FontAttributes="Bold"
-                                FontSize="16"
+                                FontSize="{StaticResource FontSizeSubtitle}"
                                 Text="Asignar etiquetas"
                                 TextColor="White" />
                             <Border
@@ -1274,21 +1274,21 @@
                                     <TapGestureRecognizer Command="{Binding ToggleTagsAssignPanelCommand}" />
                                 </Border.GestureRecognizers>
                                 <controls:SymbolIcon
-                                    HeightRequest="16"
+                                    HeightRequest="{StaticResource IconSizeMedium}"
                                     SymbolName="xmark.circle.fill"
                                     TintColor="#FF888888"
-                                    WidthRequest="16" />
+                                    WidthRequest="{StaticResource IconSizeMedium}" />
                             </Border>
                         </Grid>
                         
                         <!--  Etiquetas actuales  -->
                         <HorizontalStackLayout Spacing="8">
                             <Label
-                                FontSize="12"
+                                FontSize="{StaticResource FontSizeSmall}"
                                 Text="Etiquetas actuales:"
                                 TextColor="#FF888888" />
                             <Label
-                                FontSize="12"
+                                FontSize="{StaticResource FontSizeSmall}"
                                 FontAttributes="Bold"
                                 Text="{Binding CurrentTagsText}"
                                 TextColor="#FFAAAAAA"
@@ -1300,7 +1300,7 @@
                         
                         <!--  Lista de tags disponibles  -->
                         <Label
-                            FontSize="13"
+                            FontSize="{StaticResource FontSizeBody}"
                             Text="Seleccionar etiquetas:"
                             TextColor="#FFCCCCCC" />
                         
@@ -1322,7 +1322,7 @@
                                             <HorizontalStackLayout Spacing="4">
                                                 <Label
                                                     Text="{Binding NombreTag}"
-                                                    FontSize="12"
+                                                    FontSize="{StaticResource FontSizeSmall}"
                                                     TextColor="White"
                                                     VerticalOptions="Center">
                                                     <Label.GestureRecognizers>
@@ -1343,10 +1343,10 @@
                                                             CommandParameter="{Binding .}" />
                                                     </Border.GestureRecognizers>
                                                     <controls:SymbolIcon
-                                                        HeightRequest="8"
+                                                        HeightRequest="{StaticResource IconSizeXSmall}"
                                                         SymbolName="xmark"
                                                         TintColor="White"
-                                                        WidthRequest="8" />
+                                                        WidthRequest="{StaticResource IconSizeXSmall}" />
                                                 </Border>
                                             </HorizontalStackLayout>
                                         </Border>
@@ -1358,7 +1358,7 @@
                         <!--  Separador  -->
                         <Grid ColumnDefinitions="*,Auto,*" Margin="0,4">
                             <BoxView Grid.Column="0" HeightRequest="1" BackgroundColor="#FF3A3A3A" VerticalOptions="Center" />
-                            <Label Grid.Column="1" Text="o crear nueva" FontSize="11" TextColor="#FF666666" Margin="8,0" />
+                            <Label Grid.Column="1" Text="o crear nueva" FontSize="{StaticResource FontSizeSmall}" TextColor="#FF666666" Margin="8,0" />
                             <BoxView Grid.Column="2" HeightRequest="1" BackgroundColor="#FF3A3A3A" VerticalOptions="Center" />
                         </Grid>
                         
@@ -1383,10 +1383,10 @@
                                 Text="+"
                                 BackgroundColor="#FF66BB6A"
                                 TextColor="White"
-                                FontSize="16"
+                                FontSize="{StaticResource FontSizeSubtitle}"
                                 CornerRadius="6"
-                                WidthRequest="44"
-                                HeightRequest="40" />
+                                WidthRequest="{StaticResource ElementHeightLarge}"
+                                HeightRequest="{StaticResource ElementHeightLarge}" />
                         </Grid>
                         
                         <Button
@@ -1394,9 +1394,9 @@
                             Text="Guardar etiquetas"
                             BackgroundColor="#FF66BB6A"
                             TextColor="White"
-                            FontSize="13"
+                            FontSize="{StaticResource FontSizeBody}"
                             CornerRadius="6"
-                            HeightRequest="40" />
+                            HeightRequest="{StaticResource ElementHeightLarge}" />
                     </VerticalStackLayout>
                 </Border>
                 
@@ -1416,13 +1416,13 @@
                         <Grid ColumnDefinitions="*,Auto">
                             <HorizontalStackLayout Spacing="8">
                                 <controls:SymbolIcon
-                                    HeightRequest="18"
+                                    HeightRequest="{StaticResource IconSizeDefault}"
                                     SymbolName="clock.badge.checkmark"
                                     TintColor="#FFFF7043"
-                                    WidthRequest="18" />
+                                    WidthRequest="{StaticResource IconSizeDefault}" />
                                 <Label
                                     FontAttributes="Bold"
-                                    FontSize="16"
+                                    FontSize="{StaticResource FontSizeSubtitle}"
                                     Text="Eventos del video"
                                     TextColor="White" />
                             </HorizontalStackLayout>
@@ -1435,10 +1435,10 @@
                                     <TapGestureRecognizer Command="{Binding ToggleTagEventsPanelCommand}" />
                                 </Border.GestureRecognizers>
                                 <controls:SymbolIcon
-                                    HeightRequest="16"
+                                    HeightRequest="{StaticResource IconSizeMedium}"
                                     SymbolName="xmark.circle.fill"
                                     TintColor="#FF888888"
-                                    WidthRequest="16" />
+                                    WidthRequest="{StaticResource IconSizeMedium}" />
                             </Border>
                         </Grid>
                         
@@ -1451,7 +1451,7 @@
                             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                                 <VerticalStackLayout Grid.Column="0" Spacing="6">
                                     <Label
-                                        FontSize="11"
+                                        FontSize="{StaticResource FontSizeSmall}"
                                         Text="Añadir evento en posición actual:"
                                         TextColor="#FF888888" />
                                     <ScrollView HeightRequest="140" BackgroundColor="Transparent">
@@ -1464,7 +1464,7 @@
                                             <BindableLayout.EmptyView>
                                                 <Label
                                                     Text="No hay etiquetas disponibles"
-                                                    FontSize="12"
+                                                    FontSize="{StaticResource FontSizeSmall}"
                                                     TextColor="#FF666666"
                                                     HorizontalOptions="Center"
                                                     Margin="0,20" />
@@ -1485,7 +1485,7 @@
                                                         <HorizontalStackLayout Spacing="4">
                                                             <Label
                                                                 Text="{Binding DisplayName}"
-                                                                FontSize="12"
+                                                                FontSize="{StaticResource FontSizeSmall}"
                                                                 TextColor="White"
                                                                 VerticalOptions="Center" />
                                                             <!--  Botón borrar solo para tags no de sistema  -->
@@ -1502,10 +1502,10 @@
                                                                         CommandParameter="{Binding .}" />
                                                                 </Border.GestureRecognizers>
                                                                 <controls:SymbolIcon
-                                                                    HeightRequest="8"
+                                                                    HeightRequest="{StaticResource IconSizeXSmall}"
                                                                     SymbolName="xmark"
                                                                     TintColor="White"
-                                                                    WidthRequest="8" />
+                                                                    WidthRequest="{StaticResource IconSizeXSmall}" />
                                                             </Border>
                                                         </HorizontalStackLayout>
                                                     </Border>
@@ -1520,13 +1520,13 @@
                                     VerticalOptions="End"
                                     BackgroundColor="#FFFF7043"
                                     TextColor="White"
-                                    FontSize="14"
+                                    FontSize="{StaticResource FontSizeBody}"
                                     CornerRadius="6"
-                                    WidthRequest="44"
-                                    HeightRequest="40">
+                                    WidthRequest="{StaticResource ElementHeightLarge}"
+                                    HeightRequest="{StaticResource ElementHeightLarge}">
                                     <Button.ImageSource>
                                         <FontImageSource
-                                            FontFamily="SymbolsFont"
+                                            FontFamily="{StaticResource AppFontSymbols}"
                                             Glyph="+"
                                             Color="White"
                                             Size="20" />
@@ -1538,7 +1538,7 @@
                         <!--  Separador "o crear nuevo"  -->
                         <Grid ColumnDefinitions="*,Auto,*" Margin="0,4">
                             <BoxView Grid.Column="0" HeightRequest="1" BackgroundColor="#FF3A3A3A" VerticalOptions="Center" />
-                            <Label Grid.Column="1" Text="o crear nuevo" FontSize="11" TextColor="#FF666666" Margin="8,0" />
+                            <Label Grid.Column="1" Text="o crear nuevo" FontSize="{StaticResource FontSizeSmall}" TextColor="#FF666666" Margin="8,0" />
                             <BoxView Grid.Column="2" HeightRequest="1" BackgroundColor="#FF3A3A3A" VerticalOptions="Center" />
                         </Grid>
                         
@@ -1563,17 +1563,17 @@
                                 Text="+"
                                 BackgroundColor="#FFFF7043"
                                 TextColor="White"
-                                FontSize="16"
+                                FontSize="{StaticResource FontSizeSubtitle}"
                                 CornerRadius="6"
-                                WidthRequest="44"
-                                HeightRequest="40" />
+                                WidthRequest="{StaticResource ElementHeightLarge}"
+                                HeightRequest="{StaticResource ElementHeightLarge}" />
                         </Grid>
                         
                         <BoxView HeightRequest="1" BackgroundColor="#FF3A3A3A" />
                         
                         <!--  Lista de eventos  -->
                         <Label
-                            FontSize="12"
+                            FontSize="{StaticResource FontSizeSmall}"
                             Text="{Binding TagEventsCountText}"
                             TextColor="#FFAAAAAA" />
                         
@@ -1584,7 +1584,7 @@
                                 <BindableLayout.EmptyView>
                                     <Label
                                         Text="No hay eventos marcados"
-                                        FontSize="12"
+                                        FontSize="{StaticResource FontSizeSmall}"
                                         TextColor="#FF666666"
                                         HorizontalOptions="Center"
                                         Margin="0,20" />
@@ -1611,13 +1611,13 @@
                                                     </Border.GestureRecognizers>
                                                     <HorizontalStackLayout Spacing="4">
                                                         <controls:SymbolIcon
-                                                            HeightRequest="12"
+                                                            HeightRequest="{StaticResource IconSizeSmall}"
                                                             SymbolName="play.fill"
                                                             TintColor="#FF6DDDFF"
-                                                            WidthRequest="12" />
+                                                            WidthRequest="{StaticResource IconSizeSmall}" />
                                                         <Label
                                                             Text="{Binding TimestampFormatted}"
-                                                            FontSize="12"
+                                                            FontSize="{StaticResource FontSizeSmall}"
                                                             FontAttributes="Bold"
                                                             TextColor="#FF6DDDFF" />
                                                     </HorizontalStackLayout>
@@ -1633,7 +1633,7 @@
                                                     HorizontalOptions="Start">
                                                     <Label
                                                         Text="{Binding TagName}"
-                                                        FontSize="11"
+                                                        FontSize="{StaticResource FontSizeSmall}"
                                                         TextColor="White" />
                                                 </Border>
                                                 
@@ -1653,10 +1653,10 @@
                                                             CommandParameter="{Binding .}" />
                                                     </Border.GestureRecognizers>
                                                     <controls:SymbolIcon
-                                                        HeightRequest="12"
+                                                        HeightRequest="{StaticResource IconSizeSmall}"
                                                         SymbolName="trash"
                                                         TintColor="#FFFF5555"
-                                                        WidthRequest="12" />
+                                                        WidthRequest="{StaticResource IconSizeSmall}" />
                                                 </Border>
                                             </Grid>
                                         </Border>
@@ -1668,12 +1668,12 @@
                         <!--  Nota informativa  -->
                         <HorizontalStackLayout Spacing="6" Opacity="0.7">
                             <controls:SymbolIcon
-                                HeightRequest="12"
+                                HeightRequest="{StaticResource IconSizeSmall}"
                                 SymbolName="info.circle"
                                 TintColor="#FF888888"
-                                WidthRequest="12" />
+                                WidthRequest="{StaticResource IconSizeSmall}" />
                             <Label
-                                FontSize="10"
+                                FontSize="{StaticResource FontSizeCaption}"
                                 Text="Haz clic en el tiempo para ir 1s antes del evento"
                                 TextColor="#FF888888" />
                         </HorizontalStackLayout>
@@ -1696,13 +1696,13 @@
                         <Grid ColumnDefinitions="*,Auto">
                             <HorizontalStackLayout Spacing="8">
                                 <controls:SymbolIcon
-                                    HeightRequest="18"
+                                    HeightRequest="{StaticResource IconSizeDefault}"
                                     SymbolName="timer"
                                     TintColor="#FF4FC3F7"
-                                    WidthRequest="18" />
+                                    WidthRequest="{StaticResource IconSizeDefault}" />
                                 <Label
                                     FontAttributes="Bold"
-                                    FontSize="16"
+                                    FontSize="{StaticResource FontSizeSubtitle}"
                                     Text="Split Time"
                                     TextColor="White" />
                                 <Border
@@ -1713,7 +1713,7 @@
                                     StrokeThickness="0"
                                     VerticalOptions="Center">
                                     <Label
-                                        FontSize="9"
+                                        FontSize="{StaticResource FontSizeCaption}"
                                         Text="GUARDADO"
                                         TextColor="White" />
                                 </Border>
@@ -1727,16 +1727,16 @@
                                     <TapGestureRecognizer Command="{Binding ToggleSplitTimePanelCommand}" />
                                 </Border.GestureRecognizers>
                                 <controls:SymbolIcon
-                                    HeightRequest="16"
+                                    HeightRequest="{StaticResource IconSizeMedium}"
                                     SymbolName="xmark.circle.fill"
                                     TintColor="#FF888888"
-                                    WidthRequest="16" />
+                                    WidthRequest="{StaticResource IconSizeMedium}" />
                             </Border>
                         </Grid>
                         
                         <!--  Descripción  -->
                         <Label
-                            FontSize="11"
+                            FontSize="{StaticResource FontSizeSmall}"
                             Text="Marca un punto de inicio y fin para medir el tiempo de ejecución."
                             TextColor="#FF888888" />
                         
@@ -1744,7 +1744,7 @@
                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
                             <VerticalStackLayout Spacing="4">
                                 <Label
-                                    FontSize="11"
+                                    FontSize="{StaticResource FontSizeSmall}"
                                     Text="INICIO"
                                     TextColor="#FF888888" />
                                 <Border
@@ -1754,7 +1754,7 @@
                                     StrokeThickness="0">
                                     <Label
                                         FontAttributes="Bold"
-                                        FontSize="18"
+                                        FontSize="{StaticResource FontSizeTitle}"
                                         HorizontalOptions="Center"
                                         Text="{Binding SplitStartTimeText}"
                                         TextColor="{Binding HasSplitStart, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF4FC3F7|#FF666666'}" />
@@ -1776,7 +1776,7 @@
                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
                             <VerticalStackLayout Spacing="4">
                                 <Label
-                                    FontSize="11"
+                                    FontSize="{StaticResource FontSizeSmall}"
                                     Text="FIN"
                                     TextColor="#FF888888" />
                                 <Border
@@ -1786,7 +1786,7 @@
                                     StrokeThickness="0">
                                     <Label
                                         FontAttributes="Bold"
-                                        FontSize="18"
+                                        FontSize="{StaticResource FontSizeTitle}"
                                         HorizontalOptions="Center"
                                         Text="{Binding SplitEndTimeText}"
                                         TextColor="{Binding HasSplitEnd, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF4FC3F7|#FF666666'}" />
@@ -1809,7 +1809,7 @@
                         <!--  Duración calculada  -->
                         <VerticalStackLayout Spacing="4">
                             <Label
-                                FontSize="11"
+                                FontSize="{StaticResource FontSizeSmall}"
                                 HorizontalOptions="Center"
                                 Text="DURACIÓN"
                                 TextColor="#FF888888" />
@@ -1820,7 +1820,7 @@
                                 StrokeThickness="0">
                                 <Label
                                     FontAttributes="Bold"
-                                    FontSize="28"
+                                    FontSize="{StaticResource FontSizeHeader}"
                                     HorizontalOptions="Center"
                                     Text="{Binding SplitDurationText}"
                                     TextColor="{Binding HasSplitDuration, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF4CAF50|#FF666666'}" />
@@ -1834,8 +1834,8 @@
                                 BackgroundColor="#FF3A3A3A"
                                 Command="{Binding ClearSplitCommand}"
                                 CornerRadius="8"
-                                FontSize="13"
-                                HeightRequest="44"
+                                FontSize="{StaticResource FontSizeBody}"
+                                HeightRequest="{StaticResource ElementHeightLarge}"
                                 Text="Limpiar"
                                 TextColor="#FFAAAAAA" />
                             <Button
@@ -1843,8 +1843,8 @@
                                 BackgroundColor="{Binding CanSaveSplit, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF4CAF50|#FF3A3A3A'}"
                                 Command="{Binding SaveSplitCommand}"
                                 CornerRadius="8"
-                                FontSize="13"
-                                HeightRequest="44"
+                                FontSize="{StaticResource FontSizeBody}"
+                                HeightRequest="{StaticResource ElementHeightLarge}"
                                 Text="Guardar"
                                 TextColor="White" />
                         </Grid>
@@ -1865,10 +1865,10 @@
                         <TapGestureRecognizer Command="{Binding ToggleOverlayCommand}" />
                     </Border.GestureRecognizers>
                     <controls:SymbolIcon
-                        HeightRequest="20"
+                        HeightRequest="{StaticResource IconSizeLarge}"
                         SymbolName="info.circle"
                         TintColor="White"
-                        WidthRequest="20" />
+                        WidthRequest="{StaticResource IconSizeLarge}" />
                 </Border>
             </Grid>
         </Border>
@@ -1911,7 +1911,7 @@
                 <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
                     <Label
                         Grid.Column="0"
-                        FontSize="12"
+                        FontSize="{StaticResource FontSizeSmall}"
                         Text="{Binding CurrentPositionText}"
                         TextColor="#FFB1B1B1"
                         VerticalOptions="Center" />
@@ -1928,7 +1928,7 @@
                                     <Button
                                         BackgroundColor="#FF373737"
                                         CornerRadius="4"
-                                        FontSize="12"
+                                        FontSize="{StaticResource FontSizeSmall}"
                                         HeightRequest="24"
                                         MinimumHeightRequest="24"
                                         Padding="8,0"
@@ -1974,7 +1974,7 @@
                     </Grid>
                     <Label
                         Grid.Column="2"
-                        FontSize="12"
+                        FontSize="{StaticResource FontSizeSmall}"
                         Text="{Binding DurationText}"
                         TextColor="#FFB1B1B1"
                         VerticalOptions="Center" />
@@ -1992,10 +1992,10 @@
                             <TapGestureRecognizer Command="{Binding FrameBackwardCommand}" />
                         </Border.GestureRecognizers>
                         <controls:SymbolIcon
-                            HeightRequest="20"
+                            HeightRequest="{StaticResource IconSizeLarge}"
                             SymbolName="backward.frame.fill"
                             TintColor="White"
-                            WidthRequest="20" />
+                            WidthRequest="{StaticResource IconSizeLarge}" />
                     </Border>
 
                     <!--  Retroceso 5s  -->
@@ -2008,10 +2008,10 @@
                             <TapGestureRecognizer Command="{Binding SeekBackwardCommand}" />
                         </Border.GestureRecognizers>
                         <controls:SymbolIcon
-                            HeightRequest="20"
+                            HeightRequest="{StaticResource IconSizeLarge}"
                             SymbolName="gobackward.5"
                             TintColor="White"
-                            WidthRequest="20" />
+                            WidthRequest="{StaticResource IconSizeLarge}" />
                     </Border>
 
                     <!--  Play/Pause  -->
@@ -2024,10 +2024,10 @@
                             <TapGestureRecognizer Command="{Binding PlayPauseCommand}" />
                         </Border.GestureRecognizers>
                         <controls:SymbolIcon
-                            HeightRequest="24"
+                            HeightRequest="{StaticResource IconSizeLarge}"
                             SymbolName="{Binding PlayPauseIcon}"
                             TintColor="Black"
-                            WidthRequest="24" />
+                            WidthRequest="{StaticResource IconSizeLarge}" />
                     </Border>
 
                     <!--  Avance 5s  -->
@@ -2040,10 +2040,10 @@
                             <TapGestureRecognizer Command="{Binding SeekForwardCommand}" />
                         </Border.GestureRecognizers>
                         <controls:SymbolIcon
-                            HeightRequest="20"
+                            HeightRequest="{StaticResource IconSizeLarge}"
                             SymbolName="goforward.5"
                             TintColor="White"
-                            WidthRequest="20" />
+                            WidthRequest="{StaticResource IconSizeLarge}" />
                     </Border>
 
                     <!--  Frame siguiente  -->
@@ -2056,10 +2056,10 @@
                             <TapGestureRecognizer Command="{Binding FrameForwardCommand}" />
                         </Border.GestureRecognizers>
                         <controls:SymbolIcon
-                            HeightRequest="20"
+                            HeightRequest="{StaticResource IconSizeLarge}"
                             SymbolName="forward.frame.fill"
                             TintColor="White"
-                            WidthRequest="20" />
+                            WidthRequest="{StaticResource IconSizeLarge}" />
                     </Border>
 
                     <!--  Separador  -->
@@ -2077,7 +2077,7 @@
                         StrokeThickness="0">
                         <HorizontalStackLayout Spacing="8">
                             <Label
-                                FontSize="14"
+                                FontSize="{StaticResource FontSizeBody}"
                                 Text="{Binding SpeedText}"
                                 TextColor="White"
                                 VerticalOptions="Center" />
@@ -2091,7 +2091,7 @@
                                         <TapGestureRecognizer Command="{Binding SetSpeedCommand}" CommandParameter="0.25" />
                                     </Border.GestureRecognizers>
                                     <Label
-                                        FontSize="14"
+                                        FontSize="{StaticResource FontSizeBody}"
                                         Text="0.25x"
                                         TextColor="#FFB1B1B1" />
                                 </Border>
@@ -2104,7 +2104,7 @@
                                         <TapGestureRecognizer Command="{Binding SetSpeedCommand}" CommandParameter="0.5" />
                                     </Border.GestureRecognizers>
                                     <Label
-                                        FontSize="14"
+                                        FontSize="{StaticResource FontSizeBody}"
                                         Text="0.5x"
                                         TextColor="#FFB1B1B1" />
                                 </Border>
@@ -2117,7 +2117,7 @@
                                         <TapGestureRecognizer Command="{Binding SetSpeedCommand}" CommandParameter="1" />
                                     </Border.GestureRecognizers>
                                     <Label
-                                        FontSize="14"
+                                        FontSize="{StaticResource FontSizeBody}"
                                         Text="1x"
                                         TextColor="#FFB1B1B1" />
                                 </Border>
@@ -2130,7 +2130,7 @@
                                         <TapGestureRecognizer Command="{Binding SetSpeedCommand}" CommandParameter="2" />
                                     </Border.GestureRecognizers>
                                     <Label
-                                        FontSize="14"
+                                        FontSize="{StaticResource FontSizeBody}"
                                         Text="2x"
                                         TextColor="#FFB1B1B1" />
                                 </Border>
@@ -2167,12 +2167,12 @@
                         </Border.GestureRecognizers>
                         <HorizontalStackLayout Spacing="6">
                             <controls:SymbolIcon
-                                HeightRequest="16"
+                                HeightRequest="{StaticResource IconSizeMedium}"
                                 SymbolName="chevron.left"
                                 TintColor="White"
-                                WidthRequest="16" />
+                                WidthRequest="{StaticResource IconSizeMedium}" />
                             <Label
-                                FontSize="13"
+                                FontSize="{StaticResource FontSizeBody}"
                                 Text="Anterior"
                                 TextColor="White"
                                 VerticalOptions="Center" />
@@ -2189,7 +2189,7 @@
                     <!--  Indicador de posición en playlist  -->
                     <HorizontalStackLayout HorizontalOptions="Center" Spacing="12">
                         <Label
-                            FontSize="13"
+                            FontSize="{StaticResource FontSizeBody}"
                             Text="{Binding PlaylistPositionText}"
                             TextColor="#FFB1B1B1"
                             VerticalOptions="Center" />
@@ -2205,12 +2205,12 @@
                             </Border.GestureRecognizers>
                             <HorizontalStackLayout Spacing="6">
                                 <controls:SymbolIcon
-                                    HeightRequest="14"
+                                    HeightRequest="{StaticResource IconSizeSmall}"
                                     SymbolName="line.3.horizontal.decrease"
                                     TintColor="#FF6DDDFF"
-                                    WidthRequest="14" />
+                                    WidthRequest="{StaticResource IconSizeSmall}" />
                                 <Label
-                                    FontSize="12"
+                                    FontSize="{StaticResource FontSizeSmall}"
                                     Text="Filtros"
                                     TextColor="#FF6DDDFF"
                                     VerticalOptions="Center" />
@@ -2236,17 +2236,17 @@
                             </Border.GestureRecognizers>
                             <HorizontalStackLayout Spacing="8" WidthRequest="150">
                                 <Label
-                                    FontSize="12"
+                                    FontSize="{StaticResource FontSizeSmall}"
                                     HorizontalOptions="FillAndExpand"
                                     Text="{Binding SelectedAthlete.DisplayName, FallbackValue='Atleta'}"
                                     TextColor="White"
                                     VerticalOptions="Center" />
                                 <controls:SymbolIcon
-                                    HeightRequest="10"
+                                    HeightRequest="{StaticResource IconSizeXSmall}"
                                     SymbolName="chevron.down"
                                     TintColor="#FF888888"
                                     VerticalOptions="Center"
-                                    WidthRequest="10" />
+                                    WidthRequest="{StaticResource IconSizeXSmall}" />
                             </HorizontalStackLayout>
                         </Border>
                         
@@ -2262,17 +2262,17 @@
                             </Border.GestureRecognizers>
                             <HorizontalStackLayout Spacing="8" WidthRequest="130">
                                 <Label
-                                    FontSize="12"
+                                    FontSize="{StaticResource FontSizeSmall}"
                                     HorizontalOptions="FillAndExpand"
                                     Text="{Binding SelectedSection.DisplayName, FallbackValue='Sección'}"
                                     TextColor="White"
                                     VerticalOptions="Center" />
                                 <controls:SymbolIcon
-                                    HeightRequest="10"
+                                    HeightRequest="{StaticResource IconSizeXSmall}"
                                     SymbolName="chevron.down"
                                     TintColor="#FF888888"
                                     VerticalOptions="Center"
-                                    WidthRequest="10" />
+                                    WidthRequest="{StaticResource IconSizeXSmall}" />
                             </HorizontalStackLayout>
                         </Border>
                         
@@ -2288,17 +2288,17 @@
                             </Border.GestureRecognizers>
                             <HorizontalStackLayout Spacing="8" WidthRequest="150">
                                 <Label
-                                    FontSize="12"
+                                    FontSize="{StaticResource FontSizeSmall}"
                                     HorizontalOptions="FillAndExpand"
                                     Text="{Binding SelectedCategory.DisplayName, FallbackValue='Categoría'}"
                                     TextColor="White"
                                     VerticalOptions="Center" />
                                 <controls:SymbolIcon
-                                    HeightRequest="10"
+                                    HeightRequest="{StaticResource IconSizeXSmall}"
                                     SymbolName="chevron.down"
                                     TintColor="#FF888888"
                                     VerticalOptions="Center"
-                                    WidthRequest="10" />
+                                    WidthRequest="{StaticResource IconSizeXSmall}" />
                             </HorizontalStackLayout>
                         </Border>
                         
@@ -2313,12 +2313,12 @@
                             </Border.GestureRecognizers>
                             <HorizontalStackLayout Spacing="4">
                                 <controls:SymbolIcon
-                                    HeightRequest="12"
+                                    HeightRequest="{StaticResource IconSizeSmall}"
                                     SymbolName="xmark"
                                     TintColor="#FFB1B1B1"
-                                    WidthRequest="12" />
+                                    WidthRequest="{StaticResource IconSizeSmall}" />
                                 <Label
-                                    FontSize="11"
+                                    FontSize="{StaticResource FontSizeSmall}"
                                     Text="Limpiar"
                                     TextColor="#FFB1B1B1"
                                     VerticalOptions="Center" />
@@ -2341,15 +2341,15 @@
                         </Border.GestureRecognizers>
                         <HorizontalStackLayout Spacing="6">
                             <Label
-                                FontSize="13"
+                                FontSize="{StaticResource FontSizeBody}"
                                 Text="Siguiente"
                                 TextColor="White"
                                 VerticalOptions="Center" />
                             <controls:SymbolIcon
-                                HeightRequest="16"
+                                HeightRequest="{StaticResource IconSizeMedium}"
                                 SymbolName="chevron.right"
                                 TintColor="White"
-                                WidthRequest="16" />
+                                WidthRequest="{StaticResource IconSizeMedium}" />
                         </HorizontalStackLayout>
                     </Border>
                 </HorizontalStackLayout>

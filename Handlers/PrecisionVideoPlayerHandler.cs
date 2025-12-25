@@ -674,3 +674,361 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
     #endregion
 }
 #endif
+
+#if WINDOWS
+using Microsoft.Maui.Handlers;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Windows.Media.Core;
+using Windows.Media.Playback;
+using Windows.Storage;
+
+namespace CrownRFEP_Reader.Handlers;
+
+/// <summary>
+/// Handler para PrecisionVideoPlayer en Windows usando MediaPlayerElement.
+/// Proporciona control preciso de reproducción de video.
+/// </summary>
+public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPlayer, MediaPlayerElement>
+{
+    private MediaPlayer? _mediaPlayer;
+    private DispatcherTimer? _positionTimer;
+    private bool _isUpdatingPosition;
+    private bool _isSeekingFromBinding;
+    private bool _isSeeking;
+    private TimeSpan _pendingSeekPosition;
+
+    public static IPropertyMapper<Controls.PrecisionVideoPlayer, PrecisionVideoPlayerHandler> Mapper =
+        new PropertyMapper<Controls.PrecisionVideoPlayer, PrecisionVideoPlayerHandler>(ViewHandler.ViewMapper)
+        {
+            [nameof(Controls.PrecisionVideoPlayer.Source)] = MapSource,
+            [nameof(Controls.PrecisionVideoPlayer.Speed)] = MapSpeed,
+            [nameof(Controls.PrecisionVideoPlayer.IsMuted)] = MapIsMuted,
+            [nameof(Controls.PrecisionVideoPlayer.Aspect)] = MapAspect,
+        };
+
+    public PrecisionVideoPlayerHandler() : base(Mapper)
+    {
+    }
+
+    protected override MediaPlayerElement CreatePlatformView()
+    {
+        _mediaPlayer = new MediaPlayer
+        {
+            AutoPlay = false,
+            AudioCategory = MediaPlayerAudioCategory.Media
+        };
+
+        var element = new MediaPlayerElement
+        {
+            AreTransportControlsEnabled = false,
+            Stretch = Microsoft.UI.Xaml.Media.Stretch.Uniform
+        };
+
+        element.SetMediaPlayer(_mediaPlayer);
+
+        return element;
+    }
+
+    protected override void ConnectHandler(MediaPlayerElement platformView)
+    {
+        base.ConnectHandler(platformView);
+
+        if (_mediaPlayer != null)
+        {
+            _mediaPlayer.MediaOpened += OnMediaOpened;
+            _mediaPlayer.MediaEnded += OnMediaEnded;
+            _mediaPlayer.MediaFailed += OnMediaFailed;
+        }
+
+        // Timer para actualizar la posición
+        _positionTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(50)
+        };
+        _positionTimer.Tick += OnPositionTimerTick;
+
+        // Suscribirse a eventos del control
+        VirtualView.PlayRequested += OnPlayRequested;
+        VirtualView.PauseRequested += OnPauseRequested;
+        VirtualView.StopRequested += OnStopRequested;
+        VirtualView.StepForwardRequested += OnStepForwardRequested;
+        VirtualView.StepBackwardRequested += OnStepBackwardRequested;
+        VirtualView.SeekRequested += OnSeekRequested;
+        VirtualView.PositionChangedFromBinding += OnPositionChangedFromBinding;
+        VirtualView.SpeedChangedInternal += OnSpeedChanged;
+        VirtualView.MutedChangedInternal += OnMutedChanged;
+        VirtualView.AspectChangedInternal += OnAspectChanged;
+
+        // Cargar source inicial si existe
+        if (!string.IsNullOrEmpty(VirtualView.Source))
+        {
+            LoadVideoAsync(VirtualView.Source);
+        }
+    }
+
+    protected override void DisconnectHandler(MediaPlayerElement platformView)
+    {
+        _positionTimer?.Stop();
+        _positionTimer = null;
+
+        if (VirtualView != null)
+        {
+            VirtualView.PlayRequested -= OnPlayRequested;
+            VirtualView.PauseRequested -= OnPauseRequested;
+            VirtualView.StopRequested -= OnStopRequested;
+            VirtualView.StepForwardRequested -= OnStepForwardRequested;
+            VirtualView.StepBackwardRequested -= OnStepBackwardRequested;
+            VirtualView.SeekRequested -= OnSeekRequested;
+            VirtualView.PositionChangedFromBinding -= OnPositionChangedFromBinding;
+            VirtualView.SpeedChangedInternal -= OnSpeedChanged;
+            VirtualView.MutedChangedInternal -= OnMutedChanged;
+            VirtualView.AspectChangedInternal -= OnAspectChanged;
+        }
+
+        if (_mediaPlayer != null)
+        {
+            _mediaPlayer.MediaOpened -= OnMediaOpened;
+            _mediaPlayer.MediaEnded -= OnMediaEnded;
+            _mediaPlayer.MediaFailed -= OnMediaFailed;
+            _mediaPlayer.Pause();
+            _mediaPlayer.Source = null;
+            _mediaPlayer.Dispose();
+            _mediaPlayer = null;
+        }
+
+        base.DisconnectHandler(platformView);
+    }
+
+    #region Property Mappers
+
+    private static void MapSource(PrecisionVideoPlayerHandler handler, Controls.PrecisionVideoPlayer player)
+    {
+        if (!string.IsNullOrEmpty(player.Source))
+        {
+            handler.LoadVideoAsync(player.Source);
+        }
+    }
+
+    private static void MapSpeed(PrecisionVideoPlayerHandler handler, Controls.PrecisionVideoPlayer player)
+    {
+        if (handler._mediaPlayer != null)
+        {
+            handler._mediaPlayer.PlaybackSession.PlaybackRate = player.Speed;
+        }
+    }
+
+    private static void MapIsMuted(PrecisionVideoPlayerHandler handler, Controls.PrecisionVideoPlayer player)
+    {
+        if (handler._mediaPlayer != null)
+        {
+            handler._mediaPlayer.IsMuted = player.IsMuted;
+        }
+    }
+
+    private static void MapAspect(PrecisionVideoPlayerHandler handler, Controls.PrecisionVideoPlayer player)
+    {
+        handler.PlatformView.Stretch = player.Aspect switch
+        {
+            Aspect.AspectFill => Microsoft.UI.Xaml.Media.Stretch.UniformToFill,
+            Aspect.Fill => Microsoft.UI.Xaml.Media.Stretch.Fill,
+            _ => Microsoft.UI.Xaml.Media.Stretch.Uniform
+        };
+    }
+
+    #endregion
+
+    #region Video Loading
+
+    private async void LoadVideoAsync(string source)
+    {
+        if (_mediaPlayer == null) return;
+
+        try
+        {
+            _positionTimer?.Stop();
+            _mediaPlayer.Pause();
+
+            if (source.StartsWith("http://") || source.StartsWith("https://"))
+            {
+                _mediaPlayer.Source = MediaSource.CreateFromUri(new Uri(source));
+            }
+            else
+            {
+                var file = await StorageFile.GetFileFromPathAsync(source);
+                _mediaPlayer.Source = MediaSource.CreateFromStorageFile(file);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error loading video: {ex.Message}");
+        }
+    }
+
+    #endregion
+
+    #region Media Player Events
+
+    private void OnMediaOpened(MediaPlayer sender, object args)
+    {
+        if (VirtualView == null) return;
+
+        // Los eventos de MediaPlayer pueden llegar en otro hilo, invocar en UI thread
+        PlatformView?.DispatcherQueue?.TryEnqueue(() =>
+        {
+            if (VirtualView == null) return;
+
+            // Actualizar duración
+            var duration = sender.PlaybackSession.NaturalDuration;
+            VirtualView.UpdateDuration(duration);
+
+            // Intentar detectar frame rate (usar 30 fps por defecto)
+            VirtualView.UpdateFrameRate(30.0);
+
+            VirtualView.RaiseMediaOpened();
+        });
+    }
+
+    private void OnMediaEnded(MediaPlayer sender, object args)
+    {
+        // Los eventos de MediaPlayer pueden llegar en otro hilo, invocar en UI thread
+        PlatformView?.DispatcherQueue?.TryEnqueue(() =>
+        {
+            _positionTimer?.Stop();
+            VirtualView?.RaiseMediaEnded();
+            
+            if (VirtualView != null)
+            {
+                VirtualView.IsPlaying = false;
+            }
+        });
+    }
+
+    private void OnMediaFailed(MediaPlayer sender, MediaPlayerFailedEventArgs args)
+    {
+        System.Diagnostics.Debug.WriteLine($"Media failed: {args.ErrorMessage}");
+    }
+
+    private void OnPositionTimerTick(object? sender, object e)
+    {
+        if (_mediaPlayer == null || VirtualView == null || _isUpdatingPosition) return;
+
+        _isUpdatingPosition = true;
+        VirtualView.UpdatePosition(_mediaPlayer.PlaybackSession.Position);
+        _isUpdatingPosition = false;
+    }
+
+    #endregion
+
+    #region Playback Control Events
+
+    private void OnPlayRequested(object? sender, EventArgs e)
+    {
+        if (_mediaPlayer == null) return;
+
+        _mediaPlayer.Play();
+        _positionTimer?.Start();
+    }
+
+    private void OnPauseRequested(object? sender, EventArgs e)
+    {
+        if (_mediaPlayer == null) return;
+
+        _mediaPlayer.Pause();
+        _positionTimer?.Stop();
+    }
+
+    private void OnStopRequested(object? sender, EventArgs e)
+    {
+        if (_mediaPlayer == null) return;
+
+        _mediaPlayer.Pause();
+        _mediaPlayer.PlaybackSession.Position = TimeSpan.Zero;
+        _positionTimer?.Stop();
+
+        if (VirtualView != null)
+        {
+            VirtualView.UpdatePosition(TimeSpan.Zero);
+        }
+    }
+
+    private void OnStepForwardRequested(object? sender, EventArgs e)
+    {
+        if (_mediaPlayer == null || VirtualView == null) return;
+
+        var frameTime = TimeSpan.FromSeconds(VirtualView.FrameDuration);
+        var newPosition = _mediaPlayer.PlaybackSession.Position + frameTime;
+        
+        if (newPosition <= _mediaPlayer.PlaybackSession.NaturalDuration)
+        {
+            _mediaPlayer.PlaybackSession.Position = newPosition;
+            VirtualView.UpdatePosition(newPosition);
+        }
+    }
+
+    private void OnStepBackwardRequested(object? sender, EventArgs e)
+    {
+        if (_mediaPlayer == null || VirtualView == null) return;
+
+        var frameTime = TimeSpan.FromSeconds(VirtualView.FrameDuration);
+        var newPosition = _mediaPlayer.PlaybackSession.Position - frameTime;
+        
+        if (newPosition < TimeSpan.Zero)
+            newPosition = TimeSpan.Zero;
+
+        _mediaPlayer.PlaybackSession.Position = newPosition;
+        VirtualView.UpdatePosition(newPosition);
+    }
+
+    private void OnSeekRequested(object? sender, TimeSpan position)
+    {
+        if (_mediaPlayer == null || VirtualView == null) return;
+
+        var session = _mediaPlayer.PlaybackSession;
+        if (position < TimeSpan.Zero)
+            position = TimeSpan.Zero;
+        if (position > session.NaturalDuration)
+            position = session.NaturalDuration;
+
+        session.Position = position;
+        VirtualView.UpdatePosition(position);
+    }
+
+    private void OnPositionChangedFromBinding(object? sender, TimeSpan position)
+    {
+        if (_mediaPlayer == null || _isUpdatingPosition) return;
+
+        _isSeekingFromBinding = true;
+        _mediaPlayer.PlaybackSession.Position = position;
+        _isSeekingFromBinding = false;
+    }
+
+    private void OnSpeedChanged(object? sender, double speed)
+    {
+        if (_mediaPlayer != null)
+        {
+            _mediaPlayer.PlaybackSession.PlaybackRate = speed;
+        }
+    }
+
+    private void OnMutedChanged(object? sender, bool muted)
+    {
+        if (_mediaPlayer != null)
+        {
+            _mediaPlayer.IsMuted = muted;
+        }
+    }
+
+    private void OnAspectChanged(object? sender, Aspect aspect)
+    {
+        PlatformView.Stretch = aspect switch
+        {
+            Aspect.AspectFill => Microsoft.UI.Xaml.Media.Stretch.UniformToFill,
+            Aspect.Fill => Microsoft.UI.Xaml.Media.Stretch.Fill,
+            _ => Microsoft.UI.Xaml.Media.Stretch.Uniform
+        };
+    }
+
+    #endregion
+}
+#endif

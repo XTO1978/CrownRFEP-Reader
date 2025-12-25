@@ -35,11 +35,11 @@
                         x:Name="DatabaseStatusIcon"
                         SymbolName="checkmark.circle.fill"
                         TintColor="#FF4CAF50"
-                        HeightRequest="14"
-                        WidthRequest="14"
+                        HeightRequest="{StaticResource IconSizeSmall}"
+                        WidthRequest="{StaticResource IconSizeSmall}"
                         VerticalOptions="Center" />
                     <Label
-                        FontSize="12"
+                        FontSize="{StaticResource FontSizeSmall}"
                         Text="BD"
                         TextColor="#FF8A8A8A"
                         VerticalOptions="Center" />
@@ -61,12 +61,12 @@
                     Color="#FF4CAF50" />
                 <Label
                     x:Name="OperationLabel"
-                    FontSize="13"
+                    FontSize="{StaticResource FontSizeBody}"
                     TextColor="#FFB0B0B0"
                     VerticalOptions="Center" />
                 <Label
                     x:Name="ProgressLabel"
-                    FontSize="13"
+                    FontSize="{StaticResource FontSizeBody}"
                     TextColor="#FF8A8A8A"
                     VerticalOptions="Center" />
             </HorizontalStackLayout>
@@ -75,7 +75,7 @@
             <Label
                 x:Name="StatusLabel"
                 Grid.Column="1"
-                FontSize="13"
+                FontSize="{StaticResource FontSizeBody}"
                 Text="Listo"
                 TextColor="#FF6A6A6A"
                 VerticalOptions="Center" />
@@ -91,12 +91,12 @@
                 <controls:SymbolIcon
                     SymbolName="film"
                     TintColor="#FF8A8A8A"
-                    HeightRequest="14"
-                    WidthRequest="14"
+                    HeightRequest="{StaticResource IconSizeSmall}"
+                    WidthRequest="{StaticResource IconSizeSmall}"
                     VerticalOptions="Center" />
                 <Label
                     x:Name="VideoCountLabel"
-                    FontSize="13"
+                    FontSize="{StaticResource FontSizeBody}"
                     Text="0 vídeos"
                     TextColor="#FF8A8A8A"
                     VerticalOptions="Center" />
@@ -110,12 +110,12 @@
                 <controls:SymbolIcon
                     SymbolName="folder"
                     TintColor="#FF8A8A8A"
-                    HeightRequest="14"
-                    WidthRequest="14"
+                    HeightRequest="{StaticResource IconSizeSmall}"
+                    WidthRequest="{StaticResource IconSizeSmall}"
                     VerticalOptions="Center" />
                 <Label
                     x:Name="SessionCountLabel"
-                    FontSize="13"
+                    FontSize="{StaticResource FontSizeBody}"
                     Text="0 sesiones"
                     TextColor="#FF8A8A8A"
                     VerticalOptions="Center" />
@@ -152,12 +152,12 @@
                     x:Name="UserIconPlaceholder"
                     SymbolName="person.circle"
                     TintColor="#FF8A8A8A"
-                    HeightRequest="16"
-                    WidthRequest="16"
+                    HeightRequest="{StaticResource IconSizeMedium}"
+                    WidthRequest="{StaticResource IconSizeMedium}"
                     VerticalOptions="Center" />
                 <Label
                     x:Name="UserNameLabel"
-                    FontSize="13"
+                    FontSize="{StaticResource FontSizeBody}"
                     Text="Sin perfil"
                     TextColor="#FFB0B0B0"
                     VerticalOptions="Center" />

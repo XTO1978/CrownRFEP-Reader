@@ -36,6 +36,7 @@ internal static class HoverHelpers
 public class DashboardSessionItemHoverBehavior : Behavior<Border>
 {
     private Color? _originalBackground;
+    private PointerGestureRecognizer? _pointerRecognizer;
 
 #if MACCATALYST
     private UIHoverGestureRecognizer? _hoverRecognizer;
@@ -46,12 +47,25 @@ public class DashboardSessionItemHoverBehavior : Behavior<Border>
         base.OnAttachedTo(bindable);
 
         bindable.HandlerChanged += OnHandlerChanged;
+        
+        // Fallback: PointerGestureRecognizer para Windows y otras plataformas
+        _pointerRecognizer = new PointerGestureRecognizer();
+        _pointerRecognizer.PointerEntered += (_, _) => ApplyHover(bindable);
+        _pointerRecognizer.PointerExited += (_, _) => RemoveHover(bindable);
+        bindable.GestureRecognizers.Add(_pointerRecognizer);
+        
         TryAttachPlatformHover(bindable);
     }
 
     protected override void OnDetachingFrom(Border bindable)
     {
         bindable.HandlerChanged -= OnHandlerChanged;
+        
+        if (_pointerRecognizer != null)
+        {
+            bindable.GestureRecognizers.Remove(_pointerRecognizer);
+            _pointerRecognizer = null;
+        }
 
 #if MACCATALYST
         if (_hoverRecognizer != null && bindable.Handler?.PlatformView is UIView view)
@@ -144,6 +158,7 @@ public class DashboardSessionItemHoverBehavior : Behavior<Border>
 public class DashboardAllGalleryHoverBehavior : Behavior<Border>
 {
     private Color? _originalBackground;
+    private PointerGestureRecognizer? _pointerRecognizer;
 
 #if MACCATALYST
     private UIHoverGestureRecognizer? _hoverRecognizer;
@@ -154,12 +169,25 @@ public class DashboardAllGalleryHoverBehavior : Behavior<Border>
         base.OnAttachedTo(bindable);
 
         bindable.HandlerChanged += OnHandlerChanged;
+        
+        // Fallback: PointerGestureRecognizer para Windows y otras plataformas
+        _pointerRecognizer = new PointerGestureRecognizer();
+        _pointerRecognizer.PointerEntered += (_, _) => ApplyHover(bindable);
+        _pointerRecognizer.PointerExited += (_, _) => RemoveHover(bindable);
+        bindable.GestureRecognizers.Add(_pointerRecognizer);
+        
         TryAttachPlatformHover(bindable);
     }
 
     protected override void OnDetachingFrom(Border bindable)
     {
         bindable.HandlerChanged -= OnHandlerChanged;
+        
+        if (_pointerRecognizer != null)
+        {
+            bindable.GestureRecognizers.Remove(_pointerRecognizer);
+            _pointerRecognizer = null;
+        }
 
 #if MACCATALYST
         if (_hoverRecognizer != null && bindable.Handler?.PlatformView is UIView view)

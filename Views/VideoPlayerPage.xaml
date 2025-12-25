@@ -29,7 +29,7 @@
                HasShadow="False">
             <VerticalStackLayout Spacing="10">
                 <Label Text="{Binding VideoTitle}" 
-                       FontSize="16" 
+                       FontSize="{StaticResource FontSizeSubtitle}" 
                        FontAttributes="Bold" 
                        TextColor="White"
                        HorizontalOptions="Center"/>
@@ -37,11 +37,11 @@
                 <HorizontalStackLayout HorizontalOptions="Center" Spacing="10">
                     <Label Text="{Binding CurrentPositionFormatted}" 
                            TextColor="White" 
-                           FontSize="12"/>
-                    <Label Text="/" TextColor="White" FontSize="12"/>
+                           FontSize="{StaticResource FontSizeSmall}"/>
+                    <Label Text="/" TextColor="White" FontSize="{StaticResource FontSizeSmall}"/>
                     <Label Text="{Binding DurationFormatted}" 
                            TextColor="White" 
-                           FontSize="12"/>
+                           FontSize="{StaticResource FontSizeSmall}"/>
                 </HorizontalStackLayout>
             </VerticalStackLayout>
         </Frame>

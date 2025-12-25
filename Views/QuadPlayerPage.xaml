@@ -62,8 +62,8 @@
                             <controls:SymbolIcon
                                 SymbolName="gobackward.5"
                                 TintColor="White"
-                                WidthRequest="18"
-                                HeightRequest="18">
+                                WidthRequest="{StaticResource IconSizeDefault}"
+                                HeightRequest="{StaticResource IconSizeDefault}">
                                 <controls:SymbolIcon.GestureRecognizers>
                                     <TapGestureRecognizer Command="{Binding SeekBackwardCommand1}" />
                                 </controls:SymbolIcon.GestureRecognizers>
@@ -71,8 +71,8 @@
                             <controls:SymbolIcon
                                 SymbolName="{Binding PlayPauseIcon1}"
                                 TintColor="White"
-                                WidthRequest="22"
-                                HeightRequest="22">
+                                WidthRequest="{StaticResource IconSizeLarge}"
+                                HeightRequest="{StaticResource IconSizeLarge}">
                                 <controls:SymbolIcon.GestureRecognizers>
                                     <TapGestureRecognizer Command="{Binding PlayPauseCommand1}" />
                                 </controls:SymbolIcon.GestureRecognizers>
@@ -80,8 +80,8 @@
                             <controls:SymbolIcon
                                 SymbolName="goforward.5"
                                 TintColor="White"
-                                WidthRequest="18"
-                                HeightRequest="18">
+                                WidthRequest="{StaticResource IconSizeDefault}"
+                                HeightRequest="{StaticResource IconSizeDefault}">
                                 <controls:SymbolIcon.GestureRecognizers>
                                     <TapGestureRecognizer Command="{Binding SeekForwardCommand1}" />
                                 </controls:SymbolIcon.GestureRecognizers>
@@ -100,7 +100,7 @@
                                 DragCompleted="OnProgressSlider1DragCompleted" />
                             <Label
                                 VerticalOptions="Center"
-                                FontSize="10"
+                                FontSize="{StaticResource FontSizeCaption}"
                                 Text="{Binding CurrentPositionText1}"
                                 TextColor="#CCFFFFFF" />
                         </HorizontalStackLayout>
@@ -115,7 +115,7 @@
                         StrokeThickness="0"
                         VerticalOptions="Start">
                         <Label
-                            FontSize="12"
+                            FontSize="{StaticResource FontSizeSmall}"
                             Text="{Binding Video1.Atleta.NombreCompleto}"
                             TextColor="White" />
                     </Border>
@@ -160,8 +160,8 @@
                             <controls:SymbolIcon
                                 SymbolName="gobackward.5"
                                 TintColor="White"
-                                WidthRequest="18"
-                                HeightRequest="18">
+                                WidthRequest="{StaticResource IconSizeDefault}"
+                                HeightRequest="{StaticResource IconSizeDefault}">
                                 <controls:SymbolIcon.GestureRecognizers>
                                     <TapGestureRecognizer Command="{Binding SeekBackwardCommand2}" />
                                 </controls:SymbolIcon.GestureRecognizers>
@@ -169,8 +169,8 @@
                             <controls:SymbolIcon
                                 SymbolName="{Binding PlayPauseIcon2}"
                                 TintColor="White"
-                                WidthRequest="22"
-                                HeightRequest="22">
+                                WidthRequest="{StaticResource IconSizeLarge}"
+                                HeightRequest="{StaticResource IconSizeLarge}">
                                 <controls:SymbolIcon.GestureRecognizers>
                                     <TapGestureRecognizer Command="{Binding PlayPauseCommand2}" />
                                 </controls:SymbolIcon.GestureRecognizers>
@@ -178,8 +178,8 @@
                             <controls:SymbolIcon
                                 SymbolName="goforward.5"
                                 TintColor="White"
-                                WidthRequest="18"
-                                HeightRequest="18">
+                                WidthRequest="{StaticResource IconSizeDefault}"
+                                HeightRequest="{StaticResource IconSizeDefault}">
                                 <controls:SymbolIcon.GestureRecognizers>
                                     <TapGestureRecognizer Command="{Binding SeekForwardCommand2}" />
                                 </controls:SymbolIcon.GestureRecognizers>
@@ -198,7 +198,7 @@
                                 DragCompleted="OnProgressSlider2DragCompleted" />
                             <Label
                                 VerticalOptions="Center"
-                                FontSize="10"
+                                FontSize="{StaticResource FontSizeCaption}"
                                 Text="{Binding CurrentPositionText2}"
                                 TextColor="#CCFFFFFF" />
                         </HorizontalStackLayout>
@@ -213,7 +213,7 @@
                         StrokeThickness="0"
                         VerticalOptions="Start">
                         <Label
-                            FontSize="12"
+                            FontSize="{StaticResource FontSizeSmall}"
                             Text="{Binding Video2.Atleta.NombreCompleto}"
                             TextColor="White" />
                     </Border>
@@ -258,8 +258,8 @@
                             <controls:SymbolIcon
                                 SymbolName="gobackward.5"
                                 TintColor="White"
-                                WidthRequest="18"
-                                HeightRequest="18">
+                                WidthRequest="{StaticResource IconSizeDefault}"
+                                HeightRequest="{StaticResource IconSizeDefault}">
                                 <controls:SymbolIcon.GestureRecognizers>
                                     <TapGestureRecognizer Command="{Binding SeekBackwardCommand3}" />
                                 </controls:SymbolIcon.GestureRecognizers>
@@ -267,8 +267,8 @@
                             <controls:SymbolIcon
                                 SymbolName="{Binding PlayPauseIcon3}"
                                 TintColor="White"
-                                WidthRequest="22"
-                                HeightRequest="22">
+                                WidthRequest="{StaticResource IconSizeLarge}"
+                                HeightRequest="{StaticResource IconSizeLarge}">
                                 <controls:SymbolIcon.GestureRecognizers>
                                     <TapGestureRecognizer Command="{Binding PlayPauseCommand3}" />
                                 </controls:SymbolIcon.GestureRecognizers>
@@ -276,8 +276,8 @@
                             <controls:SymbolIcon
                                 SymbolName="goforward.5"
                                 TintColor="White"
-                                WidthRequest="18"
-                                HeightRequest="18">
+                                WidthRequest="{StaticResource IconSizeDefault}"
+                                HeightRequest="{StaticResource IconSizeDefault}">
                                 <controls:SymbolIcon.GestureRecognizers>
                                     <TapGestureRecognizer Command="{Binding SeekForwardCommand3}" />
                                 </controls:SymbolIcon.GestureRecognizers>
@@ -296,7 +296,7 @@
                                 DragCompleted="OnProgressSlider3DragCompleted" />
                             <Label
                                 VerticalOptions="Center"
-                                FontSize="10"
+                                FontSize="{StaticResource FontSizeCaption}"
                                 Text="{Binding CurrentPositionText3}"
                                 TextColor="#CCFFFFFF" />
                         </HorizontalStackLayout>
@@ -311,7 +311,7 @@
                         StrokeThickness="0"
                         VerticalOptions="Start">
                         <Label
-                            FontSize="12"
+                            FontSize="{StaticResource FontSizeSmall}"
                             Text="{Binding Video3.Atleta.NombreCompleto}"
                             TextColor="White" />
                     </Border>
@@ -356,8 +356,8 @@
                             <controls:SymbolIcon
                                 SymbolName="gobackward.5"
                                 TintColor="White"
-                                WidthRequest="18"
-                                HeightRequest="18">
+                                WidthRequest="{StaticResource IconSizeDefault}"
+                                HeightRequest="{StaticResource IconSizeDefault}">
                                 <controls:SymbolIcon.GestureRecognizers>
                                     <TapGestureRecognizer Command="{Binding SeekBackwardCommand4}" />
                                 </controls:SymbolIcon.GestureRecognizers>
@@ -365,8 +365,8 @@
                             <controls:SymbolIcon
                                 SymbolName="{Binding PlayPauseIcon4}"
                                 TintColor="White"
-                                WidthRequest="22"
-                                HeightRequest="22">
+                                WidthRequest="{StaticResource IconSizeLarge}"
+                                HeightRequest="{StaticResource IconSizeLarge}">
                                 <controls:SymbolIcon.GestureRecognizers>
                                     <TapGestureRecognizer Command="{Binding PlayPauseCommand4}" />
                                 </controls:SymbolIcon.GestureRecognizers>
@@ -374,8 +374,8 @@
                             <controls:SymbolIcon
                                 SymbolName="goforward.5"
                                 TintColor="White"
-                                WidthRequest="18"
-                                HeightRequest="18">
+                                WidthRequest="{StaticResource IconSizeDefault}"
+                                HeightRequest="{StaticResource IconSizeDefault}">
                                 <controls:SymbolIcon.GestureRecognizers>
                                     <TapGestureRecognizer Command="{Binding SeekForwardCommand4}" />
                                 </controls:SymbolIcon.GestureRecognizers>
@@ -394,7 +394,7 @@
                                 DragCompleted="OnProgressSlider4DragCompleted" />
                             <Label
                                 VerticalOptions="Center"
-                                FontSize="10"
+                                FontSize="{StaticResource FontSizeCaption}"
                                 Text="{Binding CurrentPositionText4}"
                                 TextColor="#CCFFFFFF" />
                         </HorizontalStackLayout>
@@ -409,7 +409,7 @@
                         StrokeThickness="0"
                         VerticalOptions="Start">
                         <Label
-                            FontSize="12"
+                            FontSize="{StaticResource FontSizeSmall}"
                             Text="{Binding Video4.Atleta.NombreCompleto}"
                             TextColor="White" />
                     </Border>
@@ -441,11 +441,11 @@
                         <controls:SymbolIcon
                             SymbolName="rectangle.grid.2x2"
                             TintColor="White"
-                            WidthRequest="18"
-                            HeightRequest="18" />
+                            WidthRequest="{StaticResource IconSizeDefault}"
+                            HeightRequest="{StaticResource IconSizeDefault}" />
                         <Label
                             VerticalOptions="Center"
-                            FontSize="13"
+                            FontSize="{StaticResource FontSizeBody}"
                             Text="Cambiar a Simultáneo"
                             TextColor="White" />
                     </HorizontalStackLayout>
@@ -468,7 +468,7 @@
                 <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
                     <Label
                         VerticalOptions="Center"
-                        FontSize="12"
+                        FontSize="{StaticResource FontSizeSmall}"
                         Text="{Binding CurrentPositionText}"
                         TextColor="#FF999999" />
                     <Slider
@@ -483,7 +483,7 @@
                     <Label
                         Grid.Column="2"
                         VerticalOptions="Center"
-                        FontSize="12"
+                        FontSize="{StaticResource FontSizeSmall}"
                         Text="{Binding DurationText}"
                         TextColor="#FF999999" />
                 </Grid>
@@ -494,8 +494,8 @@
                     <controls:SymbolIcon
                         SymbolName="gobackward.5"
                         TintColor="White"
-                        WidthRequest="24"
-                        HeightRequest="24">
+                        WidthRequest="{StaticResource IconSizeLarge}"
+                        HeightRequest="{StaticResource IconSizeLarge}">
                         <controls:SymbolIcon.GestureRecognizers>
                             <TapGestureRecognizer Command="{Binding SeekBackwardCommand}" />
                         </controls:SymbolIcon.GestureRecognizers>
@@ -505,8 +505,8 @@
                     <controls:SymbolIcon
                         SymbolName="backward.frame.fill"
                         TintColor="White"
-                        WidthRequest="20"
-                        HeightRequest="20">
+                        WidthRequest="{StaticResource IconSizeLarge}"
+                        HeightRequest="{StaticResource IconSizeLarge}">
                         <controls:SymbolIcon.GestureRecognizers>
                             <TapGestureRecognizer Command="{Binding FrameBackwardCommand}" />
                         </controls:SymbolIcon.GestureRecognizers>
@@ -524,16 +524,16 @@
                         <controls:SymbolIcon
                             SymbolName="{Binding PlayPauseIcon}"
                             TintColor="Black"
-                            WidthRequest="24"
-                            HeightRequest="24" />
+                            WidthRequest="{StaticResource IconSizeLarge}"
+                            HeightRequest="{StaticResource IconSizeLarge}" />
                     </Border>
                     
                     <!--  Frame siguiente  -->
                     <controls:SymbolIcon
                         SymbolName="forward.frame.fill"
                         TintColor="White"
-                        WidthRequest="20"
-                        HeightRequest="20">
+                        WidthRequest="{StaticResource IconSizeLarge}"
+                        HeightRequest="{StaticResource IconSizeLarge}">
                         <controls:SymbolIcon.GestureRecognizers>
                             <TapGestureRecognizer Command="{Binding FrameForwardCommand}" />
                         </controls:SymbolIcon.GestureRecognizers>
@@ -543,8 +543,8 @@
                     <controls:SymbolIcon
                         SymbolName="goforward.5"
                         TintColor="White"
-                        WidthRequest="24"
-                        HeightRequest="24">
+                        WidthRequest="{StaticResource IconSizeLarge}"
+                        HeightRequest="{StaticResource IconSizeLarge}">
                         <controls:SymbolIcon.GestureRecognizers>
                             <TapGestureRecognizer Command="{Binding SeekForwardCommand}" />
                         </controls:SymbolIcon.GestureRecognizers>
@@ -562,14 +562,14 @@
                         <HorizontalStackLayout Spacing="8">
                             <Label
                                 VerticalOptions="Center"
-                                FontSize="12"
+                                FontSize="{StaticResource FontSizeSmall}"
                                 Text="{Binding SpeedText}"
                                 TextColor="White" />
                             <controls:SymbolIcon
                                 SymbolName="chevron.up.chevron.down"
                                 TintColor="#FF999999"
-                                WidthRequest="12"
-                                HeightRequest="12" />
+                                WidthRequest="{StaticResource IconSizeSmall}"
+                                HeightRequest="{StaticResource IconSizeSmall}" />
                         </HorizontalStackLayout>
                         <FlyoutBase.ContextFlyout>
                             <MenuFlyout>
@@ -597,11 +597,11 @@
                             <controls:SymbolIcon
                                 SymbolName="rectangle.grid.2x2"
                                 TintColor="{Binding IsSimultaneousMode, Converter={StaticResource BoolToColorConverter}, ConverterParameter='Black|White'}"
-                                WidthRequest="16"
-                                HeightRequest="16" />
+                                WidthRequest="{StaticResource IconSizeMedium}"
+                                HeightRequest="{StaticResource IconSizeMedium}" />
                             <Label
                                 VerticalOptions="Center"
-                                FontSize="12"
+                                FontSize="{StaticResource FontSizeSmall}"
                                 Text="{Binding ModeText}"
                                 TextColor="{Binding IsSimultaneousMode, Converter={StaticResource BoolToColorConverter}, ConverterParameter='Black|White'}" />
                         </HorizontalStackLayout>
@@ -623,21 +623,21 @@
                         </Border.GestureRecognizers>
                         <HorizontalStackLayout Spacing="6">
                             <controls:SymbolIcon
-                                HeightRequest="16"
+                                HeightRequest="{StaticResource IconSizeMedium}"
                                 IsVisible="{Binding IsExporting, Converter={StaticResource InvertedBoolConverter}}"
                                 SymbolName="square.and.arrow.up"
                                 TintColor="White"
-                                WidthRequest="16" />
+                                WidthRequest="{StaticResource IconSizeMedium}" />
                             <Label
                                 Text="{Binding ExportStatus, TargetNullValue='Exportar'}"
                                 TextColor="White"
-                                FontSize="12"
+                                FontSize="{StaticResource FontSizeSmall}"
                                 VerticalOptions="Center"
                                 IsVisible="{Binding IsExporting}" />
                             <Label
                                 Text="Exportar"
                                 TextColor="White"
-                                FontSize="12"
+                                FontSize="{StaticResource FontSizeSmall}"
                                 VerticalOptions="Center"
                                 IsVisible="{Binding IsExporting, Converter={StaticResource InvertedBoolConverter}}" />
                         </HorizontalStackLayout>

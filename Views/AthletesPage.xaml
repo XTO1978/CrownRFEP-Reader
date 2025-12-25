@@ -16,7 +16,7 @@
         <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto" Margin="0,15,0,5">
             <HorizontalStackLayout Spacing="10">
                 <Label Text="Diccionario de Atletas" 
-                       FontSize="24" Margin="30,0,0,0"
+                       FontSize="{StaticResource FontSizeHeader}" Margin="30,0,0,0"
                        VerticalOptions="Center" TextColor="White"/>
                 <Border BackgroundColor="#FF2A2A2A"
                         StrokeThickness="0"
@@ -24,7 +24,7 @@
                         Padding="16,6">
                     <Label Text="{Binding Athletes.Count, StringFormat='{0} registrados'}" 
                            TextColor="White"
-                           FontSize="14"
+                           FontSize="{StaticResource FontSizeBody}"
                            VerticalOptions="Center"/>
                 </Border>
             </HorizontalStackLayout>
@@ -35,7 +35,7 @@
                     IsEnabled="{Binding CanMerge}"
                     BackgroundColor="#FF2A2A2A"
                     TextColor="White"
-                    FontSize="14"
+                    FontSize="{StaticResource FontSizeBody}"
                     Padding="16,6"
                     Margin="0,0,10,0"
                     CornerRadius="4"/>
@@ -45,7 +45,7 @@
                     Command="{Binding ConsolidateDuplicatesCommand}"
                     BackgroundColor="#FF2A2A2A"
                     TextColor="White"
-                    FontSize="14"
+                    FontSize="{StaticResource FontSizeBody}"
                     Padding="16,6"
                     CornerRadius="4"/>
         </Grid>
@@ -54,7 +54,7 @@
         <HorizontalStackLayout Grid.Row="2" Margin="0,5,0,5" Spacing="8" IsVisible="{Binding CanMerge}">
            
             <Label Text="{Binding SelectedCount, StringFormat='{0} atletas seleccionados'}" 
-                   FontSize="13"
+                   FontSize="{StaticResource FontSizeBody}"
                    TextColor="{StaticResource Primary}"
                    FontAttributes="Italic"/>
         </HorizontalStackLayout>
@@ -127,11 +127,11 @@
                                         <Label Grid.Column="2" 
                                                Text="{Binding Nombre}" 
                                                VerticalOptions="Center" TextColor="White"
-                                               FontSize="14"/>
+                                               FontSize="{StaticResource FontSizeBody}"/>
                                         <Label Grid.Column="3" 
                                                Text="{Binding Apellido}" 
                                                VerticalOptions="Center"
-                                               FontSize="14" TextColor="White"/>
+                                               FontSize="{StaticResource FontSizeBody}" TextColor="White"/>
                                     </Grid>
                                 </Border>
                             </DataTemplate>
@@ -141,11 +141,11 @@
                             <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center" Padding="40">
                                
                                 <Label Text="No hay atletas registrados" 
-                                       FontSize="16" 
+                                       FontSize="{StaticResource FontSizeSubtitle}" 
                                        HorizontalOptions="Center" 
                                        TextColor="Gray"/>
                                 <Label Text="Importa una sesión para ver atletas aquí" 
-                                       FontSize="13" 
+                                       FontSize="{StaticResource FontSizeBody}" 
                                        HorizontalOptions="Center" 
                                        TextColor="Gray"
                                        Margin="0,5,0,0"/>

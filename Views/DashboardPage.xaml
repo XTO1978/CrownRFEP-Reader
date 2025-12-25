@@ -116,14 +116,14 @@
                                 Spacing="8"
                                 VerticalOptions="Center">
                                 <controls:SymbolIcon
-                                    HeightRequest="24"
+                                    HeightRequest="{StaticResource IconSizeLarge}"
                                     SymbolName="photo.on.rectangle.angled"
                                     TintColor="#FF6DDDFF"
                                     VerticalOptions="Center"
-                                    WidthRequest="24" />
+                                    WidthRequest="{StaticResource IconSizeLarge}" />
                                 <Label
-                                    FontFamily="SF Pro Text"
-                                    FontSize="16"
+                                    FontFamily="{StaticResource AppFontBody}"
+                                    FontSize="{StaticResource FontSizeSubtitle}"
                                     Text="Galería General"
                                     TextColor="White"
                                     VerticalOptions="Center" />
@@ -156,14 +156,14 @@
                                 Spacing="8"
                                 VerticalOptions="Center">
                                 <controls:SymbolIcon
-                                    HeightRequest="24"
+                                    HeightRequest="{StaticResource IconSizeLarge}"
                                     SymbolName="video"
                                     TintColor="#FF6DDDFF"
                                     VerticalOptions="Center"
-                                    WidthRequest="24" />
+                                    WidthRequest="{StaticResource IconSizeLarge}" />
                                 <Label
-                                    FontFamily="SF Pro Text"
-                                    FontSize="16"
+                                    FontFamily="{StaticResource AppFontBody}"
+                                    FontSize="{StaticResource FontSizeSubtitle}"
                                     Text="Videolecciones"
                                     TextColor="White"
                                     VerticalOptions="Center" />
@@ -197,14 +197,14 @@
                                 Spacing="8"
                                 VerticalOptions="Center">
                                 <controls:SymbolIcon
-                                    HeightRequest="24"
+                                    HeightRequest="{StaticResource IconSizeLarge}"
                                     SymbolName="book"
                                     TintColor="#FF6DDDFF"
                                     VerticalOptions="Center"
-                                    WidthRequest="24" />
+                                    WidthRequest="{StaticResource IconSizeLarge}" />
                                 <Label
-                                    FontFamily="SF Pro Text"
-                                    FontSize="16"
+                                    FontFamily="{StaticResource AppFontBody}"
+                                    FontSize="{StaticResource FontSizeSubtitle}"
                                     Text="Diario"
                                     TextColor="White"
                                     VerticalOptions="Center" />
@@ -234,21 +234,21 @@
                                     Spacing="8"
                                     VerticalOptions="Center">
                                     <controls:SymbolIcon
-                                        HeightRequest="24"
+                                        HeightRequest="{StaticResource IconSizeLarge}"
                                         SymbolName="clock"
                                         TintColor="#FF6DDDFF"
                                         VerticalOptions="Center"
-                                        WidthRequest="24" />
+                                        WidthRequest="{StaticResource IconSizeLarge}" />
                                     <Label
-                                        FontFamily="SF Pro Text"
-                                        FontSize="16"
+                                        FontFamily="{StaticResource AppFontBody}"
+                                        FontSize="{StaticResource FontSizeSubtitle}"
                                         Text="Sesiones"
                                         TextColor="White"
                                         VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                                 <Label
                                     Grid.Column="1"
-                                    FontSize="16"
+                                    FontSize="{StaticResource FontSizeSubtitle}"
                                     Text="{Binding IsSessionsListExpanded, Converter={StaticResource BoolToExpandIconConverter}}"
                                     TextColor="Gray"
                                     VerticalOptions="Center" />
@@ -275,42 +275,42 @@
                                 Spacing="8"
                                 VerticalOptions="Center">
                                 <controls:SymbolIcon
-                                    HeightRequest="20"
+                                    HeightRequest="{StaticResource IconSizeLarge}"
                                     SymbolName="arrow.turn.down.right"
                                     TintColor="#FF888888"
                                     VerticalOptions="Center"
-                                    WidthRequest="20" />
+                                    WidthRequest="{StaticResource IconSizeLarge}" />
                                 <controls:SymbolIcon
-                                    HeightRequest="24"
+                                    HeightRequest="{StaticResource IconSizeLarge}"
                                     SymbolName="oar.2.crossed"
                                     TintColor="#FF6DDDFF"
                                     VerticalOptions="Center"
-                                    WidthRequest="24" />
+                                    WidthRequest="{StaticResource IconSizeLarge}" />
                                 <Label
-                                    FontFamily="SF Pro Text"
-                                    FontSize="16"
+                                    FontFamily="{StaticResource AppFontBody}"
+                                    FontSize="{StaticResource FontSizeSubtitle}"
                                     LineBreakMode="TailTruncation"
                                     TextColor="White">
                                     <Label.FormattedText>
                                         <FormattedString>
                                             <Span
-                                                FontSize="16"
+                                                FontSize="{StaticResource FontSizeSubtitle}"
                                                 Text="{Binding FechaDateTime, StringFormat='{0:dd/MM/yyyy}'}"
                                                 TextColor="White" />
                                             <Span
-                                                FontSize="16"
+                                                FontSize="{StaticResource FontSizeSubtitle}"
                                                 Text=" en "
                                                 TextColor="White" />
                                             <Span
-                                                FontSize="16"
+                                                FontSize="{StaticResource FontSizeSubtitle}"
                                                 Text="{Binding Lugar}"
                                                 TextColor="White" />
                                             <Span
-                                                FontSize="16"
+                                                FontSize="{StaticResource FontSizeSubtitle}"
                                                 Text=" - "
                                                 TextColor="White" />
                                             <Span
-                                                FontSize="16"
+                                                FontSize="{StaticResource FontSizeSubtitle}"
                                                 Text="{Binding DisplayName}"
                                                 TextColor="White" />
                                         </FormattedString>
@@ -342,12 +342,12 @@
                         VerticalOptions="Center"
                         IsVisible="{Binding IsSessionsListExpanded}">
                         <Label
-                            FontSize="18"
+                            FontSize="{StaticResource FontSizeTitle}"
                             HorizontalOptions="Center"
                             Text="No hay sesiones"
                             TextColor="Gray" />
                         <Label
-                            FontSize="14"
+                            FontSize="{StaticResource FontSizeBody}"
                             HorizontalOptions="Center"
                             Text="Importa un archivo .crown para comenzar"
                             TextColor="Gray" />
@@ -358,8 +358,8 @@
             <!--  Acciones de sesión  -->
             <VerticalStackLayout Grid.Row="1" Spacing="10" Margin="0,20,0,20">
                 <Label
-                    FontFamily="SF Pro Text"
-                    FontSize="14"
+                    FontFamily="{StaticResource AppFontBody}"
+                    FontSize="{StaticResource FontSizeBody}"
                     FontAttributes="Bold"
                     Text="Acciones de sesión"
                     TextColor="#FF888888" />
@@ -375,10 +375,10 @@
                         </Border.GestureRecognizers>
                         <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
                             <controls:SymbolIcon
-                                HeightRequest="16"
+                                HeightRequest="{StaticResource IconSizeMedium}"
                                 SymbolName="square.and.arrow.down"
                                 TintColor="White"
-                                WidthRequest="16"
+                                WidthRequest="{StaticResource IconSizeMedium}"
                                 VerticalOptions="Center" />
                             <Label Text="Importar" TextColor="White" VerticalOptions="Center" />
                         </HorizontalStackLayout>
@@ -394,10 +394,10 @@
                         </Border.GestureRecognizers>
                         <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
                             <controls:SymbolIcon
-                                HeightRequest="16"
+                                HeightRequest="{StaticResource IconSizeMedium}"
                                 SymbolName="trash"
                                 TintColor="#FFFF9696"
-                                WidthRequest="16"
+                                WidthRequest="{StaticResource IconSizeMedium}"
                                 VerticalOptions="Center" />
                             <Label Text="Eliminar" TextColor="#FFFF9696" VerticalOptions="Center" />
                         </HorizontalStackLayout>
@@ -414,7 +414,7 @@
             RowDefinitions="Auto,Auto,*">
             <Label
                 Grid.Row="0"
-                FontSize="18"
+                FontSize="{StaticResource FontSizeTitle}"
                 LineBreakMode="TailTruncation"
                 Text="{Binding SelectedSessionTitle}"
                 TextColor="White" />
@@ -424,7 +424,7 @@
                 Spacing="10"
                 VerticalOptions="Center">
                 <Label
-                    FontSize="14"
+                    FontSize="{StaticResource FontSizeBody}"
                     Text="{Binding VideoCountDisplayText}"
                     TextColor="#FFB1B1B1" />
                 <ActivityIndicator
@@ -483,11 +483,11 @@
 
                                         <!--  Overlay de play (oculto cuando está seleccionado en multiselect)  -->
                                        <controls:SymbolIcon
-                            HeightRequest="50"
+                            HeightRequest="{StaticResource IconSizeXXLarge}"
                             SymbolName="play.circle.fill"
                             TintColor="White" Opacity="0.5"
                             VerticalOptions="Center"
-                            WidthRequest="50" />
+                            WidthRequest="{StaticResource IconSizeXXLarge}" />
 
                                         <!--  Checkmark de selección  -->
                                         <Border
@@ -500,12 +500,12 @@
                                             VerticalOptions="Start"
                                             WidthRequest="32">
                                             <controls:SymbolIcon
-                                                HeightRequest="20"
+                                                HeightRequest="{StaticResource IconSizeLarge}"
                                                 HorizontalOptions="Center"
                                                 SymbolName="checkmark"
                                                 TintColor="LightGray"
                                                 VerticalOptions="Center"
-                                                WidthRequest="20" />
+                                                WidthRequest="{StaticResource IconSizeLarge}" />
                                         </Border>
                                         
                                         <!--  Indicador de video comparativo  -->
@@ -521,13 +521,13 @@
                                             VerticalOptions="Start">
                                             <HorizontalStackLayout Spacing="4">
                                                 <controls:SymbolIcon
-                                                    HeightRequest="16"
+                                                    HeightRequest="{StaticResource IconSizeMedium}"
                                                     SymbolName="rectangle.on.rectangle"
                                                     TintColor="#FF6DDDFF"
                                                     VerticalOptions="Center"
-                                                    WidthRequest="16" />
+                                                    WidthRequest="{StaticResource IconSizeMedium}" />
                                                 <Label
-                                                    FontSize="10"
+                                                    FontSize="{StaticResource FontSizeCaption}"
                                                     Text="VS"
                                                     TextColor="#FF6DDDFF"
                                                     VerticalOptions="Center"
@@ -545,14 +545,14 @@
                                     <VerticalStackLayout Spacing="2">
                                         <!--  Primera línea: APELLIDOS Nombre - Sesión  -->
                                         <Label
-                                            FontSize="12"
+                                            FontSize="{StaticResource FontSizeSmall}"
                                             FontAttributes="Bold"
                                             LineBreakMode="TailTruncation"
                                             Text="{Binding DisplayLine1}"
                                             TextColor="White" />
                                         <!--  Segunda línea: Lugar, fecha y hora  -->
                                         <Label
-                                            FontSize="11"
+                                            FontSize="{StaticResource FontSizeSmall}"
                                             LineBreakMode="TailTruncation"
                                             Text="{Binding DisplayLine2}"
                                             TextColor="#FFB1B1B1" />
@@ -575,7 +575,7 @@
                                                                 StrokeShape="RoundRectangle 2"
                                                                 StrokeThickness="0">
                                                                 <Label
-                                                                    FontSize="10"
+                                                                    FontSize="{StaticResource FontSizeCaption}"
                                                                     Text="{Binding NombreTag}"
                                                                     TextColor="White"
                                                                     LineBreakMode="TailTruncation"
@@ -596,7 +596,7 @@
                                                                 StrokeShape="RoundRectangle 2"
                                                                 StrokeThickness="0">
                                                                 <Label
-                                                                    FontSize="10"
+                                                                    FontSize="{StaticResource FontSizeCaption}"
                                                                     Text="{Binding DisplayText}"
                                                                     TextColor="White"
                                                                     LineBreakMode="TailTruncation"
@@ -621,10 +621,10 @@
                                             <behaviors:HoverVideoPreviewBehavior />
                                         </Border.Behaviors>
                                         <controls:SymbolIcon
-                                            HeightRequest="20"
+                                            HeightRequest="{StaticResource IconSizeLarge}"
                                             SymbolName="eye"
                                             TintColor="#FF888888"
-                                            WidthRequest="20" />
+                                            WidthRequest="{StaticResource IconSizeLarge}" />
                                     </Border>
                                 </Grid>
                             </Grid>
@@ -638,7 +638,7 @@
                         HorizontalOptions="Center"
                         VerticalOptions="Center">
                         <Label
-                            FontSize="18"
+                            FontSize="{StaticResource FontSizeTitle}"
                             HorizontalOptions="Center"
                             Text="Selecciona una sesión"
                             TextColor="Gray" />
@@ -657,7 +657,7 @@
                             WidthRequest="24"
                             Color="{StaticResource Primary}" />
                         <Label
-                            FontSize="12"
+                            FontSize="{StaticResource FontSizeSmall}"
                             HorizontalOptions="Center"
                             IsVisible="{Binding HasMoreVideos}"
                             Text="Desplázate para cargar más..."
@@ -708,11 +708,11 @@
 
                                         <!--  Overlay de play  -->
                                         <controls:SymbolIcon
-                            HeightRequest="50"
+                            HeightRequest="{StaticResource IconSizeXXLarge}"
                             SymbolName="play.circle.fill"
                             TintColor="Black" Opacity="0.5"
                             VerticalOptions="Center"
-                            WidthRequest="50" />
+                            WidthRequest="{StaticResource IconSizeXXLarge}" />
                                     </Grid>
                                 </controls:AspectRatioContainer>
 
@@ -723,17 +723,17 @@
                                     ColumnDefinitions="*,Auto">
                                     <VerticalStackLayout Grid.Column="0" Spacing="2">
                                         <Label
-                                            FontSize="12"
+                                            FontSize="{StaticResource FontSizeSmall}"
                                             LineBreakMode="TailTruncation"
                                             Text="{Binding DisplayTitle}"
                                             TextColor="White" />
                                         <Label
-                                            FontSize="12"
+                                            FontSize="{StaticResource FontSizeSmall}"
                                             LineBreakMode="TailTruncation"
                                             Text="{Binding SessionDisplayName}"
                                             TextColor="#FFB1B1B1" />
                                         <Label
-                                            FontSize="12"
+                                            FontSize="{StaticResource FontSizeSmall}"
                                             Text="{Binding CreatedAtUtc, StringFormat='{0:dd/MM/yyyy HH:mm}'}"
                                             TextColor="#FFB1B1B1" />
                                     </VerticalStackLayout>
@@ -741,8 +741,8 @@
                                     <!--  Botones de acción  -->
                                     <HorizontalStackLayout Grid.Column="1" Spacing="4" VerticalOptions="Center">
                                         <Border
-                                            WidthRequest="28"
-                                            HeightRequest="28"
+                                            WidthRequest="{StaticResource ElementHeightMedium}"
+                                            HeightRequest="{StaticResource ElementHeightMedium}"
                                             Padding="0"
                                             BackgroundColor="#FF3A3A3A"
                                             StrokeShape="RoundRectangle 14"
@@ -753,16 +753,16 @@
                                                     CommandParameter="{Binding .}" />
                                             </Border.GestureRecognizers>
                                             <controls:SymbolIcon
-                                                WidthRequest="14"
-                                                HeightRequest="14"
+                                                WidthRequest="{StaticResource IconSizeSmall}"
+                                                HeightRequest="{StaticResource IconSizeSmall}"
                                                 SymbolName="square.and.arrow.up"
                                                 TintColor="White"
                                                 HorizontalOptions="Center"
                                                 VerticalOptions="Center" />
                                         </Border>
                                         <Border
-                                            WidthRequest="28"
-                                            HeightRequest="28"
+                                            WidthRequest="{StaticResource ElementHeightMedium}"
+                                            HeightRequest="{StaticResource ElementHeightMedium}"
                                             Padding="0"
                                             BackgroundColor="#FF3A3A3A"
                                             StrokeShape="RoundRectangle 14"
@@ -773,8 +773,8 @@
                                                     CommandParameter="{Binding .}" />
                                             </Border.GestureRecognizers>
                                             <controls:SymbolIcon
-                                                WidthRequest="14"
-                                                HeightRequest="14"
+                                                WidthRequest="{StaticResource IconSizeSmall}"
+                                                HeightRequest="{StaticResource IconSizeSmall}"
                                                 SymbolName="trash"
                                                 TintColor="#FFFF6B6B"
                                                 HorizontalOptions="Center"
@@ -793,7 +793,7 @@
                         HorizontalOptions="Center"
                         VerticalOptions="Center">
                         <Label
-                            FontSize="18"
+                            FontSize="{StaticResource FontSizeTitle}"
                             HorizontalOptions="Center"
                             Text="No hay videolecciones"
                             TextColor="Gray" />
@@ -844,7 +844,7 @@
                         <Border.GestureRecognizers>
                             <TapGestureRecognizer Command="{Binding SelectCrudTechTabCommand}" />
                         </Border.GestureRecognizers>
-                        <Label Text="Acciones y Análisis" TextColor="White" HorizontalOptions="Center" FontSize="12">
+                        <Label Text="Acciones y Análisis" TextColor="White" HorizontalOptions="Center" FontSize="{StaticResource FontSizeSmall}">
                             <Label.Triggers>
                                 <DataTrigger TargetType="Label" Binding="{Binding IsCrudTechTabSelected}" Value="True">
                                     <Setter Property="FontAttributes" Value="Bold" />
@@ -870,7 +870,7 @@
                         <Border.GestureRecognizers>
                             <TapGestureRecognizer Command="{Binding SelectStatsTabCommand}" />
                         </Border.GestureRecognizers>
-                        <Label Text="Filtros y Estadísticas" TextColor="White" HorizontalOptions="Center" FontSize="12">
+                        <Label Text="Filtros y Estadísticas" TextColor="White" HorizontalOptions="Center" FontSize="{StaticResource FontSizeSmall}">
                             <Label.Triggers>
                                 <DataTrigger TargetType="Label" Binding="{Binding IsStatsTabSelected}" Value="True">
                                     <Setter Property="FontAttributes" Value="Bold" />
@@ -897,7 +897,7 @@
                         <Border.GestureRecognizers>
                             <TapGestureRecognizer Command="{Binding SelectDiaryTabCommand}" />
                         </Border.GestureRecognizers>
-                        <Label Text="Diario de Sesión" TextColor="White" HorizontalOptions="Center" FontSize="12">
+                        <Label Text="Diario de Sesión" TextColor="White" HorizontalOptions="Center" FontSize="{StaticResource FontSizeSmall}">
                             <Label.Triggers>
                                 <DataTrigger TargetType="Label" Binding="{Binding IsDiaryTabSelected}" Value="True">
                                     <Setter Property="FontAttributes" Value="Bold" />
@@ -922,20 +922,20 @@
                     </VerticalStackLayout.IsVisible>
                     <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
                         <controls:SymbolIcon
-                            HeightRequest="24"
+                            HeightRequest="{StaticResource IconSizeLarge}"
                             SymbolName="film.stack"
                             TintColor="#FF6DDDFF"
                             VerticalOptions="Center"
-                            WidthRequest="24" />
+                            WidthRequest="{StaticResource IconSizeLarge}" />
                         <Label
-                            FontSize="24"
+                            FontSize="{StaticResource FontSizeHeader}"
                             Text="Acciones en lote"
                             TextColor="White" />
                     </HorizontalStackLayout>
 
                     <!--  Toggles de selección  -->
                     <Label
-                        FontSize="14"
+                        FontSize="{StaticResource FontSizeBody}"
                         Text="Selección de vídeos"
                         TextColor="#FFB1B1B1" />
 
@@ -956,10 +956,10 @@
                             </Border.GestureRecognizers>
                             <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
                                 <controls:SymbolIcon
-                                    HeightRequest="16"
+                                    HeightRequest="{StaticResource IconSizeMedium}"
                                     SymbolName="checkmark.circle"
                                     TintColor="White"
-                                    WidthRequest="16"
+                                    WidthRequest="{StaticResource IconSizeMedium}"
                                     VerticalOptions="Center" />
                                 <Label Text="Seleccionar" TextColor="White" VerticalOptions="Center">
                                     <Label.Triggers>
@@ -988,10 +988,10 @@
                             </Border.GestureRecognizers>
                             <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
                                 <controls:SymbolIcon
-                                    HeightRequest="16"
+                                    HeightRequest="{StaticResource IconSizeMedium}"
                                     SymbolName="checkmark.circle.fill"
                                     TintColor="White"
-                                    WidthRequest="16"
+                                    WidthRequest="{StaticResource IconSizeMedium}"
                                     VerticalOptions="Center" />
                                 <Label Text="Todos" TextColor="White" VerticalOptions="Center">
                                     <Label.Triggers>
@@ -1007,7 +1007,7 @@
                     <!--  Sección: Acciones  -->
                     <Label
                         Margin="0,12,0,0"
-                        FontSize="14"
+                        FontSize="{StaticResource FontSizeBody}"
                         Text="Acciones en lote"
                         TextColor="#FFB1B1B1" />
 
@@ -1025,12 +1025,12 @@
                             </Border.GestureRecognizers>
                             <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
                                 <controls:SymbolIcon
-                                    HeightRequest="16"
+                                    HeightRequest="{StaticResource IconSizeMedium}"
                                     SymbolName="play.rectangle.on.rectangle"
                                     TintColor="White"
-                                    WidthRequest="16"
+                                    WidthRequest="{StaticResource IconSizeMedium}"
                                     VerticalOptions="Center" />
-                                <Label Text="Playlist" TextColor="White" VerticalOptions="Center" FontSize="12" />
+                                <Label Text="Playlist" TextColor="White" VerticalOptions="Center" FontSize="{StaticResource FontSizeSmall}" />
                             </HorizontalStackLayout>
                         </Border>
 
@@ -1047,12 +1047,12 @@
                             </Border.GestureRecognizers>
                             <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
                                 <controls:SymbolIcon
-                                    HeightRequest="16"
+                                    HeightRequest="{StaticResource IconSizeMedium}"
                                     SymbolName="pencil.circle"
                                     TintColor="White"
-                                    WidthRequest="16"
+                                    WidthRequest="{StaticResource IconSizeMedium}"
                                     VerticalOptions="Center" />
-                                <Label Text="Editar" TextColor="White" VerticalOptions="Center" FontSize="12" />
+                                <Label Text="Editar" TextColor="White" VerticalOptions="Center" FontSize="{StaticResource FontSizeSmall}" />
                             </HorizontalStackLayout>
                         </Border>
 
@@ -1069,12 +1069,12 @@
                             </Border.GestureRecognizers>
                             <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
                                 <controls:SymbolIcon
-                                    HeightRequest="16"
+                                    HeightRequest="{StaticResource IconSizeMedium}"
                                     SymbolName="square.and.arrow.up"
                                     TintColor="#FF6DDDFF"
-                                    WidthRequest="16"
+                                    WidthRequest="{StaticResource IconSizeMedium}"
                                     VerticalOptions="Center" />
-                                <Label Text="Compartir" TextColor="#FF6DDDFF" VerticalOptions="Center" FontSize="12" />
+                                <Label Text="Compartir" TextColor="#FF6DDDFF" VerticalOptions="Center" FontSize="{StaticResource FontSizeSmall}" />
                             </HorizontalStackLayout>
                         </Border>
 
@@ -1091,12 +1091,12 @@
                             </Border.GestureRecognizers>
                             <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
                                 <controls:SymbolIcon
-                                    HeightRequest="16"
+                                    HeightRequest="{StaticResource IconSizeMedium}"
                                     SymbolName="trash.circle"
                                     TintColor="#FFFF6B6B"
-                                    WidthRequest="16"
+                                    WidthRequest="{StaticResource IconSizeMedium}"
                                     VerticalOptions="Center" />
-                                <Label Text="Eliminar" TextColor="#FFFF6B6B" VerticalOptions="Center" FontSize="12" />
+                                <Label Text="Eliminar" TextColor="#FFFF6B6B" VerticalOptions="Center" FontSize="{StaticResource FontSizeSmall}" />
                             </HorizontalStackLayout>
                         </Border>
                     </Grid>
@@ -1110,13 +1110,13 @@
 
                     <HorizontalStackLayout Spacing="12" VerticalOptions="Center" Margin="0,20,0,0">
                         <controls:SymbolIcon
-                            HeightRequest="24"
+                            HeightRequest="{StaticResource IconSizeLarge}"
                             SymbolName="waveform.path.ecg"
                             TintColor="#FF6DDDFF"
                             VerticalOptions="Center"
-                            WidthRequest="24" />
+                            WidthRequest="{StaticResource IconSizeLarge}" />
                         <Label
-                            FontSize="24"
+                            FontSize="{StaticResource FontSizeHeader}"
                             Text="Análisis técnico"
                             TextColor="White" />
                     </HorizontalStackLayout>
@@ -1124,7 +1124,7 @@
                     <!--  Sección: Análisis rápido  -->
                     <Label
                         Margin="0,12,0,0"
-                        FontSize="14"
+                        FontSize="{StaticResource FontSizeBody}"
                         Text="Análisis rápido"
                         TextColor="#FFB1B1B1" />
 
@@ -1235,7 +1235,7 @@
                                     VerticalOptions="Center"
                                     Text="Arrastra un clip aquí"
                                     TextColor="#FF666666"
-                                    FontSize="14"
+                                    FontSize="{StaticResource FontSizeBody}"
                                     IsVisible="{Binding HasParallelVideo1, Converter={StaticResource InvertedBoolConverter}}" />
                                 <!--  Miniatura del vídeo (cuando no está en preview)  -->
                                 <Image
@@ -1310,7 +1310,7 @@
                                         VerticalOptions="Center"
                                         Text="1"
                                         TextColor="#FF666666"
-                                        FontSize="24"
+                                        FontSize="{StaticResource FontSizeHeader}"
                                         FontAttributes="Bold"
                                         IsVisible="{Binding HasParallelVideo1, Converter={StaticResource InvertedBoolConverter}}" />
                                     <!--  Miniatura del vídeo (cuando no está en preview)  -->
@@ -1367,7 +1367,7 @@
                                         VerticalOptions="Center"
                                         Text="2"
                                         TextColor="#FF666666"
-                                        FontSize="24"
+                                        FontSize="{StaticResource FontSizeHeader}"
                                         FontAttributes="Bold"
                                         IsVisible="{Binding HasParallelVideo2, Converter={StaticResource InvertedBoolConverter}}" />
                                     <!--  Miniatura del vídeo (cuando no está en preview)  -->
@@ -1442,7 +1442,7 @@
                                         VerticalOptions="Center"
                                         Text="1"
                                         TextColor="#FF666666"
-                                        FontSize="24"
+                                        FontSize="{StaticResource FontSizeHeader}"
                                         FontAttributes="Bold"
                                         IsVisible="{Binding HasParallelVideo1, Converter={StaticResource InvertedBoolConverter}}" />
                                     <!--  Miniatura del vídeo (cuando no está en preview)  -->
@@ -1499,7 +1499,7 @@
                                         VerticalOptions="Center"
                                         Text="2"
                                         TextColor="#FF666666"
-                                        FontSize="24"
+                                        FontSize="{StaticResource FontSizeHeader}"
                                         FontAttributes="Bold"
                                         IsVisible="{Binding HasParallelVideo2, Converter={StaticResource InvertedBoolConverter}}" />
                                     <!--  Miniatura del vídeo (cuando no está en preview)  -->
@@ -1565,7 +1565,7 @@
                                         VerticalOptions="Center"
                                         Text="1"
                                         TextColor="#FF666666"
-                                        FontSize="24"
+                                        FontSize="{StaticResource FontSizeHeader}"
                                         FontAttributes="Bold"
                                         IsVisible="{Binding HasParallelVideo1, Converter={StaticResource InvertedBoolConverter}}" />
                                     <Image
@@ -1620,7 +1620,7 @@
                                         VerticalOptions="Center"
                                         Text="2"
                                         TextColor="#FF666666"
-                                        FontSize="24"
+                                        FontSize="{StaticResource FontSizeHeader}"
                                         FontAttributes="Bold"
                                         IsVisible="{Binding HasParallelVideo2, Converter={StaticResource InvertedBoolConverter}}" />
                                     <Image
@@ -1675,7 +1675,7 @@
                                         VerticalOptions="Center"
                                         Text="3"
                                         TextColor="#FF666666"
-                                        FontSize="24"
+                                        FontSize="{StaticResource FontSizeHeader}"
                                         FontAttributes="Bold"
                                         IsVisible="{Binding HasParallelVideo3, Converter={StaticResource InvertedBoolConverter}}" />
                                     <Image
@@ -1730,7 +1730,7 @@
                                         VerticalOptions="Center"
                                         Text="4"
                                         TextColor="#FF666666"
-                                        FontSize="24"
+                                        FontSize="{StaticResource FontSizeHeader}"
                                         FontAttributes="Bold"
                                         IsVisible="{Binding HasParallelVideo4, Converter={StaticResource InvertedBoolConverter}}" />
                                     <Image
@@ -1844,10 +1844,10 @@
                             </Border.GestureRecognizers>
                             <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
                                 <controls:SymbolIcon
-                                    HeightRequest="16"
+                                    HeightRequest="{StaticResource IconSizeMedium}"
                                     SymbolName="play.fill"
                                     TintColor="White"
-                                    WidthRequest="16"
+                                    WidthRequest="{StaticResource IconSizeMedium}"
                                     VerticalOptions="Center" />
                                 <Label Text="Reproducir" TextColor="White" VerticalOptions="Center" />
                             </HorizontalStackLayout>
@@ -1864,10 +1864,10 @@
                             </Border.GestureRecognizers>
                             <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
                                 <controls:SymbolIcon
-                                    HeightRequest="16"
+                                    HeightRequest="{StaticResource IconSizeMedium}"
                                     SymbolName="xmark.circle"
                                     TintColor="White"
-                                    WidthRequest="16"
+                                    WidthRequest="{StaticResource IconSizeMedium}"
                                     VerticalOptions="Center" />
                                 <Label Text="Limpiar" TextColor="White" VerticalOptions="Center" />
                             </HorizontalStackLayout>
@@ -1899,20 +1899,20 @@
                                 <HorizontalStackLayout Spacing="8" VerticalOptions="Center">
 
                                     <controls:SymbolIcon
-                                        HeightRequest="24"
+                                        HeightRequest="{StaticResource IconSizeLarge}"
                                         SymbolName="line.3.horizontal.circle"
                                         TintColor="#FF6DDDFF"
                                         VerticalOptions="Center"
-                                        WidthRequest="24" />
+                                        WidthRequest="{StaticResource IconSizeLarge}" />
                                     <Label
-                                        FontSize="24"
+                                        FontSize="{StaticResource FontSizeHeader}"
                                         Text="Filtros"
                                         TextColor="White" VerticalOptions="Center" />
                                     <Button
                                         Padding="8,4"
                                         BackgroundColor="Transparent"
                                         Command="{Binding ClearFiltersCommand}"
-                                        FontSize="14"
+                                        FontSize="{StaticResource FontSizeBody}"
                                         Text="Limpiar"
                                         TextColor="#FF6DDDFF"
                                         VerticalOptions="Center" />
@@ -1931,17 +1931,17 @@
                                     <Grid ColumnDefinitions="*,Auto">
                                         <VerticalStackLayout Grid.Column="0">
                                             <Label
-                                                FontSize="16"
+                                                FontSize="{StaticResource FontSizeSubtitle}"
                                                 Text="Lugar"
                                                 TextColor="#FFB1B1B1" />
                                             <Label
-                                                FontSize="16"
+                                                FontSize="{StaticResource FontSizeSubtitle}"
                                                 Text="{Binding SelectedPlacesSummary}"
                                                 TextColor="White" />
                                         </VerticalStackLayout>
                                         <Label
                                             Grid.Column="1"
-                                            FontSize="16"
+                                            FontSize="{StaticResource FontSizeSubtitle}"
                                             Text="{Binding IsPlacesExpanded, Converter={StaticResource BoolToExpandIconConverter}}"
                                             TextColor="Gray"
                                             VerticalOptions="Center" />
@@ -1961,17 +1961,17 @@
                                     <Grid ColumnDefinitions="*,Auto">
                                         <VerticalStackLayout Grid.Column="0">
                                             <Label
-                                                FontSize="16"
+                                                FontSize="{StaticResource FontSizeSubtitle}"
                                                 Text="Deportista"
                                                 TextColor="#FFB1B1B1" />
                                             <Label
-                                                FontSize="16"
+                                                FontSize="{StaticResource FontSizeSubtitle}"
                                                 Text="{Binding SelectedAthletesSummary}"
                                                 TextColor="White" />
                                         </VerticalStackLayout>
                                         <Label
                                             Grid.Column="1"
-                                            FontSize="16"
+                                            FontSize="{StaticResource FontSizeSubtitle}"
                                             Text="{Binding IsAthletesExpanded, Converter={StaticResource BoolToExpandIconConverter}}"
                                             TextColor="Gray"
                                             VerticalOptions="Center" />
@@ -1991,17 +1991,17 @@
                                     <Grid ColumnDefinitions="*,Auto">
                                         <VerticalStackLayout Grid.Column="0">
                                             <Label
-                                                FontSize="16"
+                                                FontSize="{StaticResource FontSizeSubtitle}"
                                                 Text="Sección"
                                                 TextColor="#FFB1B1B1" />
                                             <Label
-                                                FontSize="16"
+                                                FontSize="{StaticResource FontSizeSubtitle}"
                                                 Text="{Binding SelectedSectionsSummary}"
                                                 TextColor="White" />
                                         </VerticalStackLayout>
                                         <Label
                                             Grid.Column="1"
-                                            FontSize="16"
+                                            FontSize="{StaticResource FontSizeSubtitle}"
                                             Text="{Binding IsSectionsExpanded, Converter={StaticResource BoolToExpandIconConverter}}"
                                             TextColor="Gray"
                                             VerticalOptions="Center" />
@@ -2021,19 +2021,19 @@
                                     <Grid ColumnDefinitions="*,Auto">
                                         <VerticalStackLayout Grid.Column="0">
                                             <Label
-                                                FontFamily="SF Pro Text"
-                                                FontSize="16"
+                                                FontFamily="{StaticResource AppFontBody}"
+                                                FontSize="{StaticResource FontSizeSubtitle}"
                                                 Text="Tag"
                                                 TextColor="#FFB1B1B1" />
                                             <Label
-                                                FontFamily="SF Pro Text"
-                                                FontSize="16"
+                                                FontFamily="{StaticResource AppFontBody}"
+                                                FontSize="{StaticResource FontSizeSubtitle}"
                                                 Text="{Binding SelectedTagsSummary}"
                                                 TextColor="White" />
                                         </VerticalStackLayout>
                                         <Label
                                             Grid.Column="1"
-                                            FontSize="16"
+                                            FontSize="{StaticResource FontSizeSubtitle}"
                                             Text="{Binding IsTagsExpanded, Converter={StaticResource BoolToExpandIconConverter}}"
                                             TextColor="Gray"
                                             VerticalOptions="Center" />
@@ -2043,7 +2043,7 @@
                                     <!--  Fecha desde  -->
                                     <VerticalStackLayout Grid.Column="0" Spacing="4">
                                         <Label
-                                            FontSize="16"
+                                            FontSize="{StaticResource FontSizeSubtitle}"
                                             Text="Fecha desde"
                                             TextColor="#FFB1B1B1" />
                                         <Border
@@ -2064,7 +2064,7 @@
                                     <!--  Fecha hasta  -->
                                     <VerticalStackLayout Grid.Column="1" Spacing="4">
                                         <Label
-                                            FontSize="16"
+                                            FontSize="{StaticResource FontSizeSubtitle}"
                                             Text="Fecha hasta"
                                             TextColor="#FFB1B1B1" />
                                         <Border
@@ -2104,8 +2104,8 @@
                                                 <HorizontalStackLayout Spacing="4">
                                                     <CheckBox IsChecked="{Binding IsSelected}" Color="#FF6DDDFF" />
                                                     <Label
-                                                        FontFamily="SF Pro Text"
-                                                        FontSize="16"
+                                                        FontFamily="{StaticResource AppFontBody}"
+                                                        FontSize="{StaticResource FontSizeSubtitle}"
                                                         Text="{Binding DisplayName}"
                                                         TextColor="White"
                                                         VerticalOptions="Center" />
@@ -2135,8 +2135,8 @@
                                                 <HorizontalStackLayout Spacing="4">
                                                     <CheckBox IsChecked="{Binding IsSelected}" Color="#FF6DDDFF" />
                                                     <Label
-                                                        FontFamily="SF Pro Text"
-                                                        FontSize="16"
+                                                        FontFamily="{StaticResource AppFontBody}"
+                                                        FontSize="{StaticResource FontSizeSubtitle}"
                                                         Text="{Binding DisplayName}"
                                                         TextColor="White"
                                                         VerticalOptions="Center" />
@@ -2166,8 +2166,8 @@
                                                 <HorizontalStackLayout Spacing="4">
                                                     <CheckBox IsChecked="{Binding IsSelected}" Color="#FF6DDDFF" />
                                                     <Label
-                                                        FontFamily="SF Pro Text"
-                                                        FontSize="16"
+                                                        FontFamily="{StaticResource AppFontBody}"
+                                                        FontSize="{StaticResource FontSizeSubtitle}"
                                                         Text="{Binding DisplayName}"
                                                         TextColor="White"
                                                         VerticalOptions="Center" />
@@ -2197,8 +2197,8 @@
                                                 <HorizontalStackLayout Spacing="4">
                                                     <CheckBox IsChecked="{Binding IsSelected}" Color="#FF6DDDFF" />
                                                     <Label
-                                                        FontFamily="SF Pro Text"
-                                                        FontSize="16"
+                                                        FontFamily="{StaticResource AppFontBody}"
+                                                        FontSize="{StaticResource FontSizeSubtitle}"
                                                         Text="{Binding DisplayName}"
                                                         TextColor="White"
                                                         VerticalOptions="Center" />
@@ -2222,13 +2222,13 @@
                     </VerticalStackLayout.IsVisible>
                 <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
                     <controls:SymbolIcon
-                        HeightRequest="24"
+                        HeightRequest="{StaticResource IconSizeLarge}"
                         SymbolName="chart.pie"
                         TintColor="#FF6DDDFF"
                         VerticalOptions="Center"
-                        WidthRequest="24" />
+                        WidthRequest="{StaticResource IconSizeLarge}" />
                     <Label
-                        FontSize="24"
+                        FontSize="{StaticResource FontSizeHeader}"
                         Text="Datos y Estadísticas"
                         TextColor="White" />
                 </HorizontalStackLayout>
@@ -2237,7 +2237,7 @@
                 <VerticalStackLayout Spacing="12">
 
                 <Label
-                    FontSize="14"
+                    FontSize="{StaticResource FontSizeBody}"
                     LineBreakMode="TailTruncation"
                     Text="{Binding SelectedSessionTitle}"
                     TextColor="#FFB1B1B1" />
@@ -2253,12 +2253,12 @@
                         <VerticalStackLayout HorizontalOptions="Center" Spacing="4">
                             <Label
                                 FontAttributes="Bold"
-                                FontSize="22"
+                                FontSize="{StaticResource FontSizeHeader}"
                                 HorizontalOptions="Center"
                                 Text="{Binding TotalFilteredVideoCount}"
                                 TextColor="#FF6DDDFF" />
                             <Label
-                                FontSize="11"
+                                FontSize="{StaticResource FontSizeSmall}"
                                 HorizontalOptions="Center"
                                 Text="Vídeos"
                                 TextColor="#FFB1B1B1" />
@@ -2274,12 +2274,12 @@
                         <VerticalStackLayout HorizontalOptions="Center" Spacing="4">
                             <Label
                                 FontAttributes="Bold"
-                                FontSize="22"
+                                FontSize="{StaticResource FontSizeHeader}"
                                 HorizontalOptions="Center"
                                 Text="{Binding SelectedSessionTotalDurationFormatted}"
                                 TextColor="White" />
                             <Label
-                                FontSize="11"
+                                FontSize="{StaticResource FontSizeSmall}"
                                 HorizontalOptions="Center"
                                 Text="Tiempo"
                                 TextColor="#FFB1B1B1" />
@@ -2295,12 +2295,12 @@
                         <VerticalStackLayout HorizontalOptions="Center" Spacing="4">
                             <Label
                                 FontAttributes="Bold"
-                                FontSize="22"
+                                FontSize="{StaticResource FontSizeHeader}"
                                 HorizontalOptions="Center"
                                 Text="{Binding Stats.TotalSessions}"
                                 TextColor="White" />
                             <Label
-                                FontSize="11"
+                                FontSize="{StaticResource FontSizeSmall}"
                                 HorizontalOptions="Center"
                                 Text="Sesiones"
                                 TextColor="#FFB1B1B1" />
@@ -2317,18 +2317,18 @@
                     <Grid ColumnDefinitions="*,Auto">
                         <VerticalStackLayout Spacing="4">
                             <Label
-                                FontSize="14"
+                                FontSize="{StaticResource FontSizeBody}"
                                 Text="Vídeos etiquetados/nombrados"
                                 TextColor="White" />
                             <Label
-                                FontSize="12"
+                                FontSize="{StaticResource FontSizeSmall}"
                                 Text="{Binding LabeledVideosText, StringFormat='{0} vídeos con nombre asignado'}"
                                 TextColor="#FFB1B1B1" />
                         </VerticalStackLayout>
                         <Label
                             Grid.Column="1"
                             FontAttributes="Bold"
-                            FontSize="18"
+                            FontSize="{StaticResource FontSizeTitle}"
                             Text="{Binding LabeledVideosPercentage, StringFormat='{0:F0}%'}"
                             TextColor="#FF6DDDFF"
                             VerticalOptions="Center" />
@@ -2337,7 +2337,7 @@
 
                 <!--  TAGS DE EVENTOS  -->
                 <Label
-                    FontSize="14"
+                    FontSize="{StaticResource FontSizeBody}"
                     Text="Tags de eventos"
                     TextColor="#FFB1B1B1" />
                 <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
@@ -2349,12 +2349,12 @@
                         <HorizontalStackLayout Spacing="8">
                             <Label
                                 FontAttributes="Bold"
-                                FontSize="18"
+                                FontSize="{StaticResource FontSizeTitle}"
                                 Text="{Binding TotalEventTagsCount}"
                                 TextColor="White"
                                 VerticalOptions="Center" />
                             <Label
-                                FontSize="12"
+                                FontSize="{StaticResource FontSizeSmall}"
                                 Text="eventos totales"
                                 TextColor="#FF808080"
                                 VerticalOptions="Center" />
@@ -2369,12 +2369,12 @@
                         <HorizontalStackLayout Spacing="8">
                             <Label
                                 FontAttributes="Bold"
-                                FontSize="18"
+                                FontSize="{StaticResource FontSizeTitle}"
                                 Text="{Binding TotalUniqueEventTagsCount}"
                                 TextColor="White"
                                 VerticalOptions="Center" />
                             <Label
-                                FontSize="12"
+                                FontSize="{StaticResource FontSizeSmall}"
                                 Text="tipos únicos"
                                 TextColor="#FF808080"
                                 VerticalOptions="Center" />
@@ -2384,7 +2384,7 @@
 
                 <!--  TOP EVENTOS MÁS USADOS  -->
                 <Label
-                    FontSize="13"
+                    FontSize="{StaticResource FontSizeBody}"
                     Margin="0,4,0,0"
                     Text="Eventos más utilizados"
                     TextColor="#FF808080" />
@@ -2399,7 +2399,7 @@
 
                 <!--  ETIQUETAS  -->
                 <Label
-                    FontSize="14"
+                    FontSize="{StaticResource FontSizeBody}"
                     Text="Etiquetas"
                     TextColor="#FFB1B1B1" />
                 <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
@@ -2411,12 +2411,12 @@
                         <VerticalStackLayout HorizontalOptions="Center" Spacing="2">
                             <Label
                                 FontAttributes="Bold"
-                                FontSize="16"
+                                FontSize="{StaticResource FontSizeSubtitle}"
                                 HorizontalOptions="Center"
                                 Text="{Binding TotalLabelTagsCount}"
                                 TextColor="White" />
                             <Label
-                                FontSize="10"
+                                FontSize="{StaticResource FontSizeCaption}"
                                 HorizontalOptions="Center"
                                 Text="asignadas"
                                 TextColor="#FF808080" />
@@ -2431,12 +2431,12 @@
                         <VerticalStackLayout HorizontalOptions="Center" Spacing="2">
                             <Label
                                 FontAttributes="Bold"
-                                FontSize="16"
+                                FontSize="{StaticResource FontSizeSubtitle}"
                                 HorizontalOptions="Center"
                                 Text="{Binding TotalUniqueLabelTagsCount}"
                                 TextColor="White" />
                             <Label
-                                FontSize="10"
+                                FontSize="{StaticResource FontSizeCaption}"
                                 HorizontalOptions="Center"
                                 Text="únicas"
                                 TextColor="#FF808080" />
@@ -2451,12 +2451,12 @@
                         <VerticalStackLayout HorizontalOptions="Center" Spacing="2">
                             <Label
                                 FontAttributes="Bold"
-                                FontSize="16"
+                                FontSize="{StaticResource FontSizeSubtitle}"
                                 HorizontalOptions="Center"
                                 Text="{Binding AvgTagsPerSession, StringFormat='{0:F1}'}"
                                 TextColor="White" />
                             <Label
-                                FontSize="10"
+                                FontSize="{StaticResource FontSizeCaption}"
                                 HorizontalOptions="Center"
                                 Text="por sesión"
                                 TextColor="#FF808080" />
@@ -2466,7 +2466,7 @@
 
                 <!--  TOP ETIQUETAS MÁS USADAS (GRÁFICO CIRCULAR)  -->
                 <Label
-                    FontSize="13"
+                    FontSize="{StaticResource FontSizeBody}"
                     Margin="0,4,0,0"
                     Text="Etiquetas más utilizadas"
                     TextColor="#FF808080" />
@@ -2485,7 +2485,7 @@
                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                         <Label
                             FontAttributes="Bold"
-                            FontSize="16"
+                            FontSize="{StaticResource FontSizeSubtitle}"
                             Text="⏱ Tiempos por Sección"
                             TextColor="White"
                             VerticalOptions="Center" />
@@ -2503,7 +2503,7 @@
                                     <TapGestureRecognizer Command="{Binding ToggleSectionTimesViewCommand}" />
                                 </Border.GestureRecognizers>
                                 <Label
-                                    FontSize="12"
+                                    FontSize="{StaticResource FontSizeSmall}"
                                     Text="Tiempos"
                                     HorizontalOptions="Center"
                                     TextColor="White" />
@@ -2520,7 +2520,7 @@
                                     <TapGestureRecognizer Command="{Binding ToggleSectionTimesViewCommand}" />
                                 </Border.GestureRecognizers>
                                 <Label
-                                    FontSize="12"
+                                    FontSize="{StaticResource FontSizeSmall}"
                                     Text="vs Tú"
                                     HorizontalOptions="Center"
                                     TextColor="White" />
@@ -2544,7 +2544,7 @@
                                         <!--  Nombre de la sección  -->
                                         <Label
                                             FontAttributes="Bold"
-                                            FontSize="14"
+                                            FontSize="{StaticResource FontSizeBody}"
                                             Text="{Binding SectionName}"
                                             TextColor="#FF6DDDFF" />
                                         
@@ -2552,11 +2552,11 @@
                                         <VerticalStackLayout Spacing="4" IsVisible="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=ShowSectionTimesAbsolute}">
                                             <!--  Cabecera de tabla (absoluta)  -->
                                             <Grid ColumnDefinitions="2*,*,*,*,*" ColumnSpacing="4" Padding="4,2" BackgroundColor="#FF252525">
-                                                <Label Grid.Column="0" FontSize="11" FontAttributes="Bold" Text="ATLETA" TextColor="#FFB1B1B1" />
-                                                <Label Grid.Column="1" FontSize="11" FontAttributes="Bold" Text="CAT." TextColor="#FFB1B1B1" />
-                                                <Label Grid.Column="2" FontSize="11" FontAttributes="Bold" Text="TIEMPO" TextColor="#FFB1B1B1" HorizontalTextAlignment="End" />
-                                                <Label Grid.Column="3" FontSize="11" FontAttributes="Bold" Text="PENAL." TextColor="#FFB1B1B1" HorizontalTextAlignment="End" />
-                                                <Label Grid.Column="4" FontSize="11" FontAttributes="Bold" Text="TOTAL" TextColor="#FFB1B1B1" HorizontalTextAlignment="End" />
+                                                <Label Grid.Column="0" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="ATLETA" TextColor="#FFB1B1B1" />
+                                                <Label Grid.Column="1" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="CAT." TextColor="#FFB1B1B1" />
+                                                <Label Grid.Column="2" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="TIEMPO" TextColor="#FFB1B1B1" HorizontalTextAlignment="End" />
+                                                <Label Grid.Column="3" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="PENAL." TextColor="#FFB1B1B1" HorizontalTextAlignment="End" />
+                                                <Label Grid.Column="4" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="TOTAL" TextColor="#FFB1B1B1" HorizontalTextAlignment="End" />
                                             </Grid>
                                             
                                             <!--  Filas de atletas (tiempos absolutos)  -->
@@ -2567,11 +2567,11 @@
                                                 <BindableLayout.ItemTemplate>
                                                     <DataTemplate x:DataType="services:AthleteSectionTimeRow">
                                                         <Grid ColumnDefinitions="2*,*,*,*,*" ColumnSpacing="4" Padding="4,3" BackgroundColor="{Binding RowBackgroundColor}">
-                                                            <Label Grid.Column="0" FontSize="12" Text="{Binding AthleteName}" TextColor="White" LineBreakMode="TailTruncation" VerticalOptions="Center" />
-                                                            <Label Grid.Column="1" FontSize="11" Text="{Binding CategoryName}" TextColor="#FF808080" LineBreakMode="TailTruncation" VerticalOptions="Center" />
-                                                            <Label Grid.Column="2" FontSize="12" Text="{Binding DurationFormatted}" TextColor="#FF4CAF50" HorizontalTextAlignment="End" VerticalOptions="Center" />
-                                                            <Label Grid.Column="3" FontSize="12" Text="{Binding PenaltyFormatted}" TextColor="#FFFF6B6B" HorizontalTextAlignment="End" VerticalOptions="Center" />
-                                                            <Label Grid.Column="4" FontSize="12" FontAttributes="Bold" Text="{Binding TotalFormatted}" TextColor="#FFFFD700" HorizontalTextAlignment="End" VerticalOptions="Center" />
+                                                            <Label Grid.Column="0" FontSize="{StaticResource FontSizeSmall}" Text="{Binding AthleteName}" TextColor="White" LineBreakMode="TailTruncation" VerticalOptions="Center" />
+                                                            <Label Grid.Column="1" FontSize="{StaticResource FontSizeSmall}" Text="{Binding CategoryName}" TextColor="#FF808080" LineBreakMode="TailTruncation" VerticalOptions="Center" />
+                                                            <Label Grid.Column="2" FontSize="{StaticResource FontSizeSmall}" Text="{Binding DurationFormatted}" TextColor="#FF4CAF50" HorizontalTextAlignment="End" VerticalOptions="Center" />
+                                                            <Label Grid.Column="3" FontSize="{StaticResource FontSizeSmall}" Text="{Binding PenaltyFormatted}" TextColor="#FFFF6B6B" HorizontalTextAlignment="End" VerticalOptions="Center" />
+                                                            <Label Grid.Column="4" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="{Binding TotalFormatted}" TextColor="#FFFFD700" HorizontalTextAlignment="End" VerticalOptions="Center" />
                                                         </Grid>
                                                     </DataTemplate>
                                                 </BindableLayout.ItemTemplate>
@@ -2582,10 +2582,10 @@
                                         <VerticalStackLayout Spacing="4" IsVisible="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=ShowSectionTimesDifferences}">
                                             <!--  Cabecera de tabla (diferencias)  -->
                                             <Grid ColumnDefinitions="2*,*,*,*" ColumnSpacing="4" Padding="4,2" BackgroundColor="#FF252525">
-                                                <Label Grid.Column="0" FontSize="11" FontAttributes="Bold" Text="ATLETA" TextColor="#FFB1B1B1" />
-                                                <Label Grid.Column="1" FontSize="11" FontAttributes="Bold" Text="CAT." TextColor="#FFB1B1B1" />
-                                                <Label Grid.Column="2" FontSize="11" FontAttributes="Bold" Text="TOTAL" TextColor="#FFB1B1B1" HorizontalTextAlignment="End" />
-                                                <Label Grid.Column="3" FontSize="11" FontAttributes="Bold" Text="vs TÚ" TextColor="#FFB1B1B1" HorizontalTextAlignment="End" />
+                                                <Label Grid.Column="0" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="ATLETA" TextColor="#FFB1B1B1" />
+                                                <Label Grid.Column="1" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="CAT." TextColor="#FFB1B1B1" />
+                                                <Label Grid.Column="2" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="TOTAL" TextColor="#FFB1B1B1" HorizontalTextAlignment="End" />
+                                                <Label Grid.Column="3" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="vs TÚ" TextColor="#FFB1B1B1" HorizontalTextAlignment="End" />
                                             </Grid>
                                             
                                             <!--  Filas de atletas (diferencias)  -->
@@ -2596,10 +2596,10 @@
                                                 <BindableLayout.ItemTemplate>
                                                     <DataTemplate x:DataType="services:AthleteSectionTimeRow">
                                                         <Grid ColumnDefinitions="2*,*,*,*" ColumnSpacing="4" Padding="4,3" BackgroundColor="{Binding RowBackgroundColor}">
-                                                            <Label Grid.Column="0" FontSize="12" Text="{Binding AthleteName}" TextColor="White" LineBreakMode="TailTruncation" VerticalOptions="Center" FontAttributes="{Binding IsReferenceAthlete, Converter={StaticResource BoolToFontAttributesConverter}}" />
-                                                            <Label Grid.Column="1" FontSize="11" Text="{Binding CategoryName}" TextColor="#FF808080" LineBreakMode="TailTruncation" VerticalOptions="Center" />
-                                                            <Label Grid.Column="2" FontSize="12" Text="{Binding TotalFormatted}" TextColor="#FFFFD700" HorizontalTextAlignment="End" VerticalOptions="Center" />
-                                                            <Label Grid.Column="3" FontSize="12" FontAttributes="Bold" Text="{Binding DifferenceFormatted}" TextColor="{Binding DifferenceColor}" HorizontalTextAlignment="End" VerticalOptions="Center" />
+                                                            <Label Grid.Column="0" FontSize="{StaticResource FontSizeSmall}" Text="{Binding AthleteName}" TextColor="White" LineBreakMode="TailTruncation" VerticalOptions="Center" FontAttributes="{Binding IsReferenceAthlete, Converter={StaticResource BoolToFontAttributesConverter}}" />
+                                                            <Label Grid.Column="1" FontSize="{StaticResource FontSizeSmall}" Text="{Binding CategoryName}" TextColor="#FF808080" LineBreakMode="TailTruncation" VerticalOptions="Center" />
+                                                            <Label Grid.Column="2" FontSize="{StaticResource FontSizeSmall}" Text="{Binding TotalFormatted}" TextColor="#FFFFD700" HorizontalTextAlignment="End" VerticalOptions="Center" />
+                                                            <Label Grid.Column="3" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="{Binding DifferenceFormatted}" TextColor="{Binding DifferenceColor}" HorizontalTextAlignment="End" VerticalOptions="Center" />
                                                         </Grid>
                                                     </DataTemplate>
                                                 </BindableLayout.ItemTemplate>
@@ -2629,7 +2629,7 @@
                     <!--  Título  -->
                     <Label
                         FontAttributes="Bold"
-                        FontSize="18"
+                        FontSize="{StaticResource FontSizeTitle}"
                         Text="Diario de Sesión"
                         TextColor="White" />
                     
@@ -2642,14 +2642,14 @@
                         <VerticalStackLayout Spacing="16">
                             <Label
                                 FontAttributes="Bold"
-                                FontSize="14"
+                                FontSize="{StaticResource FontSizeBody}"
                                 Text="¿Cómo te has sentido hoy?"
                                 TextColor="White" />
                             
                             <!--  Valoración Física  -->
                             <Grid ColumnDefinitions="100,*,40" ColumnSpacing="12">
                                 <Label
-                                    FontSize="14"
+                                    FontSize="{StaticResource FontSizeBody}"
                                     Text="Físico"
                                     TextColor="#FFB1B1B1"
                                     VerticalOptions="Center" />
@@ -2664,7 +2664,7 @@
                                 <Label
                                     Grid.Column="2"
                                     FontAttributes="Bold"
-                                    FontSize="16"
+                                    FontSize="{StaticResource FontSizeSubtitle}"
                                     HorizontalOptions="Center"
                                     Text="{Binding DiaryValoracionFisica}"
                                     TextColor="#FF8DD3C7"
@@ -2674,7 +2674,7 @@
                             <!--  Valoración Mental  -->
                             <Grid ColumnDefinitions="100,*,40" ColumnSpacing="12">
                                 <Label
-                                    FontSize="14"
+                                    FontSize="{StaticResource FontSizeBody}"
                                     Text="Mental"
                                     TextColor="#FFB1B1B1"
                                     VerticalOptions="Center" />
@@ -2689,7 +2689,7 @@
                                 <Label
                                     Grid.Column="2"
                                     FontAttributes="Bold"
-                                    FontSize="16"
+                                    FontSize="{StaticResource FontSizeSubtitle}"
                                     HorizontalOptions="Center"
                                     Text="{Binding DiaryValoracionMental}"
                                     TextColor="#FFFFED6F"
@@ -2699,7 +2699,7 @@
                             <!--  Valoración Técnica  -->
                             <Grid ColumnDefinitions="100,*,40" ColumnSpacing="12">
                                 <Label
-                                    FontSize="14"
+                                    FontSize="{StaticResource FontSizeBody}"
                                     Text="Técnico"
                                     TextColor="#FFB1B1B1"
                                     VerticalOptions="Center" />
@@ -2714,7 +2714,7 @@
                                 <Label
                                     Grid.Column="2"
                                     FontAttributes="Bold"
-                                    FontSize="16"
+                                    FontSize="{StaticResource FontSizeSubtitle}"
                                     HorizontalOptions="Center"
                                     Text="{Binding DiaryValoracionTecnica}"
                                     TextColor="#FFBEBADA"
@@ -2736,13 +2736,13 @@
                             <Grid ColumnDefinitions="*,Auto">
                                 <Label
                                     FontAttributes="Bold"
-                                    FontSize="14"
+                                    FontSize="{StaticResource FontSizeBody}"
                                     Text="Promedios (últimos 30 días)"
                                     TextColor="White"
                                     VerticalOptions="Center" />
                                 <Label
                                     Grid.Column="1"
-                                    FontSize="12"
+                                    FontSize="{StaticResource FontSizeSmall}"
                                     Text="{Binding AvgValoracionCount, StringFormat='{0} sesiones'}"
                                     TextColor="#FF808080"
                                     VerticalOptions="Center" />
@@ -2758,12 +2758,12 @@
                                     <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
                                         <Label
                                             FontAttributes="Bold"
-                                            FontSize="24"
+                                            FontSize="{StaticResource FontSizeHeader}"
                                             HorizontalOptions="Center"
                                             Text="{Binding AvgValoracionFisica, StringFormat='{0:F1}'}"
                                             TextColor="#FF8DD3C7" />
                                         <Label
-                                            FontSize="11"
+                                            FontSize="{StaticResource FontSizeSmall}"
                                             HorizontalOptions="Center"
                                             Text="Físico"
                                             TextColor="#FF808080" />
@@ -2780,12 +2780,12 @@
                                     <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
                                         <Label
                                             FontAttributes="Bold"
-                                            FontSize="24"
+                                            FontSize="{StaticResource FontSizeHeader}"
                                             HorizontalOptions="Center"
                                             Text="{Binding AvgValoracionMental, StringFormat='{0:F1}'}"
                                             TextColor="#FFFFED6F" />
                                         <Label
-                                            FontSize="11"
+                                            FontSize="{StaticResource FontSizeSmall}"
                                             HorizontalOptions="Center"
                                             Text="Mental"
                                             TextColor="#FF808080" />
@@ -2802,12 +2802,12 @@
                                     <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
                                         <Label
                                             FontAttributes="Bold"
-                                            FontSize="24"
+                                            FontSize="{StaticResource FontSizeHeader}"
                                             HorizontalOptions="Center"
                                             Text="{Binding AvgValoracionTecnica, StringFormat='{0:F1}'}"
                                             TextColor="#FFBEBADA" />
                                         <Label
-                                            FontSize="11"
+                                            FontSize="{StaticResource FontSizeSmall}"
                                             HorizontalOptions="Center"
                                             Text="Técnico"
                                             TextColor="#FF808080" />
@@ -2828,7 +2828,7 @@
                             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
                                 <Label
                                     FontAttributes="Bold"
-                                    FontSize="14"
+                                    FontSize="{StaticResource FontSizeBody}"
                                     Text="Evolución"
                                     TextColor="White"
                                     VerticalOptions="Center" />
@@ -2843,7 +2843,7 @@
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer Command="{Binding SetEvolutionPeriodCommand}" CommandParameter="0" />
                                         </Border.GestureRecognizers>
-                                        <Label FontSize="11" Text="Semana" TextColor="White" />
+                                        <Label FontSize="{StaticResource FontSizeSmall}" Text="Semana" TextColor="White" />
                                     </Border>
                                     <Border
                                         Grid.Column="1"
@@ -2854,7 +2854,7 @@
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer Command="{Binding SetEvolutionPeriodCommand}" CommandParameter="1" />
                                         </Border.GestureRecognizers>
-                                        <Label FontSize="11" Text="Mes" TextColor="White" />
+                                        <Label FontSize="{StaticResource FontSizeSmall}" Text="Mes" TextColor="White" />
                                     </Border>
                                     <Border
                                         Grid.Column="2"
@@ -2865,7 +2865,7 @@
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer Command="{Binding SetEvolutionPeriodCommand}" CommandParameter="2" />
                                         </Border.GestureRecognizers>
-                                        <Label FontSize="11" Text="Año" TextColor="White" />
+                                        <Label FontSize="{StaticResource FontSizeSmall}" Text="Año" TextColor="White" />
                                     </Border>
                                     <Border
                                         Grid.Column="3"
@@ -2876,7 +2876,7 @@
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer Command="{Binding SetEvolutionPeriodCommand}" CommandParameter="3" />
                                         </Border.GestureRecognizers>
-                                        <Label FontSize="11" Text="Todo" TextColor="White" />
+                                        <Label FontSize="{StaticResource FontSizeSmall}" Text="Todo" TextColor="White" />
                                     </Border>
                                 </Grid>
                             </Grid>
@@ -2885,22 +2885,22 @@
                             <HorizontalStackLayout Spacing="16" HorizontalOptions="Center">
                                 <HorizontalStackLayout Spacing="4">
                                     <BoxView WidthRequest="12" HeightRequest="12" Color="#FF8DD3C7" CornerRadius="2" />
-                                    <Label FontSize="11" Text="Físico" TextColor="#FF808080" />
+                                    <Label FontSize="{StaticResource FontSizeSmall}" Text="Físico" TextColor="#FF808080" />
                                 </HorizontalStackLayout>
                                 <HorizontalStackLayout Spacing="4">
                                     <BoxView WidthRequest="12" HeightRequest="12" Color="#FFFFED6F" CornerRadius="2" />
-                                    <Label FontSize="11" Text="Mental" TextColor="#FF808080" />
+                                    <Label FontSize="{StaticResource FontSizeSmall}" Text="Mental" TextColor="#FF808080" />
                                 </HorizontalStackLayout>
                                 <HorizontalStackLayout Spacing="4">
                                     <BoxView WidthRequest="12" HeightRequest="12" Color="#FFBEBADA" CornerRadius="2" />
-                                    <Label FontSize="11" Text="Técnico" TextColor="#FF808080" />
+                                    <Label FontSize="{StaticResource FontSizeSmall}" Text="Técnico" TextColor="#FF808080" />
                                 </HorizontalStackLayout>
                             </HorizontalStackLayout>
                             
                             <!--  Mensaje si no hay datos  -->
                             <Label
                                 IsVisible="{Binding ValoracionEvolution.Count, Converter={StaticResource IntToBoolConverter}, ConverterParameter=invert}"
-                                FontSize="14"
+                                FontSize="{StaticResource FontSizeBody}"
                                 HorizontalOptions="Center"
                                 Text="No hay datos de evolución para el periodo seleccionado"
                                 TextColor="#FF808080" />
@@ -2930,7 +2930,7 @@
                         <VerticalStackLayout Spacing="12">
                             <Label
                                 FontAttributes="Bold"
-                                FontSize="14"
+                                FontSize="{StaticResource FontSizeBody}"
                                 Text="Notas de sesión"
                                 TextColor="White" />
                             
@@ -2964,13 +2964,13 @@
                     <Grid ColumnDefinitions="*,Auto">
                         <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
                             <controls:SymbolIcon
-                                HeightRequest="24"
+                                HeightRequest="{StaticResource IconSizeLarge}"
                                 SymbolName="book"
                                 TintColor="#FF6DDDFF"
                                 VerticalOptions="Center"
-                                WidthRequest="24" />
+                                WidthRequest="{StaticResource IconSizeLarge}" />
                             <Label
-                                FontSize="24"
+                                FontSize="{StaticResource FontSizeHeader}"
                                 Text="Diario Personal"
                                 TextColor="White" />
                         </HorizontalStackLayout>
@@ -2981,10 +2981,10 @@
                             Text="+ Nueva sesión"
                             BackgroundColor="#FF2A2A2A"
                             TextColor="#FF6DDDFF"
-                            FontSize="12"
+                            FontSize="{StaticResource FontSizeSmall}"
                             CornerRadius="6"
                             Padding="12,6"
-                            HeightRequest="32"
+                            HeightRequest="{StaticResource ElementHeightDefault}"
                             VerticalOptions="Center"
                             Command="{Binding ToggleAddNewSessionCommand}"
                             IsVisible="{Binding IsAddingNewSession, Converter={toolkit:InvertedBoolConverter}}" />
@@ -2992,7 +2992,7 @@
                     
                     <!--  Fecha seleccionada  -->
                     <Label
-                        FontSize="14"
+                        FontSize="{StaticResource FontSizeBody}"
                         Text="{Binding SelectedDiaryDate, StringFormat='{0:dddd, dd MMMM yyyy}'}"
                         TextColor="#FFB1B1B1" />
 
@@ -3007,14 +3007,14 @@
                         <VerticalStackLayout Spacing="16">
                             <Label
                                 FontAttributes="Bold"
-                                FontSize="16"
+                                FontSize="{StaticResource FontSizeSubtitle}"
                                 Text="Nueva sesión"
                                 TextColor="White" />
                             
                             <!--  Nombre de la sesión  -->
                             <VerticalStackLayout Spacing="4">
                                 <Label
-                                    FontSize="12"
+                                    FontSize="{StaticResource FontSizeSmall}"
                                     Text="Nombre de la sesión"
                                     TextColor="#FFB1B1B1" />
                                 <Entry
@@ -3028,7 +3028,7 @@
                             <!--  Tipo de sesión  -->
                             <VerticalStackLayout Spacing="8">
                                 <Label
-                                    FontSize="12"
+                                    FontSize="{StaticResource FontSizeSmall}"
                                     Text="Tipo de sesión"
                                     TextColor="#FFB1B1B1" />
                                 <FlexLayout 
@@ -3050,7 +3050,7 @@
                                                         CommandParameter="{Binding .}" />
                                                 </Border.GestureRecognizers>
                                                 <Label
-                                                    FontSize="12"
+                                                    FontSize="{StaticResource FontSizeSmall}"
                                                     Text="{Binding Name}"
                                                     TextColor="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF121212|#FFB1B1B1}"
                                                     FontAttributes="{Binding IsSelected, Converter={StaticResource BoolToFontAttributesConverter}}"
@@ -3064,7 +3064,7 @@
                             <!--  Lugar  -->
                             <VerticalStackLayout Spacing="4">
                                 <Label
-                                    FontSize="12"
+                                    FontSize="{StaticResource FontSizeSmall}"
                                     Text="Lugar (opcional)"
                                     TextColor="#FFB1B1B1" />
                                 <Entry
@@ -3082,7 +3082,7 @@
                                     BackgroundColor="#FF2A2A2A"
                                     TextColor="#FFB1B1B1"
                                     CornerRadius="8"
-                                    HeightRequest="40"
+                                    HeightRequest="{StaticResource ElementHeightLarge}"
                                     Command="{Binding CancelNewSessionCommand}" />
                                 <Button
                                     Grid.Column="1"
@@ -3091,7 +3091,7 @@
                                     TextColor="#FF121212"
                                     FontAttributes="Bold"
                                     CornerRadius="8"
-                                    HeightRequest="40"
+                                    HeightRequest="{StaticResource ElementHeightLarge}"
                                     Command="{Binding CreateNewSessionCommand}" />
                             </Grid>
                         </VerticalStackLayout>
@@ -3115,19 +3115,19 @@
                                         <Grid ColumnDefinitions="*,Auto">
                                             <HorizontalStackLayout Spacing="10">
                                                 <controls:SymbolIcon
-                                                    HeightRequest="20"
+                                                    HeightRequest="{StaticResource IconSizeLarge}"
                                                     SymbolName="figure.pool.swim"
                                                     TintColor="#FF6DDDFF"
                                                     VerticalOptions="Center"
-                                                    WidthRequest="20" />
+                                                    WidthRequest="{StaticResource IconSizeLarge}" />
                                                 <VerticalStackLayout>
                                                     <Label
                                                         FontAttributes="Bold"
-                                                        FontSize="16"
+                                                        FontSize="{StaticResource FontSizeSubtitle}"
                                                         Text="{Binding Session.DisplayName}"
                                                         TextColor="White" />
                                                     <Label
-                                                        FontSize="12"
+                                                        FontSize="{StaticResource FontSizeSmall}"
                                                         Text="{Binding Session.FechaDateTime, StringFormat='{0:HH:mm}'}"
                                                         TextColor="#FF888888" />
                                                 </VerticalStackLayout>
@@ -3137,7 +3137,7 @@
                                         <!--  Mini galería de vídeos  -->
                                         <VerticalStackLayout Spacing="8" IsVisible="{Binding HasVideos}">
                                             <Label
-                                                FontSize="12"
+                                                FontSize="{StaticResource FontSizeSmall}"
                                                 Text="{Binding VideoCount, StringFormat='{0} vídeos'}"
                                                 TextColor="#FF888888" />
                                             <FlexLayout
@@ -3161,7 +3161,7 @@
                                                 </BindableLayout.ItemTemplate>
                                             </FlexLayout>
                                             <Label
-                                                FontSize="11"
+                                                FontSize="{StaticResource FontSizeSmall}"
                                                 Text="{Binding ExtraVideosCount, StringFormat='+ {0} más'}"
                                                 TextColor="#FF6DDDFF"
                                                 IsVisible="{Binding HasExtraVideos}" />
@@ -3169,10 +3169,10 @@
                                                 Text="Ver sesión"
                                                 BackgroundColor="#FF2A2A2A"
                                                 TextColor="#FF6DDDFF"
-                                                FontSize="12"
+                                                FontSize="{StaticResource FontSizeSmall}"
                                                 CornerRadius="6"
                                                 Padding="12,6"
-                                                HeightRequest="32"
+                                                HeightRequest="{StaticResource ElementHeightDefault}"
                                                 HorizontalOptions="Start"
                                                 Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=ViewSessionAsPlaylistCommand}"
                                                 CommandParameter="{Binding .}" />
@@ -3182,14 +3182,14 @@
                                         <VerticalStackLayout Spacing="12" IsVisible="{Binding HasValoraciones}">
                                             <Label
                                                 FontAttributes="Bold"
-                                                FontSize="14"
+                                                FontSize="{StaticResource FontSizeBody}"
                                                 Text="Valoraciones"
                                                 TextColor="White" />
                                             
                                             <!--  Valoración Física  -->
                                             <Grid ColumnDefinitions="80,*,40" ColumnSpacing="12">
                                                 <Label
-                                                    FontSize="14"
+                                                    FontSize="{StaticResource FontSizeBody}"
                                                     Text="Físico"
                                                     TextColor="#FFB1B1B1"
                                                     VerticalOptions="Center" />
@@ -3201,7 +3201,7 @@
                                                 <Label
                                                     Grid.Column="2"
                                                     FontAttributes="Bold"
-                                                    FontSize="16"
+                                                    FontSize="{StaticResource FontSizeSubtitle}"
                                                     HorizontalOptions="Center"
                                                     Text="{Binding Diary.ValoracionFisica}"
                                                     TextColor="#FF8DD3C7"
@@ -3211,7 +3211,7 @@
                                             <!--  Valoración Mental  -->
                                             <Grid ColumnDefinitions="80,*,40" ColumnSpacing="12">
                                                 <Label
-                                                    FontSize="14"
+                                                    FontSize="{StaticResource FontSizeBody}"
                                                     Text="Mental"
                                                     TextColor="#FFB1B1B1"
                                                     VerticalOptions="Center" />
@@ -3223,7 +3223,7 @@
                                                 <Label
                                                     Grid.Column="2"
                                                     FontAttributes="Bold"
-                                                    FontSize="16"
+                                                    FontSize="{StaticResource FontSizeSubtitle}"
                                                     HorizontalOptions="Center"
                                                     Text="{Binding Diary.ValoracionMental}"
                                                     TextColor="#FFFFED6F"
@@ -3233,7 +3233,7 @@
                                             <!--  Valoración Técnica  -->
                                             <Grid ColumnDefinitions="80,*,40" ColumnSpacing="12">
                                                 <Label
-                                                    FontSize="14"
+                                                    FontSize="{StaticResource FontSizeBody}"
                                                     Text="Técnico"
                                                     TextColor="#FFB1B1B1"
                                                     VerticalOptions="Center" />
@@ -3245,7 +3245,7 @@
                                                 <Label
                                                     Grid.Column="2"
                                                     FontAttributes="Bold"
-                                                    FontSize="16"
+                                                    FontSize="{StaticResource FontSizeSubtitle}"
                                                     HorizontalOptions="Center"
                                                     Text="{Binding Diary.ValoracionTecnica}"
                                                     TextColor="#FFBEBADA"
@@ -3257,14 +3257,14 @@
                                         <VerticalStackLayout Spacing="12" IsVisible="{Binding HasValoraciones, Converter={toolkit:InvertedBoolConverter}}">
                                             <Label
                                                 FontAttributes="Bold"
-                                                FontSize="14"
+                                                FontSize="{StaticResource FontSizeBody}"
                                                 Text="¿Cómo te sentiste en esta sesión?"
                                                 TextColor="White" />
                                             
                                             <!--  Valoración Física  -->
                                             <Grid ColumnDefinitions="80,*,40" ColumnSpacing="12">
                                                 <Label
-                                                    FontSize="14"
+                                                    FontSize="{StaticResource FontSizeBody}"
                                                     Text="Físico"
                                                     TextColor="#FFB1B1B1"
                                                     VerticalOptions="Center" />
@@ -3279,7 +3279,7 @@
                                                 <Label
                                                     Grid.Column="2"
                                                     FontAttributes="Bold"
-                                                    FontSize="16"
+                                                    FontSize="{StaticResource FontSizeSubtitle}"
                                                     HorizontalOptions="Center"
                                                     Text="{Binding EditValoracionFisica}"
                                                     TextColor="#FF8DD3C7"
@@ -3289,7 +3289,7 @@
                                             <!--  Valoración Mental  -->
                                             <Grid ColumnDefinitions="80,*,40" ColumnSpacing="12">
                                                 <Label
-                                                    FontSize="14"
+                                                    FontSize="{StaticResource FontSizeBody}"
                                                     Text="Mental"
                                                     TextColor="#FFB1B1B1"
                                                     VerticalOptions="Center" />
@@ -3304,7 +3304,7 @@
                                                 <Label
                                                     Grid.Column="2"
                                                     FontAttributes="Bold"
-                                                    FontSize="16"
+                                                    FontSize="{StaticResource FontSizeSubtitle}"
                                                     HorizontalOptions="Center"
                                                     Text="{Binding EditValoracionMental}"
                                                     TextColor="#FFFFED6F"
@@ -3314,7 +3314,7 @@
                                             <!--  Valoración Técnica  -->
                                             <Grid ColumnDefinitions="80,*,40" ColumnSpacing="12">
                                                 <Label
-                                                    FontSize="14"
+                                                    FontSize="{StaticResource FontSizeBody}"
                                                     Text="Técnico"
                                                     TextColor="#FFB1B1B1"
                                                     VerticalOptions="Center" />
@@ -3329,7 +3329,7 @@
                                                 <Label
                                                     Grid.Column="2"
                                                     FontAttributes="Bold"
-                                                    FontSize="16"
+                                                    FontSize="{StaticResource FontSizeSubtitle}"
                                                     HorizontalOptions="Center"
                                                     Text="{Binding EditValoracionTecnica}"
                                                     TextColor="#FFBEBADA"
@@ -3341,11 +3341,11 @@
                                         <VerticalStackLayout Spacing="8" IsVisible="{Binding HasNotas}">
                                             <Label
                                                 FontAttributes="Bold"
-                                                FontSize="14"
+                                                FontSize="{StaticResource FontSizeBody}"
                                                 Text="Notas"
                                                 TextColor="White" />
                                             <Label
-                                                FontSize="14"
+                                                FontSize="{StaticResource FontSizeBody}"
                                                 Text="{Binding Diary.Notas}"
                                                 TextColor="#FFB1B1B1"
                                                 LineBreakMode="WordWrap" />
@@ -3355,7 +3355,7 @@
                                         <VerticalStackLayout Spacing="8" IsVisible="{Binding HasValoraciones, Converter={toolkit:InvertedBoolConverter}}">
                                             <Label
                                                 FontAttributes="Bold"
-                                                FontSize="14"
+                                                FontSize="{StaticResource FontSizeBody}"
                                                 Text="Notas"
                                                 TextColor="White" />
                                             <Editor
@@ -3375,7 +3375,7 @@
                                             TextColor="#FF121212"
                                             FontAttributes="Bold"
                                             CornerRadius="8"
-                                            HeightRequest="40"
+                                            HeightRequest="{StaticResource ElementHeightLarge}"
                                             Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=SaveCalendarDiaryCommand}"
                                             CommandParameter="{Binding .}"
                                             IsVisible="{Binding HasValoraciones, Converter={toolkit:InvertedBoolConverter}}" />
@@ -3398,14 +3398,14 @@
                             <Grid ColumnDefinitions="*,Auto">
                                 <HorizontalStackLayout Spacing="10">
                                     <controls:SymbolIcon
-                                        HeightRequest="30"
+                                        HeightRequest="{StaticResource IconSizeXLarge}"
                                         SymbolName="heart.fill"
                                         TintColor="#FFFF6B6B"
                                         VerticalOptions="Center"
-                                        WidthRequest="30" />
+                                        WidthRequest="{StaticResource IconSizeXLarge}" />
                                     <Label
                                         FontAttributes="Bold"
-                                        FontSize="16"
+                                        FontSize="{StaticResource FontSizeSubtitle}"
                                         Text="Bienestar"
                                         TextColor="White"
                                         VerticalOptions="Center" />
@@ -3416,10 +3416,10 @@
                                     Text="{Binding HasWellnessData, Converter={StaticResource BoolToTextConverter}, ConverterParameter='Editar|Añadir'}"
                                     BackgroundColor="#FF2A2A2A"
                                     TextColor="#FFFF6B6B"
-                                    FontSize="12"
+                                    FontSize="{StaticResource FontSizeSmall}"
                                     CornerRadius="6"
                                     Padding="12,6"
-                                    HeightRequest="32"
+                                    HeightRequest="{StaticResource ElementHeightDefault}"
                                     VerticalOptions="Center"
                                     Command="{Binding StartEditWellnessCommand}"
                                     IsVisible="{Binding IsEditingWellness, Converter={toolkit:InvertedBoolConverter}}" />
@@ -3437,7 +3437,7 @@
                                     StrokeShape="RoundRectangle 8"
                                     StrokeThickness="0">
                                     <VerticalStackLayout Spacing="8">
-                                        <Label Text="Horas de sueño" TextColor="#FF888888" FontSize="12" />
+                                        <Label Text="Horas de sueño" TextColor="#FF888888" FontSize="{StaticResource FontSizeSmall}" />
                                         <Grid ColumnDefinitions="*,80">
                                             <Slider
                                                 Minimum="0"
@@ -3450,7 +3450,7 @@
                                                 Grid.Column="1"
                                                 Text="{Binding WellnessSleepHours, StringFormat='{0:F1} h'}"
                                                 TextColor="White"
-                                                FontSize="16"
+                                                FontSize="{StaticResource FontSizeSubtitle}"
                                                 FontAttributes="Bold"
                                                 HorizontalOptions="End"
                                                 VerticalOptions="Center" />
@@ -3465,7 +3465,7 @@
                                     StrokeShape="RoundRectangle 8"
                                     StrokeThickness="0">
                                     <VerticalStackLayout Spacing="8">
-                                        <Label Text="¿Cómo te sientes hoy? (1-10)" TextColor="#FF888888" FontSize="12" />
+                                        <Label Text="¿Cómo te sientes hoy? (1-10)" TextColor="#FF888888" FontSize="{StaticResource FontSizeSmall}" />
                                         <Grid ColumnDefinitions="*,60">
                                             <Slider
                                                 Minimum="1"
@@ -3478,7 +3478,7 @@
                                                 Grid.Column="1"
                                                 Text="{Binding WellnessRecoveryFeeling}"
                                                 TextColor="White"
-                                                FontSize="20"
+                                                FontSize="{StaticResource FontSizeTitle}"
                                                 FontAttributes="Bold"
                                                 HorizontalOptions="End"
                                                 VerticalOptions="Center" />
@@ -3493,7 +3493,7 @@
                                     StrokeShape="RoundRectangle 8"
                                     StrokeThickness="0">
                                     <VerticalStackLayout Spacing="8">
-                                        <Label Text="Fatiga muscular (1=ninguna, 10=mucha)" TextColor="#FF888888" FontSize="12" />
+                                        <Label Text="Fatiga muscular (1=ninguna, 10=mucha)" TextColor="#FF888888" FontSize="{StaticResource FontSizeSmall}" />
                                         <Grid ColumnDefinitions="*,60">
                                             <Slider
                                                 Minimum="1"
@@ -3506,7 +3506,7 @@
                                                 Grid.Column="1"
                                                 Text="{Binding WellnessMuscleFatigue}"
                                                 TextColor="White"
-                                                FontSize="20"
+                                                FontSize="{StaticResource FontSizeTitle}"
                                                 FontAttributes="Bold"
                                                 HorizontalOptions="End"
                                                 VerticalOptions="Center" />
@@ -3521,7 +3521,7 @@
                                     StrokeShape="RoundRectangle 8"
                                     StrokeThickness="0">
                                     <VerticalStackLayout Spacing="8">
-                                        <Label Text="Estado de ánimo" TextColor="#FF888888" FontSize="12" />
+                                        <Label Text="Estado de ánimo" TextColor="#FF888888" FontSize="{StaticResource FontSizeSmall}" />
                                         <HorizontalStackLayout HorizontalOptions="Center" Spacing="8">
                                             <Border
                                                 Padding="8"
@@ -3537,8 +3537,8 @@
                                                         CommandParameter="1" />
                                                 </Border.GestureRecognizers>
                                                 <controls:SymbolIcon
-                                                    HeightRequest="28"
-                                                    WidthRequest="28"
+                                                    HeightRequest="{StaticResource IconSizeXLarge}"
+                                                    WidthRequest="{StaticResource IconSizeXLarge}"
                                                     SymbolName="cloud.heavyrain.fill"
                                                     TintColor="#FFFF6B6B"
                                                     HorizontalOptions="Center"
@@ -3558,8 +3558,8 @@
                                                         CommandParameter="2" />
                                                 </Border.GestureRecognizers>
                                                 <controls:SymbolIcon
-                                                    HeightRequest="28"
-                                                    WidthRequest="28"
+                                                    HeightRequest="{StaticResource IconSizeXLarge}"
+                                                    WidthRequest="{StaticResource IconSizeXLarge}"
                                                     SymbolName="cloud.fill"
                                                     TintColor="#FFFF9500"
                                                     HorizontalOptions="Center"
@@ -3579,8 +3579,8 @@
                                                         CommandParameter="3" />
                                                 </Border.GestureRecognizers>
                                                 <controls:SymbolIcon
-                                                    HeightRequest="28"
-                                                    WidthRequest="28"
+                                                    HeightRequest="{StaticResource IconSizeXLarge}"
+                                                    WidthRequest="{StaticResource IconSizeXLarge}"
                                                     SymbolName="cloud.sun.fill"
                                                     TintColor="#FFFFC107"
                                                     HorizontalOptions="Center"
@@ -3600,8 +3600,8 @@
                                                         CommandParameter="4" />
                                                 </Border.GestureRecognizers>
                                                 <controls:SymbolIcon
-                                                    HeightRequest="28"
-                                                    WidthRequest="28"
+                                                    HeightRequest="{StaticResource IconSizeXLarge}"
+                                                    WidthRequest="{StaticResource IconSizeXLarge}"
                                                     SymbolName="sun.max.fill"
                                                     TintColor="#FF8BC34A"
                                                     HorizontalOptions="Center"
@@ -3621,8 +3621,8 @@
                                                         CommandParameter="5" />
                                                 </Border.GestureRecognizers>
                                                 <controls:SymbolIcon
-                                                    HeightRequest="28"
-                                                    WidthRequest="28"
+                                                    HeightRequest="{StaticResource IconSizeXLarge}"
+                                                    WidthRequest="{StaticResource IconSizeXLarge}"
                                                     SymbolName="sparkles"
                                                     TintColor="#FF4CD964"
                                                     HorizontalOptions="Center"
@@ -3644,17 +3644,17 @@
                                             <Grid ColumnDefinitions="Auto,*,Auto">
                                                 <HorizontalStackLayout Spacing="6">
                                                     <controls:SymbolIcon
-                                                        HeightRequest="24"
+                                                        HeightRequest="{StaticResource IconSizeLarge}"
                                                         SymbolName="heart.fill"
                                                         TintColor="#FFFF6B6B"
                                                         VerticalOptions="Center"
-                                                        WidthRequest="24" />
-                                                    <Label Text="PPM Basal" TextColor="#FF888888" FontSize="12" VerticalOptions="Center" />
+                                                        WidthRequest="{StaticResource IconSizeLarge}" />
+                                                    <Label Text="PPM Basal" TextColor="#FF888888" FontSize="{StaticResource FontSizeSmall}" VerticalOptions="Center" />
                                                 </HorizontalStackLayout>
                                                 <Button
                                                     Grid.Column="2"
                                                     Text="?"
-                                                    FontSize="14"
+                                                    FontSize="{StaticResource FontSizeBody}"
                                                     FontAttributes="Bold"
                                                     BackgroundColor="Transparent"
                                                     TextColor="#FFABABAB"
@@ -3673,13 +3673,13 @@
                                                     BackgroundColor="#FF1E1E1E"
                                                     Keyboard="Numeric"
                                                     HorizontalTextAlignment="Center"
-                                                    FontSize="18"
+                                                    FontSize="{StaticResource FontSizeTitle}"
                                                     FontAttributes="Bold" />
                                                 <Label
                                                     Grid.Column="1"
                                                     Text="bpm"
                                                     TextColor="#FF888888"
-                                                    FontSize="14"
+                                                    FontSize="{StaticResource FontSizeBody}"
                                                     VerticalOptions="Center" />
                                             </Grid>
                                         </VerticalStackLayout>
@@ -3696,17 +3696,17 @@
                                             <Grid ColumnDefinitions="Auto,*,Auto">
                                                 <HorizontalStackLayout Spacing="6">
                                                     <controls:SymbolIcon
-                                                        HeightRequest="24"
+                                                        HeightRequest="{StaticResource IconSizeLarge}"
                                                         SymbolName="waveform.path.ecg"
                                                         TintColor="#FFAEADFF"
                                                         VerticalOptions="Center"
-                                                        WidthRequest="24" />
-                                                    <Label Text="HRV" TextColor="#FF888888" FontSize="12" VerticalOptions="Center" />
+                                                        WidthRequest="{StaticResource IconSizeLarge}" />
+                                                    <Label Text="HRV" TextColor="#FF888888" FontSize="{StaticResource FontSizeSmall}" VerticalOptions="Center" />
                                                 </HorizontalStackLayout>
                                                 <Button
                                                     Grid.Column="2"
                                                     Text="?"
-                                                    FontSize="14"
+                                                    FontSize="{StaticResource FontSizeBody}"
                                                     FontAttributes="Bold"
                                                     BackgroundColor="Transparent"
                                                     TextColor="#FFADADAD"
@@ -3725,13 +3725,13 @@
                                                     BackgroundColor="#FF1E1E1E"
                                                     Keyboard="Numeric"
                                                     HorizontalTextAlignment="Center"
-                                                    FontSize="18"
+                                                    FontSize="{StaticResource FontSizeTitle}"
                                                     FontAttributes="Bold" />
                                                 <Label
                                                     Grid.Column="1"
                                                     Text="ms"
                                                     TextColor="#FF888888"
-                                                    FontSize="14"
+                                                    FontSize="{StaticResource FontSizeBody}"
                                                     VerticalOptions="Center" />
                                             </Grid>
                                         </VerticalStackLayout>
@@ -3745,7 +3745,7 @@
                                     StrokeShape="RoundRectangle 8"
                                     StrokeThickness="0">
                                     <VerticalStackLayout Spacing="8">
-                                        <Label Text="Notas (opcional)" TextColor="#FF888888" FontSize="12" />
+                                        <Label Text="Notas (opcional)" TextColor="#FF888888" FontSize="{StaticResource FontSizeSmall}" />
                                         <Editor
                                             Text="{Binding WellnessNotes}"
                                             Placeholder="¿Algo que destacar sobre tu estado hoy?"
@@ -3790,20 +3790,20 @@
                                     <Grid ColumnDefinitions="*,Auto">
                                         <VerticalStackLayout>
                                             <Label
-                                                FontSize="12"
+                                                FontSize="{StaticResource FontSizeSmall}"
                                                 Text="Nivel de bienestar"
                                                 TextColor="#FF121212"
                                                 Opacity="0.7" />
                                             <Label
                                                 FontAttributes="Bold"
-                                                FontSize="18"
+                                                FontSize="{StaticResource FontSizeTitle}"
                                                 Text="{Binding SelectedDateWellness.WellnessText}"
                                                 TextColor="#FF121212" />
                                         </VerticalStackLayout>
                                         <Label
                                             Grid.Column="1"
                                             FontAttributes="Bold"
-                                            FontSize="32"
+                                            FontSize="{StaticResource FontSizeDisplay}"
                                             Text="{Binding SelectedDateWellness.WellnessScore}"
                                             TextColor="#FF121212"
                                             VerticalOptions="Center" />
@@ -3821,19 +3821,19 @@
                                         StrokeThickness="0">
                                         <VerticalStackLayout HorizontalOptions="Center" Spacing="2">
                                             <controls:SymbolIcon
-                                                HeightRequest="20"
+                                                HeightRequest="{StaticResource IconSizeLarge}"
                                                 SymbolName="moon.fill"
                                                 TintColor="#FF5856D6"
                                                 HorizontalOptions="Center"
-                                                WidthRequest="20" />
+                                                WidthRequest="{StaticResource IconSizeLarge}" />
                                             <Label
                                                 FontAttributes="Bold"
-                                                FontSize="16"
+                                                FontSize="{StaticResource FontSizeSubtitle}"
                                                 Text="{Binding SelectedDateWellness.SleepFormatted}"
                                                 TextColor="White"
                                                 HorizontalOptions="Center" />
                                             <Label
-                                                FontSize="10"
+                                                FontSize="{StaticResource FontSizeCaption}"
                                                 Text="sueño"
                                                 TextColor="#FF888888"
                                                 HorizontalOptions="Center" />
@@ -3849,19 +3849,19 @@
                                         StrokeThickness="0">
                                         <VerticalStackLayout HorizontalOptions="Center" Spacing="2">
                                             <controls:SymbolIcon
-                                                HeightRequest="20"
+                                                HeightRequest="{StaticResource IconSizeLarge}"
                                                 SymbolName="bolt.fill"
                                                 TintColor="#FF4CD964"
                                                 HorizontalOptions="Center"
-                                                WidthRequest="20" />
+                                                WidthRequest="{StaticResource IconSizeLarge}" />
                                             <Label
                                                 FontAttributes="Bold"
-                                                FontSize="16"
+                                                FontSize="{StaticResource FontSizeSubtitle}"
                                                 Text="{Binding SelectedDateWellness.RecoveryFeeling, StringFormat='{0}/10'}"
                                                 TextColor="White"
                                                 HorizontalOptions="Center" />
                                             <Label
-                                                FontSize="10"
+                                                FontSize="{StaticResource FontSizeCaption}"
                                                 Text="energía"
                                                 TextColor="#FF888888"
                                                 HorizontalOptions="Center" />
@@ -3877,13 +3877,13 @@
                                         StrokeThickness="0">
                                         <VerticalStackLayout HorizontalOptions="Center" Spacing="2">
                                             <controls:SymbolIcon
-                                                HeightRequest="24"
-                                                WidthRequest="24"
+                                                HeightRequest="{StaticResource IconSizeLarge}"
+                                                WidthRequest="{StaticResource IconSizeLarge}"
                                                 SymbolName="{Binding SelectedDateWellness.MoodSymbol}"
                                                 TintColor="{Binding SelectedDateWellness.MoodColor}"
                                                 HorizontalOptions="Center" />
                                             <Label
-                                                FontSize="10"
+                                                FontSize="{StaticResource FontSizeCaption}"
                                                 Text="ánimo"
                                                 TextColor="#FF888888"
                                                 HorizontalOptions="Center" />
@@ -3903,27 +3903,27 @@
                                         IsVisible="{Binding SelectedDateWellness.RestingHeartRate, Converter={StaticResource IsNotNullConverter}}">
                                         <HorizontalStackLayout HorizontalOptions="Center" Spacing="8">
                                             <controls:SymbolIcon
-                                                HeightRequest="18"
+                                                HeightRequest="{StaticResource IconSizeDefault}"
                                                 SymbolName="heart.fill"
                                                 TintColor="#FFFF6B6B"
                                                 VerticalOptions="Center"
-                                                WidthRequest="18" />
+                                                WidthRequest="{StaticResource IconSizeDefault}" />
                                             <VerticalStackLayout Spacing="0">
                                                 <HorizontalStackLayout Spacing="4">
                                                     <Label
                                                         FontAttributes="Bold"
-                                                        FontSize="16"
+                                                        FontSize="{StaticResource FontSizeSubtitle}"
                                                         Text="{Binding SelectedDateWellness.RestingHeartRate}"
                                                         TextColor="White"
                                                         VerticalOptions="Center" />
                                                     <Label
-                                                        FontSize="12"
+                                                        FontSize="{StaticResource FontSizeSmall}"
                                                         Text="bpm"
                                                         TextColor="#FF888888"
                                                         VerticalOptions="Center" />
                                                 </HorizontalStackLayout>
                                                 <Label
-                                                    FontSize="10"
+                                                    FontSize="{StaticResource FontSizeCaption}"
                                                     Text="PPM basal"
                                                     TextColor="#FF888888" />
                                             </VerticalStackLayout>
@@ -3940,27 +3940,27 @@
                                         IsVisible="{Binding SelectedDateWellness.HeartRateVariability, Converter={StaticResource IsNotNullConverter}}">
                                         <HorizontalStackLayout HorizontalOptions="Center" Spacing="8">
                                             <controls:SymbolIcon
-                                                HeightRequest="18"
+                                                HeightRequest="{StaticResource IconSizeDefault}"
                                                 SymbolName="waveform.path.ecg"
                                                 TintColor="#FF5856D6"
                                                 VerticalOptions="Center"
-                                                WidthRequest="18" />
+                                                WidthRequest="{StaticResource IconSizeDefault}" />
                                             <VerticalStackLayout Spacing="0">
                                                 <HorizontalStackLayout Spacing="4">
                                                     <Label
                                                         FontAttributes="Bold"
-                                                        FontSize="16"
+                                                        FontSize="{StaticResource FontSizeSubtitle}"
                                                         Text="{Binding SelectedDateWellness.HeartRateVariability}"
                                                         TextColor="White"
                                                         VerticalOptions="Center" />
                                                     <Label
-                                                        FontSize="12"
+                                                        FontSize="{StaticResource FontSizeSmall}"
                                                         Text="ms"
                                                         TextColor="#FF888888"
                                                         VerticalOptions="Center" />
                                                 </HorizontalStackLayout>
                                                 <Label
-                                                    FontSize="10"
+                                                    FontSize="{StaticResource FontSizeCaption}"
                                                     Text="HRV"
                                                     TextColor="#FF888888" />
                                             </VerticalStackLayout>
@@ -3976,11 +3976,11 @@
                                     StrokeThickness="0"
                                     IsVisible="{Binding SelectedDateWellness.Notes, Converter={StaticResource NotNullOrEmptyBoolConverter}}">
                                     <VerticalStackLayout Spacing="4">
-                                        <Label Text="Notas" TextColor="#FF888888" FontSize="11" />
+                                        <Label Text="Notas" TextColor="#FF888888" FontSize="{StaticResource FontSizeSmall}" />
                                         <Label 
                                             Text="{Binding SelectedDateWellness.Notes}" 
                                             TextColor="White" 
-                                            FontSize="13"
+                                            FontSize="{StaticResource FontSizeBody}"
                                             LineBreakMode="WordWrap" />
                                     </VerticalStackLayout>
                                 </Border>
@@ -3989,7 +3989,7 @@
                                 <Label
                                     Text="Pulsa 'Añadir' para registrar tu bienestar del día"
                                     TextColor="#FF666666"
-                                    FontSize="13"
+                                    FontSize="{StaticResource FontSizeBody}"
                                     HorizontalTextAlignment="Center"
                                     IsVisible="{Binding HasWellnessData, Converter={toolkit:InvertedBoolConverter}}" />
                             </VerticalStackLayout>
@@ -4005,18 +4005,18 @@
                         IsVisible="{Binding HasSelectedDateSessions, Converter={toolkit:InvertedBoolConverter}}">
                         <VerticalStackLayout HorizontalOptions="Center" Spacing="12">
                             <controls:SymbolIcon
-                                HeightRequest="48"
+                                HeightRequest="{StaticResource IconSizeXXLarge}"
                                 SymbolName="calendar.badge.exclamationmark"
                                 TintColor="#FF555555"
                                 HorizontalOptions="Center"
-                                WidthRequest="48" />
+                                WidthRequest="{StaticResource IconSizeXXLarge}" />
                             <Label
-                                FontSize="16"
+                                FontSize="{StaticResource FontSizeSubtitle}"
                                 Text="No hay sesiones para este día"
                                 TextColor="#FF888888"
                                 HorizontalOptions="Center" />
                             <Label
-                                FontSize="14"
+                                FontSize="{StaticResource FontSizeBody}"
                                 Text="Puedes crear una sesión manual para registrar&#x0a;entrenamientos sin vídeo (gimnasio, agua tranquila, etc.)"
                                 TextColor="#FF666666"
                                 HorizontalOptions="Center"
@@ -4028,7 +4028,7 @@
                                 FontAttributes="Bold"
                                 CornerRadius="8"
                                 Padding="24,0"
-                                HeightRequest="40"
+                                HeightRequest="{StaticResource ElementHeightLarge}"
                                 Margin="0,8,0,0"
                                 HorizontalOptions="Center"
                                 Command="{Binding ToggleAddNewSessionCommand}" />
@@ -4067,7 +4067,7 @@
                 <Label
                     Grid.Row="1"
                     Padding="12,8"
-                    FontSize="14"
+                    FontSize="{StaticResource FontSizeBody}"
                     LineBreakMode="TailTruncation"
                     Text="{Binding HoverVideo.Atleta.NombreCompleto}"
                     TextColor="White" />
@@ -4104,7 +4104,7 @@
                     <Grid ColumnDefinitions="*,Auto">
                         <Label
                             FontAttributes="Bold"
-                            FontSize="18"
+                            FontSize="{StaticResource FontSizeTitle}"
                             Text="Editar vídeos seleccionados"
                             TextColor="White" />
                         <Border
@@ -4117,15 +4117,15 @@
                                 <TapGestureRecognizer Command="{Binding CloseBatchEditPopupCommand}" />
                             </Border.GestureRecognizers>
                             <controls:SymbolIcon
-                                HeightRequest="20"
+                                HeightRequest="{StaticResource IconSizeLarge}"
                                 SymbolName="xmark"
                                 TintColor="#FF888888"
-                                WidthRequest="20" />
+                                WidthRequest="{StaticResource IconSizeLarge}" />
                         </Border>
                     </Grid>
 
                     <Label
-                        FontSize="13"
+                        FontSize="{StaticResource FontSizeBody}"
                         Text="{Binding SelectedVideoCount, StringFormat='Se modificarán {0} vídeos'}"
                         TextColor="#FFAAAAAA" />
 
@@ -4138,7 +4138,7 @@
                                 VerticalOptions="Center" />
                             <Label
                                 Grid.Column="1"
-                                FontSize="14"
+                                FontSize="{StaticResource FontSizeBody}"
                                 Text="Asignar atleta"
                                 TextColor="White"
                                 VerticalOptions="Center" />
@@ -4164,7 +4164,7 @@
                                                     CommandParameter="{Binding .}" />
                                             </Border.GestureRecognizers>
                                             <Label
-                                                FontSize="12"
+                                                FontSize="{StaticResource FontSizeSmall}"
                                                 Text="{Binding NombreCompleto}"
                                                 TextColor="White" />
                                         </Border>
@@ -4173,7 +4173,7 @@
                             </FlexLayout>
                         </ScrollView>
                         <Label
-                            FontSize="12"
+                            FontSize="{StaticResource FontSizeSmall}"
                             Text="No hay atletas disponibles"
                             TextColor="#FF666666">
                             <Label.Triggers>
@@ -4198,7 +4198,7 @@
                                 VerticalOptions="Center" />
                             <Label
                                 Grid.Column="1"
-                                FontSize="14"
+                                FontSize="{StaticResource FontSizeBody}"
                                 Text="Asignar sección/tramo"
                                 TextColor="White"
                                 VerticalOptions="Center" />
@@ -4211,7 +4211,7 @@
                                 TextColor="White"
                                 WidthRequest="80" />
                             <Label
-                                FontSize="13"
+                                FontSize="{StaticResource FontSizeBody}"
                                 Text="(1-99)"
                                 TextColor="#FF888888"
                                 VerticalOptions="Center" />
@@ -4221,7 +4221,7 @@
                     <!--  Etiquetas  -->
                     <VerticalStackLayout Spacing="8">
                         <Label
-                            FontSize="14"
+                            FontSize="{StaticResource FontSizeBody}"
                             Text="Añadir etiquetas"
                             TextColor="White" />
                         <FlexLayout
@@ -4242,7 +4242,7 @@
                                                 CommandParameter="{Binding .}" />
                                         </Border.GestureRecognizers>
                                         <Label
-                                            FontSize="12"
+                                            FontSize="{StaticResource FontSizeSmall}"
                                             Text="{Binding NombreTag}"
                                             TextColor="White" />
                                     </Border>
@@ -4250,7 +4250,7 @@
                             </BindableLayout.ItemTemplate>
                         </FlexLayout>
                         <Label
-                            FontSize="12"
+                            FontSize="{StaticResource FontSizeSmall}"
                             Text="No hay etiquetas disponibles"
                             TextColor="#FF666666">
                             <Label.Triggers>

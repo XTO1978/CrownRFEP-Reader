@@ -33,10 +33,16 @@ public static class MauiProgram
 #if MACCATALYST
 				handlers.AddHandler(typeof(ReplayKitCameraPreview), typeof(ReplayKitCameraPreviewHandler));
 #endif
+
+#if WINDOWS
+				handlers.AddHandler(typeof(ReplayKitCameraPreview), typeof(ReplayKitCameraPreviewHandler));
+#endif
 				
-#if MACCATALYST || IOS
+#if MACCATALYST || IOS || WINDOWS
 				handlers.AddHandler(typeof(PrecisionVideoPlayer), typeof(PrecisionVideoPlayerHandler));
-				
+#endif
+
+#if MACCATALYST || IOS
 				// Forzar texto blanco en DatePicker para MacCatalyst
 				DatePickerHandler.Mapper.AppendToMapping("WhiteTextColor", (handler, view) =>
 				{
@@ -84,6 +90,15 @@ public static class MauiProgram
 		// Servicio de composición de video
 #if MACCATALYST
 		builder.Services.AddSingleton<IVideoCompositionService, MacVideoCompositionService>();
+#elif WINDOWS
+		builder.Services.AddSingleton<IVideoCompositionService, CrownRFEP_Reader.Platforms.Windows.WindowsVideoCompositionService>();
+#endif
+
+		// Servicio de escalado de UI (adapta la UI a diferentes tamaños/densidades de pantalla)
+#if WINDOWS
+		builder.Services.AddSingleton<IUIScalingService, CrownRFEP_Reader.Platforms.Windows.WindowsUIScalingService>();
+#else
+		builder.Services.AddSingleton<IUIScalingService, DefaultUIScalingService>();
 #endif
 
 		// ViewModels

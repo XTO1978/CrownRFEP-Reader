@@ -79,6 +79,30 @@
 				"panel": "shared",
 				"focus": true
 			}
+		},
+		{
+			"label": "build-windows",
+			"type": "shell",
+			"command": "dotnet build '${workspaceFolder}/CrownRFEP Reader.csproj' -f net9.0-windows10.0.19041.0",
+			"problemMatcher": "$msCompile",
+			"group": "build",
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared",
+				"focus": true
+			}
+		},
+		{
+			"label": "MAUI: Run Windows",
+			"type": "shell",
+			"command": "dotnet run --project '${workspaceFolder}/CrownRFEP Reader.csproj' -f net9.0-windows10.0.19041.0",
+			"problemMatcher": "$msCompile",
+			"group": "build",
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared",
+				"focus": true
+			}
 		}
 	]
 }

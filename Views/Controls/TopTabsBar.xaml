@@ -14,7 +14,7 @@
                 BackgroundColor="Transparent"
                 TextColor="White"
                 FontFamily="{StaticResource AppFontBody}"
-                FontSize="16"
+                FontSize="{StaticResource FontSizeSubtitle}"
                 Padding="16,5" Margin="6"
                 CornerRadius="4">
             <Button.Behaviors>
@@ -28,7 +28,7 @@
                 BackgroundColor="Transparent"
                 TextColor="White"
                 FontFamily="{StaticResource AppFontBody}"
-                FontSize="16"
+                FontSize="{StaticResource FontSizeSubtitle}"
                 Padding="16,5"
                 Margin="6"
                 CornerRadius="4">
@@ -84,7 +84,7 @@
                         Text="Yo"
                         TextColor="White"
                         FontFamily="{StaticResource AppFontBody}"
-                        FontSize="16"
+                        FontSize="{StaticResource FontSizeSubtitle}"
                         LineBreakMode="TailTruncation"
                         VerticalOptions="Center" />
                 </HorizontalStackLayout>

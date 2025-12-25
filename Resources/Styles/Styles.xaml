@@ -4,53 +4,253 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
 
-    <!-- Typography (SF Pro on Apple; OpenSans elsewhere)
-         Nota: No se incluyen archivos SF Pro por licencia; en Apple se usa la fuente del sistema. -->
+    <!-- Typography (SF Pro on Apple; Segoe UI on Windows; OpenSans elsewhere)
+         Nota: No se incluyen archivos SF Pro por licencia; en Apple se usa la fuente del sistema.
+         En Windows usamos Segoe UI que es la fuente nativa del sistema. -->
     <OnPlatform x:TypeArguments="x:String" x:Key="AppFontBody">
         <On Platform="iOS" Value="SF Pro Text" />
         <On Platform="MacCatalyst" Value="SF Pro Text" />
+        <On Platform="WinUI" Value="Segoe UI" />
         <On Platform="Default" Value="OpenSansRegular" />
     </OnPlatform>
 
     <OnPlatform x:TypeArguments="x:String" x:Key="AppFontEmphasis">
         <On Platform="iOS" Value="SF Pro Text" />
         <On Platform="MacCatalyst" Value="SF Pro Text" />
+        <On Platform="WinUI" Value="Segoe UI Semibold" />
         <On Platform="Default" Value="OpenSansSemibold" />
     </OnPlatform>
 
     <OnPlatform x:TypeArguments="x:String" x:Key="AppFontDisplay">
         <On Platform="iOS" Value="SF Pro Display" />
         <On Platform="MacCatalyst" Value="SF Pro Display" />
+        <On Platform="WinUI" Value="Segoe UI" />
         <On Platform="Default" Value="OpenSansSemibold" />
+    </OnPlatform>
+
+    <!-- Fuente de iconos (Segoe Fluent Icons on Windows, SF Symbols on Apple) -->
+    <OnPlatform x:TypeArguments="x:String" x:Key="AppFontSymbols">
+        <On Platform="iOS" Value="SF Pro Text" />
+        <On Platform="MacCatalyst" Value="SF Pro Text" />
+        <On Platform="WinUI" Value="Segoe Fluent Icons" />
+        <On Platform="Default" Value="Segoe Fluent Icons" />
+    </OnPlatform>
+
+    <!-- ====================================================================
+         ADAPTIVE FONT SIZES
+         Tamaños de fuente adaptativos por plataforma.
+         Windows usa tamaños más compactos para mayor densidad de información.
+         ==================================================================== -->
+    <OnPlatform x:TypeArguments="x:Double" x:Key="FontSizeCaption">
+        <On Platform="WinUI" Value="8" />
+        <On Platform="Default" Value="11" />
+    </OnPlatform>
+
+    <OnPlatform x:TypeArguments="x:Double" x:Key="FontSizeSmall">
+        <On Platform="WinUI" Value="9" />
+        <On Platform="Default" Value="12" />
+    </OnPlatform>
+
+    <OnPlatform x:TypeArguments="x:Double" x:Key="FontSizeBody">
+        <On Platform="WinUI" Value="11" />
+        <On Platform="Default" Value="14" />
+    </OnPlatform>
+
+    <OnPlatform x:TypeArguments="x:Double" x:Key="FontSizeSubtitle">
+        <On Platform="WinUI" Value="12" />
+        <On Platform="Default" Value="16" />
+    </OnPlatform>
+
+    <OnPlatform x:TypeArguments="x:Double" x:Key="FontSizeTitle">
+        <On Platform="WinUI" Value="14" />
+        <On Platform="Default" Value="20" />
+    </OnPlatform>
+
+    <OnPlatform x:TypeArguments="x:Double" x:Key="FontSizeHeader">
+        <On Platform="WinUI" Value="18" />
+        <On Platform="Default" Value="24" />
+    </OnPlatform>
+
+    <OnPlatform x:TypeArguments="x:Double" x:Key="FontSizeDisplay">
+        <On Platform="WinUI" Value="22" />
+        <On Platform="Default" Value="32" />
+    </OnPlatform>
+
+    <!-- ====================================================================
+         ADAPTIVE SPACING
+         Espaciados adaptativos - Windows usa espaciados más compactos.
+         ==================================================================== -->
+    <OnPlatform x:TypeArguments="x:Double" x:Key="SpacingXSmall">
+        <On Platform="WinUI" Value="3" />
+        <On Platform="Default" Value="4" />
+    </OnPlatform>
+
+    <OnPlatform x:TypeArguments="x:Double" x:Key="SpacingSmall">
+        <On Platform="WinUI" Value="6" />
+        <On Platform="Default" Value="8" />
+    </OnPlatform>
+
+    <OnPlatform x:TypeArguments="x:Double" x:Key="SpacingMedium">
+        <On Platform="WinUI" Value="10" />
+        <On Platform="Default" Value="12" />
+    </OnPlatform>
+
+    <OnPlatform x:TypeArguments="x:Double" x:Key="SpacingLarge">
+        <On Platform="WinUI" Value="14" />
+        <On Platform="Default" Value="16" />
+    </OnPlatform>
+
+    <OnPlatform x:TypeArguments="x:Double" x:Key="SpacingXLarge">
+        <On Platform="WinUI" Value="20" />
+        <On Platform="Default" Value="24" />
+    </OnPlatform>
+
+    <!-- ====================================================================
+         ADAPTIVE ELEMENT HEIGHTS
+         Alturas de elementos UI - Windows usa elementos más compactos.
+         ==================================================================== -->
+    <OnPlatform x:TypeArguments="x:Double" x:Key="ElementHeightSmall">
+        <On Platform="WinUI" Value="24" />
+        <On Platform="Default" Value="32" />
+    </OnPlatform>
+
+    <OnPlatform x:TypeArguments="x:Double" x:Key="ElementHeightMedium">
+        <On Platform="WinUI" Value="28" />
+        <On Platform="Default" Value="36" />
+    </OnPlatform>
+
+    <OnPlatform x:TypeArguments="x:Double" x:Key="ElementHeightDefault">
+        <On Platform="WinUI" Value="32" />
+        <On Platform="Default" Value="44" />
+    </OnPlatform>
+
+    <OnPlatform x:TypeArguments="x:Double" x:Key="ElementHeightLarge">
+        <On Platform="WinUI" Value="40" />
+        <On Platform="Default" Value="56" />
+    </OnPlatform>
+
+    <!-- ====================================================================
+         ADAPTIVE PADDINGS (Thickness)
+         ==================================================================== -->
+    <OnPlatform x:TypeArguments="Thickness" x:Key="PaddingXSmall">
+        <On Platform="WinUI" Value="2" />
+        <On Platform="Default" Value="4" />
+    </OnPlatform>
+
+    <OnPlatform x:TypeArguments="Thickness" x:Key="PaddingSmall">
+        <On Platform="WinUI" Value="4" />
+        <On Platform="Default" Value="8" />
+    </OnPlatform>
+
+    <OnPlatform x:TypeArguments="Thickness" x:Key="PaddingMedium">
+        <On Platform="WinUI" Value="8" />
+        <On Platform="Default" Value="12" />
+    </OnPlatform>
+
+    <OnPlatform x:TypeArguments="Thickness" x:Key="PaddingLarge">
+        <On Platform="WinUI" Value="12" />
+        <On Platform="Default" Value="16" />
+    </OnPlatform>
+
+    <OnPlatform x:TypeArguments="Thickness" x:Key="PaddingButton">
+        <On Platform="WinUI" Value="8,4" />
+        <On Platform="Default" Value="14,10" />
+    </OnPlatform>
+
+    <OnPlatform x:TypeArguments="Thickness" x:Key="PaddingEntry">
+        <On Platform="WinUI" Value="6,4" />
+        <On Platform="Default" Value="10,8" />
+    </OnPlatform>
+
+    <!-- ====================================================================
+         ADAPTIVE CORNER RADIUS
+         ==================================================================== -->
+    <OnPlatform x:TypeArguments="x:Int32" x:Key="CornerRadiusSmall">
+        <On Platform="WinUI" Value="4" />
+        <On Platform="Default" Value="6" />
+    </OnPlatform>
+
+    <OnPlatform x:TypeArguments="x:Int32" x:Key="CornerRadiusMedium">
+        <On Platform="WinUI" Value="6" />
+        <On Platform="Default" Value="8" />
+    </OnPlatform>
+
+    <OnPlatform x:TypeArguments="x:Int32" x:Key="CornerRadiusLarge">
+        <On Platform="WinUI" Value="8" />
+        <On Platform="Default" Value="12" />
+    </OnPlatform>
+
+    <!-- ====================================================================
+         ADAPTIVE ICON SIZES
+         Windows usa iconos más pequeños para UI más compacta (~50% del tamaño Mac).
+         ==================================================================== -->
+    <OnPlatform x:TypeArguments="x:Double" x:Key="IconSizeXSmall">
+        <On Platform="WinUI" Value="6" />
+        <On Platform="Default" Value="10" />
+    </OnPlatform>
+
+    <OnPlatform x:TypeArguments="x:Double" x:Key="IconSizeSmall">
+        <On Platform="WinUI" Value="8" />
+        <On Platform="Default" Value="14" />
+    </OnPlatform>
+
+    <OnPlatform x:TypeArguments="x:Double" x:Key="IconSizeMedium">
+        <On Platform="WinUI" Value="10" />
+        <On Platform="Default" Value="16" />
+    </OnPlatform>
+
+    <OnPlatform x:TypeArguments="x:Double" x:Key="IconSizeDefault">
+        <On Platform="WinUI" Value="11" />
+        <On Platform="Default" Value="18" />
+    </OnPlatform>
+
+    <OnPlatform x:TypeArguments="x:Double" x:Key="IconSizeLarge">
+        <On Platform="WinUI" Value="12" />
+        <On Platform="Default" Value="24" />
+    </OnPlatform>
+
+    <OnPlatform x:TypeArguments="x:Double" x:Key="IconSizeXLarge">
+        <On Platform="WinUI" Value="16" />
+        <On Platform="Default" Value="32" />
+    </OnPlatform>
+
+    <OnPlatform x:TypeArguments="x:Double" x:Key="IconSizeXXLarge">
+        <On Platform="WinUI" Value="24" />
+        <On Platform="Default" Value="48" />
+    </OnPlatform>
+
+    <OnPlatform x:TypeArguments="x:Double" x:Key="IconSizeHuge">
+        <On Platform="WinUI" Value="40" />
+        <On Platform="Default" Value="80" />
     </OnPlatform>
 
     <!-- Text styles (reutilizables) -->
     <Style TargetType="Label" x:Key="TextDisplay">
         <Setter Property="FontFamily" Value="{StaticResource AppFontDisplay}" />
         <Setter Property="FontAttributes" Value="Bold" />
-        <Setter Property="FontSize" Value="32" />
+        <Setter Property="FontSize" Value="{StaticResource FontSizeDisplay}" />
     </Style>
 
     <Style TargetType="Label" x:Key="TextTitle">
         <Setter Property="FontFamily" Value="{StaticResource AppFontDisplay}" />
         <Setter Property="FontAttributes" Value="Bold" />
-        <Setter Property="FontSize" Value="20" />
+        <Setter Property="FontSize" Value="{StaticResource FontSizeTitle}" />
     </Style>
 
     <Style TargetType="Label" x:Key="TextSubtitle">
         <Setter Property="FontFamily" Value="{StaticResource AppFontEmphasis}" />
         <Setter Property="FontAttributes" Value="Bold" />
-        <Setter Property="FontSize" Value="16" />
+        <Setter Property="FontSize" Value="{StaticResource FontSizeSubtitle}" />
     </Style>
 
     <Style TargetType="Label" x:Key="TextBody">
         <Setter Property="FontFamily" Value="{StaticResource AppFontBody}" />
-        <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontSize" Value="{StaticResource FontSizeBody}" />
     </Style>
 
     <Style TargetType="Label" x:Key="TextCaption">
         <Setter Property="FontFamily" Value="{StaticResource AppFontBody}" />
-        <Setter Property="FontSize" Value="12" />
+        <Setter Property="FontSize" Value="{StaticResource FontSizeCaption}" />
     </Style>
 
     <Style TargetType="ActivityIndicator">
@@ -76,12 +276,12 @@
         <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource PrimaryDarkText}}" />
         <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource Primary}, Dark={StaticResource PrimaryDark}}" />
         <Setter Property="FontFamily" Value="{StaticResource AppFontEmphasis}"/>
-        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="FontSize" Value="{StaticResource FontSizeBody}"/>
         <Setter Property="BorderWidth" Value="0"/>
-        <Setter Property="CornerRadius" Value="8"/>
-        <Setter Property="Padding" Value="14,10"/>
-        <Setter Property="MinimumHeightRequest" Value="44"/>
-        <Setter Property="MinimumWidthRequest" Value="44"/>
+        <Setter Property="CornerRadius" Value="{StaticResource CornerRadiusMedium}"/>
+        <Setter Property="Padding" Value="{StaticResource PaddingButton}"/>
+        <Setter Property="MinimumHeightRequest" Value="{StaticResource ElementHeightDefault}"/>
+        <Setter Property="MinimumWidthRequest" Value="{StaticResource ElementHeightDefault}"/>
         <Setter Property="VisualStateManager.VisualStateGroups">
             <VisualStateGroupList>
                 <VisualStateGroup x:Name="CommonStates">
@@ -100,8 +300,8 @@
 
     <Style TargetType="CheckBox">
         <Setter Property="Color" Value="{AppThemeBinding Light={StaticResource Primary}, Dark={StaticResource White}}" />
-        <Setter Property="MinimumHeightRequest" Value="44"/>
-        <Setter Property="MinimumWidthRequest" Value="44"/>
+        <Setter Property="MinimumHeightRequest" Value="{StaticResource ElementHeightSmall}"/>
+        <Setter Property="MinimumWidthRequest" Value="{StaticResource ElementHeightSmall}"/>
         <Setter Property="VisualStateManager.VisualStateGroups">
             <VisualStateGroupList>
                 <VisualStateGroup x:Name="CommonStates">
@@ -120,9 +320,9 @@
         <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource Gray900}, Dark={StaticResource White}}" />
         <Setter Property="BackgroundColor" Value="Transparent" />
         <Setter Property="FontFamily" Value="{StaticResource AppFontBody}"/>
-        <Setter Property="FontSize" Value="14"/>
-        <Setter Property="MinimumHeightRequest" Value="44"/>
-        <Setter Property="MinimumWidthRequest" Value="44"/>
+        <Setter Property="FontSize" Value="{StaticResource FontSizeBody}"/>
+        <Setter Property="MinimumHeightRequest" Value="{StaticResource ElementHeightDefault}"/>
+        <Setter Property="MinimumWidthRequest" Value="{StaticResource ElementHeightDefault}"/>
         <Setter Property="VisualStateManager.VisualStateGroups">
             <VisualStateGroupList>
                 <VisualStateGroup x:Name="CommonStates">
@@ -141,10 +341,10 @@
         <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource Black}, Dark={StaticResource White}}" />
         <Setter Property="BackgroundColor" Value="Transparent" />
         <Setter Property="FontFamily" Value="{StaticResource AppFontBody}"/>
-        <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontSize" Value="{StaticResource FontSizeBody}" />
         <Setter Property="PlaceholderColor" Value="{AppThemeBinding Light={StaticResource Gray200}, Dark={StaticResource Gray500}}" />
-        <Setter Property="MinimumHeightRequest" Value="44"/>
-        <Setter Property="MinimumWidthRequest" Value="44"/>
+        <Setter Property="MinimumHeightRequest" Value="{StaticResource ElementHeightDefault}"/>
+        <Setter Property="MinimumWidthRequest" Value="{StaticResource ElementHeightDefault}"/>
         <Setter Property="VisualStateManager.VisualStateGroups">
             <VisualStateGroupList>
                 <VisualStateGroup x:Name="CommonStates">
@@ -163,10 +363,10 @@
         <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource Black}, Dark={StaticResource White}}" />
         <Setter Property="BackgroundColor" Value="Transparent" />
         <Setter Property="FontFamily" Value="{StaticResource AppFontBody}"/>
-        <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontSize" Value="{StaticResource FontSizeBody}" />
         <Setter Property="PlaceholderColor" Value="{AppThemeBinding Light={StaticResource Gray200}, Dark={StaticResource Gray500}}" />
-        <Setter Property="MinimumHeightRequest" Value="44"/>
-        <Setter Property="MinimumWidthRequest" Value="44"/>
+        <Setter Property="MinimumHeightRequest" Value="{StaticResource ElementHeightDefault}"/>
+        <Setter Property="MinimumWidthRequest" Value="{StaticResource ElementHeightDefault}"/>
         <Setter Property="VisualStateManager.VisualStateGroups">
             <VisualStateGroupList>
                 <VisualStateGroup x:Name="CommonStates">
@@ -184,7 +384,7 @@
     <Style TargetType="Frame">
         <Setter Property="HasShadow" Value="False" />
         <Setter Property="BorderColor" Value="{AppThemeBinding Light={StaticResource Gray200}, Dark={StaticResource Gray950}}" />
-        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="CornerRadius" Value="{StaticResource CornerRadiusMedium}" />
         <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource Black}}" />
     </Style>
 
@@ -193,8 +393,8 @@
         <Setter Property="BorderColor" Value="Transparent"/>
         <Setter Property="BorderWidth" Value="0"/>
         <Setter Property="CornerRadius" Value="0"/>
-        <Setter Property="MinimumHeightRequest" Value="44"/>
-        <Setter Property="MinimumWidthRequest" Value="44"/>
+        <Setter Property="MinimumHeightRequest" Value="{StaticResource ElementHeightDefault}"/>
+        <Setter Property="MinimumWidthRequest" Value="{StaticResource ElementHeightDefault}"/>
         <Setter Property="VisualStateManager.VisualStateGroups">
             <VisualStateGroupList>
                 <VisualStateGroup x:Name="CommonStates">
@@ -214,7 +414,7 @@
         <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource Black}, Dark={StaticResource White}}" />
         <Setter Property="BackgroundColor" Value="Transparent" />
         <Setter Property="FontFamily" Value="{StaticResource AppFontBody}" />
-        <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontSize" Value="{StaticResource FontSizeBody}" />
         <Setter Property="VisualStateManager.VisualStateGroups">
             <VisualStateGroupList>
                 <VisualStateGroup x:Name="CommonStates">
@@ -237,7 +437,7 @@
         <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource MidnightBlue}, Dark={StaticResource White}}" />
         <Setter Property="FontFamily" Value="{StaticResource AppFontDisplay}" />
         <Setter Property="FontAttributes" Value="Bold" />
-        <Setter Property="FontSize" Value="32" />
+        <Setter Property="FontSize" Value="{StaticResource FontSizeDisplay}" />
         <Setter Property="HorizontalOptions" Value="Center" />
         <Setter Property="HorizontalTextAlignment" Value="Center" />
     </Style>
@@ -246,7 +446,7 @@
         <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource MidnightBlue}, Dark={StaticResource White}}" />
         <Setter Property="FontFamily" Value="{StaticResource AppFontDisplay}" />
         <Setter Property="FontAttributes" Value="Bold" />
-        <Setter Property="FontSize" Value="24" />
+        <Setter Property="FontSize" Value="{StaticResource FontSizeHeader}" />
         <Setter Property="HorizontalOptions" Value="Center" />
         <Setter Property="HorizontalTextAlignment" Value="Center" />
     </Style>
@@ -261,9 +461,9 @@
         <Setter Property="TitleColor" Value="{AppThemeBinding Light={StaticResource Gray900}, Dark={StaticResource Gray200}}" />
         <Setter Property="BackgroundColor" Value="Transparent" />
         <Setter Property="FontFamily" Value="{StaticResource AppFontBody}"/>
-        <Setter Property="FontSize" Value="14" />
-        <Setter Property="MinimumHeightRequest" Value="44"/>
-        <Setter Property="MinimumWidthRequest" Value="44"/>
+        <Setter Property="FontSize" Value="{StaticResource FontSizeBody}" />
+        <Setter Property="MinimumHeightRequest" Value="{StaticResource ElementHeightDefault}"/>
+        <Setter Property="MinimumWidthRequest" Value="{StaticResource ElementHeightDefault}"/>
         <Setter Property="VisualStateManager.VisualStateGroups">
             <VisualStateGroupList>
                 <VisualStateGroup x:Name="CommonStates">
@@ -299,9 +499,9 @@
         <Setter Property="BackgroundColor" Value="Transparent"/>
         <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource Black}, Dark={StaticResource White}}" />
         <Setter Property="FontFamily" Value="{StaticResource AppFontBody}"/>
-        <Setter Property="FontSize" Value="14"/>
-        <Setter Property="MinimumHeightRequest" Value="44"/>
-        <Setter Property="MinimumWidthRequest" Value="44"/>
+        <Setter Property="FontSize" Value="{StaticResource FontSizeBody}"/>
+        <Setter Property="MinimumHeightRequest" Value="{StaticResource ElementHeightDefault}"/>
+        <Setter Property="MinimumWidthRequest" Value="{StaticResource ElementHeightDefault}"/>
         <Setter Property="VisualStateManager.VisualStateGroups">
             <VisualStateGroupList>
                 <VisualStateGroup x:Name="CommonStates">
@@ -326,9 +526,9 @@
         <Setter Property="CancelButtonColor" Value="{StaticResource Gray500}" />
         <Setter Property="BackgroundColor" Value="Transparent" />
         <Setter Property="FontFamily" Value="{StaticResource AppFontBody}" />
-        <Setter Property="FontSize" Value="14" />
-        <Setter Property="MinimumHeightRequest" Value="44"/>
-        <Setter Property="MinimumWidthRequest" Value="44"/>
+        <Setter Property="FontSize" Value="{StaticResource FontSizeBody}" />
+        <Setter Property="MinimumHeightRequest" Value="{StaticResource ElementHeightDefault}"/>
+        <Setter Property="MinimumWidthRequest" Value="{StaticResource ElementHeightDefault}"/>
         <Setter Property="VisualStateManager.VisualStateGroups">
             <VisualStateGroupList>
                 <VisualStateGroup x:Name="CommonStates">
@@ -349,7 +549,7 @@
         <Setter Property="PlaceholderColor" Value="{StaticResource Gray500}" />
         <Setter Property="BackgroundColor" Value="Transparent" />
         <Setter Property="FontFamily" Value="{StaticResource AppFontBody}" />
-        <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontSize" Value="{StaticResource FontSizeBody}" />
         <Setter Property="VisualStateManager.VisualStateGroups">
             <VisualStateGroupList>
                 <VisualStateGroup x:Name="CommonStates">
@@ -429,9 +629,9 @@
         <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource Gray900}, Dark={StaticResource White}}" />
         <Setter Property="BackgroundColor" Value="Transparent"/>
         <Setter Property="FontFamily" Value="{StaticResource AppFontBody}"/>
-        <Setter Property="FontSize" Value="14"/>
-        <Setter Property="MinimumHeightRequest" Value="44"/>
-        <Setter Property="MinimumWidthRequest" Value="44"/>
+        <Setter Property="FontSize" Value="{StaticResource FontSizeBody}"/>
+        <Setter Property="MinimumHeightRequest" Value="{StaticResource ElementHeightDefault}"/>
+        <Setter Property="MinimumWidthRequest" Value="{StaticResource ElementHeightDefault}"/>
         <Setter Property="VisualStateManager.VisualStateGroups">
             <VisualStateGroupList>
                 <VisualStateGroup x:Name="CommonStates">

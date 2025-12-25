@@ -16,7 +16,7 @@
                     Clicked="OnBackClicked" />
             <Label Grid.Column="1"
                    Text="Videolecciones"
-                   FontSize="18"
+                   FontSize="{StaticResource FontSizeTitle}"
                    TextColor="White"
                    HorizontalOptions="Center"
                    VerticalOptions="Center" />
@@ -32,8 +32,8 @@
                             </Frame.GestureRecognizers>
                             <VerticalStackLayout Spacing="4">
                                 <Label Text="{Binding DisplayTitle}" TextColor="White" FontAttributes="Bold" />
-                                <Label Text="{Binding SessionDisplayName}" TextColor="#FFAAAAAA" FontSize="12" />
-                                <Label Text="{Binding CreatedAtUtc, StringFormat='{0:dd/MM/yyyy HH:mm}'}" TextColor="#FF888888" FontSize="11" />
+                                <Label Text="{Binding SessionDisplayName}" TextColor="#FFAAAAAA" FontSize="{StaticResource FontSizeSmall}" />
+                                <Label Text="{Binding CreatedAtUtc, StringFormat='{0:dd/MM/yyyy HH:mm}'}" TextColor="#FF888888" FontSize="{StaticResource FontSizeCaption}" />
                             </VerticalStackLayout>
                         </Frame>
                     </DataTemplate>

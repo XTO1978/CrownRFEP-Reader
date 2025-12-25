@@ -16,27 +16,27 @@
             <Grid RowDefinitions="Auto,Auto,Auto,Auto" ColumnDefinitions="*,*">
                 <Label Grid.ColumnSpan="2" 
                        Text="{Binding Session.DisplayName}" 
-                       FontSize="22" 
+                       FontSize="{StaticResource FontSizeHeader}" 
                        FontAttributes="Bold"/>
                 
                 <HorizontalStackLayout Grid.Row="1" Spacing="8" Margin="0,8,0,0">
-                    <Label Text="📍" FontSize="14"/>
-                    <Label Text="{Binding Session.Lugar}" FontSize="14"/>
+                    <Label Text="📍" FontSize="{StaticResource FontSizeBody}"/>
+                    <Label Text="{Binding Session.Lugar}" FontSize="{StaticResource FontSizeBody}"/>
                 </HorizontalStackLayout>
                 
                 <HorizontalStackLayout Grid.Row="1" Grid.Column="1" Spacing="8" Margin="0,8,0,0">
-                    <Label Text="📅" FontSize="14"/>
-                    <Label Text="{Binding Session.FechaDateTime, StringFormat='{0:dd/MM/yyyy HH:mm}'}" FontSize="14"/>
+                    <Label Text="📅" FontSize="{StaticResource FontSizeBody}"/>
+                    <Label Text="{Binding Session.FechaDateTime, StringFormat='{0:dd/MM/yyyy HH:mm}'}" FontSize="{StaticResource FontSizeBody}"/>
                 </HorizontalStackLayout>
                 
                 <HorizontalStackLayout Grid.Row="2" Spacing="8" Margin="0,5,0,0">
-                    <Label Text="👤" FontSize="14"/>
-                    <Label Text="{Binding Session.Coach}" FontSize="14"/>
+                    <Label Text="👤" FontSize="{StaticResource FontSizeBody}"/>
+                    <Label Text="{Binding Session.Coach}" FontSize="{StaticResource FontSizeBody}"/>
                 </HorizontalStackLayout>
                 
                 <HorizontalStackLayout Grid.Row="2" Grid.Column="1" Spacing="8" Margin="0,5,0,0">
-                    <Label Text="🎬" FontSize="14"/>
-                    <Label FontSize="14">
+                    <Label Text="🎬" FontSize="{StaticResource FontSizeBody}"/>
+                    <Label FontSize="{StaticResource FontSizeBody}">
                         <Label.FormattedText>
                             <FormattedString>
                                 <Span Text="{Binding FilteredVideos.Count}" />
@@ -50,7 +50,7 @@
                 
                 <Label Grid.Row="3" Grid.ColumnSpan="2" 
                        Text="{Binding Session.Participantes}" 
-                       FontSize="12" 
+                       FontSize="{StaticResource FontSizeSmall}" 
                        TextColor="Gray"
                        Margin="0,8,0,0"
                        LineBreakMode="WordWrap"/>
@@ -64,7 +64,7 @@
                         Command="{Binding ClearFiltersCommand}"
                         BackgroundColor="Transparent"
                         TextColor="{StaticResource Primary}"
-                        FontSize="12"
+                        FontSize="{StaticResource FontSizeSmall}"
                         Padding="10,5"/>
                 
                 <!-- Filtros por atleta -->
@@ -88,7 +88,7 @@
                                 </Frame.GestureRecognizers>
                                 <Label Text="{Binding NombreCompleto}" 
                                        TextColor="White" 
-                                       FontSize="12"
+                                       FontSize="{StaticResource FontSizeSmall}"
                                        VerticalOptions="Center"/>
                             </Frame>
                         </DataTemplate>
@@ -134,7 +134,7 @@
                                        HorizontalOptions="Center"
                                        VerticalOptions="Center">
                                     <Label Text="▶" 
-                                           FontSize="20" 
+                                           FontSize="{StaticResource FontSizeTitle}" 
                                            TextColor="White"
                                            HorizontalOptions="Center"
                                            VerticalOptions="Center"/>
@@ -149,18 +149,18 @@
                                        HorizontalOptions="End"
                                        VerticalOptions="End">
                                     <Label Text="{Binding DurationFormatted}" 
-                                           FontSize="10" 
+                                           FontSize="{StaticResource FontSizeCaption}" 
                                            TextColor="White"/>
                                 </Frame>
                                 
                                 <!-- Info -->
                                 <VerticalStackLayout Grid.Row="1" Padding="8" Spacing="2">
                                     <Label Text="{Binding Atleta.NombreCompleto}" 
-                                           FontSize="12" 
+                                           FontSize="{StaticResource FontSizeSmall}" 
                                            FontAttributes="Bold"
                                            LineBreakMode="TailTruncation"/>
                                     <Label Text="{Binding CreationDateTime, StringFormat='{0:HH:mm}'}" 
-                                           FontSize="10" 
+                                           FontSize="{StaticResource FontSizeCaption}" 
                                            TextColor="Gray"/>
                                 </VerticalStackLayout>
                             </Grid>
@@ -170,9 +170,9 @@
                 
                 <CollectionView.EmptyView>
                     <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center" Padding="40">
-                        <Label Text="🎬" FontSize="48" HorizontalOptions="Center"/>
+                        <Label Text="🎬" FontSize="{StaticResource FontSizeDisplay}" HorizontalOptions="Center"/>
                         <Label Text="No hay videos" 
-                               FontSize="18" 
+                               FontSize="{StaticResource FontSizeTitle}" 
                                HorizontalOptions="Center" 
                                TextColor="Gray"/>
                     </VerticalStackLayout>

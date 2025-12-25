@@ -11,6 +11,13 @@ using CoreGraphics;
 using UIKit;
 #endif
 
+#if WINDOWS
+using Windows.Media.Editing;
+using Windows.Graphics.Imaging;
+using Windows.Storage;
+using Windows.Storage.Streams;
+#endif
+
 namespace CrownRFEP_Reader.Services;
 
 /// <summary>
@@ -98,6 +105,8 @@ public class ThumbnailService
 
 #if MACCATALYST
             return await GenerateThumbnailMacAsync(videoPath, outputPath);
+#elif WINDOWS
+            return await GenerateThumbnailWindowsAsync(videoPath, outputPath);
 #else
             System.Diagnostics.Debug.WriteLine("ThumbnailService: Thumbnail generation not supported on this platform");
             return false;
@@ -179,6 +188,79 @@ public class ThumbnailService
     }
 #endif
 
+#if WINDOWS
+    private async Task<bool> GenerateThumbnailWindowsAsync(string videoPath, string outputPath)
+    {
+        try
+        {
+            var file = await StorageFile.GetFileFromPathAsync(videoPath);
+            if (file == null)
+            {
+                System.Diagnostics.Debug.WriteLine("ThumbnailService: Could not open video file");
+                return false;
+            }
+
+            // Usar MediaClip para obtener thumbnail
+            var clip = await MediaClip.CreateFromFileAsync(file);
+            var composition = new MediaComposition();
+            composition.Clips.Add(clip);
+
+            // Obtener thumbnail en el segundo 1 o al inicio
+            var thumbnailTime = clip.OriginalDuration.TotalSeconds > 1 
+                ? TimeSpan.FromSeconds(ThumbnailTimeSeconds) 
+                : TimeSpan.Zero;
+
+            var thumbnail = await composition.GetThumbnailAsync(
+                thumbnailTime,
+                ThumbnailWidth,
+                ThumbnailHeight,
+                VideoFramePrecision.NearestFrame);
+
+            if (thumbnail == null)
+            {
+                System.Diagnostics.Debug.WriteLine("ThumbnailService: Could not generate thumbnail");
+                return false;
+            }
+
+            // Guardar como JPEG
+            var outputFile = await StorageFile.GetFileFromPathAsync(outputPath)
+                .AsTask()
+                .ContinueWith(t => t.IsFaulted ? null : t.Result);
+
+            // Si no existe, crear el archivo
+            if (outputFile == null)
+            {
+                var folder = await StorageFolder.GetFolderFromPathAsync(Path.GetDirectoryName(outputPath)!);
+                outputFile = await folder.CreateFileAsync(Path.GetFileName(outputPath), CreationCollisionOption.ReplaceExisting);
+            }
+
+            using (var stream = await outputFile.OpenAsync(FileAccessMode.ReadWrite))
+            {
+                var encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.JpegEncoderId, stream);
+                encoder.SetSoftwareBitmap(await GetSoftwareBitmapFromImageStreamAsync(thumbnail));
+                encoder.BitmapTransform.ScaledWidth = (uint)ThumbnailWidth;
+                encoder.BitmapTransform.ScaledHeight = (uint)ThumbnailHeight;
+                encoder.BitmapTransform.InterpolationMode = BitmapInterpolationMode.Fant;
+                await encoder.FlushAsync();
+            }
+
+            System.Diagnostics.Debug.WriteLine($"ThumbnailService: Thumbnail generated successfully: {outputPath}");
+            return File.Exists(outputPath);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"ThumbnailService: Error in GenerateThumbnailWindowsAsync: {ex.Message}");
+            return false;
+        }
+    }
+
+    private async Task<SoftwareBitmap> GetSoftwareBitmapFromImageStreamAsync(ImageStream imageStream)
+    {
+        var decoder = await BitmapDecoder.CreateAsync(imageStream);
+        return await decoder.GetSoftwareBitmapAsync(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied);
+    }
+#endif
+
     /// <summary>
     /// Obtiene la duración de un video en segundos
     /// </summary>
@@ -203,6 +285,22 @@ public class ThumbnailService
             catch
             {
                 return 0;
+            }
+        });
+#elif WINDOWS
+        return await Task.Run(async () =>
+        {
+            try
+            {
+                var file = await StorageFile.GetFileFromPathAsync(videoPath);
+                if (file == null) return 0.0;
+
+                var clip = await MediaClip.CreateFromFileAsync(file);
+                return clip.OriginalDuration.TotalSeconds;
+            }
+            catch
+            {
+                return 0.0;
             }
         });
 #else
@@ -240,6 +338,8 @@ public class ThumbnailService
 
 #if MACCATALYST
                 return await GenerateComparisonThumbnailMacAsync(videoPath, outputPath);
+#elif WINDOWS
+                return await GenerateThumbnailWindowsAsync(videoPath, outputPath); // Usar mismo método para Windows
 #else
                 return false;
 #endif

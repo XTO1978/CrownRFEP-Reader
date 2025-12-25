@@ -1,4 +1,5 @@
-﻿using CrownRFEP_Reader.Services;
+﻿using CrownRFEP_Reader.Helpers;
+using CrownRFEP_Reader.Services;
 
 namespace CrownRFEP_Reader;
 
@@ -67,6 +68,16 @@ public partial class App : Application
 
 	protected override Window CreateWindow(IActivationState? activationState)
 	{
+		// Inicializar el helper de escalado de UI
+		if (activationState?.Context?.Services != null)
+		{
+			var scalingService = activationState.Context.Services.GetService<IUIScalingService>();
+			if (scalingService != null)
+			{
+				UIScaleHelper.Instance.Initialize(scalingService);
+			}
+		}
+
 		return new Window(new AppShell());
 	}
 }

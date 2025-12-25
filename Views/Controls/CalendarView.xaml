@@ -29,14 +29,14 @@
                 Text="◀"
                 BackgroundColor="Transparent"
                 TextColor="{StaticResource CalendarSelectedBg}"
-                FontSize="18"
+                FontSize="{StaticResource FontSizeTitle}"
                 Padding="12,8"
                 Clicked="OnPreviousMonthClicked" />
             
             <Label
                 Grid.Column="1"
                 Text="{Binding DisplayMonthText, Source={x:Reference CalendarRoot}}"
-                FontSize="20"
+                FontSize="{StaticResource FontSizeTitle}"
                 FontAttributes="Bold"
                 TextColor="White"
                 HorizontalOptions="Center"
@@ -47,7 +47,7 @@
                 Text="▶"
                 BackgroundColor="Transparent"
                 TextColor="{StaticResource CalendarSelectedBg}"
-                FontSize="18"
+                FontSize="{StaticResource FontSizeTitle}"
                 Padding="12,8"
                 Clicked="OnNextMonthClicked" />
         </Grid>
@@ -64,13 +64,13 @@
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
             
-            <Label Grid.Column="0" Text="Lun" FontSize="12" TextColor="#FF888888" HorizontalOptions="Center" />
-            <Label Grid.Column="1" Text="Mar" FontSize="12" TextColor="#FF888888" HorizontalOptions="Center" />
-            <Label Grid.Column="2" Text="Mié" FontSize="12" TextColor="#FF888888" HorizontalOptions="Center" />
-            <Label Grid.Column="3" Text="Jue" FontSize="12" TextColor="#FF888888" HorizontalOptions="Center" />
-            <Label Grid.Column="4" Text="Vie" FontSize="12" TextColor="#FF888888" HorizontalOptions="Center" />
-            <Label Grid.Column="5" Text="Sáb" FontSize="12" TextColor="#FF888888" HorizontalOptions="Center" />
-            <Label Grid.Column="6" Text="Dom" FontSize="12" TextColor="#FF888888" HorizontalOptions="Center" />
+            <Label Grid.Column="0" Text="Lun" FontSize="{StaticResource FontSizeSmall}" TextColor="#FF888888" HorizontalOptions="Center" />
+            <Label Grid.Column="1" Text="Mar" FontSize="{StaticResource FontSizeSmall}" TextColor="#FF888888" HorizontalOptions="Center" />
+            <Label Grid.Column="2" Text="Mié" FontSize="{StaticResource FontSizeSmall}" TextColor="#FF888888" HorizontalOptions="Center" />
+            <Label Grid.Column="3" Text="Jue" FontSize="{StaticResource FontSizeSmall}" TextColor="#FF888888" HorizontalOptions="Center" />
+            <Label Grid.Column="4" Text="Vie" FontSize="{StaticResource FontSizeSmall}" TextColor="#FF888888" HorizontalOptions="Center" />
+            <Label Grid.Column="5" Text="Sáb" FontSize="{StaticResource FontSizeSmall}" TextColor="#FF888888" HorizontalOptions="Center" />
+            <Label Grid.Column="6" Text="Dom" FontSize="{StaticResource FontSizeSmall}" TextColor="#FF888888" HorizontalOptions="Center" />
         </Grid>
         
         <!--  Grid de días del mes usando CollectionView con GridItemsLayout  -->
@@ -112,7 +112,7 @@
                                 <!--  Número del día  -->
                                 <Label
                                     Text="{Binding DayNumber}"
-                                    FontSize="26"
+                                    FontSize="{StaticResource FontSizeHeader}"
                                     FontAttributes="Bold" Margin="0,0,10,0"
                                     TextColor="{Binding TextColor}"
                                     VerticalOptions="Center" />
@@ -122,8 +122,8 @@
                                     IsVisible="{Binding HasSession}"
                                     SymbolName="video.fill"
                                     TintColor="{Binding VideoIconColor}"
-                                    WidthRequest="18"
-                                    HeightRequest="18"
+                                    WidthRequest="{StaticResource IconSizeDefault}"
+                                    HeightRequest="{StaticResource IconSizeDefault}"
                                     VerticalOptions="Center" />
                                 
                                 <!--  Icono de diario  -->
@@ -131,8 +131,8 @@
                                     IsVisible="{Binding HasDiary}"
                                     SymbolName="note.text"
                                     TintColor="{Binding DiaryIconColor}"
-                                    WidthRequest="18"
-                                    HeightRequest="18"
+                                    WidthRequest="{StaticResource IconSizeDefault}"
+                                    HeightRequest="{StaticResource IconSizeDefault}"
                                     VerticalOptions="Center" />
                                 
                                 <!--  Icono de valoraciones  -->
@@ -140,8 +140,8 @@
                                     IsVisible="{Binding HasValoraciones}"
                                     SymbolName="star.fill"
                                     TintColor="{Binding ValoracionesIconColor}"
-                                    WidthRequest="18"
-                                    HeightRequest="18"
+                                    WidthRequest="{StaticResource IconSizeDefault}"
+                                    HeightRequest="{StaticResource IconSizeDefault}"
                                     VerticalOptions="Center" />
                                 
                             </HorizontalStackLayout>
@@ -159,8 +159,8 @@
                                         IsVisible="{Binding HasMood}"
                                         SymbolName="{Binding MoodSymbol}"
                                         TintColor="{Binding DisplayMoodColor}"
-                                        WidthRequest="16"
-                                        HeightRequest="16"
+                                        WidthRequest="{StaticResource IconSizeMedium}"
+                                        HeightRequest="{StaticResource IconSizeMedium}"
                                         VerticalOptions="Center" />
                                     
                                     <!--  Indicador de comparación con la media  -->
@@ -168,8 +168,8 @@
                                         IsVisible="{Binding ShowWellnessComparison}"
                                         SymbolName="{Binding WellnessComparisonSymbol}"
                                         TintColor="{Binding WellnessComparisonColor}"
-                                        WidthRequest="12"
-                                        HeightRequest="12"
+                                        WidthRequest="{StaticResource IconSizeSmall}"
+                                        HeightRequest="{StaticResource IconSizeSmall}"
                                         VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                                 
@@ -178,12 +178,12 @@
                                     <controls:SymbolIcon
                                         SymbolName="moon.fill"
                                         TintColor="{Binding SleepIconColor}"
-                                        WidthRequest="14"
-                                        HeightRequest="14"
+                                        WidthRequest="{StaticResource IconSizeSmall}"
+                                        HeightRequest="{StaticResource IconSizeSmall}"
                                         VerticalOptions="Center" />
                                     <Label
                                         Text="{Binding SleepText}"
-                                        FontSize="11"
+                                        FontSize="{StaticResource FontSizeSmall}"
                                         TextColor="{Binding TextColor}"
                                         VerticalOptions="Center" />
                                 </HorizontalStackLayout>
@@ -193,12 +193,12 @@
                                     <controls:SymbolIcon
                                         SymbolName="heart.fill"
                                         TintColor="{Binding HeartRateIconColor}"
-                                        WidthRequest="14"
-                                        HeightRequest="14"
+                                        WidthRequest="{StaticResource IconSizeSmall}"
+                                        HeightRequest="{StaticResource IconSizeSmall}"
                                         VerticalOptions="Center" />
                                     <Label
                                         Text="{Binding HeartRateText}"
-                                        FontSize="11"
+                                        FontSize="{StaticResource FontSizeSmall}"
                                         TextColor="{Binding TextColor}"
                                         VerticalOptions="Center" />
                                 </HorizontalStackLayout>
@@ -208,12 +208,12 @@
                                     <controls:SymbolIcon
                                         SymbolName="waveform.path.ecg"
                                         TintColor="{Binding HRVIconColor}"
-                                        WidthRequest="14"
-                                        HeightRequest="14"
+                                        WidthRequest="{StaticResource IconSizeSmall}"
+                                        HeightRequest="{StaticResource IconSizeSmall}"
                                         VerticalOptions="Center" />
                                     <Label
                                         Text="{Binding HRVText}"
-                                        FontSize="11"
+                                        FontSize="{StaticResource FontSizeSmall}"
                                         TextColor="{Binding TextColor}"
                                         VerticalOptions="Center" />
                                 </HorizontalStackLayout>

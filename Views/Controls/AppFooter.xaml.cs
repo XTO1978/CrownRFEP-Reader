@@ -195,14 +195,14 @@ public partial class AppFooter : ContentView
                 ColumnSpacing = 8
             };
 
-            var timestampLabel = new Label { FontSize = 11, TextColor = Color.FromArgb("#FF6A6A6A"), VerticalOptions = LayoutOptions.Center };
+            var timestampLabel = new Label { FontSize = GetFontSize("FontSizeSmall"), TextColor = Color.FromArgb("#FF6A6A6A"), VerticalOptions = LayoutOptions.Center };
             timestampLabel.SetBinding(Label.TextProperty, "TimestampText");
 
-            var levelLabel = new Label { FontSize = 11, VerticalOptions = LayoutOptions.Center };
+            var levelLabel = new Label { FontSize = GetFontSize("FontSizeSmall"), VerticalOptions = LayoutOptions.Center };
             levelLabel.SetBinding(Label.TextProperty, "LevelText");
             Grid.SetColumn(levelLabel, 1);
 
-            var messageLabel = new Label { FontSize = 12, TextColor = Color.FromArgb("#FFB0B0B0"), LineBreakMode = LineBreakMode.TailTruncation, VerticalOptions = LayoutOptions.Center };
+            var messageLabel = new Label { FontSize = GetFontSize("FontSizeBody"), TextColor = Color.FromArgb("#FFB0B0B0"), LineBreakMode = LineBreakMode.TailTruncation, VerticalOptions = LayoutOptions.Center };
             messageLabel.SetBinding(Label.TextProperty, "Message");
             Grid.SetColumn(messageLabel, 2);
 
@@ -220,15 +220,15 @@ public partial class AppFooter : ContentView
             Spacing = 8,
             Children =
             {
-                new SymbolIcon { SymbolName = "doc.text", TintColor = Color.FromArgb("#FF4A4A4A"), HeightRequest = 32, WidthRequest = 32, HorizontalOptions = LayoutOptions.Center },
-                new Label { FontSize = 13, HorizontalOptions = LayoutOptions.Center, Text = "Sin logs recientes", TextColor = Color.FromArgb("#FF6A6A6A") }
+                new SymbolIcon { SymbolName = "doc.text", TintColor = Color.FromArgb("#FF4A4A4A"), HeightRequest = GetIconSize("IconSizeXLarge"), WidthRequest = GetIconSize("IconSizeXLarge"), HorizontalOptions = LayoutOptions.Center },
+                new Label { FontSize = GetFontSize("FontSizeBody"), HorizontalOptions = LayoutOptions.Center, Text = "Sin logs recientes", TextColor = Color.FromArgb("#FF6A6A6A") }
             }
         };
 
         // Header
         _popupLastActivityLabel = new Label
         {
-            FontSize = 11,
+            FontSize = GetFontSize("FontSizeSmall"),
             HorizontalOptions = LayoutOptions.Center,
             Text = "Sin actividad",
             TextColor = Color.FromArgb("#FF6A6A6A"),
@@ -241,7 +241,7 @@ public partial class AppFooter : ContentView
             BackgroundColor = Colors.Transparent,
             StrokeThickness = 0,
             StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 4 },
-            Content = new SymbolIcon { SymbolName = "xmark", TintColor = Color.FromArgb("#FF8A8A8A"), HeightRequest = 14, WidthRequest = 14, VerticalOptions = LayoutOptions.Center }
+            Content = new SymbolIcon { SymbolName = "xmark", TintColor = Color.FromArgb("#FF8A8A8A"), HeightRequest = GetIconSize("IconSizeSmall"), WidthRequest = GetIconSize("IconSizeSmall"), VerticalOptions = LayoutOptions.Center }
         };
         closeButton.GestureRecognizers.Add(new TapGestureRecognizer { Command = new Command(CloseLogsPopup) });
 
@@ -262,8 +262,8 @@ public partial class AppFooter : ContentView
             Spacing = 8,
             Children =
             {
-                new SymbolIcon { SymbolName = "cylinder.split.1x2", TintColor = Color.FromArgb("#FF6DDDFF"), HeightRequest = 16, WidthRequest = 16, VerticalOptions = LayoutOptions.Center },
-                new Label { FontSize = 14, Text = "Logs de Base de Datos", TextColor = Colors.White, VerticalOptions = LayoutOptions.Center }
+                new SymbolIcon { SymbolName = "cylinder.split.1x2", TintColor = Color.FromArgb("#FF6DDDFF"), HeightRequest = GetIconSize("IconSizeMedium"), WidthRequest = GetIconSize("IconSizeMedium"), VerticalOptions = LayoutOptions.Center },
+                new Label { FontSize = GetFontSize("FontSizeSubtitle"), Text = "Logs de Base de Datos", TextColor = Colors.White, VerticalOptions = LayoutOptions.Center }
             }
         };
 
@@ -277,7 +277,7 @@ public partial class AppFooter : ContentView
         // Footer
         _popupLogCountLabel = new Label
         {
-            FontSize = 11,
+            FontSize = GetFontSize("FontSizeSmall"),
             Text = "0 entradas",
             TextColor = Color.FromArgb("#FF6A6A6A"),
             VerticalOptions = LayoutOptions.Center
@@ -288,7 +288,7 @@ public partial class AppFooter : ContentView
             Padding = new Thickness(12, 4),
             BackgroundColor = Color.FromArgb("#FF2A2A2A"),
             CornerRadius = 4,
-            FontSize = 12,
+            FontSize = GetFontSize("FontSizeBody"),
             Text = "Limpiar",
             TextColor = Color.FromArgb("#FF8A8A8A")
         };
@@ -443,5 +443,25 @@ public partial class AppFooter : ContentView
     public async Task RefreshCountsExternalAsync()
     {
         await RefreshCountsAsync();
+    }
+
+    /// <summary>
+    /// Obtiene el tamaño de icono desde los recursos de la aplicación
+    /// </summary>
+    private static double GetIconSize(string resourceKey)
+    {
+        if (Application.Current?.Resources.TryGetValue(resourceKey, out var value) == true && value is double size)
+            return size;
+        return 16; // Valor por defecto
+    }
+
+    /// <summary>
+    /// Obtiene el tamaño de fuente desde los recursos de la aplicación
+    /// </summary>
+    private static double GetFontSize(string resourceKey)
+    {
+        if (Application.Current?.Resources.TryGetValue(resourceKey, out var value) == true && value is double size)
+            return size;
+        return 14; // Valor por defecto
     }
 }
