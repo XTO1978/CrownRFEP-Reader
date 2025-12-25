@@ -14,7 +14,7 @@
     </FlyoutItem>
 
     <FlyoutItem Route="athletes" FlyoutItemIsVisible="False">
-        <ShellContent ContentTemplate="{DataTemplate views:AthletesPage}" Route="AthletesPage" />
+        <ShellContent ContentTemplate="{DataTemplate views:DatabaseManagementPage}" Route="DatabaseManagementPage" />
     </FlyoutItem>
 
     <FlyoutItem Route="import" FlyoutItemIsVisible="False">
