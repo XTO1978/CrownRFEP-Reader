@@ -104,8 +104,7 @@
                         <Grid ColumnDefinitions="50,80,*,*" Padding="12,10">
                             <Label Text="✓" TextColor="White" HorizontalOptions="Center"/>
                             <Label Grid.Column="1" Text="ID" TextColor="White"/>
-                            <Label Grid.Column="2" Text="Nombre" TextColor="White"/>
-                            <Label Grid.Column="3" Text="Apellido" TextColor="White"/>
+                            <Label Grid.Column="2" Grid.ColumnSpan="2" Text="Atleta" TextColor="White"/>
                         </Grid>
                     </Border>
                     
@@ -129,8 +128,7 @@
                                                     StrokeShape="RoundRectangle 4" WidthRequest="45" HeightRequest="28" HorizontalOptions="Start">
                                                 <Label Text="{Binding Id}" TextColor="White" HorizontalOptions="Center" VerticalOptions="Center"/>
                                             </Border>
-                                            <Label Grid.Column="2" Text="{Binding Nombre}" TextColor="White" FontSize="14" VerticalOptions="Center"/>
-                                            <Label Grid.Column="3" Text="{Binding Apellido}" TextColor="White" FontSize="14" VerticalOptions="Center"/>
+                                            <Label Grid.Column="2" Grid.ColumnSpan="2" Text="{Binding NombreCompleto}" TextColor="White" FontSize="14" VerticalOptions="Center"/>
                                         </Grid>
                                     </Border>
                                 </DataTemplate>

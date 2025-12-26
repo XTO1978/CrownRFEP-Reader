@@ -66,7 +66,7 @@ public partial class DashboardPage : ContentPage
     }
 #endif
 
-    protected override async void OnAppearing()
+    protected override void OnAppearing()
     {
         base.OnAppearing();
         _isPageActive = true;
@@ -142,6 +142,32 @@ public partial class DashboardPage : ContentPage
         {
             _viewModel.HoverVideo = null;
         });
+    }
+
+    private void OnFilterChipTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            if (sender is not BindableObject bindable)
+                return;
+
+            var ctx = bindable.BindingContext;
+            if (ctx == null)
+                return;
+
+            // Todos los items de filtro heredan de FilterItem<T> (genérico).
+            // No podemos hacer un cast directo sin conocer T, así que usamos reflexión.
+            var prop = ctx.GetType().GetProperty("IsSelected");
+            if (prop == null || prop.PropertyType != typeof(bool) || !prop.CanWrite)
+                return;
+
+            var current = (bool)(prop.GetValue(ctx) ?? false);
+            prop.SetValue(ctx, !current);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "OnFilterChipTapped error", ex);
+        }
     }
 
     private void OnDragStarting(object? sender, DragStartingEventArgs e)

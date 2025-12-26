@@ -595,6 +595,18 @@ public class DatabaseService
         return System.Text.RegularExpressions.Regex.Replace(value.Trim(), @"\s+", " ");
     }
 
+    private static void NormalizeAthleteForStorage(Athlete athlete)
+    {
+        // Nombre: trim + colapsar espacios.
+        athlete.Nombre = NormalizeString(athlete.Nombre);
+
+        // Apellido: trim + colapsar espacios + MAYÚSCULAS.
+        var normalizedSurname = NormalizeString(athlete.Apellido);
+        athlete.Apellido = string.IsNullOrEmpty(normalizedSurname)
+            ? string.Empty
+            : normalizedSurname.ToUpperInvariant();
+    }
+
     /// <summary>
     /// Consolida atletas duplicados: mantiene el de menor ID y actualiza referencias.
     /// Devuelve el número de duplicados eliminados.
@@ -711,6 +723,8 @@ public class DatabaseService
         var db = await GetConnectionAsync();
         // Forzar Id=0 para que SQLite asigne uno nuevo con AUTOINCREMENT
         athlete.Id = 0;
+
+        NormalizeAthleteForStorage(athlete);
         await db.InsertAsync(athlete);
         return athlete.Id;
     }
@@ -730,6 +744,8 @@ public class DatabaseService
     public async Task<int> SaveAthleteAsync(Athlete athlete)
     {
         var db = await GetConnectionAsync();
+
+        NormalizeAthleteForStorage(athlete);
         var existing = await db.Table<Athlete>().FirstOrDefaultAsync(a => a.Id == athlete.Id);
         if (existing != null)
         {
