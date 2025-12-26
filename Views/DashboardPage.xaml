@@ -29,7 +29,7 @@
         Padding="0"
         RowDefinitions="Auto,*,Auto">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="350" />
+            <ColumnDefinition Width="{StaticResource SidebarWidthDefault}" />
             <ColumnDefinition Width="8" />
             <ColumnDefinition Width="2.5*" />
             <ColumnDefinition Width="{Binding RightSplitterWidth}" />
@@ -89,11 +89,13 @@
 
                 <!--  Items fijos: Galería General + Videolecciones  -->
                 <CollectionView.Header>
-                    <VerticalStackLayout Spacing="4">
+                    <VerticalStackLayout Spacing="{StaticResource SpacingXSmall}">
                         <Border
                             x:Name="AllGalleryHeaderBorder"
                             Margin="0,0,0,0"
+                            Padding="{StaticResource PaddingSidebarItem}"
                             BackgroundColor="Transparent"
+                            HeightRequest="{StaticResource ElementHeightLarge}"
                             Stroke="Transparent"
                             StrokeThickness="0"
                             StrokeShape="RoundRectangle 4">
@@ -112,7 +114,6 @@
                                 <TapGestureRecognizer Command="{Binding SelectAllGalleryCommand}" />
                             </Border.GestureRecognizers>
                             <HorizontalStackLayout
-                                Padding="16,10"
                                 Spacing="8"
                                 VerticalOptions="Center">
                                 <controls:SymbolIcon
@@ -126,14 +127,17 @@
                                     FontSize="{StaticResource FontSizeSubtitle}"
                                     Text="Galería General"
                                     TextColor="White"
-                                    VerticalOptions="Center" />
+                                    VerticalOptions="Center"
+                                    VerticalTextAlignment="Center" />
                             </HorizontalStackLayout>
                         </Border>
 
                         <Border
                             x:Name="VideoLessonsHeaderBorder"
                             Margin="0"
+                            Padding="{StaticResource PaddingSidebarItem}"
                             BackgroundColor="Transparent"
+                            HeightRequest="{StaticResource ElementHeightLarge}"
                             Stroke="Transparent"
                             StrokeThickness="0"
                             StrokeShape="RoundRectangle 4">
@@ -152,7 +156,6 @@
                                 <TapGestureRecognizer Command="{Binding ViewVideoLessonsCommand}" />
                             </Border.GestureRecognizers>
                             <HorizontalStackLayout
-                                Padding="16,10"
                                 Spacing="8"
                                 VerticalOptions="Center">
                                 <controls:SymbolIcon
@@ -166,7 +169,8 @@
                                     FontSize="{StaticResource FontSizeSubtitle}"
                                     Text="Videolecciones"
                                     TextColor="White"
-                                    VerticalOptions="Center" />
+                                    VerticalOptions="Center"
+                                    VerticalTextAlignment="Center" />
                             </HorizontalStackLayout>
                         </Border>
 
@@ -174,7 +178,9 @@
                         <Border
                             x:Name="DiaryHeaderBorder"
                             Margin="0"
+                            Padding="{StaticResource PaddingSidebarItem}"
                             BackgroundColor="Transparent"
+                            HeightRequest="{StaticResource ElementHeightLarge}"
                             Stroke="Transparent"
                             StrokeThickness="0"
                             StrokeShape="RoundRectangle 4">
@@ -193,7 +199,6 @@
                                 <TapGestureRecognizer Command="{Binding ViewDiaryCommand}" />
                             </Border.GestureRecognizers>
                             <HorizontalStackLayout
-                                Padding="16,10"
                                 Spacing="8"
                                 VerticalOptions="Center">
                                 <controls:SymbolIcon
@@ -207,7 +212,8 @@
                                     FontSize="{StaticResource FontSizeSubtitle}"
                                     Text="Diario"
                                     TextColor="White"
-                                    VerticalOptions="Center" />
+                                    VerticalOptions="Center"
+                                    VerticalTextAlignment="Center" />
                             </HorizontalStackLayout>
                         </Border>
 
@@ -215,7 +221,9 @@
                         <Border
                             x:Name="SessionsHeaderBorder"
                             Margin="0"
+                            Padding="{StaticResource PaddingSidebarItem}"
                             BackgroundColor="Transparent"
+                            HeightRequest="{StaticResource ElementHeightLarge}"
                             Stroke="Transparent"
                             StrokeThickness="0"
                             StrokeShape="RoundRectangle 4">
@@ -226,7 +234,6 @@
                                 <TapGestureRecognizer Command="{Binding ToggleSessionsListExpandedCommand}" />
                             </Border.GestureRecognizers>
                             <Grid
-                                Padding="16,10"
                                 ColumnDefinitions="*,Auto"
                                 VerticalOptions="Center">
                                 <HorizontalStackLayout
@@ -244,7 +251,8 @@
                                         FontSize="{StaticResource FontSizeSubtitle}"
                                         Text="Sesiones"
                                         TextColor="White"
-                                        VerticalOptions="Center" />
+                                        VerticalOptions="Center"
+                                        VerticalTextAlignment="Center" />
                                 </HorizontalStackLayout>
                                 <Label
                                     Grid.Column="1"
@@ -258,20 +266,21 @@
                 </CollectionView.Header>
 
                 <CollectionView.ItemsLayout>
-                    <LinearItemsLayout ItemSpacing="4" Orientation="Vertical" />
+                    <LinearItemsLayout ItemSpacing="{StaticResource SpacingXSmall}" Orientation="Vertical" />
                 </CollectionView.ItemsLayout>
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="models:Session">
                         <Border
                             Margin="0"
+                            Padding="{StaticResource PaddingSidebarItem}"
                             BackgroundColor="Transparent"
+                            HeightRequest="{StaticResource ElementHeightLarge}"
                             Stroke="Transparent"
                             StrokeShape="RoundRectangle 4">
                             <Border.Behaviors>
                                 <behaviors:DashboardSessionItemHoverBehavior />
                             </Border.Behaviors>
                             <HorizontalStackLayout
-                                Padding="16,10"
                                 Spacing="8"
                                 VerticalOptions="Center">
                                 <controls:SymbolIcon
@@ -290,7 +299,9 @@
                                     FontFamily="{StaticResource AppFontBody}"
                                     FontSize="{StaticResource FontSizeSubtitle}"
                                     LineBreakMode="TailTruncation"
-                                    TextColor="White">
+                                    TextColor="White"
+                                    VerticalOptions="Center"
+                                    VerticalTextAlignment="Center">
                                     <Label.FormattedText>
                                         <FormattedString>
                                             <Span
@@ -356,7 +367,7 @@
             </CollectionView>
 
             <!--  Acciones de sesión  -->
-            <VerticalStackLayout Grid.Row="1" Spacing="10" Margin="0,20,0,20">
+            <VerticalStackLayout Grid.Row="1" Spacing="{StaticResource SpacingSmall}" Margin="{StaticResource MarginVerticalSection}">
                 <Label
                     FontFamily="{StaticResource AppFontBody}"
                     FontSize="{StaticResource FontSizeBody}"
@@ -366,7 +377,7 @@
                 <Grid ColumnDefinitions="*,*" ColumnSpacing="4">
                     <Border
                         Grid.Column="0"
-                        Padding="10,8"
+                        Padding="{StaticResource PaddingActionButton}"
                         BackgroundColor="#FF2A2A2A"
                         Stroke="Transparent"
                         StrokeShape="RoundRectangle 4">
@@ -385,7 +396,7 @@
                     </Border>
                     <Border
                         Grid.Column="1"
-                        Padding="10,8"
+                        Padding="{StaticResource PaddingActionButton}"
                         BackgroundColor="#FF2A2A2A"
                         Stroke="Transparent"
                         StrokeShape="RoundRectangle 4">
@@ -442,13 +453,13 @@
                 IsVisible="{Binding ShowVideoGallery}"
                 RemainingItemsThreshold="10"
                 RemainingItemsThresholdReachedCommand="{Binding LoadMoreVideosCommand}"
-                SelectionMode="None" Margin="0,10,0,0">
+                SelectionMode="None" Margin="{StaticResource MarginTopSmall}">
                 <CollectionView.ItemsLayout>
                     <GridItemsLayout
-                        HorizontalItemSpacing="4"
+                        HorizontalItemSpacing="{StaticResource SpacingXSmall}"
                         Orientation="Vertical"
                         Span="4"
-                        VerticalItemSpacing="10" />
+                        VerticalItemSpacing="{StaticResource SpacingSmall}" />
                 </CollectionView.ItemsLayout>
 
                 <CollectionView.ItemTemplate>
@@ -672,13 +683,13 @@
                 ItemsSource="{Binding VideoLessons}"
                 IsVisible="{Binding IsVideoLessonsSelected}"
                 SelectionMode="None"
-                Margin="0,10,0,0">
+                Margin="{StaticResource MarginTopSmall}">
                 <CollectionView.ItemsLayout>
                     <GridItemsLayout
-                        HorizontalItemSpacing="4"
+                        HorizontalItemSpacing="{StaticResource SpacingXSmall}"
                         Orientation="Vertical"
                         Span="4"
-                        VerticalItemSpacing="10" />
+                        VerticalItemSpacing="{StaticResource SpacingSmall}" />
                 </CollectionView.ItemsLayout>
 
                 <CollectionView.ItemTemplate>
@@ -743,7 +754,7 @@
                                         <Border
                                             WidthRequest="{StaticResource ElementHeightMedium}"
                                             HeightRequest="{StaticResource ElementHeightMedium}"
-                                            Padding="0"
+                                            Padding="{StaticResource PaddingXSmall}"
                                             BackgroundColor="#FF3A3A3A"
                                             StrokeShape="RoundRectangle 14"
                                             StrokeThickness="0">
@@ -763,7 +774,7 @@
                                         <Border
                                             WidthRequest="{StaticResource ElementHeightMedium}"
                                             HeightRequest="{StaticResource ElementHeightMedium}"
-                                            Padding="0"
+                                            Padding="{StaticResource PaddingXSmall}"
                                             BackgroundColor="#FF3A3A3A"
                                             StrokeShape="RoundRectangle 14"
                                             StrokeThickness="0">
@@ -1016,7 +1027,7 @@
                         <Border
                             Grid.Row="0"
                             Grid.Column="0"
-                            Padding="10,8"
+                            Padding="{StaticResource PaddingActionButton}"
                             BackgroundColor="#FF2A2A2A"
                             Stroke="Transparent"
                             StrokeShape="RoundRectangle 6">
@@ -1038,7 +1049,7 @@
                         <Border
                             Grid.Row="0"
                             Grid.Column="1"
-                            Padding="10,8"
+                            Padding="{StaticResource PaddingActionButton}"
                             BackgroundColor="#FF2A2A2A"
                             Stroke="Transparent"
                             StrokeShape="RoundRectangle 6">
@@ -1060,7 +1071,7 @@
                         <Border
                             Grid.Row="1"
                             Grid.Column="0"
-                            Padding="10,8"
+                            Padding="{StaticResource PaddingActionButton}"
                             BackgroundColor="#FF2A2A2A"
                             Stroke="Transparent"
                             StrokeShape="RoundRectangle 6">
@@ -1082,7 +1093,7 @@
                         <Border
                             Grid.Row="1"
                             Grid.Column="1"
-                            Padding="10,8"
+                            Padding="{StaticResource PaddingActionButton}"
                             BackgroundColor="#FF2A2A2A"
                             Stroke="Transparent"
                             StrokeShape="RoundRectangle 6">

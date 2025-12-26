@@ -3,6 +3,11 @@ using System.Windows.Input;
 using CrownRFEP_Reader.Models;
 using CrownRFEP_Reader.Services;
 
+#if WINDOWS
+using Windows.Storage;
+using Windows.Storage.Streams;
+#endif
+
 namespace CrownRFEP_Reader.ViewModels;
 
 /// <summary>
@@ -57,6 +62,8 @@ public class ImportViewModel : BaseViewModel
     private readonly CrownFileService _crownFileService;
     private readonly ThumbnailService _thumbnailService;
 
+    private CancellationTokenSource? _importCts;
+
     private FileSystemItem? _selectedItem;
     private int _folderFilesRequestId;
     private string _importProgressText = "";
@@ -96,6 +103,7 @@ public class ImportViewModel : BaseViewModel
         RemoveVideoCommand = new Command<PendingVideoItem>(RemoveVideo);
         ClearAllVideosCommand = new Command(ClearAllVideos, () => PendingVideos.Count > 0);
         CreateCustomSessionCommand = new Command(async () => await CreateCustomSessionAsync(), () => CanCreateCustomSession);
+        CancelImportCommand = new Command(CancelImport, () => IsImporting);
         FilesDroppedCommand = new Command<IEnumerable<string>>(OnFilesDropped);
 
         // Cargar elementos raíz
@@ -294,6 +302,7 @@ public class ImportViewModel : BaseViewModel
                 OnPropertyChanged(nameof(CanCreateCustomSession));
                 ((Command)ImportSelectedCommand).ChangeCanExecute();
                 ((Command)CreateCustomSessionCommand).ChangeCanExecute();
+                ((Command)CancelImportCommand).ChangeCanExecute();
             }
         }
     }
@@ -317,6 +326,7 @@ public class ImportViewModel : BaseViewModel
     public ICommand RemoveVideoCommand { get; }
     public ICommand ClearAllVideosCommand { get; }
     public ICommand CreateCustomSessionCommand { get; }
+    public ICommand CancelImportCommand { get; }
     public ICommand FilesDroppedCommand { get; }
     public ICommand AddAllFolderVideosCommand { get; }
 
@@ -839,6 +849,17 @@ public class ImportViewModel : BaseViewModel
         UpdatePendingVideosState();
     }
 
+    private void CancelImport()
+    {
+        if (!IsImporting)
+        {
+            return;
+        }
+
+        ImportProgressText = "Cancelando importación...";
+        _importCts?.Cancel();
+    }
+
     /// <summary>
     /// Actualiza el estado IsAddedToSession de un archivo en FolderFiles
     /// </summary>
@@ -880,6 +901,11 @@ public class ImportViewModel : BaseViewModel
             ImportProgressText = "Creando sesión customizada...";
             ImportProgressValue = 0;
 
+            _importCts?.Cancel();
+            _importCts?.Dispose();
+            _importCts = new CancellationTokenSource();
+            var cancellationToken = _importCts.Token;
+
             // Crear directorio para la sesión
             var sessionDir = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -918,6 +944,8 @@ public class ImportViewModel : BaseViewModel
 
             foreach (var pendingVideo in PendingVideos.ToList())
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 currentVideo++;
                 
                 // Calcular progreso: 10-60% para copiar videos, 60-90% para thumbnails
@@ -930,38 +958,87 @@ public class ImportViewModel : BaseViewModel
                 var standardVideoName = $"CROWN{currentVideo}{videoExtension}";
                 var localVideoPath = Path.Combine(videosDir, standardVideoName);
 
-                // Verificar que el archivo origen existe y tiene tamaño válido
-                var sourceInfo = new FileInfo(pendingVideo.FullPath);
-                if (!sourceInfo.Exists || sourceInfo.Length == 0)
+                // Verificar que el archivo origen existe y tiene tamaño válido.
+                // En Windows, archivos "en la nube" (iCloud/OneDrive) pueden reportar 0 bytes mientras no estén hidratados.
+                long expectedSize = 0;
+                var sourceReady = false;
+
+                for (var probeAttempt = 1; probeAttempt <= 2 && !sourceReady; probeAttempt++)
                 {
-                    System.Diagnostics.Debug.WriteLine($"Source file missing or empty: {pendingVideo.FullPath}");
-                    failedVideos.Add($"{pendingVideo.FileName} (archivo origen no encontrado o vacío)");
-                    continue;
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    try
+                    {
+                        var sourceInfo = new FileInfo(pendingVideo.FullPath);
+                        if (!sourceInfo.Exists)
+                        {
+                            break;
+                        }
+
+                        expectedSize = sourceInfo.Length;
+                        if (expectedSize > 0)
+                        {
+                            sourceReady = true;
+                            break;
+                        }
+
+                        if (OperatingSystem.IsWindows())
+                        {
+                            var resolved = await TryResolveCloudFileAsync(pendingVideo.FullPath, pendingVideo.FileName, copyProgress, cancellationToken);
+                            if (resolved == CloudFileResolution.CancelImport)
+                            {
+                                throw new OperationCanceledException("Importación cancelada por el usuario (archivo en la nube no disponible)");
+                            }
+
+                            if (resolved == CloudFileResolution.RetryNow)
+                            {
+                                continue;
+                            }
+                        }
+
+                        break;
+                    }
+                    catch (IOException ioEx) when (IsCloudProviderNotRunning(ioEx))
+                    {
+                        var resolved = await TryResolveCloudFileAsync(pendingVideo.FullPath, pendingVideo.FileName, copyProgress, cancellationToken);
+                        if (resolved == CloudFileResolution.CancelImport)
+                        {
+                            throw new OperationCanceledException("Importación cancelada por el usuario (archivo en la nube no disponible)");
+                        }
+
+                        if (resolved == CloudFileResolution.RetryNow)
+                        {
+                            continue;
+                        }
+
+                        break;
+                    }
+                    catch (UnauthorizedAccessException)
+                    {
+                        break;
+                    }
                 }
 
-                var expectedSize = sourceInfo.Length;
+                if (!sourceReady)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Source file missing/not hydrated: {pendingVideo.FullPath}");
+                    failedVideos.Add($"{pendingVideo.FileName} (archivo origen no encontrado / no descargado)");
+                    continue;
+                }
                 var copySuccess = false;
+                string? copyFailureDetail = null;
 
                 // Copiar el video a la carpeta de la sesión con reintentos
                 for (int attempt = 1; attempt <= 3 && !copySuccess; attempt++)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
+
                     try
                     {
                         ImportProgressText = $"Copiando video {currentVideo}/{totalVideos}: {pendingVideo.FileName}" + 
                             (attempt > 1 ? $" (intento {attempt})" : "");
 
-                        // Eliminar archivo parcial si existe
-                        if (File.Exists(localVideoPath))
-                            File.Delete(localVideoPath);
-
-                        // Copiar con buffer grande para mejor rendimiento
-                        await Task.Run(() =>
-                        {
-                            using var sourceStream = new FileStream(pendingVideo.FullPath, FileMode.Open, FileAccess.Read, FileShare.Read, 1024 * 1024);
-                            using var destStream = new FileStream(localVideoPath, FileMode.Create, FileAccess.Write, FileShare.None, 1024 * 1024);
-                            sourceStream.CopyTo(destStream);
-                            destStream.Flush(true);
-                        });
+                        await CopyVideoFileAtomicAsync(pendingVideo.FullPath, localVideoPath, cancellationToken);
 
                         // Verificar que el archivo se copió correctamente
                         var destInfo = new FileInfo(localVideoPath);
@@ -974,20 +1051,47 @@ public class ImportViewModel : BaseViewModel
                         {
                             System.Diagnostics.Debug.WriteLine($"Copy verification failed: expected {expectedSize} bytes, got {(destInfo.Exists ? destInfo.Length : 0)} bytes");
                             if (attempt < 3)
-                                await Task.Delay(500); // Esperar antes de reintentar
+                                await Task.Delay(500, cancellationToken); // Esperar antes de reintentar
                         }
+                    }
+                    catch (IOException ioEx) when (IsCloudProviderNotRunning(ioEx))
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Error copying video (attempt {attempt}) [CloudProviderNotRunning 0x{ioEx.HResult:X8}]: {ioEx.Message}");
+
+                        var resolved = await TryResolveCloudFileAsync(pendingVideo.FullPath, pendingVideo.FileName, copyProgress, cancellationToken);
+                        if (resolved == CloudFileResolution.CancelImport)
+                        {
+                            throw new OperationCanceledException("Importación cancelada por el usuario (archivo en la nube no disponible)");
+                        }
+
+                        if (resolved == CloudFileResolution.RetryNow)
+                        {
+                            // Reintentar (consumir intento normal para evitar bucle infinito)
+                            continue;
+                        }
+
+                        copyFailureDetail = "Archivo en la nube no descargado.";
+                        break;
+                    }
+                    catch (IOException ioEx)
+                    {
+                        copyFailureDetail = ioEx.Message;
+                        System.Diagnostics.Debug.WriteLine($"Error copying video (attempt {attempt}) [IOException 0x{ioEx.HResult:X8}]: {ioEx.Message}");
+                        if (attempt < 3)
+                            await Task.Delay(500, cancellationToken);
                     }
                     catch (Exception ex)
                     {
+                        copyFailureDetail = ex.Message;
                         System.Diagnostics.Debug.WriteLine($"Error copying video (attempt {attempt}): {ex.Message}");
                         if (attempt < 3)
-                            await Task.Delay(500);
+                            await Task.Delay(500, cancellationToken);
                     }
                 }
 
                 if (!copySuccess)
                 {
-                    failedVideos.Add($"{pendingVideo.FileName} (error al copiar)");
+                    failedVideos.Add($"{pendingVideo.FileName} ({copyFailureDetail ?? "error al copiar"})");
                     continue;
                 }
 
@@ -1063,6 +1167,12 @@ public class ImportViewModel : BaseViewModel
             ImportProgressText = "";
             ImportProgressValue = 0;
         }
+        catch (OperationCanceledException)
+        {
+            ImportProgressText = "Importación cancelada.";
+            await Task.Delay(1000);
+            ImportProgressText = "";
+        }
         catch (Exception ex)
         {
             ImportProgressText = $"Error: {ex.Message}";
@@ -1074,7 +1184,392 @@ public class ImportViewModel : BaseViewModel
         finally
         {
             IsImporting = false;
+
+            _importCts?.Dispose();
+            _importCts = null;
         }
+    }
+
+    private static async Task CopyVideoFileAtomicAsync(string sourcePath, string destinationPath, CancellationToken cancellationToken)
+    {
+        var destinationDir = Path.GetDirectoryName(destinationPath);
+        if (!string.IsNullOrEmpty(destinationDir) && !Directory.Exists(destinationDir))
+        {
+            Directory.CreateDirectory(destinationDir);
+        }
+
+        // Temp único por intento: evita colisiones/locks con .tmp fijo (iCloud/AV/Indexador)
+        var tempPath = destinationPath + "." + Guid.NewGuid().ToString("N") + ".tmp";
+
+        try
+        {
+            const int bufferSize = 1024 * 1024;
+
+            // Copiar con streams async + sequential scan.
+            // Nota: FileShare.* es cross-platform; en Windows ayuda cuando el origen está "en uso".
+            await using (var sourceStream = new FileStream(
+                sourcePath,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.ReadWrite | FileShare.Delete,
+                bufferSize,
+                FileOptions.Asynchronous | FileOptions.SequentialScan))
+            await using (var destStream = new FileStream(
+                tempPath,
+                FileMode.Create,
+                FileAccess.Write,
+                FileShare.None,
+                bufferSize,
+                FileOptions.Asynchronous | FileOptions.SequentialScan))
+            {
+                await sourceStream.CopyToAsync(destStream, bufferSize, cancellationToken);
+                await destStream.FlushAsync(cancellationToken);
+            }
+
+            // Reemplazo (mismo directorio) para evitar archivos parciales.
+            // Pequeño retry: en Windows, AV/indexadores pueden enganchar el archivo justo al cerrar.
+            for (var attempt = 1; ; attempt++)
+            {
+                try
+                {
+                    File.Move(tempPath, destinationPath, true);
+                    break;
+                }
+                catch (IOException) when (attempt < 5)
+                {
+                    await Task.Delay(200 * attempt, cancellationToken);
+                }
+            }
+        }
+        finally
+        {
+            // Si el Move falló, intentar limpiar el temp
+            if (File.Exists(tempPath))
+            {
+                try { File.Delete(tempPath); } catch { /* best-effort */ }
+            }
+        }
+    }
+
+    private static bool IsCloudProviderNotRunning(IOException ex)
+    {
+        // Windows HRESULT: 0x8007016A = "The cloud file provider is not running."
+        const int HRESULT_CLOUD_FILE_PROVIDER_NOT_RUNNING = unchecked((int)0x8007016A);
+
+        if (!OperatingSystem.IsWindows())
+        {
+            return false;
+        }
+
+        if (ex.HResult == HRESULT_CLOUD_FILE_PROVIDER_NOT_RUNNING)
+        {
+            return true;
+        }
+
+        // Fallback por si el HRESULT no llega bien (localización del mensaje)
+        var message = ex.Message ?? string.Empty;
+        return message.Contains("cloud file provider", StringComparison.OrdinalIgnoreCase)
+               || message.Contains("proveedor de archivos de nube", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsCloudProviderNotRunning(Exception ex)
+    {
+        if (ex is IOException ioEx)
+        {
+            return IsCloudProviderNotRunning(ioEx);
+        }
+
+        const int HRESULT_CLOUD_FILE_PROVIDER_NOT_RUNNING = unchecked((int)0x8007016A);
+        if (!OperatingSystem.IsWindows())
+        {
+            return false;
+        }
+
+        if (ex.HResult == HRESULT_CLOUD_FILE_PROVIDER_NOT_RUNNING)
+        {
+            return true;
+        }
+
+        var message = ex.Message ?? string.Empty;
+        return message.Contains("cloud file provider", StringComparison.OrdinalIgnoreCase)
+               || message.Contains("proveedor de archivos de nube", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private enum CloudFileResolution
+    {
+        SkipVideo = 0,
+        RetryNow = 1,
+        CancelImport = 2,
+    }
+
+    private async Task<CloudFileResolution> TryResolveCloudFileAsync(string sourcePath, string displayName)
+    {
+        return await TryResolveCloudFileAsync(sourcePath, displayName, baseProgressValue: ImportProgressValue, CancellationToken.None);
+    }
+
+    private async Task<CloudFileResolution> TryResolveCloudFileAsync(string sourcePath, string displayName, int baseProgressValue, CancellationToken cancellationToken)
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return CloudFileResolution.SkipVideo;
+        }
+
+        // Primero intentar espera corta (30 segundos) por si el archivo se está descargando
+        try
+        {
+            var becameAvailable = await WaitForLocalFileAccessAsync(
+                sourcePath,
+                displayName,
+                timeout: TimeSpan.FromSeconds(30),
+                baseProgressValue,
+                cancellationToken);
+
+            if (becameAvailable)
+            {
+                return CloudFileResolution.RetryNow;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            return CloudFileResolution.CancelImport;
+        }
+
+        // El archivo no se descargó automáticamente - preguntar al usuario
+        return await ShowCloudFileDialogAsync(sourcePath, displayName, baseProgressValue, cancellationToken);
+    }
+
+    private async Task<CloudFileResolution> ShowCloudFileDialogAsync(string sourcePath, string displayName, int baseProgressValue, CancellationToken cancellationToken)
+    {
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var folderPath = Path.GetDirectoryName(sourcePath) ?? sourcePath;
+            
+            // Mostrar diálogo con opciones
+            var result = await MainThread.InvokeOnMainThreadAsync(async () =>
+            {
+                return await Shell.Current.DisplayActionSheet(
+                    $"El archivo '{displayName}' está en la nube y no se puede descargar automáticamente.\n\nAbre la app de iCloud/OneDrive/Dropbox, descarga el archivo manualmente, y pulsa 'Reintentar'.",
+                    "Cancelar importación",
+                    null,
+                    "Abrir ubicación en Explorador",
+                    "Reintentar",
+                    "Omitir este archivo");
+            });
+
+            if (result == "Cancelar importación")
+            {
+                return CloudFileResolution.CancelImport;
+            }
+
+            if (result == "Omitir este archivo")
+            {
+                return CloudFileResolution.SkipVideo;
+            }
+
+            if (result == "Abrir ubicación en Explorador")
+            {
+                try
+                {
+                    // Abrir Explorador de Windows en la carpeta del archivo
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = "explorer.exe",
+                        Arguments = $"/select,\"{sourcePath}\"",
+                        UseShellExecute = true
+                    });
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error opening explorer: {ex.Message}");
+                }
+                
+                // Continuar el bucle para mostrar el diálogo de nuevo
+                continue;
+            }
+
+            if (result == "Reintentar")
+            {
+                // Intentar acceder al archivo de nuevo
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                {
+                    ImportProgressText = $"Verificando disponibilidad: {displayName}";
+                    ImportProgressValue = baseProgressValue;
+                });
+
+                try
+                {
+                    var becameAvailable = await WaitForLocalFileAccessAsync(
+                        sourcePath,
+                        displayName,
+                        timeout: TimeSpan.FromSeconds(10),
+                        baseProgressValue,
+                        cancellationToken);
+
+                    if (becameAvailable)
+                    {
+                        return CloudFileResolution.RetryNow;
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    return CloudFileResolution.CancelImport;
+                }
+
+                // Sigue sin estar disponible - volver a mostrar diálogo
+                continue;
+            }
+
+            // Cualquier otra respuesta (cerrar diálogo, etc.) = omitir
+            return CloudFileResolution.SkipVideo;
+        }
+    }
+
+    private async Task<bool> WaitForLocalFileAccessAsync(string filePath, string displayName, TimeSpan timeout, int baseProgressValue, CancellationToken cancellationToken)
+    {
+        var start = DateTime.UtcNow;
+
+        var informedAboutProvider = false;
+
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var elapsed = DateTime.UtcNow - start;
+            if (elapsed >= timeout)
+            {
+                return false;
+            }
+
+            var seconds = (int)elapsed.TotalSeconds;
+            var ratio = Math.Clamp(elapsed.TotalMilliseconds / Math.Max(1, timeout.TotalMilliseconds), 0, 1);
+            var bump = (int)Math.Round(ratio * 5);
+            var progress = Math.Min(99, baseProgressValue + bump);
+
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                ImportProgressText = $"Esperando descarga ({seconds}s): {displayName}";
+                ImportProgressValue = progress;
+            });
+
+            // Intentar forzar hidratación/descarga en Windows (iCloud/OneDrive) antes de abrir con FileStream.
+            // Esto ayuda cuando el proveedor sólo descarga bajo demanda.
+            if (OperatingSystem.IsWindows() && (seconds == 0 || seconds % 3 == 0))
+            {
+                try
+                {
+                    _ = await TryHydrateCloudFileAsync(filePath, cancellationToken);
+                }
+                catch (Exception ex) when (IsCloudProviderNotRunning(ex))
+                {
+                    if (!informedAboutProvider)
+                    {
+                        informedAboutProvider = true;
+                        await MainThread.InvokeOnMainThreadAsync(() =>
+                        {
+                            ImportProgressText = $"Proveedor de nube no activo. Abre iCloud/OneDrive y espera: {displayName}";
+                        });
+                    }
+                }
+                catch
+                {
+                    // best-effort
+                }
+            }
+
+            try
+            {
+                await using var stream = new FileStream(
+                    filePath,
+                    FileMode.Open,
+                    FileAccess.Read,
+                    FileShare.ReadWrite | FileShare.Delete,
+                    4096,
+                    FileOptions.Asynchronous | FileOptions.SequentialScan);
+
+                // Si el proveedor devuelve un placeholder "vacío", no seguimos todavía.
+                // (En iCloud/OneDrive, el tamaño puede ser 0 hasta que se descargue.)
+                try
+                {
+                    var length = stream.Length;
+                    if (length > 0)
+                    {
+                        return true;
+                    }
+                }
+                catch
+                {
+                    // ignore; se reintentará
+                }
+
+                try
+                {
+                    var info = new FileInfo(filePath);
+                    if (info.Exists && info.Length > 0)
+                    {
+                        return true;
+                    }
+                }
+                catch
+                {
+                    // ignore; se reintentará
+                }
+
+                await Task.Delay(750, cancellationToken);
+            }
+            catch (IOException ioEx) when (IsCloudProviderNotRunning(ioEx))
+            {
+                if (!informedAboutProvider)
+                {
+                    informedAboutProvider = true;
+                    await MainThread.InvokeOnMainThreadAsync(() =>
+                    {
+                        ImportProgressText = $"Proveedor de nube no activo. Abre iCloud/OneDrive y espera: {displayName}";
+                    });
+                }
+
+                await Task.Delay(750, cancellationToken);
+            }
+            catch (IOException)
+            {
+                await Task.Delay(750, cancellationToken);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                await Task.Delay(750, cancellationToken);
+            }
+        }
+    }
+
+    private static async Task<bool> TryHydrateCloudFileAsync(string filePath, CancellationToken cancellationToken)
+    {
+#if WINDOWS
+        try
+        {
+            // StorageFile suele activar la descarga/hidratación para placeholders en la nube.
+            var file = await StorageFile.GetFileFromPathAsync(filePath);
+            using var stream = await file.OpenReadAsync();
+
+            // Forzar una lectura mínima para disparar la descarga real.
+            // (Algunos proveedores no hidratan sólo con "abrir".)
+            var input = stream.GetInputStreamAt(0);
+            var buffer = new global::Windows.Storage.Streams.Buffer(1);
+            _ = await input.ReadAsync(buffer, 1, InputStreamOptions.None).AsTask(cancellationToken);
+            return true;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch
+        {
+            return false;
+        }
+#else
+        await Task.CompletedTask;
+        return false;
+#endif
     }
 
     #endregion

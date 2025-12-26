@@ -5,7 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:controls="clr-namespace:CrownRFEP_Reader.Views.Controls"
     BackgroundColor="Transparent"
-    HeightRequest="36">
+    HeightRequest="{StaticResource FooterHeight}">
 
     <Grid>
         <!--  Línea separadora superior  -->

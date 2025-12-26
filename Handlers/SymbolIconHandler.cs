@@ -70,6 +70,7 @@ public class SymbolIconHandler : ViewHandler<SymbolIcon, UIImageView>
 
 #elif WINDOWS
 using Microsoft.Maui.Platform;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using CustomSymbolIcon = CrownRFEP_Reader.Views.Controls.SymbolIcon;
@@ -246,7 +247,9 @@ public class SymbolIconHandler : ViewHandler<CustomSymbolIcon, FontIcon>
         var icon = new FontIcon
         {
             FontFamily = new FontFamily("Segoe Fluent Icons"),
-            FontSize = 12 // Tamaño por defecto pequeño para Windows
+            FontSize = 12, // Tamaño por defecto pequeño para Windows
+            HorizontalAlignment = Microsoft.UI.Xaml.HorizontalAlignment.Center,
+            VerticalAlignment = Microsoft.UI.Xaml.VerticalAlignment.Center
         };
 
         return icon;
@@ -268,20 +271,29 @@ public class SymbolIconHandler : ViewHandler<CustomSymbolIcon, FontIcon>
     {
         if (PlatformView == null || VirtualView == null) return;
 
-        // Usar el HeightRequest o WidthRequest (el que sea válido) como FontSize
-        var size = VirtualView.HeightRequest;
-        if (size <= 0 || double.IsNaN(size) || double.IsInfinity(size))
+        // IMPORTANTE (WinUI/DPI): si igualamos FontSize a la caja (Height/Width),
+        // algunos glyphs (p.ej. trash) pueden recortarse por métricas de la fuente.
+        // Tratamos HeightRequest/WidthRequest como tamaño de caja y reducimos un poco FontSize.
+        var requestedSize = VirtualView.HeightRequest;
+        if (requestedSize <= 0 || double.IsNaN(requestedSize) || double.IsInfinity(requestedSize))
         {
-            size = VirtualView.WidthRequest;
+            requestedSize = VirtualView.WidthRequest;
         }
-        
-        if (size > 0 && !double.IsNaN(size) && !double.IsInfinity(size))
+
+        if (requestedSize > 0 && !double.IsNaN(requestedSize) && !double.IsInfinity(requestedSize))
         {
-            PlatformView.FontSize = size;
+            PlatformView.Width = requestedSize;
+            PlatformView.Height = requestedSize;
+
+            // Margen de seguridad para evitar clipping en escalados altos.
+            var fontSize = Math.Max(1, requestedSize * 0.9);
+            PlatformView.FontSize = fontSize;
         }
         else
         {
-            PlatformView.FontSize = 12; // Tamaño por defecto pequeño
+            PlatformView.ClearValue(FrameworkElement.WidthProperty);
+            PlatformView.ClearValue(FrameworkElement.HeightProperty);
+            PlatformView.FontSize = 12;
         }
     }
 

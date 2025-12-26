@@ -42,17 +42,17 @@
          Windows usa tamaños más compactos para mayor densidad de información.
          ==================================================================== -->
     <OnPlatform x:TypeArguments="x:Double" x:Key="FontSizeCaption">
-        <On Platform="WinUI" Value="8" />
+        <On Platform="WinUI" Value="9" />
         <On Platform="Default" Value="11" />
     </OnPlatform>
 
     <OnPlatform x:TypeArguments="x:Double" x:Key="FontSizeSmall">
-        <On Platform="WinUI" Value="9" />
+        <On Platform="WinUI" Value="12" />
         <On Platform="Default" Value="12" />
     </OnPlatform>
 
     <OnPlatform x:TypeArguments="x:Double" x:Key="FontSizeBody">
-        <On Platform="WinUI" Value="11" />
+        <On Platform="WinUI" Value="12" />
         <On Platform="Default" Value="14" />
     </OnPlatform>
 
@@ -62,7 +62,7 @@
     </OnPlatform>
 
     <OnPlatform x:TypeArguments="x:Double" x:Key="FontSizeTitle">
-        <On Platform="WinUI" Value="14" />
+        <On Platform="WinUI" Value="16" />
         <On Platform="Default" Value="20" />
     </OnPlatform>
 
@@ -106,6 +106,15 @@
     </OnPlatform>
 
     <!-- ====================================================================
+         ADAPTIVE PANEL WIDTHS
+         Anchos de paneles laterales - Windows usa paneles más estrechos.
+         ==================================================================== -->
+    <OnPlatform x:TypeArguments="x:Double" x:Key="SidebarWidthDefault">
+        <On Platform="WinUI" Value="260" />
+        <On Platform="Default" Value="350" />
+    </OnPlatform>
+
+    <!-- ====================================================================
          ADAPTIVE ELEMENT HEIGHTS
          Alturas de elementos UI - Windows usa elementos más compactos.
          ==================================================================== -->
@@ -129,26 +138,31 @@
         <On Platform="Default" Value="56" />
     </OnPlatform>
 
+    <OnPlatform x:TypeArguments="x:Double" x:Key="FooterHeight">
+        <On Platform="WinUI" Value="24" />
+        <On Platform="Default" Value="36" />
+    </OnPlatform>
+
     <!-- ====================================================================
          ADAPTIVE PADDINGS (Thickness)
          ==================================================================== -->
     <OnPlatform x:TypeArguments="Thickness" x:Key="PaddingXSmall">
-        <On Platform="WinUI" Value="2" />
+        <On Platform="WinUI" Value="0" />
         <On Platform="Default" Value="4" />
     </OnPlatform>
 
     <OnPlatform x:TypeArguments="Thickness" x:Key="PaddingSmall">
-        <On Platform="WinUI" Value="4" />
+        <On Platform="WinUI" Value="2" />
         <On Platform="Default" Value="8" />
     </OnPlatform>
 
     <OnPlatform x:TypeArguments="Thickness" x:Key="PaddingMedium">
-        <On Platform="WinUI" Value="8" />
+        <On Platform="WinUI" Value="4" />
         <On Platform="Default" Value="12" />
     </OnPlatform>
 
     <OnPlatform x:TypeArguments="Thickness" x:Key="PaddingLarge">
-        <On Platform="WinUI" Value="12" />
+        <On Platform="WinUI" Value="8" />
         <On Platform="Default" Value="16" />
     </OnPlatform>
 
@@ -157,9 +171,33 @@
         <On Platform="Default" Value="14,10" />
     </OnPlatform>
 
+    <!-- Padding para botones de acción con iconos -->
+    <OnPlatform x:TypeArguments="Thickness" x:Key="PaddingActionButton">
+        <On Platform="WinUI" Value="10,10" />
+        <On Platform="Default" Value="10,8" />
+    </OnPlatform>
+
     <OnPlatform x:TypeArguments="Thickness" x:Key="PaddingEntry">
         <On Platform="WinUI" Value="6,4" />
         <On Platform="Default" Value="10,8" />
+    </OnPlatform>
+
+    <!-- Padding para items de sidebar/lista lateral -->
+    <OnPlatform x:TypeArguments="Thickness" x:Key="PaddingSidebarItem">
+        <On Platform="WinUI" Value="10,0" />
+        <On Platform="Default" Value="16,10" />
+    </OnPlatform>
+
+    <!-- Margin vertical para secciones -->
+    <OnPlatform x:TypeArguments="Thickness" x:Key="MarginVerticalSection">
+        <On Platform="WinUI" Value="0,3,0,3" />
+        <On Platform="Default" Value="0,20,0,20" />
+    </OnPlatform>
+
+    <!-- Margin superior pequeño -->
+    <OnPlatform x:TypeArguments="Thickness" x:Key="MarginTopSmall">
+        <On Platform="WinUI" Value="0,3,0,0" />
+        <On Platform="Default" Value="0,10,0,0" />
     </OnPlatform>
 
     <!-- ====================================================================

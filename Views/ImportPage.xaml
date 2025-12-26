@@ -551,6 +551,15 @@
                                 HorizontalOptions="Center"
                                 Text="{Binding ImportProgressText}"
                                 TextColor="#FF878787" />
+
+                            <Button
+                                Padding="16,12"
+                                BackgroundColor="#FF464646"
+                                Command="{Binding CancelImportCommand}"
+                                CornerRadius="4"
+                                FontSize="{StaticResource FontSizeBody}"
+                                Text="Cancelar"
+                                TextColor="White" />
                         </VerticalStackLayout>
                     </VerticalStackLayout>
                 </Border>
