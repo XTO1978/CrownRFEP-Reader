@@ -27,9 +27,13 @@ public class StatisticsService
             TotalDurationSeconds = await _databaseService.GetTotalVideosDurationAsync()
         };
 
-        // Obtener últimas sesiones
+        // Obtener sesiones para el Dashboard (la columna izquierda debe mostrar todas)
         var allSessions = await _databaseService.GetAllSessionsAsync();
-        stats.RecentSessions = allSessions.Take(5).ToList();
+        // Nota: 'Fecha' es la fecha de la sesión (puede ser antigua si el usuario la selecciona).
+        // Para mostrar las últimas sesiones *agregadas* arriba, ordenamos por Id (autoincrement).
+        stats.RecentSessions = allSessions
+            .OrderByDescending(s => s.Id)
+            .ToList();
 
         return stats;
     }

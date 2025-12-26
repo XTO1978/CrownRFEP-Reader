@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using CrownRFEP_Reader.Models;
@@ -133,6 +134,7 @@ public class DashboardViewModel : BaseViewModel
     private readonly StatisticsService _statisticsService;
     private readonly ThumbnailService _thumbnailService;
     private readonly IHealthKitService _healthKitService;
+    private readonly ImportProgressService? _importProgressService;
 
     private DashboardStats? _stats;
     private Session? _selectedSession;
@@ -145,6 +147,15 @@ public class DashboardViewModel : BaseViewModel
     private GridLength _rightPanelWidth = new(1.2, GridUnitType.Star);
     private GridLength _rightSplitterWidth = new(8);
     private string _importProgressText = "";
+
+    // Importación en segundo plano
+    private bool _isBackgroundImporting;
+    private int _backgroundImportProgress;
+    private string _backgroundImportText = "";
+    private string _importingSessionName = "";
+    private string _importingCurrentFile = "";
+
+    private readonly Dictionary<string, bool> _sessionGroupExpandedState = new();
 
     // Vista Diario (calendario)
     private DateTime _selectedDiaryDate = DateTime.Today;
@@ -726,7 +737,7 @@ public class DashboardViewModel : BaseViewModel
         {
             if (SetProperty(ref _isSessionsListExpanded, value))
             {
-                SyncVisibleRecentSessions();
+                SyncVisibleSessionRows();
             }
         }
     }
@@ -762,6 +773,56 @@ public class DashboardViewModel : BaseViewModel
         get => _isImporting;
         set => SetProperty(ref _isImporting, value);
     }
+
+    /// <summary>
+    /// Indica si hay una importación ejecutándose en segundo plano
+    /// </summary>
+    public bool IsBackgroundImporting
+    {
+        get => _isBackgroundImporting;
+        set => SetProperty(ref _isBackgroundImporting, value);
+    }
+
+    /// <summary>
+    /// Porcentaje de progreso de la importación en segundo plano (0-100)
+    /// </summary>
+    public int BackgroundImportProgress
+    {
+        get => _backgroundImportProgress;
+        set => SetProperty(ref _backgroundImportProgress, value);
+    }
+
+    /// <summary>
+    /// Texto descriptivo de la importación en segundo plano
+    /// </summary>
+    public string BackgroundImportText
+    {
+        get => _backgroundImportText;
+        set => SetProperty(ref _backgroundImportText, value);
+    }
+
+    /// <summary>
+    /// Nombre de la sesión que se está importando
+    /// </summary>
+    public string ImportingSessionName
+    {
+        get => _importingSessionName;
+        set => SetProperty(ref _importingSessionName, value);
+    }
+
+    /// <summary>
+    /// Archivo actual que se está procesando
+    /// </summary>
+    public string ImportingCurrentFile
+    {
+        get => _importingCurrentFile;
+        set => SetProperty(ref _importingCurrentFile, value);
+    }
+
+    /// <summary>
+    /// Progreso de importación como valor entre 0 y 1 para ProgressBar
+    /// </summary>
+    public double BackgroundImportProgressNormalized => BackgroundImportProgress / 100.0;
 
     public bool IsStatsTabSelected
     {
@@ -1294,8 +1355,34 @@ public class DashboardViewModel : BaseViewModel
 
     public ObservableCollection<Session> RecentSessions { get; } = new();
     public ObservableCollection<Session> VisibleRecentSessions { get; } = new();
+    public ObservableCollection<SessionsListRow> SessionRows { get; } = new();
     public ObservableCollection<VideoClip> SelectedSessionVideos { get; } = new();
     public ObservableCollection<VideoLesson> VideoLessons { get; } = new();
+
+    private SessionsListRow? _selectedSessionListItem;
+    public SessionsListRow? SelectedSessionListItem
+    {
+        get => _selectedSessionListItem;
+        set
+        {
+            // Si seleccionan una cabecera, anulamos la selección para evitar estados raros.
+            if (value is SessionGroupHeaderRow)
+            {
+                if (_selectedSessionListItem != null)
+                {
+                    _selectedSessionListItem = null;
+                    OnPropertyChanged();
+                }
+                return;
+            }
+
+            if (SetProperty(ref _selectedSessionListItem, value))
+            {
+                if (value is SessionRow row)
+                    SelectedSession = row.Session;
+            }
+        }
+    }
 
     private void SyncVisibleRecentSessions()
     {
@@ -1306,6 +1393,142 @@ public class DashboardViewModel : BaseViewModel
 
         foreach (var session in RecentSessions)
             VisibleRecentSessions.Add(session);
+    }
+
+    private void SyncVisibleSessionGroups()
+    {
+        // Obsoleto: se usaba para CollectionView agrupado.
+    }
+
+    private void SyncVisibleSessionRows()
+    {
+        SessionRows.Clear();
+
+        if (!IsSessionsListExpanded)
+            return;
+
+        var sessionsSnapshot = RecentSessions.ToList();
+        var groups = BuildSessionGroups(sessionsSnapshot);
+
+        foreach (var g in groups)
+        {
+            SessionRows.Add(new SessionGroupHeaderRow(g.Key, g.Title, g.IsExpanded, g.TotalCount));
+
+            if (!g.IsExpanded)
+                continue;
+
+            foreach (var s in g)
+                SessionRows.Add(new SessionRow(s));
+        }
+    }
+
+    private void ToggleSessionGroupExpanded(string? groupKey)
+    {
+        if (string.IsNullOrWhiteSpace(groupKey))
+            return;
+
+        var current = _sessionGroupExpandedState.TryGetValue(groupKey, out var v) && v;
+        _sessionGroupExpandedState[groupKey] = !current;
+        SyncVisibleSessionRows();
+    }
+
+    private List<SessionGroup> BuildSessionGroups(List<Session> sessions)
+    {
+        var culture = new CultureInfo("es-ES");
+        var today = DateTime.Today;
+
+        DateTime StartOfWeek(DateTime d)
+        {
+            // Semana empieza en lunes
+            var diff = ((int)d.DayOfWeek + 6) % 7;
+            return d.Date.AddDays(-diff);
+        }
+
+        var startThisWeek = StartOfWeek(today);
+        var startLastWeek = startThisWeek.AddDays(-7);
+        var startTwoWeeksAgo = startThisWeek.AddDays(-14);
+
+        string BucketKey(DateTime d)
+        {
+            if (d.Date == today) return "today";
+            if (d.Date == today.AddDays(-1)) return "yesterday";
+            if (d.Date >= startThisWeek) return "this_week";
+            if (d.Date >= startLastWeek) return "last_week";
+            if (d.Date >= startTwoWeeksAgo) return "two_weeks";
+            return $"month_{d:yyyy_MM}";
+        }
+
+        string BucketTitle(string key)
+        {
+            return key switch
+            {
+                "today" => "Hoy",
+                "yesterday" => "Ayer",
+                "this_week" => "Esta semana",
+                "last_week" => "Semana pasada",
+                "two_weeks" => "Hace dos semanas",
+                _ when key.StartsWith("month_") =>
+                    DateTime.ParseExact(key[6..], "yyyy_MM", CultureInfo.InvariantCulture)
+                        .ToString("MMMM yyyy", culture),
+                _ => key
+            };
+        }
+
+        int BucketSortOrder(string key)
+        {
+            // Menor = más arriba
+            return key switch
+            {
+                "today" => 0,
+                "yesterday" => 1,
+                "this_week" => 2,
+                "last_week" => 3,
+                "two_weeks" => 4,
+                _ => 100
+            };
+        }
+
+        var grouped = sessions
+            .Select(s => new { Session = s, Date = s.FechaDateTime })
+            .GroupBy(x => BucketKey(x.Date))
+            .ToList();
+
+        var result = new List<SessionGroup>();
+
+        var relativeGroups = grouped
+            .Where(g => !g.Key.StartsWith("month_"))
+            .OrderBy(g => BucketSortOrder(g.Key));
+
+        foreach (var g in relativeGroups)
+        {
+            var sessionsInGroup = g
+                .Select(x => x.Session)
+                .OrderByDescending(s => s.FechaDateTime)
+                .ThenByDescending(s => s.Id)
+                .ToList();
+
+            var expanded = _sessionGroupExpandedState.TryGetValue(g.Key, out var v) ? v : true;
+            result.Add(new SessionGroup(g.Key, BucketTitle(g.Key), sessionsInGroup, expanded));
+        }
+
+        var monthGroups = grouped
+            .Where(g => g.Key.StartsWith("month_"))
+            .OrderByDescending(g => g.Key); // month_YYYY_MM ordenable como string
+
+        foreach (var g in monthGroups)
+        {
+            var sessionsInGroup = g
+                .Select(x => x.Session)
+                .OrderByDescending(s => s.FechaDateTime)
+                .ThenByDescending(s => s.Id)
+                .ToList();
+
+            // Por defecto, meses colapsados
+            var expanded = _sessionGroupExpandedState.TryGetValue(g.Key, out var v) ? v : false;
+            result.Add(new SessionGroup(g.Key, BucketTitle(g.Key), sessionsInGroup, expanded));
+        }
+
+        return result;
     }
 
     public ObservableCollection<SectionStats> SelectedSessionSectionStats { get; } = new();
@@ -1816,6 +2039,7 @@ public class DashboardViewModel : BaseViewModel
     public ICommand LoadMoreVideosCommand { get; }
     public ICommand ClearFiltersCommand { get; }
     public ICommand ToggleSessionsListExpandedCommand { get; }
+    public ICommand ToggleSessionGroupExpandedCommand { get; }
     public ICommand TogglePlacesExpandedCommand { get; }
     public ICommand ToggleAthletesExpandedCommand { get; }
     public ICommand ToggleSectionsExpandedCommand { get; }
@@ -1911,18 +2135,35 @@ public class DashboardViewModel : BaseViewModel
         StatisticsService statisticsService,
         ThumbnailService thumbnailService,
         IHealthKitService healthKitService,
-        VideoExportNotifier? videoExportNotifier = null)
+        VideoExportNotifier? videoExportNotifier = null,
+        ImportProgressService? importProgressService = null)
     {
         _databaseService = databaseService;
         _crownFileService = crownFileService;
         _statisticsService = statisticsService;
         _thumbnailService = thumbnailService;
         _healthKitService = healthKitService;
+        _importProgressService = importProgressService;
 
         // Suscribirse a eventos de exportación de video
         if (videoExportNotifier != null)
         {
             videoExportNotifier.VideoExported += OnVideoExported;
+        }
+
+        // Suscribirse a eventos de importación en segundo plano
+        if (_importProgressService != null)
+        {
+            _importProgressService.ProgressChanged += OnImportProgressChanged;
+            _importProgressService.ImportCompleted += OnImportCompleted;
+            
+            // Verificar si hay una importación en curso al iniciar
+            if (_importProgressService.IsImporting && _importProgressService.CurrentTask != null)
+            {
+                IsBackgroundImporting = true;
+                BackgroundImportProgress = _importProgressService.CurrentTask.Percentage;
+                BackgroundImportText = _importProgressService.CurrentTask.Name;
+            }
         }
 
         Title = "Dashboard";
@@ -1941,6 +2182,7 @@ public class DashboardViewModel : BaseViewModel
         LoadMoreVideosCommand = new AsyncRelayCommand(LoadMoreVideosAsync);
         ClearFiltersCommand = new RelayCommand(ClearFilters);
         ToggleSessionsListExpandedCommand = new RelayCommand(() => IsSessionsListExpanded = !IsSessionsListExpanded);
+        ToggleSessionGroupExpandedCommand = new RelayCommand<string>(ToggleSessionGroupExpanded);
         TogglePlacesExpandedCommand = new RelayCommand(() => IsPlacesExpanded = !IsPlacesExpanded);
         ToggleAthletesExpandedCommand = new RelayCommand(() => IsAthletesExpanded = !IsAthletesExpanded);
         ToggleSectionsExpandedCommand = new RelayCommand(() => IsSectionsExpanded = !IsSectionsExpanded);
@@ -2076,6 +2318,89 @@ public class DashboardViewModel : BaseViewModel
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[DashboardViewModel] Error al procesar video exportado: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Manejador para cambios de progreso en la importación en segundo plano
+    /// </summary>
+    private void OnImportProgressChanged(object? sender, ImportTask task)
+    {
+        IsBackgroundImporting = !task.IsCompleted;
+        BackgroundImportProgress = task.Percentage;
+        BackgroundImportText = $"{task.Name} ({task.ProcessedFiles}/{task.TotalFiles})";
+        ImportingSessionName = task.Name.Replace("Sesión: ", "");
+        ImportingCurrentFile = task.CurrentFile;
+        OnPropertyChanged(nameof(BackgroundImportProgressNormalized));
+    }
+
+    /// <summary>
+    /// Manejador para cuando se completa una importación en segundo plano
+    /// </summary>
+    private async void OnImportCompleted(object? sender, ImportTask task)
+    {
+        System.Diagnostics.Debug.WriteLine($"[DashboardViewModel] OnImportCompleted llamado. HasError={task.HasError}, SessionId={task.CreatedSessionId}");
+        
+        if (task.HasError)
+        {
+            IsBackgroundImporting = false;
+            System.Diagnostics.Debug.WriteLine($"[DashboardViewModel] Importación fallida: {task.ErrorMessage}");
+            return;
+        }
+
+        System.Diagnostics.Debug.WriteLine($"[DashboardViewModel] Importación completada: {task.Name}, SessionId={task.CreatedSessionId}");
+        
+        try
+        {
+            // Forzar recarga de sesiones directamente para evitar conflictos con IsBusy
+            System.Diagnostics.Debug.WriteLine($"[DashboardViewModel] Recargando sesiones... IsBusy={IsBusy}");
+            
+            var stats = await _statisticsService.GetDashboardStatsAsync();
+            
+            // Actualizar en el hilo principal
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                Stats = stats;
+                RecentSessions.Clear();
+                foreach (var session in stats.RecentSessions)
+                {
+                    RecentSessions.Add(session);
+                }
+                
+                // Asegurar que la lista esté expandida para mostrar la nueva sesión
+                if (!IsSessionsListExpanded)
+                {
+                    IsSessionsListExpanded = true;
+                }
+
+                SyncVisibleSessionRows();
+
+                System.Diagnostics.Debug.WriteLine($"[DashboardViewModel] Sesiones recargadas: {RecentSessions.Count} total, filas={SessionRows.Count}");
+            });
+            
+            // Ahora ocultamos el indicador de importación
+            IsBackgroundImporting = false;
+            
+            // Si se creó una sesión, seleccionarla automáticamente
+            if (task.CreatedSessionId.HasValue)
+            {
+                var newSession = await _databaseService.GetSessionByIdAsync(task.CreatedSessionId.Value);
+                if (newSession != null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[DashboardViewModel] Seleccionando nueva sesión: {newSession.DisplayName}");
+                    SelectedSession = newSession;
+                }
+            }
+            
+            // Limpiar la tarea completada después de un breve momento
+            await Task.Delay(3000);
+            _importProgressService?.ClearCompletedTask();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[DashboardViewModel] Error al procesar importación completada: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[DashboardViewModel] Stack trace: {ex.StackTrace}");
+            IsBackgroundImporting = false;
         }
     }
 
@@ -3147,7 +3472,7 @@ public class DashboardViewModel : BaseViewModel
                 RecentSessions.Add(session);
             }
 
-            SyncVisibleRecentSessions();
+            SyncVisibleSessionRows();
 
             // Cargar el atleta de referencia del perfil del usuario
             await LoadReferenceAthleteAsync();
