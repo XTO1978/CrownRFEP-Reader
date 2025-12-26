@@ -80,11 +80,11 @@
                                TextColor="White"
                                VerticalOptions="Center"/>
                         <Label Grid.Column="2" 
-                               Text="Nombre" 
+                               Text="Atleta" 
                                TextColor="White"
                                VerticalOptions="Center"/>
-                        <Label Grid.Column="3" 
-                               Text="Apellido" 
+                           <Label Grid.Column="3" 
+                               Text="" 
                                TextColor="White"
                                VerticalOptions="Center"/>
                     </Grid>
@@ -124,14 +124,12 @@
                                                    HorizontalOptions="Center"
                                                    VerticalOptions="Center"/>
                                         </Border>
-                                        <Label Grid.Column="2" 
-                                               Text="{Binding Nombre}" 
-                                               VerticalOptions="Center" TextColor="White"
-                                               FontSize="{StaticResource FontSizeBody}"/>
-                                        <Label Grid.Column="3" 
-                                               Text="{Binding Apellido}" 
-                                               VerticalOptions="Center"
-                                               FontSize="{StaticResource FontSizeBody}" TextColor="White"/>
+<Label Grid.Column="2"
+                                                 Grid.ColumnSpan="2"
+                                                 Text="{Binding NombreCompleto}"
+                                                 VerticalOptions="Center"
+                                                 TextColor="White"
+                                                 FontSize="{StaticResource FontSizeBody}"/>
                                     </Grid>
                                 </Border>
                             </DataTemplate>

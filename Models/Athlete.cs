@@ -58,7 +58,36 @@ public class Athlete : INotifyPropertyChanged
     }
 
     [Ignore]
-    public string NombreCompleto => $"{Apellido} {Nombre}".Trim();
+    public string NombreCompleto
+    {
+        get
+        {
+            static string Normalize(string? value)
+            {
+                if (string.IsNullOrWhiteSpace(value))
+                    return string.Empty;
+
+                // Trim y colapsar espacios múltiples
+                var parts = value
+                    .Trim()
+                    .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                return string.Join(' ', parts);
+            }
+
+            var apellido = Normalize(Apellido);
+            if (!string.IsNullOrEmpty(apellido))
+                apellido = apellido.ToUpperInvariant();
+
+            var nombre = Normalize(Nombre);
+
+            if (string.IsNullOrEmpty(apellido))
+                return nombre;
+            if (string.IsNullOrEmpty(nombre))
+                return apellido;
+
+            return $"{apellido} {nombre}";
+        }
+    }
 
     [Ignore]
     public string? CategoriaNombre { get; set; }

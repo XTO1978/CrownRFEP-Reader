@@ -2204,21 +2204,33 @@
                                 VerticalOptions="Start"
                                 ZIndex="100" HeightRequest="280">
                                 <ScrollView HeightRequest="280">
-                                    <VerticalStackLayout BindableLayout.ItemsSource="{Binding FilterPlaces}" Spacing="2">
+                                    <FlexLayout
+                                        BindableLayout.ItemsSource="{Binding FilterPlaces}"
+                                        Direction="Row"
+                                        Wrap="Wrap"
+                                        AlignItems="Start"
+                                        AlignContent="Start">
                                         <BindableLayout.ItemTemplate>
                                             <DataTemplate x:DataType="models:PlaceFilterItem">
-                                                <HorizontalStackLayout Spacing="4">
-                                                    <CheckBox IsChecked="{Binding IsSelected}" Color="#FF6DDDFF" />
+                                                <Border
+                                                    Margin="0,2,2,0"
+                                                    Padding="12,5" HeightRequest="38"
+                                                    BackgroundColor="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF4A9FD4|#FF1E1E1E'}"
+                                                    Stroke="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF4A9FD4|#FF3A3A3A'}"
+                                                    StrokeShape="RoundRectangle 4">
+                                                    <Border.GestureRecognizers>
+                                                        <TapGestureRecognizer Tapped="OnFilterChipTapped" />
+                                                    </Border.GestureRecognizers>
                                                     <Label
                                                         FontFamily="{StaticResource AppFontBody}"
                                                         FontSize="{StaticResource FontSizeSubtitle}"
                                                         Text="{Binding DisplayName}"
                                                         TextColor="White"
                                                         VerticalOptions="Center" />
-                                                </HorizontalStackLayout>
+                                                </Border>
                                             </DataTemplate>
                                         </BindableLayout.ItemTemplate>
-                                    </VerticalStackLayout>
+                                    </FlexLayout>
                                 </ScrollView>
                             </Border>
 
@@ -2235,21 +2247,33 @@
                                 VerticalOptions="Start"
                                 ZIndex="100" HeightRequest="280">
                                 <ScrollView HeightRequest="280">
-                                    <VerticalStackLayout BindableLayout.ItemsSource="{Binding FilterAthletes}" Spacing="2">
+                                    <FlexLayout
+                                        BindableLayout.ItemsSource="{Binding FilterAthletes}"
+                                        Direction="Row"
+                                        Wrap="Wrap"
+                                        AlignItems="Start"
+                                        AlignContent="Start">
                                         <BindableLayout.ItemTemplate>
                                             <DataTemplate x:DataType="models:AthleteFilterItem">
-                                                <HorizontalStackLayout Spacing="4">
-                                                    <CheckBox IsChecked="{Binding IsSelected}" Color="#FF6DDDFF" />
+                                                <Border
+                                                    Margin="0,2,2,0"
+                                                    Padding="12,5" HeightRequest="38"
+                                                    BackgroundColor="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF4A9FD4|#FF1E1E1E'}"
+                                                    Stroke="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF4A9FD4|#FF3A3A3A'}"
+                                                    StrokeShape="RoundRectangle 4">
+                                                    <Border.GestureRecognizers>
+                                                        <TapGestureRecognizer Tapped="OnFilterChipTapped" />
+                                                    </Border.GestureRecognizers>
                                                     <Label
                                                         FontFamily="{StaticResource AppFontBody}"
                                                         FontSize="{StaticResource FontSizeSubtitle}"
                                                         Text="{Binding DisplayName}"
                                                         TextColor="White"
                                                         VerticalOptions="Center" />
-                                                </HorizontalStackLayout>
+                                                </Border>
                                             </DataTemplate>
                                         </BindableLayout.ItemTemplate>
-                                    </VerticalStackLayout>
+                                    </FlexLayout>
                                 </ScrollView>
                             </Border>
 
@@ -2266,21 +2290,33 @@
                                 VerticalOptions="Start"
                                 ZIndex="100" HeightRequest="280">
                                 <ScrollView HeightRequest="280">
-                                    <VerticalStackLayout BindableLayout.ItemsSource="{Binding FilterSections}" Spacing="2">
+                                    <FlexLayout
+                                        BindableLayout.ItemsSource="{Binding FilterSections}"
+                                        Direction="Row"
+                                        Wrap="Wrap"
+                                        AlignItems="Start"
+                                        AlignContent="Start">
                                         <BindableLayout.ItemTemplate>
                                             <DataTemplate x:DataType="models:SectionFilterItem">
-                                                <HorizontalStackLayout Spacing="4">
-                                                    <CheckBox IsChecked="{Binding IsSelected}" Color="#FF6DDDFF" />
+                                                <Border
+                                                    Margin="0,2,2,0"
+                                                    Padding="12,5" HeightRequest="38"
+                                                    BackgroundColor="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF4A9FD4|#FF1E1E1E'}"
+                                                    Stroke="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF4A9FD4|#FF3A3A3A'}"
+                                                    StrokeShape="RoundRectangle 4">
+                                                    <Border.GestureRecognizers>
+                                                        <TapGestureRecognizer Tapped="OnFilterChipTapped" />
+                                                    </Border.GestureRecognizers>
                                                     <Label
                                                         FontFamily="{StaticResource AppFontBody}"
                                                         FontSize="{StaticResource FontSizeSubtitle}"
                                                         Text="{Binding DisplayName}"
                                                         TextColor="White"
                                                         VerticalOptions="Center" />
-                                                </HorizontalStackLayout>
+                                                </Border>
                                             </DataTemplate>
                                         </BindableLayout.ItemTemplate>
-                                    </VerticalStackLayout>
+                                    </FlexLayout>
                                 </ScrollView>
                             </Border>
 
@@ -2297,21 +2333,33 @@
                                 VerticalOptions="Start"
                                 ZIndex="100" HeightRequest="280">
                                 <ScrollView HeightRequest="280">
-                                    <VerticalStackLayout BindableLayout.ItemsSource="{Binding FilterTagItems}" Spacing="2">
+                                    <FlexLayout
+                                        BindableLayout.ItemsSource="{Binding FilterTagItems}"
+                                        Direction="Row"
+                                        Wrap="Wrap"
+                                        AlignItems="Start"
+                                        AlignContent="Start">
                                         <BindableLayout.ItemTemplate>
                                             <DataTemplate x:DataType="models:TagFilterItem">
-                                                <HorizontalStackLayout Spacing="4">
-                                                    <CheckBox IsChecked="{Binding IsSelected}" Color="#FF6DDDFF" />
+                                                <Border
+                                                    Margin="0,2,2,0"
+                                                    Padding="12,5" HeightRequest="38"
+                                                    BackgroundColor="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF4A9FD4|#FF1E1E1E'}"
+                                                    Stroke="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF4A9FD4|#FF3A3A3A'}"
+                                                    StrokeShape="RoundRectangle 4">
+                                                    <Border.GestureRecognizers>
+                                                        <TapGestureRecognizer Tapped="OnFilterChipTapped" />
+                                                    </Border.GestureRecognizers>
                                                     <Label
                                                         FontFamily="{StaticResource AppFontBody}"
                                                         FontSize="{StaticResource FontSizeSubtitle}"
                                                         Text="{Binding DisplayName}"
                                                         TextColor="White"
                                                         VerticalOptions="Center" />
-                                                </HorizontalStackLayout>
+                                                </Border>
                                             </DataTemplate>
                                         </BindableLayout.ItemTemplate>
-                                    </VerticalStackLayout>
+                                    </FlexLayout>
                                 </ScrollView>
                             </Border>
                         </Grid>
@@ -4278,6 +4326,28 @@
                                 </BindableLayout.ItemTemplate>
                             </FlexLayout>
                         </ScrollView>
+
+                        <!--  Nuevo atleta (no existente)  -->
+                        <Grid ColumnDefinitions="*,*,Auto" ColumnSpacing="8">
+                            <Entry
+                                BackgroundColor="#FF2A2A2A"
+                                Placeholder="Apellido"
+                                Text="{Binding NewBatchAthleteSurname}"
+                                TextColor="White" />
+                            <Entry
+                                Grid.Column="1"
+                                BackgroundColor="#FF2A2A2A"
+                                Placeholder="Nombre"
+                                Text="{Binding NewBatchAthleteName}"
+                                TextColor="White" />
+                            <Button
+                                Grid.Column="2"
+                                BackgroundColor="#FF3A3A3A"
+                                Command="{Binding AddNewBatchAthleteCommand}"
+                                Text="Añadir"
+                                TextColor="White" />
+                        </Grid>
+
                         <Label
                             FontSize="{StaticResource FontSizeSmall}"
                             Text="No hay atletas disponibles"
@@ -4330,6 +4400,22 @@
                             FontSize="{StaticResource FontSizeBody}"
                             Text="Añadir etiquetas"
                             TextColor="White" />
+
+                        <!--  Nueva etiqueta (no existente)  -->
+                        <HorizontalStackLayout Spacing="12">
+                            <Entry
+                                BackgroundColor="#FF2A2A2A"
+                                HorizontalOptions="FillAndExpand"
+                                Placeholder="Nueva etiqueta"
+                                Text="{Binding NewBatchTagText}"
+                                TextColor="White" />
+                            <Button
+                                BackgroundColor="#FF3A3A3A"
+                                Command="{Binding AddNewBatchTagCommand}"
+                                Text="Añadir"
+                                TextColor="White" />
+                        </HorizontalStackLayout>
+
                         <FlexLayout
                             BindableLayout.ItemsSource="{Binding BatchEditTags}"
                             Direction="Row"

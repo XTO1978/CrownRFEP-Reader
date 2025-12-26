@@ -259,6 +259,9 @@ public class DashboardViewModel : BaseViewModel
     private int _batchEditSection;
     private bool _batchEditSectionEnabled;
     private bool _batchEditAthleteEnabled;
+    private string? _newBatchAthleteSurname;
+    private string? _newBatchAthleteName;
+    private string? _newBatchTagText;
     private readonly HashSet<int> _batchEditSelectedTagIds = new();
 
     private CancellationTokenSource? _selectedSessionVideosCts;
@@ -2085,6 +2088,8 @@ public class DashboardViewModel : BaseViewModel
     public ICommand ApplyBatchEditCommand { get; }
     public ICommand ToggleBatchTagCommand { get; }
     public ICommand SelectBatchAthleteCommand { get; }
+    public ICommand AddNewBatchAthleteCommand { get; }
+    public ICommand AddNewBatchTagCommand { get; }
 
     // Propiedades de edición en lote
     public bool ShowBatchEditPopup
@@ -2127,6 +2132,24 @@ public class DashboardViewModel : BaseViewModel
     {
         get => _batchEditAthleteEnabled;
         set => SetProperty(ref _batchEditAthleteEnabled, value);
+    }
+
+    public string? NewBatchAthleteSurname
+    {
+        get => _newBatchAthleteSurname;
+        set => SetProperty(ref _newBatchAthleteSurname, value);
+    }
+
+    public string? NewBatchAthleteName
+    {
+        get => _newBatchAthleteName;
+        set => SetProperty(ref _newBatchAthleteName, value);
+    }
+
+    public string? NewBatchTagText
+    {
+        get => _newBatchTagText;
+        set => SetProperty(ref _newBatchTagText, value);
     }
 
     public DashboardViewModel(
@@ -2267,6 +2290,8 @@ public class DashboardViewModel : BaseViewModel
         ApplyBatchEditCommand = new AsyncRelayCommand(ApplyBatchEditAsync);
         ToggleBatchTagCommand = new RelayCommand<Tag>(ToggleBatchTag);
         SelectBatchAthleteCommand = new RelayCommand<Athlete>(SelectBatchAthlete);
+        AddNewBatchAthleteCommand = new AsyncRelayCommand(AddNewBatchAthleteAsync);
+        AddNewBatchTagCommand = new AsyncRelayCommand(AddNewBatchTagAsync);
         
         // Comando para alternar vista de tiempos
         ToggleSectionTimesViewCommand = new RelayCommand(() => ShowSectionTimesDifferences = !ShowSectionTimesDifferences);
@@ -2678,9 +2703,128 @@ public class DashboardViewModel : BaseViewModel
         BatchEditSectionEnabled = false;
         BatchEditAthleteEnabled = false;
         _batchEditSelectedTagIds.Clear();
+
+        // Resetear entradas de creación
+        NewBatchAthleteSurname = string.Empty;
+        NewBatchAthleteName = string.Empty;
+        NewBatchTagText = string.Empty;
         
         // Mostrar popup
         ShowBatchEditPopup = true;
+    }
+
+    private static string NormalizeSpaces(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return string.Empty;
+
+        var parts = value
+            .Trim()
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return string.Join(' ', parts);
+    }
+
+    private async Task AddNewBatchAthleteAsync()
+    {
+        try
+        {
+            var apellido = NormalizeSpaces(NewBatchAthleteSurname);
+            var nombre = NormalizeSpaces(NewBatchAthleteName);
+
+            if (string.IsNullOrWhiteSpace(apellido) && string.IsNullOrWhiteSpace(nombre))
+            {
+                await Shell.Current.DisplayAlert(
+                    "Atleta",
+                    "Introduce el apellido y/o el nombre del atleta.",
+                    "OK");
+                return;
+            }
+
+            // Si existe, reutilizarlo
+            var existing = await _databaseService.FindAthleteByNameAsync(nombre, apellido);
+            Athlete athlete;
+            if (existing != null)
+            {
+                athlete = existing;
+            }
+            else
+            {
+                athlete = new Athlete
+                {
+                    Nombre = nombre,
+                    Apellido = apellido,
+                    CategoriaId = 0,
+                    Category = 0
+                };
+
+                await _databaseService.InsertAthleteAsync(athlete);
+                _databaseService.InvalidateCache();
+            }
+
+            // Asegurar que está en la lista (y seleccionar la instancia que usa la UI)
+            var inList = BatchEditAthletes.FirstOrDefault(a => a.Id == athlete.Id);
+            if (inList == null)
+            {
+                athlete.IsSelected = false;
+                BatchEditAthletes.Add(athlete);
+                inList = athlete;
+            }
+
+            // Seleccionarlo
+            SelectBatchAthlete(inList);
+            BatchEditAthleteEnabled = true;
+
+            NewBatchAthleteSurname = string.Empty;
+            NewBatchAthleteName = string.Empty;
+        }
+        catch (Exception ex)
+        {
+            await Shell.Current.DisplayAlert("Error", $"No se pudo añadir el atleta: {ex.Message}", "OK");
+        }
+    }
+
+    private async Task AddNewBatchTagAsync()
+    {
+        try
+        {
+            var name = NormalizeSpaces(NewBatchTagText);
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                await Shell.Current.DisplayAlert("Etiqueta", "Introduce un nombre de etiqueta.", "OK");
+                return;
+            }
+
+            // Si existe, reutilizarla
+            var existing = await _databaseService.FindTagByNameAsync(name);
+            Tag tag;
+            if (existing != null)
+            {
+                tag = existing;
+            }
+            else
+            {
+                tag = new Tag { NombreTag = name, IsSelected = 0 };
+                await _databaseService.InsertTagAsync(tag);
+                _databaseService.InvalidateCache();
+            }
+
+            // Asegurar que está en la lista
+            if (!BatchEditTags.Any(t => t.Id == tag.Id))
+            {
+                tag.IsSelectedBool = false;
+                BatchEditTags.Add(tag);
+            }
+
+            // Marcarla como seleccionada para el lote
+            _batchEditSelectedTagIds.Add(tag.Id);
+            tag.IsSelectedBool = true;
+
+            NewBatchTagText = string.Empty;
+        }
+        catch (Exception ex)
+        {
+            await Shell.Current.DisplayAlert("Error", $"No se pudo añadir la etiqueta: {ex.Message}", "OK");
+        }
     }
     private void ToggleBatchTag(Tag? tag)
     {
@@ -3520,6 +3664,7 @@ public class DashboardViewModel : BaseViewModel
 
         _currentPage = 0;
         _allVideosCache = null;
+        _filteredVideosCache = null;
         HasMoreVideos = false;
 
         OnPropertyChanged(nameof(SelectedSessionTotalDurationSeconds));
