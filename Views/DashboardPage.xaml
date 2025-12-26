@@ -22,6 +22,119 @@
             <converters:EqualityToBorderWidthConverter x:Key="EqualityToBorderWidthConverter" />
             <converters:NotNullOrEmptyBoolConverter x:Key="NotNullOrEmptyBoolConverter" />
             <converters:IsNotNullConverter x:Key="IsNotNullConverter" />
+
+            <controls:SessionsListRowTemplateSelector x:Key="SessionsListRowTemplateSelector">
+                <controls:SessionsListRowTemplateSelector.HeaderTemplate>
+                    <DataTemplate x:DataType="vm:SessionGroupHeaderRow">
+                        <Border
+                            Margin="0,6,0,0"
+                            BackgroundColor="Transparent"
+                            Stroke="Transparent"
+                            StrokeThickness="0"
+                            StrokeShape="RoundRectangle 4">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer
+                                    Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ToggleSessionGroupExpandedCommand}"
+                                    CommandParameter="{Binding Key}" />
+                            </Border.GestureRecognizers>
+                            <Grid
+                                Padding="16,8"
+                                ColumnDefinitions="*,Auto"
+                                VerticalOptions="Center">
+                                <Label
+                                    Grid.Column="0"
+                                    FontFamily="SF Pro Text"
+                                    FontSize="13"
+                                    FontAttributes="Bold"
+                                    Text="{Binding Title}"
+                                    TextColor="#FF888888"
+                                    VerticalOptions="Center" />
+                                <Label
+                                    Grid.Column="1"
+                                    FontSize="14"
+                                    Text="{Binding IsExpanded, Converter={StaticResource BoolToExpandIconConverter}}"
+                                    TextColor="#FF888888"
+                                    VerticalOptions="Center" />
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </controls:SessionsListRowTemplateSelector.HeaderTemplate>
+
+                <controls:SessionsListRowTemplateSelector.SessionTemplate>
+                    <DataTemplate x:DataType="vm:SessionRow">
+                        <Border
+                            Margin="0"
+                            BackgroundColor="Transparent"
+                            Stroke="Transparent"
+                            StrokeShape="RoundRectangle 4">
+                            <Border.Behaviors>
+                                <behaviors:DashboardSessionItemHoverBehavior />
+                            </Border.Behaviors>
+                            <HorizontalStackLayout
+                                Padding="16,10"
+                                Spacing="8"
+                                VerticalOptions="Center">
+                                <controls:SymbolIcon
+                                    HeightRequest="20"
+                                    SymbolName="arrow.turn.down.right"
+                                    TintColor="#FF888888"
+                                    VerticalOptions="Center"
+                                    WidthRequest="20" />
+                                <controls:SymbolIcon
+                                    HeightRequest="24"
+                                    SymbolName="oar.2.crossed"
+                                    TintColor="#FF6DDDFF"
+                                    VerticalOptions="Center"
+                                    WidthRequest="24" />
+                                <Label
+                                    FontFamily="SF Pro Text"
+                                    FontSize="16"
+                                    LineBreakMode="TailTruncation"
+                                    TextColor="White">
+                                    <Label.FormattedText>
+                                        <FormattedString>
+                                            <Span
+                                                FontSize="16"
+                                                Text="{Binding Session.FechaDateTime, StringFormat='{0:dd/MM/yyyy}'}"
+                                                TextColor="White" />
+                                            <Span
+                                                FontSize="16"
+                                                Text=" en "
+                                                TextColor="White" />
+                                            <Span
+                                                FontSize="16"
+                                                Text="{Binding Session.Lugar}"
+                                                TextColor="White" />
+                                            <Span
+                                                FontSize="16"
+                                                Text=" - "
+                                                TextColor="White" />
+                                            <Span
+                                                FontSize="16"
+                                                Text="{Binding Session.DisplayName}"
+                                                TextColor="White" />
+                                        </FormattedString>
+                                    </Label.FormattedText>
+                                </Label>
+                            </HorizontalStackLayout>
+                            <VisualStateManager.VisualStateGroups>
+                                <VisualStateGroup Name="CommonStates">
+                                    <VisualState Name="Normal">
+                                        <VisualState.Setters>
+                                            <Setter Property="BackgroundColor" Value="Transparent" />
+                                        </VisualState.Setters>
+                                    </VisualState>
+                                    <VisualState Name="Selected">
+                                        <VisualState.Setters>
+                                            <Setter Property="BackgroundColor" Value="#FF3A3A3A" />
+                                        </VisualState.Setters>
+                                    </VisualState>
+                                </VisualStateGroup>
+                            </VisualStateManager.VisualStateGroups>
+                        </Border>
+                    </DataTemplate>
+                </controls:SessionsListRowTemplateSelector.SessionTemplate>
+            </controls:SessionsListRowTemplateSelector>
         </ResourceDictionary>
     </ContentPage.Resources>
 
@@ -83,8 +196,9 @@
                 Grid.Row="0"
                 Margin="0,20,0,0"
                 BackgroundColor="#00BBBABA"
-                ItemsSource="{Binding VisibleRecentSessions}"
-                SelectedItem="{Binding SelectedSession, Mode=TwoWay}"
+                ItemsSource="{Binding SessionRows}"
+                ItemTemplate="{StaticResource SessionsListRowTemplateSelector}"
+                SelectedItem="{Binding SelectedSessionListItem, Mode=TwoWay}"
                 SelectionMode="Single">
 
                 <!--  Items fijos: Galería General + Videolecciones  -->
@@ -262,89 +376,70 @@
                                     VerticalOptions="Center" />
                             </Grid>
                         </Border>
+
+                        <!--  Item de sesión en importación (con barra de progreso)  -->
+                        <Border
+                            x:Name="ImportingSessionBorder"
+                            Margin="0,4,0,0"
+                            Padding="0"
+                            BackgroundColor="#FF1A1A1A"
+                            Stroke="#FF6DDDFF"
+                            StrokeThickness="1"
+                            StrokeShape="RoundRectangle 6"
+                            IsVisible="{Binding IsBackgroundImporting}">
+                            <Grid RowDefinitions="Auto,4">
+                                <!--  Contenido del item  -->
+                                <HorizontalStackLayout
+                                    Grid.Row="0"
+                                    Padding="16,10"
+                                    Spacing="8"
+                                    VerticalOptions="Center">
+                                    <ActivityIndicator
+                                        HeightRequest="18"
+                                        WidthRequest="18"
+                                        IsRunning="True"
+                                        Color="#FF6DDDFF" />
+                                    <VerticalStackLayout Spacing="2" VerticalOptions="Center">
+                                        <Label
+                                            FontFamily="SF Pro Text"
+                                            FontSize="13"
+                                            Text="{Binding ImportingSessionName}"
+                                            TextColor="#FF6DDDFF"
+                                            LineBreakMode="TailTruncation"
+                                            MaximumWidthRequest="220" />
+                                        <Label
+                                            FontFamily="SF Pro Text"
+                                            FontSize="10"
+                                            Text="{Binding ImportingCurrentFile}"
+                                            TextColor="#FF888888"
+                                            LineBreakMode="TailTruncation"
+                                            MaximumWidthRequest="220" />
+                                    </VerticalStackLayout>
+                                    <Label
+                                        FontFamily="SF Pro Text"
+                                        FontSize="11"
+                                        FontAttributes="Bold"
+                                        Text="{Binding BackgroundImportProgress, StringFormat='{0}%'}"
+                                        TextColor="#FF6DDDFF"
+                                        VerticalOptions="Center"
+                                        HorizontalOptions="EndAndExpand" />
+                                </HorizontalStackLayout>
+                                <!--  Barra de progreso  -->
+                                <ProgressBar
+                                    Grid.Row="1"
+                                    Margin="0"
+                                    Progress="{Binding BackgroundImportProgressNormalized}"
+                                    ProgressColor="#FF6DDDFF"
+                                    BackgroundColor="#FF2A2A2A"
+                                    HeightRequest="4" />
+                            </Grid>
+                        </Border>
                     </VerticalStackLayout>
                 </CollectionView.Header>
 
                 <CollectionView.ItemsLayout>
                     <LinearItemsLayout ItemSpacing="{StaticResource SpacingXSmall}" Orientation="Vertical" />
                 </CollectionView.ItemsLayout>
-                <CollectionView.ItemTemplate>
-                    <DataTemplate x:DataType="models:Session">
-                        <Border
-                            Margin="0"
-                            Padding="{StaticResource PaddingSidebarItem}"
-                            BackgroundColor="Transparent"
-                            HeightRequest="{StaticResource ElementHeightLarge}"
-                            Stroke="Transparent"
-                            StrokeShape="RoundRectangle 4">
-                            <Border.Behaviors>
-                                <behaviors:DashboardSessionItemHoverBehavior />
-                            </Border.Behaviors>
-                            <HorizontalStackLayout
-                                Spacing="8"
-                                VerticalOptions="Center">
-                                <controls:SymbolIcon
-                                    HeightRequest="{StaticResource IconSizeLarge}"
-                                    SymbolName="arrow.turn.down.right"
-                                    TintColor="#FF888888"
-                                    VerticalOptions="Center"
-                                    WidthRequest="{StaticResource IconSizeLarge}" />
-                                <controls:SymbolIcon
-                                    HeightRequest="{StaticResource IconSizeLarge}"
-                                    SymbolName="oar.2.crossed"
-                                    TintColor="#FF6DDDFF"
-                                    VerticalOptions="Center"
-                                    WidthRequest="{StaticResource IconSizeLarge}" />
-                                <Label
-                                    FontFamily="{StaticResource AppFontBody}"
-                                    FontSize="{StaticResource FontSizeSubtitle}"
-                                    LineBreakMode="TailTruncation"
-                                    TextColor="White"
-                                    VerticalOptions="Center"
-                                    VerticalTextAlignment="Center">
-                                    <Label.FormattedText>
-                                        <FormattedString>
-                                            <Span
-                                                FontSize="{StaticResource FontSizeSubtitle}"
-                                                Text="{Binding FechaDateTime, StringFormat='{0:dd/MM/yyyy}'}"
-                                                TextColor="White" />
-                                            <Span
-                                                FontSize="{StaticResource FontSizeSubtitle}"
-                                                Text=" en "
-                                                TextColor="White" />
-                                            <Span
-                                                FontSize="{StaticResource FontSizeSubtitle}"
-                                                Text="{Binding Lugar}"
-                                                TextColor="White" />
-                                            <Span
-                                                FontSize="{StaticResource FontSizeSubtitle}"
-                                                Text=" - "
-                                                TextColor="White" />
-                                            <Span
-                                                FontSize="{StaticResource FontSizeSubtitle}"
-                                                Text="{Binding DisplayName}"
-                                                TextColor="White" />
-                                        </FormattedString>
-                                    </Label.FormattedText>
-                                </Label>
-                            </HorizontalStackLayout>
-                            <VisualStateManager.VisualStateGroups>
-                                <VisualStateGroup Name="CommonStates">
-                                    <VisualState Name="Normal">
-                                        <VisualState.Setters>
-                                            <Setter Property="BackgroundColor" Value="Transparent" />
-                                        </VisualState.Setters>
-                                    </VisualState>
-                                    <VisualState Name="Selected">
-                                        <VisualState.Setters>
-                                            <Setter Property="BackgroundColor" Value="#FF3A3A3A" />
-                                        </VisualState.Setters>
-                                    </VisualState>
-                                </VisualStateGroup>
-                            </VisualStateManager.VisualStateGroups>
-                        </Border>
-                    </DataTemplate>
-                </CollectionView.ItemTemplate>
 
                 <CollectionView.EmptyView>
                     <VerticalStackLayout

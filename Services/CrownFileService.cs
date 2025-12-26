@@ -465,9 +465,9 @@ public class CrownFileService
             var customFileType = new FilePickerFileType(
                 new Dictionary<DevicePlatform, IEnumerable<string>>
                 {
-                    { DevicePlatform.iOS, new[] { "public.data", "public.item", "public.content", "public.archive" } },
-                    { DevicePlatform.Android, new[] { "application/octet-stream", "application/zip", "*/*" } },
-                    { DevicePlatform.WinUI, new[] { ".crown", ".zip" } },
+                    { DevicePlatform.iOS, new[] { "public.data", "public.item", "public.content", "public.archive", "public.movie", "public.video" } },
+                    { DevicePlatform.Android, new[] { "application/octet-stream", "application/zip", "video/*", "*/*" } },
+                    { DevicePlatform.WinUI, new[] { ".crown", ".zip", ".mp4", ".mov", ".avi", ".mkv", ".wmv", ".webm", ".mpg", ".mpeg", ".m4v" } },
                 });
 
             var filteredOptions = new PickOptions

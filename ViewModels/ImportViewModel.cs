@@ -43,11 +43,16 @@ public class PendingVideoItem : BaseViewModel
     {
         return ext.ToLowerInvariant() switch
         {
-            "mp4" or "m4v" => "film",
-            "mov" => "video",
-            "avi" => "film.stack",
-            "mkv" => "play.rectangle.on.rectangle",
-            "webm" => "globe",
+            "mp4" or "m4v" or "mpg" or "mpeg" => "film",
+            "mov" or "mts" or "m2ts" => "video",
+            "avi" or "divx" or "xvid" => "film.stack",
+            "mkv" or "webm" or "ogv" => "play.rectangle.on.rectangle",
+            "wmv" or "asf" => "tv",
+            "flv" or "f4v" => "play.tv",
+            "vob" or "ts" => "opticaldisc",
+            "3gp" or "rm" or "rmvb" => "iphone",
+            "dv" or "mxf" => "video.badge.waveform",
+            "gif" => "photo",
             _ => "doc"
         };
     }
@@ -61,6 +66,7 @@ public class ImportViewModel : BaseViewModel
     private readonly DatabaseService _databaseService;
     private readonly CrownFileService _crownFileService;
     private readonly ThumbnailService _thumbnailService;
+    private readonly ImportProgressService _importProgressService;
 
     private CancellationTokenSource? _importCts;
 
@@ -78,14 +84,17 @@ public class ImportViewModel : BaseViewModel
     // Extensiones de video soportadas
     private static readonly HashSet<string> VideoExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
-        ".mp4", ".mov", ".m4v", ".avi", ".mkv", ".webm", ".wmv", ".flv", ".3gp"
+        ".mp4", ".mov", ".m4v", ".avi", ".mkv", ".webm", ".wmv", ".flv", ".3gp",
+        ".mpg", ".mpeg", ".mts", ".m2ts", ".ts", ".vob", ".ogv", ".divx", ".xvid",
+        ".asf", ".rm", ".rmvb", ".dv", ".f4v", ".mxf", ".gif"
     };
 
-    public ImportViewModel(DatabaseService databaseService, CrownFileService crownFileService, ThumbnailService thumbnailService)
+    public ImportViewModel(DatabaseService databaseService, CrownFileService crownFileService, ThumbnailService thumbnailService, ImportProgressService importProgressService)
     {
         _databaseService = databaseService;
         _crownFileService = crownFileService;
         _thumbnailService = thumbnailService;
+        _importProgressService = importProgressService;
 
         // Comandos del explorador
         ToggleExpandCommand = new Command<FileSystemItem>(async (item) => await ToggleExpandAsync(item));
@@ -654,17 +663,31 @@ public class ImportViewModel : BaseViewModel
         {
             var result = await FilePicker.Default.PickAsync(new PickOptions
             {
-                PickerTitle = "Selecciona un archivo .crown",
+                PickerTitle = "Selecciona un archivo .crown o video",
                 FileTypes = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>>
                 {
-                    { DevicePlatform.macOS, new[] { "public.data" } },
-                    { DevicePlatform.MacCatalyst, new[] { "public.data" } }
+                    { DevicePlatform.macOS, new[] { "public.data", "public.movie", "public.video", "public.mpeg", "public.avi", "com.apple.quicktime-movie" } },
+                    { DevicePlatform.MacCatalyst, new[] { "public.data", "public.movie", "public.video", "public.mpeg", "public.avi", "com.apple.quicktime-movie" } },
+                    { DevicePlatform.iOS, new[] { "public.data", "public.movie", "public.video", "public.mpeg", "public.avi", "com.apple.quicktime-movie" } },
+                    { DevicePlatform.WinUI, new[] { ".crown", ".mp4", ".mov", ".avi", ".mkv", ".wmv", ".webm", ".mpg", ".mpeg", ".m4v", ".mts", ".m2ts" } },
+                    { DevicePlatform.Android, new[] { "video/*", "application/octet-stream" } }
                 })
             });
 
-            if (result != null && result.FullPath.EndsWith(".crown", StringComparison.OrdinalIgnoreCase))
+            if (result != null)
             {
-                await ImportFileAsync(result.FullPath);
+                var extension = Path.GetExtension(result.FullPath).ToLowerInvariant();
+                
+                if (extension == ".crown")
+                {
+                    // Importar archivo .crown
+                    await ImportFileAsync(result.FullPath);
+                }
+                else if (VideoExtensions.Contains(extension))
+                {
+                    // Añadir video a la lista de pendientes
+                    AddVideoFile(result.FullPath);
+                }
             }
         }
         catch (Exception ex)
@@ -769,8 +792,11 @@ public class ImportViewModel : BaseViewModel
                 PickerTitle = "Selecciona archivos de video",
                 FileTypes = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>>
                 {
-                    { DevicePlatform.macOS, new[] { "public.movie", "public.video" } },
-                    { DevicePlatform.MacCatalyst, new[] { "public.movie", "public.video" } }
+                    { DevicePlatform.macOS, new[] { "public.movie", "public.video", "public.mpeg", "public.mpeg-4", "public.avi", "com.apple.quicktime-movie", "public.3gpp", "org.webmproject.webm", "com.microsoft.windows-media-wmv" } },
+                    { DevicePlatform.MacCatalyst, new[] { "public.movie", "public.video", "public.mpeg", "public.mpeg-4", "public.avi", "com.apple.quicktime-movie", "public.3gpp", "org.webmproject.webm", "com.microsoft.windows-media-wmv" } },
+                    { DevicePlatform.iOS, new[] { "public.movie", "public.video", "public.mpeg", "public.mpeg-4", "public.avi", "com.apple.quicktime-movie" } },
+                    { DevicePlatform.WinUI, new[] { ".mp4", ".mov", ".avi", ".mkv", ".wmv", ".webm", ".mpg", ".mpeg", ".m4v", ".flv", ".3gp", ".mts", ".m2ts", ".ts", ".vob" } },
+                    { DevicePlatform.Android, new[] { "video/*" } }
                 })
             });
 
@@ -894,6 +920,12 @@ public class ImportViewModel : BaseViewModel
 
         var successCount = 0;
         var failedVideos = new List<string>();
+        var totalVideos = PendingVideos.Count;
+
+        // Iniciar tarea en el servicio de progreso (para que continúe en segundo plano)
+        var importTask = _importProgressService.StartImport(
+            $"Sesión: {CustomSessionName}",
+            totalVideos);
 
         try
         {
@@ -939,14 +971,17 @@ public class ImportViewModel : BaseViewModel
             ImportProgressText = "Sesión creada, copiando videos...";
 
             // Procesar los videos
-            var totalVideos = PendingVideos.Count;
             var currentVideo = 0;
+            var cancellationToken = _importProgressService.GetCancellationToken();
 
             foreach (var pendingVideo in PendingVideos.ToList())
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
                 currentVideo++;
+                
+                // Actualizar progreso en el servicio
+                _importProgressService.UpdateProgress(currentVideo, pendingVideo.FileName);
                 
                 // Calcular progreso: 10-60% para copiar videos, 60-90% para thumbnails
                 var copyProgress = 10 + (int)((currentVideo / (double)totalVideos) * 50);
@@ -1141,6 +1176,9 @@ public class ImportViewModel : BaseViewModel
 
             ImportProgressValue = 100;
 
+            // Notificar al servicio que la importación terminó
+            _importProgressService.CompleteImport(session.Id);
+
             // Mostrar resumen
             if (failedVideos.Count == 0)
             {
@@ -1169,12 +1207,14 @@ public class ImportViewModel : BaseViewModel
         }
         catch (OperationCanceledException)
         {
+            _importProgressService.FailImport("Cancelado por el usuario");
             ImportProgressText = "Importación cancelada.";
             await Task.Delay(1000);
             ImportProgressText = "";
         }
         catch (Exception ex)
         {
+            _importProgressService.FailImport(ex.Message);
             ImportProgressText = $"Error: {ex.Message}";
             System.Diagnostics.Debug.WriteLine($"Error creating custom session: {ex}");
             await Shell.Current.DisplayAlert("Error", $"Error al crear la sesión: {ex.Message}", "OK");
