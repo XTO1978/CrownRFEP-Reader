@@ -60,6 +60,22 @@ public partial class SinglePlayerPage : ContentPage
 
         AppLog.Info("SinglePlayerPage", "CTOR");
 
+#if WINDOWS
+        // En Windows: controles de reproducción como overlay en Row 0, anclados abajo
+        if (PlayerControlsBorder != null)
+        {
+            Grid.SetRow(PlayerControlsBorder, 0);
+            PlayerControlsBorder.VerticalOptions = LayoutOptions.End;
+        }
+#else
+        // En otras plataformas: controles en Row 1 separados del video
+        if (PlayerControlsBorder != null)
+        {
+            Grid.SetRow(PlayerControlsBorder, 1);
+            PlayerControlsBorder.VerticalOptions = LayoutOptions.Fill;
+        }
+#endif
+
         if (RootGrid != null)
             RootGrid.SizeChanged += OnRootGridSizeChanged;
 
