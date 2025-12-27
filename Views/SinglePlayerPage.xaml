@@ -15,8 +15,13 @@
     BackgroundColor="#FF121212"
     Shell.BackgroundColor="#FF121212"
     Shell.ForegroundColor="White"
-    Shell.NavBarIsVisible="True"
     Shell.TitleColor="White">
+    <Shell.NavBarIsVisible>
+        <OnPlatform x:TypeArguments="x:Boolean">
+            <On Platform="WinUI" Value="False" />
+            <On Platform="Default" Value="True" />
+        </OnPlatform>
+    </Shell.NavBarIsVisible>
 
     <ContentPage.Resources>
         <toolkit:InvertedBoolConverter x:Key="InvertedBoolConverter" />
@@ -369,13 +374,23 @@
                 
                 <!--  Barra de botones de edición (esquina superior derecha)  -->
                 <Border
-                    Margin="16"
-                    Padding="8"
                     BackgroundColor="#CC000000"
                     HorizontalOptions="End"
                     StrokeShape="RoundRectangle 8"
                     StrokeThickness="0"
                     VerticalOptions="Start">
+                    <Border.Margin>
+                        <OnPlatform x:TypeArguments="Thickness">
+                            <On Platform="WinUI" Value="8" />
+                            <On Platform="Default" Value="16" />
+                        </OnPlatform>
+                    </Border.Margin>
+                    <Border.Padding>
+                        <OnPlatform x:TypeArguments="Thickness">
+                            <On Platform="WinUI" Value="12,2,12,2" />
+                            <On Platform="Default" Value="8" />
+                        </OnPlatform>
+                    </Border.Padding>
                     <HorizontalStackLayout Spacing="4">
 
                         <!-- Videolección (toggle start/stop) - separado del resto -->
@@ -1942,7 +1957,7 @@
             </Border.WidthRequest>
             <Border.BackgroundColor>
                 <OnPlatform x:TypeArguments="Color">
-                    <On Platform="WinUI" Value="#99121212" />
+                    <On Platform="WinUI" Value="#CC121212" />
                     <On Platform="Default" Value="#FF121212" />
                 </OnPlatform>
             </Border.BackgroundColor>
