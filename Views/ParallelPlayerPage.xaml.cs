@@ -21,6 +21,14 @@ public partial class ParallelPlayerPage : ContentPage
     private bool _wasPlayingBeforeDrag;
     private bool _wasPlaying1BeforeDrag;
     private bool _wasPlaying2BeforeDrag;
+
+#if WINDOWS
+    // Throttle para seeks en Windows (evitar bloqueos)
+    private DateTime _lastSeekTime = DateTime.MinValue;
+    private DateTime _lastSeekTime1 = DateTime.MinValue;
+    private DateTime _lastSeekTime2 = DateTime.MinValue;
+    private const int SeekThrottleMs = 50;
+#endif
     
     // Flags para controlar el scrubbing con trackpad/mouse
     private bool _isScrubbing1;
@@ -599,8 +607,20 @@ public partial class ParallelPlayerPage : ContentPage
         var absolutePos1 = _viewModel.SyncPoint1 + relativePosition;
         var absolutePos2 = _viewModel.SyncPoint2 + relativePosition;
         
+        _viewModel.CurrentPosition = relativePosition;
+#if WINDOWS
+        // En Windows, throttle seeks para evitar bloqueos
+        var now = DateTime.UtcNow;
+        if ((now - _lastSeekTime).TotalMilliseconds >= SeekThrottleMs)
+        {
+            _lastSeekTime = now;
+            _activePlayer1?.SeekTo(absolutePos1);
+            _activePlayer2?.SeekTo(absolutePos2);
+        }
+#else
         _activePlayer1?.SeekTo(absolutePos1);
         _activePlayer2?.SeekTo(absolutePos2);
+#endif
         // No actualizamos CurrentPosition aquí para evitar un bucle de actualización
         // La posición se sincronizará completamente en OnSliderDragCompleted
     }
@@ -632,7 +652,17 @@ public partial class ParallelPlayerPage : ContentPage
         if (!_isDraggingSlider1) return;
         
         var position = TimeSpan.FromSeconds(e.NewValue * _viewModel.Duration1.TotalSeconds);
+        _viewModel.CurrentPosition1 = position;
+#if WINDOWS
+        var now = DateTime.UtcNow;
+        if ((now - _lastSeekTime1).TotalMilliseconds >= SeekThrottleMs)
+        {
+            _lastSeekTime1 = now;
+            _activePlayer1?.SeekTo(position);
+        }
+#else
         _activePlayer1?.SeekTo(position);
+#endif
         // No actualizamos CurrentPosition1 aquí para evitar un bucle de actualización
         // El texto de posición se puede actualizar de forma segura:
         // La posición se sincronizará completamente en OnSlider1DragCompleted
@@ -665,7 +695,17 @@ public partial class ParallelPlayerPage : ContentPage
         if (!_isDraggingSlider2) return;
         
         var position = TimeSpan.FromSeconds(e.NewValue * _viewModel.Duration2.TotalSeconds);
+        _viewModel.CurrentPosition2 = position;
+#if WINDOWS
+        var now = DateTime.UtcNow;
+        if ((now - _lastSeekTime2).TotalMilliseconds >= SeekThrottleMs)
+        {
+            _lastSeekTime2 = now;
+            _activePlayer2?.SeekTo(position);
+        }
+#else
         _activePlayer2?.SeekTo(position);
+#endif
         // No actualizamos CurrentPosition2 aquí para evitar un bucle de actualización
         // La posición se sincronizará completamente en OnSlider2DragCompleted
     }

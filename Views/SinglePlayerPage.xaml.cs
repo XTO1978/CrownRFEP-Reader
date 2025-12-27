@@ -41,6 +41,12 @@ public partial class SinglePlayerPage : ContentPage
     // Flags para controlar el scrubbing del slider
     private bool _isDraggingSlider;
     private bool _wasPlayingBeforeDrag;
+
+#if WINDOWS
+    // Throttle para seeks en Windows (evitar bloqueos)
+    private DateTime _lastSeekTime = DateTime.MinValue;
+    private const int SeekThrottleMs = 50;
+#endif
     
     // Flags para controlar el scrubbing con trackpad/mouse
     private bool _isScrubbing;
@@ -1024,7 +1030,18 @@ public partial class SinglePlayerPage : ContentPage
 
         // Seek en tiempo real mientras se arrastra
         var position = TimeSpan.FromSeconds(e.NewValue * _viewModel.Duration.TotalSeconds);
+        _viewModel.CurrentPosition = position;
+#if WINDOWS
+        // En Windows, throttle seeks para evitar bloqueos
+        var now = DateTime.UtcNow;
+        if ((now - _lastSeekTime).TotalMilliseconds >= SeekThrottleMs)
+        {
+            _lastSeekTime = now;
+            MediaPlayer?.SeekTo(position);
+        }
+#else
         MediaPlayer?.SeekTo(position);
+#endif
     }
 
     private void OnSliderDragCompleted(object? sender, EventArgs e)

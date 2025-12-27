@@ -30,7 +30,7 @@ public partial class QuadPlayerPage : ContentPage
     private DateTime _lastSeekTime2 = DateTime.MinValue;
     private DateTime _lastSeekTime3 = DateTime.MinValue;
     private DateTime _lastSeekTime4 = DateTime.MinValue;
-    private const int SeekThrottleMs = 10; // milisegundos entre seeks
+    private const int SeekThrottleMs = 50; // milisegundos entre seeks
 #endif
 
     public QuadPlayerPage(QuadPlayerViewModel viewModel)
