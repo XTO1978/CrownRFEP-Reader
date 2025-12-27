@@ -2177,11 +2177,21 @@
                                             Text="Fecha desde"
                                             TextColor="#FFB1B1B1" />
                                         <Border
-                                            BackgroundColor="#FF2A2A2A"
                                             StrokeShape="RoundRectangle 4"
                                             Stroke="Transparent"
-                                            Padding="12,12,0,-6"
                                             HorizontalOptions="Fill">
+                                            <Border.Padding>
+                                                <OnPlatform x:TypeArguments="Thickness">
+                                                    <On Platform="WinUI" Value="0" />
+                                                    <On Platform="Default" Value="12,12,0,-6" />
+                                                </OnPlatform>
+                                            </Border.Padding>
+                                            <Border.BackgroundColor>
+                                                <OnPlatform x:TypeArguments="Color">
+                                                    <On Platform="WinUI" Value="Transparent" />
+                                                    <On Platform="Default" Value="#FF2A2A2A" />
+                                                </OnPlatform>
+                                            </Border.BackgroundColor>
                                             <DatePicker
                                                 Date="{Binding SelectedFilterDateFrom}"
                                                 TextColor="White"
@@ -2198,11 +2208,21 @@
                                             Text="Fecha hasta"
                                             TextColor="#FFB1B1B1" />
                                         <Border
-                                            BackgroundColor="#FF2A2A2A"
                                             StrokeShape="RoundRectangle 4"
                                             Stroke="Transparent"
-                                            Padding="12,12,0,-6"
                                             HorizontalOptions="Fill">
+                                            <Border.Padding>
+                                                <OnPlatform x:TypeArguments="Thickness">
+                                                    <On Platform="WinUI" Value="0" />
+                                                    <On Platform="Default" Value="12,12,0,-6" />
+                                                </OnPlatform>
+                                            </Border.Padding>
+                                            <Border.BackgroundColor>
+                                                <OnPlatform x:TypeArguments="Color">
+                                                    <On Platform="WinUI" Value="Transparent" />
+                                                    <On Platform="Default" Value="#FF2A2A2A" />
+                                                </OnPlatform>
+                                            </Border.BackgroundColor>
                                             <DatePicker
                                                 Date="{Binding SelectedFilterDateTo}"
                                                 TextColor="White"
