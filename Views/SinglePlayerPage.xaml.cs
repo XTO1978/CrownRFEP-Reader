@@ -143,6 +143,9 @@ public partial class SinglePlayerPage : ContentPage
 
     private void OnRootGridSizeChanged(object? sender, EventArgs e)
     {
+        if (!_isPageActive)
+            return;
+
         if (VideoLessonCameraPip?.IsVisible == true)
         {
             if (!_pipHasUserMoved)
@@ -360,6 +363,8 @@ public partial class SinglePlayerPage : ContentPage
         _recordingTimer = new System.Timers.Timer(1000);
         _recordingTimer.Elapsed += (s, e) =>
         {
+            if (!_isPageActive) return;
+            
             var elapsed = DateTime.Now - _recordingStartTime;
             var formatted = elapsed.TotalHours >= 1
                 ? $"{(int)elapsed.TotalHours:D2}:{elapsed.Minutes:D2}:{elapsed.Seconds:D2}"
@@ -367,8 +372,8 @@ public partial class SinglePlayerPage : ContentPage
             
             MainThread.BeginInvokeOnMainThread(() =>
             {
-                if (RecordingTimerLabel != null)
-                    RecordingTimerLabel.Text = formatted;
+                if (!_isPageActive || RecordingTimerLabel == null) return;
+                RecordingTimerLabel.Text = formatted;
             });
         };
         _recordingTimer.Start();
@@ -627,6 +632,9 @@ public partial class SinglePlayerPage : ContentPage
     {
         AppLog.Info("SinglePlayerPage", "CleanupResources BEGIN");
 
+        if (RootGrid != null)
+            RootGrid.SizeChanged -= OnRootGridSizeChanged;
+
         // Detener el cronómetro de grabación
         StopRecordingTimer();
 
@@ -661,6 +669,21 @@ public partial class SinglePlayerPage : ContentPage
             MediaPlayer.PositionChanged -= OnPositionChanged;
             MediaPlayer.MediaEnded -= OnMediaEnded;
 
+#if WINDOWS
+            try
+            {
+                // Notificar al handler que debe detenerse inmediatamente
+                // Esto detiene el timer y desuscribe eventos nativos antes de que
+                // la navegación pueda causar problemas
+                AppLog.Info("SinglePlayerPage", "CleanupResources: calling MediaPlayer.PrepareForCleanup()");
+                MediaPlayer.PrepareForCleanup();
+            }
+            catch (Exception ex)
+            {
+                AppLog.Error("SinglePlayerPage", "CleanupResources: PrepareForCleanup threw", ex);
+            }
+#endif
+
             try
             {
                 AppLog.Info("SinglePlayerPage", "CleanupResources: calling MediaPlayer.Stop()");
@@ -671,6 +694,18 @@ public partial class SinglePlayerPage : ContentPage
             {
                 AppLog.Error("SinglePlayerPage", "CleanupResources: MediaPlayer.Stop() threw", ex);
             }
+
+#if WINDOWS
+            try
+            {
+                // En WinUI esto ayuda a evitar callbacks tardíos tras navegar atrás.
+                MediaPlayer.Source = null;
+            }
+            catch (Exception ex)
+            {
+                AppLog.Error("SinglePlayerPage", "CleanupResources: clearing MediaPlayer.Source threw", ex);
+            }
+#endif
 
             // NOTA: NO llamar a DisconnectHandler() en Windows durante la navegación
             // ya que corrompe el Frame de navegación y causa crash (0x80004004 E_ABORT)
@@ -886,10 +921,13 @@ public partial class SinglePlayerPage : ContentPage
 
     private void OnMediaOpened(object? sender, EventArgs e)
     {
+        if (!_isPageActive) return;
+        
         if (sender is PrecisionVideoPlayer player && player.Duration > TimeSpan.Zero)
         {
             MainThread.BeginInvokeOnMainThread(() =>
             {
+                if (!_isPageActive) return;
                 _viewModel.Duration = player.Duration;
             });
         }
@@ -897,18 +935,22 @@ public partial class SinglePlayerPage : ContentPage
 
     private void OnPositionChanged(object? sender, TimeSpan position)
     {
-        if (_isDraggingSlider) return;
+        if (!_isPageActive || _isDraggingSlider) return;
 
         MainThread.BeginInvokeOnMainThread(() =>
         {
+            if (!_isPageActive) return;
             _viewModel.CurrentPosition = position;
         });
     }
 
     private void OnMediaEnded(object? sender, EventArgs e)
     {
+        if (!_isPageActive) return;
+        
         MainThread.BeginInvokeOnMainThread(() =>
         {
+            if (!_isPageActive) return;
             _viewModel.IsPlaying = false;
         });
     }
@@ -919,21 +961,25 @@ public partial class SinglePlayerPage : ContentPage
 
     private void OnPlayRequested(object? sender, EventArgs e)
     {
+        if (!_isPageActive) return;
         MediaPlayer?.Play();
     }
 
     private void OnPauseRequested(object? sender, EventArgs e)
     {
+        if (!_isPageActive) return;
         MediaPlayer?.Pause();
     }
 
     private void OnStopRequested(object? sender, EventArgs e)
     {
+        if (!_isPageActive) return;
         MediaPlayer?.Stop();
     }
 
     private void OnSeekRequested(object? sender, double seconds)
     {
+        if (!_isPageActive) return;
         var position = TimeSpan.FromSeconds(seconds);
         MediaPlayer?.SeekTo(position);
         _viewModel.CurrentPosition = position;
@@ -941,20 +987,20 @@ public partial class SinglePlayerPage : ContentPage
 
     private void OnFrameForwardRequested(object? sender, EventArgs e)
     {
+        if (!_isPageActive) return;
         MediaPlayer?.StepForward();
     }
 
     private void OnFrameBackwardRequested(object? sender, EventArgs e)
     {
+        if (!_isPageActive) return;
         MediaPlayer?.StepBackward();
     }
 
     private void OnSpeedChangeRequested(object? sender, double speed)
     {
-        if (MediaPlayer != null)
-        {
-            MediaPlayer.Speed = speed;
-        }
+        if (!_isPageActive || MediaPlayer == null) return;
+        MediaPlayer.Speed = speed;
     }
 
     #endregion
@@ -1054,8 +1100,12 @@ public partial class SinglePlayerPage : ContentPage
 
     private void OnVideoChanged(object? sender, VideoClip newVideo)
     {
+        if (!_isPageActive) return;
+        
         MainThread.BeginInvokeOnMainThread(() =>
         {
+            if (!_isPageActive) return;
+            
             // Detener reproducción actual
             _viewModel.IsPlaying = false;
             MediaPlayer?.Stop();

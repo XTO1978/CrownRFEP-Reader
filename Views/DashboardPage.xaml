@@ -401,14 +401,14 @@
                                         Color="#FF6DDDFF" />
                                     <VerticalStackLayout Spacing="2" VerticalOptions="Center">
                                         <Label
-                                            FontFamily="SF Pro Text"
+                                            FontFamily="{StaticResource AppFontBody}"
                                             FontSize="13"
                                             Text="{Binding ImportingSessionName}"
                                             TextColor="#FF6DDDFF"
                                             LineBreakMode="TailTruncation"
                                             MaximumWidthRequest="220" />
                                         <Label
-                                            FontFamily="SF Pro Text"
+                                            FontFamily="{StaticResource AppFontBody}"
                                             FontSize="10"
                                             Text="{Binding ImportingCurrentFile}"
                                             TextColor="#FF888888"
@@ -416,7 +416,7 @@
                                             MaximumWidthRequest="220" />
                                     </VerticalStackLayout>
                                     <Label
-                                        FontFamily="SF Pro Text"
+                                        FontFamily="{StaticResource AppFontBody}"
                                         FontSize="11"
                                         FontAttributes="Bold"
                                         Text="{Binding BackgroundImportProgress, StringFormat='{0}%'}"

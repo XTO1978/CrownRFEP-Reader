@@ -1564,18 +1564,14 @@
                                     Command="{Binding AddTagEventCommand}"
                                     VerticalOptions="End"
                                     BackgroundColor="#FFFF7043"
+                                    Padding="0"
+                                    Text="+"
                                     TextColor="White"
-                                    FontSize="{StaticResource FontSizeBody}"
+                                    FontFamily="{StaticResource AppFontEmphasis}"
+                                    FontSize="{StaticResource FontSizeTitle}"
                                     CornerRadius="6"
                                     WidthRequest="{StaticResource ElementHeightLarge}"
                                     HeightRequest="{StaticResource ElementHeightLarge}">
-                                    <Button.ImageSource>
-                                        <FontImageSource
-                                            FontFamily="{StaticResource AppFontSymbols}"
-                                            Glyph="+"
-                                            Color="White"
-                                            Size="20" />
-                                    </Button.ImageSource>
                                 </Button>
                             </Grid>
                         </Border>

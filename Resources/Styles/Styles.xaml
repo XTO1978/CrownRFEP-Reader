@@ -10,21 +10,21 @@
     <OnPlatform x:TypeArguments="x:String" x:Key="AppFontBody">
         <On Platform="iOS" Value="SF Pro Text" />
         <On Platform="MacCatalyst" Value="SF Pro Text" />
-        <On Platform="WinUI" Value="Segoe UI" />
+        <On Platform="WinUI" Value="OpenSansRegular" />
         <On Platform="Default" Value="OpenSansRegular" />
     </OnPlatform>
 
     <OnPlatform x:TypeArguments="x:String" x:Key="AppFontEmphasis">
         <On Platform="iOS" Value="SF Pro Text" />
         <On Platform="MacCatalyst" Value="SF Pro Text" />
-        <On Platform="WinUI" Value="Segoe UI Semibold" />
+        <On Platform="WinUI" Value="OpenSansSemibold" />
         <On Platform="Default" Value="OpenSansSemibold" />
     </OnPlatform>
 
     <OnPlatform x:TypeArguments="x:String" x:Key="AppFontDisplay">
         <On Platform="iOS" Value="SF Pro Display" />
         <On Platform="MacCatalyst" Value="SF Pro Display" />
-        <On Platform="WinUI" Value="Segoe UI" />
+        <On Platform="WinUI" Value="OpenSansSemibold" />
         <On Platform="Default" Value="OpenSansSemibold" />
     </OnPlatform>
 

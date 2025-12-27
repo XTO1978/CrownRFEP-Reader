@@ -47,6 +47,7 @@
                                 WidthRequest="{StaticResource ElementHeightDefault}">
                                 <Button.ImageSource>
                                     <FontImageSource
+                                        FontFamily="OpenSansRegular"
                                         Glyph="↻"
                                         Size="24"
                                         Color="#FF878787" />

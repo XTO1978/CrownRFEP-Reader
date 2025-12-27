@@ -254,6 +254,21 @@ public class PrecisionVideoPlayer : View, INotifyPropertyChanged
 
     #region Internal Methods (called by handler)
 
+    /// <summary>
+    /// Evento para notificar al handler que debe prepararse para limpieza.
+    /// El handler debe detener timers y desuscribirse de eventos nativos.
+    /// </summary>
+    internal event EventHandler? PrepareForCleanupRequested;
+
+    /// <summary>
+    /// Prepara el control para limpieza antes de navegación.
+    /// Llama a este método en OnDisappearing para evitar callbacks tardíos.
+    /// </summary>
+    public void PrepareForCleanup()
+    {
+        PrepareForCleanupRequested?.Invoke(this, EventArgs.Empty);
+    }
+
     internal void UpdatePosition(TimeSpan position)
     {
         // Actualiza la posición sin disparar el evento de cambio desde binding

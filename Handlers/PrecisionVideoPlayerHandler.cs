@@ -697,6 +697,7 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
     private bool _isSeekingFromBinding;
     private bool _isSeeking;
     private TimeSpan _pendingSeekPosition;
+    private bool _isDisconnecting; // Flag para evitar callbacks tardíos durante/después de desconexión
 
     public static IPropertyMapper<Controls.PrecisionVideoPlayer, PrecisionVideoPlayerHandler> Mapper =
         new PropertyMapper<Controls.PrecisionVideoPlayer, PrecisionVideoPlayerHandler>(ViewHandler.ViewMapper)
@@ -734,6 +735,9 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
     {
         base.ConnectHandler(platformView);
 
+        // Este handler puede reutilizarse; resetear el estado de desconexión
+        _isDisconnecting = false;
+
         if (_mediaPlayer != null)
         {
             _mediaPlayer.MediaOpened += OnMediaOpened;
@@ -759,6 +763,7 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
         VirtualView.SpeedChangedInternal += OnSpeedChanged;
         VirtualView.MutedChangedInternal += OnMutedChanged;
         VirtualView.AspectChangedInternal += OnAspectChanged;
+        VirtualView.PrepareForCleanupRequested += OnPrepareForCleanup;
 
         // Cargar source inicial si existe
         if (!string.IsNullOrEmpty(VirtualView.Source))
@@ -767,33 +772,71 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
         }
     }
 
+    /// <summary>
+    /// Llamado por el control cuando la página está a punto de desaparecer.
+    /// Detiene inmediatamente todos los timers y callbacks sin esperar a DisconnectHandler.
+    /// </summary>
+    private void OnPrepareForCleanup(object? sender, EventArgs e)
+    {
+        _isDisconnecting = true;
+
+        try { _positionTimer?.Stop(); } catch { }
+
+        if (_mediaPlayer != null)
+        {
+            // IMPORTANTE: soltar el MediaPlayer del MediaPlayerElement antes de tocarlo/disponearlo
+            try { PlatformView?.SetMediaPlayer(null); } catch { }
+
+            try { _mediaPlayer.MediaOpened -= OnMediaOpened; } catch { }
+            try { _mediaPlayer.MediaEnded -= OnMediaEnded; } catch { }
+            try { _mediaPlayer.MediaFailed -= OnMediaFailed; } catch { }
+            try { _mediaPlayer.Pause(); } catch { }
+            try { _mediaPlayer.Source = null; } catch { }
+        }
+    }
+
     protected override void DisconnectHandler(MediaPlayerElement platformView)
     {
-        _positionTimer?.Stop();
+        // Marcar como desconectando inmediatamente para bloquear todos los callbacks
+        _isDisconnecting = true;
+
+        try
+        {
+            _positionTimer?.Stop();
+        }
+        catch { /* ignorar */ }
         _positionTimer = null;
 
         if (VirtualView != null)
         {
-            VirtualView.PlayRequested -= OnPlayRequested;
-            VirtualView.PauseRequested -= OnPauseRequested;
-            VirtualView.StopRequested -= OnStopRequested;
-            VirtualView.StepForwardRequested -= OnStepForwardRequested;
-            VirtualView.StepBackwardRequested -= OnStepBackwardRequested;
-            VirtualView.SeekRequested -= OnSeekRequested;
-            VirtualView.PositionChangedFromBinding -= OnPositionChangedFromBinding;
-            VirtualView.SpeedChangedInternal -= OnSpeedChanged;
-            VirtualView.MutedChangedInternal -= OnMutedChanged;
-            VirtualView.AspectChangedInternal -= OnAspectChanged;
+            try
+            {
+                VirtualView.PlayRequested -= OnPlayRequested;
+                VirtualView.PauseRequested -= OnPauseRequested;
+                VirtualView.StopRequested -= OnStopRequested;
+                VirtualView.StepForwardRequested -= OnStepForwardRequested;
+                VirtualView.StepBackwardRequested -= OnStepBackwardRequested;
+                VirtualView.SeekRequested -= OnSeekRequested;
+                VirtualView.PositionChangedFromBinding -= OnPositionChangedFromBinding;
+                VirtualView.SpeedChangedInternal -= OnSpeedChanged;
+                VirtualView.MutedChangedInternal -= OnMutedChanged;
+                VirtualView.AspectChangedInternal -= OnAspectChanged;
+                VirtualView.PrepareForCleanupRequested -= OnPrepareForCleanup;
+            }
+            catch { /* ignorar errores al desuscribir */ }
         }
 
         if (_mediaPlayer != null)
         {
-            _mediaPlayer.MediaOpened -= OnMediaOpened;
-            _mediaPlayer.MediaEnded -= OnMediaEnded;
-            _mediaPlayer.MediaFailed -= OnMediaFailed;
-            _mediaPlayer.Pause();
-            _mediaPlayer.Source = null;
-            _mediaPlayer.Dispose();
+            // IMPORTANTE: soltar el MediaPlayer del elemento primero
+            try { platformView.SetMediaPlayer(null); } catch { }
+
+            try { _mediaPlayer.MediaOpened -= OnMediaOpened; } catch { }
+            try { _mediaPlayer.MediaEnded -= OnMediaEnded; } catch { }
+            try { _mediaPlayer.MediaFailed -= OnMediaFailed; } catch { }
+            try { _mediaPlayer.Pause(); } catch { }
+            try { _mediaPlayer.Source = null; } catch { }
+            try { _mediaPlayer.Dispose(); } catch { }
             _mediaPlayer = null;
         }
 
@@ -804,30 +847,25 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
 
     private static void MapSource(PrecisionVideoPlayerHandler handler, Controls.PrecisionVideoPlayer player)
     {
-        if (!string.IsNullOrEmpty(player.Source))
-        {
-            handler.LoadVideoAsync(player.Source);
-        }
+        if (handler._isDisconnecting || string.IsNullOrEmpty(player.Source)) return;
+        handler.LoadVideoAsync(player.Source);
     }
 
     private static void MapSpeed(PrecisionVideoPlayerHandler handler, Controls.PrecisionVideoPlayer player)
     {
-        if (handler._mediaPlayer != null)
-        {
-            handler._mediaPlayer.PlaybackSession.PlaybackRate = player.Speed;
-        }
+        if (handler._isDisconnecting || handler._mediaPlayer == null) return;
+        handler._mediaPlayer.PlaybackSession.PlaybackRate = player.Speed;
     }
 
     private static void MapIsMuted(PrecisionVideoPlayerHandler handler, Controls.PrecisionVideoPlayer player)
     {
-        if (handler._mediaPlayer != null)
-        {
-            handler._mediaPlayer.IsMuted = player.IsMuted;
-        }
+        if (handler._isDisconnecting || handler._mediaPlayer == null) return;
+        handler._mediaPlayer.IsMuted = player.IsMuted;
     }
 
     private static void MapAspect(PrecisionVideoPlayerHandler handler, Controls.PrecisionVideoPlayer player)
     {
+        if (handler._isDisconnecting || handler.PlatformView == null) return;
         handler.PlatformView.Stretch = player.Aspect switch
         {
             Aspect.AspectFill => Microsoft.UI.Xaml.Media.Stretch.UniformToFill,
@@ -842,7 +880,7 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
 
     private async void LoadVideoAsync(string source)
     {
-        if (_mediaPlayer == null) return;
+        if (_mediaPlayer == null || _isDisconnecting) return;
 
         try
         {
@@ -856,6 +894,7 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
             else
             {
                 var file = await StorageFile.GetFileFromPathAsync(source);
+                if (_isDisconnecting) return; // Check again after await
                 _mediaPlayer.Source = MediaSource.CreateFromStorageFile(file);
             }
         }
@@ -871,12 +910,12 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
 
     private void OnMediaOpened(MediaPlayer sender, object args)
     {
-        if (VirtualView == null) return;
+        if (_isDisconnecting || VirtualView == null) return;
 
         // Los eventos de MediaPlayer pueden llegar en otro hilo, invocar en UI thread
         PlatformView?.DispatcherQueue?.TryEnqueue(() =>
         {
-            if (VirtualView == null) return;
+            if (_isDisconnecting || VirtualView == null) return;
 
             // Actualizar duración
             var duration = sender.PlaybackSession.NaturalDuration;
@@ -891,9 +930,13 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
 
     private void OnMediaEnded(MediaPlayer sender, object args)
     {
+        if (_isDisconnecting) return;
+
         // Los eventos de MediaPlayer pueden llegar en otro hilo, invocar en UI thread
         PlatformView?.DispatcherQueue?.TryEnqueue(() =>
         {
+            if (_isDisconnecting) return;
+
             _positionTimer?.Stop();
             VirtualView?.RaiseMediaEnded();
             
@@ -906,12 +949,13 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
 
     private void OnMediaFailed(MediaPlayer sender, MediaPlayerFailedEventArgs args)
     {
+        if (_isDisconnecting) return;
         System.Diagnostics.Debug.WriteLine($"Media failed: {args.ErrorMessage}");
     }
 
     private void OnPositionTimerTick(object? sender, object e)
     {
-        if (_mediaPlayer == null || VirtualView == null || _isUpdatingPosition) return;
+        if (_isDisconnecting || _mediaPlayer == null || VirtualView == null || _isUpdatingPosition) return;
 
         _isUpdatingPosition = true;
         VirtualView.UpdatePosition(_mediaPlayer.PlaybackSession.Position);
@@ -924,7 +968,7 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
 
     private void OnPlayRequested(object? sender, EventArgs e)
     {
-        if (_mediaPlayer == null) return;
+        if (_isDisconnecting || _mediaPlayer == null) return;
 
         _mediaPlayer.Play();
         _positionTimer?.Start();
@@ -932,7 +976,7 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
 
     private void OnPauseRequested(object? sender, EventArgs e)
     {
-        if (_mediaPlayer == null) return;
+        if (_isDisconnecting || _mediaPlayer == null) return;
 
         _mediaPlayer.Pause();
         _positionTimer?.Stop();
@@ -940,7 +984,7 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
 
     private void OnStopRequested(object? sender, EventArgs e)
     {
-        if (_mediaPlayer == null) return;
+        if (_isDisconnecting || _mediaPlayer == null) return;
 
         _mediaPlayer.Pause();
         _mediaPlayer.PlaybackSession.Position = TimeSpan.Zero;
@@ -954,7 +998,7 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
 
     private void OnStepForwardRequested(object? sender, EventArgs e)
     {
-        if (_mediaPlayer == null || VirtualView == null) return;
+        if (_isDisconnecting || _mediaPlayer == null || VirtualView == null) return;
 
         var frameTime = TimeSpan.FromSeconds(VirtualView.FrameDuration);
         var newPosition = _mediaPlayer.PlaybackSession.Position + frameTime;
@@ -968,7 +1012,7 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
 
     private void OnStepBackwardRequested(object? sender, EventArgs e)
     {
-        if (_mediaPlayer == null || VirtualView == null) return;
+        if (_isDisconnecting || _mediaPlayer == null || VirtualView == null) return;
 
         var frameTime = TimeSpan.FromSeconds(VirtualView.FrameDuration);
         var newPosition = _mediaPlayer.PlaybackSession.Position - frameTime;
@@ -982,7 +1026,7 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
 
     private void OnSeekRequested(object? sender, TimeSpan position)
     {
-        if (_mediaPlayer == null || VirtualView == null) return;
+        if (_isDisconnecting || _mediaPlayer == null || VirtualView == null) return;
 
         var session = _mediaPlayer.PlaybackSession;
         if (position < TimeSpan.Zero)
@@ -996,7 +1040,7 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
 
     private void OnPositionChangedFromBinding(object? sender, TimeSpan position)
     {
-        if (_mediaPlayer == null || _isUpdatingPosition) return;
+        if (_isDisconnecting || _mediaPlayer == null || _isUpdatingPosition) return;
 
         _isSeekingFromBinding = true;
         _mediaPlayer.PlaybackSession.Position = position;
@@ -1005,22 +1049,19 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
 
     private void OnSpeedChanged(object? sender, double speed)
     {
-        if (_mediaPlayer != null)
-        {
-            _mediaPlayer.PlaybackSession.PlaybackRate = speed;
-        }
+        if (_isDisconnecting || _mediaPlayer == null) return;
+        _mediaPlayer.PlaybackSession.PlaybackRate = speed;
     }
 
     private void OnMutedChanged(object? sender, bool muted)
     {
-        if (_mediaPlayer != null)
-        {
-            _mediaPlayer.IsMuted = muted;
-        }
+        if (_isDisconnecting || _mediaPlayer == null) return;
+        _mediaPlayer.IsMuted = muted;
     }
 
     private void OnAspectChanged(object? sender, Aspect aspect)
     {
+        if (_isDisconnecting || PlatformView == null) return;
         PlatformView.Stretch = aspect switch
         {
             Aspect.AspectFill => Microsoft.UI.Xaml.Media.Stretch.UniformToFill,
