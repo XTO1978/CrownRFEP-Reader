@@ -173,7 +173,7 @@
 
     <!-- Padding para botones de acción con iconos -->
     <OnPlatform x:TypeArguments="Thickness" x:Key="PaddingActionButton">
-        <On Platform="WinUI" Value="10,10" />
+        <On Platform="WinUI" Value="10,6" />
         <On Platform="Default" Value="10,8" />
     </OnPlatform>
 

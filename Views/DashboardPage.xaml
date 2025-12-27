@@ -43,15 +43,15 @@
                                 VerticalOptions="Center">
                                 <Label
                                     Grid.Column="0"
-                                    FontFamily="SF Pro Text"
-                                    FontSize="13"
+                                    FontFamily="{StaticResource AppFontBody}"
+                                    FontSize="{StaticResource FontSizeSmall}"
                                     FontAttributes="Bold"
                                     Text="{Binding Title}"
                                     TextColor="#FF888888"
                                     VerticalOptions="Center" />
                                 <Label
                                     Grid.Column="1"
-                                    FontSize="14"
+                                    FontSize="{StaticResource FontSizeSmall}"
                                     Text="{Binding IsExpanded, Converter={StaticResource BoolToExpandIconConverter}}"
                                     TextColor="#FF888888"
                                     VerticalOptions="Center" />
@@ -75,42 +75,42 @@
                                 Spacing="8"
                                 VerticalOptions="Center">
                                 <controls:SymbolIcon
-                                    HeightRequest="20"
+                                    HeightRequest="{StaticResource IconSizeSmall}"
                                     SymbolName="arrow.turn.down.right"
                                     TintColor="#FF888888"
                                     VerticalOptions="Center"
-                                    WidthRequest="20" />
+                                    WidthRequest="{StaticResource IconSizeSmall}" />
                                 <controls:SymbolIcon
-                                    HeightRequest="24"
+                                    HeightRequest="{StaticResource IconSizeMedium}"
                                     SymbolName="oar.2.crossed"
                                     TintColor="#FF6DDDFF"
                                     VerticalOptions="Center"
-                                    WidthRequest="24" />
+                                    WidthRequest="{StaticResource IconSizeMedium}" />
                                 <Label
-                                    FontFamily="SF Pro Text"
-                                    FontSize="16"
+                                    FontFamily="{StaticResource AppFontBody}"
+                                    FontSize="{StaticResource FontSizeBody}"
                                     LineBreakMode="TailTruncation"
                                     TextColor="White">
                                     <Label.FormattedText>
                                         <FormattedString>
                                             <Span
-                                                FontSize="16"
+                                                FontSize="{StaticResource FontSizeBody}"
                                                 Text="{Binding Session.FechaDateTime, StringFormat='{0:dd/MM/yyyy}'}"
                                                 TextColor="White" />
                                             <Span
-                                                FontSize="16"
+                                                FontSize="{StaticResource FontSizeBody}"
                                                 Text=" en "
                                                 TextColor="White" />
                                             <Span
-                                                FontSize="16"
+                                                FontSize="{StaticResource FontSizeBody}"
                                                 Text="{Binding Session.Lugar}"
                                                 TextColor="White" />
                                             <Span
-                                                FontSize="16"
+                                                FontSize="{StaticResource FontSizeBody}"
                                                 Text=" - "
                                                 TextColor="White" />
                                             <Span
-                                                FontSize="16"
+                                                FontSize="{StaticResource FontSizeBody}"
                                                 Text="{Binding Session.DisplayName}"
                                                 TextColor="White" />
                                         </FormattedString>
@@ -1209,12 +1209,24 @@
 
                     <!--  Sección: Análisis técnico  -->
                     <Border
-                        Margin="0,12,0,0" HeightRequest="1"
+                        HeightRequest="1"
                         BackgroundColor="#FF464646"
-                        Stroke="Transparent"
-                        />
+                        Stroke="Transparent">
+                        <Border.Margin>
+                            <OnPlatform x:TypeArguments="Thickness">
+                                <On Platform="WinUI" Value="0,4,0,0" />
+                                <On Platform="Default" Value="0,12,0,0" />
+                            </OnPlatform>
+                        </Border.Margin>
+                    </Border>
 
-                    <HorizontalStackLayout Spacing="12" VerticalOptions="Center" Margin="0,20,0,0">
+                    <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                        <HorizontalStackLayout.Margin>
+                            <OnPlatform x:TypeArguments="Thickness">
+                                <On Platform="WinUI" Value="0,8,0,0" />
+                                <On Platform="Default" Value="0,20,0,0" />
+                            </OnPlatform>
+                        </HorizontalStackLayout.Margin>
                         <controls:SymbolIcon
                             HeightRequest="{StaticResource IconSizeLarge}"
                             SymbolName="waveform.path.ecg"
@@ -1229,13 +1241,25 @@
 
                     <!--  Sección: Análisis rápido  -->
                     <Label
-                        Margin="0,12,0,0"
                         FontSize="{StaticResource FontSizeBody}"
                         Text="Análisis rápido"
-                        TextColor="#FFB1B1B1" />
+                        TextColor="#FFB1B1B1">
+                        <Label.Margin>
+                            <OnPlatform x:TypeArguments="Thickness">
+                                <On Platform="WinUI" Value="0,4,0,0" />
+                                <On Platform="Default" Value="0,12,0,0" />
+                            </OnPlatform>
+                        </Label.Margin>
+                    </Label>
 
                     <!--  Toggle: Único / Paralelo / Cuádruple  -->
-                    <HorizontalStackLayout Spacing="16" HorizontalOptions="Center" Margin="0,0,0,8">
+                    <HorizontalStackLayout Spacing="16" HorizontalOptions="Center">
+                        <HorizontalStackLayout.Margin>
+                            <OnPlatform x:TypeArguments="Thickness">
+                                <On Platform="WinUI" Value="0,0,0,4" />
+                                <On Platform="Default" Value="0,0,0,8" />
+                            </OnPlatform>
+                        </HorizontalStackLayout.Margin>
                         <HorizontalStackLayout Spacing="6">
                             <RadioButton
                                 GroupName="AnalysisMode"
