@@ -7,6 +7,8 @@ using CrownRFEP_Reader.ViewModels;
 
 #if MACCATALYST
 using CrownRFEP_Reader.Platforms.MacCatalyst;
+#elif WINDOWS
+using CrownRFEP_Reader.Platforms.Windows;
 #endif
 
 namespace CrownRFEP_Reader.Views;
@@ -519,7 +521,10 @@ public partial class SinglePlayerPage : ContentPage
         VideoScrubBehavior.ScrubUpdated += OnScrubUpdated;
         VideoScrubBehavior.ScrubEnded += OnScrubEnded;
 
-    #if MACCATALYST
+    #if MACCATALYST || WINDOWS
+    #if WINDOWS
+        KeyPressHandler.EnsureAttached();
+    #endif
         KeyPressHandler.SpaceBarPressed += OnSpaceBarPressed;
         KeyPressHandler.ArrowLeftPressed += OnArrowLeftPressed;
         KeyPressHandler.ArrowRightPressed += OnArrowRightPressed;
@@ -542,7 +547,7 @@ public partial class SinglePlayerPage : ContentPage
         VideoScrubBehavior.ScrubUpdated -= OnScrubUpdated;
         VideoScrubBehavior.ScrubEnded -= OnScrubEnded;
 
-#if MACCATALYST
+#if MACCATALYST || WINDOWS
         KeyPressHandler.SpaceBarPressed -= OnSpaceBarPressed;
         KeyPressHandler.ArrowLeftPressed -= OnArrowLeftPressed;
         KeyPressHandler.ArrowRightPressed -= OnArrowRightPressed;
@@ -562,7 +567,7 @@ public partial class SinglePlayerPage : ContentPage
         AppLog.Info("SinglePlayerPage", "OnDisappearing END");
     }
 
-#if MACCATALYST
+#if MACCATALYST || WINDOWS
     private void OnSpaceBarPressed(object? sender, EventArgs e)
     {
         if (!_isPageActive || _isTextPromptOpen)
