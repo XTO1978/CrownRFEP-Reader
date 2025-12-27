@@ -24,6 +24,15 @@ public partial class QuadPlayerPage : ContentPage
     private bool _isDragging3;
     private bool _isDragging4;
 
+#if WINDOWS
+    // Throttle para seeks en Windows (evitar bloqueos)
+    private DateTime _lastSeekTime1 = DateTime.MinValue;
+    private DateTime _lastSeekTime2 = DateTime.MinValue;
+    private DateTime _lastSeekTime3 = DateTime.MinValue;
+    private DateTime _lastSeekTime4 = DateTime.MinValue;
+    private const int SeekThrottleMs = 10; // milisegundos entre seeks
+#endif
+
     public QuadPlayerPage(QuadPlayerViewModel viewModel)
     {
         InitializeComponent();
@@ -654,32 +663,69 @@ public partial class QuadPlayerPage : ContentPage
     {
         if (!_isDragging1) return;
         var position = e.NewValue * _viewModel.Duration1.TotalSeconds;
-        MediaPlayer1.SeekTo(TimeSpan.FromSeconds(position));
         _viewModel.CurrentPosition1 = TimeSpan.FromSeconds(position);
+#if WINDOWS
+        // En Windows, throttle seeks para evitar bloqueos
+        var now = DateTime.UtcNow;
+        if ((now - _lastSeekTime1).TotalMilliseconds >= SeekThrottleMs)
+        {
+            _lastSeekTime1 = now;
+            MediaPlayer1.SeekTo(TimeSpan.FromSeconds(position));
+        }
+#else
+        MediaPlayer1.SeekTo(TimeSpan.FromSeconds(position));
+#endif
     }
 
     private void OnProgressSlider2ValueChanged(object? sender, ValueChangedEventArgs e)
     {
         if (!_isDragging2) return;
         var position = e.NewValue * _viewModel.Duration2.TotalSeconds;
-        MediaPlayer2.SeekTo(TimeSpan.FromSeconds(position));
         _viewModel.CurrentPosition2 = TimeSpan.FromSeconds(position);
+#if WINDOWS
+        var now = DateTime.UtcNow;
+        if ((now - _lastSeekTime2).TotalMilliseconds >= SeekThrottleMs)
+        {
+            _lastSeekTime2 = now;
+            MediaPlayer2.SeekTo(TimeSpan.FromSeconds(position));
+        }
+#else
+        MediaPlayer2.SeekTo(TimeSpan.FromSeconds(position));
+#endif
     }
 
     private void OnProgressSlider3ValueChanged(object? sender, ValueChangedEventArgs e)
     {
         if (!_isDragging3) return;
         var position = e.NewValue * _viewModel.Duration3.TotalSeconds;
-        MediaPlayer3.SeekTo(TimeSpan.FromSeconds(position));
         _viewModel.CurrentPosition3 = TimeSpan.FromSeconds(position);
+#if WINDOWS
+        var now = DateTime.UtcNow;
+        if ((now - _lastSeekTime3).TotalMilliseconds >= SeekThrottleMs)
+        {
+            _lastSeekTime3 = now;
+            MediaPlayer3.SeekTo(TimeSpan.FromSeconds(position));
+        }
+#else
+        MediaPlayer3.SeekTo(TimeSpan.FromSeconds(position));
+#endif
     }
 
     private void OnProgressSlider4ValueChanged(object? sender, ValueChangedEventArgs e)
     {
         if (!_isDragging4) return;
         var position = e.NewValue * _viewModel.Duration4.TotalSeconds;
-        MediaPlayer4.SeekTo(TimeSpan.FromSeconds(position));
         _viewModel.CurrentPosition4 = TimeSpan.FromSeconds(position);
+#if WINDOWS
+        var now = DateTime.UtcNow;
+        if ((now - _lastSeekTime4).TotalMilliseconds >= SeekThrottleMs)
+        {
+            _lastSeekTime4 = now;
+            MediaPlayer4.SeekTo(TimeSpan.FromSeconds(position));
+        }
+#else
+        MediaPlayer4.SeekTo(TimeSpan.FromSeconds(position));
+#endif
     }
 
     #endregion

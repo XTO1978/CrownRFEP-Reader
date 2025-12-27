@@ -11,10 +11,15 @@
     Title="Análisis Cuádruple"
     x:DataType="vm:QuadPlayerViewModel"
     BackgroundColor="#FF0D0D0D"
-    Shell.NavBarIsVisible="True"
     Shell.BackgroundColor="#FF0D0D0D"
     Shell.ForegroundColor="White"
     Shell.TitleColor="White">
+    <Shell.NavBarIsVisible>
+        <OnPlatform x:TypeArguments="x:Boolean">
+            <On Platform="WinUI" Value="False" />
+            <On Platform="Default" Value="True" />
+        </OnPlatform>
+    </Shell.NavBarIsVisible>
 
     <Grid RowDefinitions="*,Auto">
         <!--  Contenedor de 4 vídeos (2x2)  -->
@@ -94,7 +99,7 @@
                                 ThumbColor="#FF6DDDFF"
                                 MinimumTrackColor="#FF6DDDFF"
                                 MaximumTrackColor="#FF3A3A3A"
-                                Value="{Binding Progress1}"
+                                Value="{Binding Progress1, Mode=OneWay}"
                                 ValueChanged="OnProgressSlider1ValueChanged"
                                 DragStarted="OnProgressSlider1DragStarted"
                                 DragCompleted="OnProgressSlider1DragCompleted" />
@@ -192,7 +197,7 @@
                                 ThumbColor="#FF6DDDFF"
                                 MinimumTrackColor="#FF6DDDFF"
                                 MaximumTrackColor="#FF3A3A3A"
-                                Value="{Binding Progress2}"
+                                Value="{Binding Progress2, Mode=OneWay}"
                                 ValueChanged="OnProgressSlider2ValueChanged"
                                 DragStarted="OnProgressSlider2DragStarted"
                                 DragCompleted="OnProgressSlider2DragCompleted" />
@@ -290,7 +295,7 @@
                                 ThumbColor="#FF6DDDFF"
                                 MinimumTrackColor="#FF6DDDFF"
                                 MaximumTrackColor="#FF3A3A3A"
-                                Value="{Binding Progress3}"
+                                Value="{Binding Progress3, Mode=OneWay}"
                                 ValueChanged="OnProgressSlider3ValueChanged"
                                 DragStarted="OnProgressSlider3DragStarted"
                                 DragCompleted="OnProgressSlider3DragCompleted" />
@@ -388,7 +393,7 @@
                                 ThumbColor="#FF6DDDFF"
                                 MinimumTrackColor="#FF6DDDFF"
                                 MaximumTrackColor="#FF3A3A3A"
-                                Value="{Binding Progress4}"
+                                Value="{Binding Progress4, Mode=OneWay}"
                                 ValueChanged="OnProgressSlider4ValueChanged"
                                 DragStarted="OnProgressSlider4DragStarted"
                                 DragCompleted="OnProgressSlider4DragCompleted" />
