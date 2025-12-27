@@ -972,7 +972,6 @@ public class ImportViewModel : BaseViewModel
 
             // Procesar los videos
             var currentVideo = 0;
-            var cancellationToken = _importProgressService.GetCancellationToken();
 
             foreach (var pendingVideo in PendingVideos.ToList())
             {
