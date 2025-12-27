@@ -539,7 +539,14 @@ public partial class SinglePlayerPage : ContentPage
         KeyPressHandler.BackspacePressed -= OnBackspacePressed;
 #endif
         
-        CleanupResources();
+        try
+        {
+            CleanupResources();
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("SinglePlayerPage", "OnDisappearing: CleanupResources threw", ex);
+        }
 
         AppLog.Info("SinglePlayerPage", "OnDisappearing END");
     }
@@ -664,9 +671,10 @@ public partial class SinglePlayerPage : ContentPage
             {
                 AppLog.Error("SinglePlayerPage", "CleanupResources: MediaPlayer.Stop() threw", ex);
             }
-#if !MACCATALYST
-            MediaPlayer.Handler?.DisconnectHandler();
-#endif
+
+            // NOTA: NO llamar a DisconnectHandler() en Windows durante la navegación
+            // ya que corrompe el Frame de navegación y causa crash (0x80004004 E_ABORT)
+            // WinUI limpia automáticamente los handlers cuando la página se descarga
         }
 
         AppLog.Info("SinglePlayerPage", "CleanupResources END");
