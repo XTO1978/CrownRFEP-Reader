@@ -11,10 +11,15 @@
     Title="Análisis Paralelo"
     x:DataType="vm:ParallelPlayerViewModel"
     BackgroundColor="#FF0D0D0D"
-    Shell.NavBarIsVisible="True"
     Shell.BackgroundColor="#FF0D0D0D"
     Shell.ForegroundColor="White"
     Shell.TitleColor="White">
+    <Shell.NavBarIsVisible>
+        <OnPlatform x:TypeArguments="x:Boolean">
+            <On Platform="WinUI" Value="False" />
+            <On Platform="Default" Value="True" />
+        </OnPlatform>
+    </Shell.NavBarIsVisible>
 
     <Grid RowDefinitions="*,Auto">
         <!--  Contenedor de vídeos  -->
@@ -296,11 +301,17 @@
             <Grid
                 IsVisible="{Binding IsVerticalOrientation}"
                 HorizontalOptions="Center"
-                WidthRequest="800"
-                MaximumWidthRequest="900">
+                VerticalOptions="Fill">
+                <Grid.MaximumWidthRequest>
+                    <OnPlatform x:TypeArguments="x:Double">
+                        <On Platform="WinUI" Value="700" />
+                        <On Platform="Default" Value="900" />
+                    </OnPlatform>
+                </Grid.MaximumWidthRequest>
             <Grid
                 RowDefinitions="*,*"
-                RowSpacing="1">
+                RowSpacing="0"
+                VerticalOptions="Fill">
                 <!--  Vídeo 1  -->
                 <Border
                     BackgroundColor="#FF0D0D0D"
