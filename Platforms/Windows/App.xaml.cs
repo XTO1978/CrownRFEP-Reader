@@ -1,5 +1,6 @@
-﻿using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml;
 using System.Runtime.ExceptionServices;
+using CrownRFEP_Reader;
 using CrownRFEP_Reader.Platforms.Windows;
 
 // To learn more about WinUI, the WinUI project structure,
@@ -56,7 +57,7 @@ public partial class App : MauiWinUIApplication
 		// Capturar excepciones de primer chance para logging
 		AppDomain.CurrentDomain.FirstChanceException += (sender, e) =>
 		{
-			// Solo loggear excepciones relacionadas con navegación o media
+			// Solo loggear excepciones relacionadas con navegaci�n o media
 			var exType = e.Exception?.GetType().Name ?? "";
 			if (exType.Contains("COMException") || 
 			    exType.Contains("InvalidOperation") || 

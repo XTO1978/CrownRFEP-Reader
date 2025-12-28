@@ -114,6 +114,9 @@ public partial class SinglePlayerPage : ContentPage
         if (VideoLessonCameraPreview != null)
             VideoLessonCameraPreview.IsActive = _isVideoLessonRecording && _videoLessonCameraEnabled;
 
+        if (VideoLessonWebcamPreview != null)
+            VideoLessonWebcamPreview.IsActive = _isVideoLessonRecording && _videoLessonCameraEnabled;
+
         // VideoLessonOptionsPanel siempre visible
 
         UpdateVideoLessonToggleVisualState();
@@ -201,6 +204,11 @@ public partial class SinglePlayerPage : ContentPage
             replayKit.SetOptions(cameraEnabled: _videoLessonCameraEnabled, microphoneEnabled: _videoLessonMicEnabled);
 #endif
 
+#if WINDOWS
+        if (_videoLessonRecorder is CrownRFEP_Reader.Platforms.Windows.WindowsVideoLessonRecorder windowsRecorder)
+            windowsRecorder.SetOptions(cameraEnabled: _videoLessonCameraEnabled, microphoneEnabled: _videoLessonMicEnabled);
+#endif
+
         var shouldShowCamera = _isVideoLessonRecording && _videoLessonCameraEnabled;
 
         if (VideoLessonCameraPip != null)
@@ -208,6 +216,9 @@ public partial class SinglePlayerPage : ContentPage
 
         if (VideoLessonCameraPreview != null)
             VideoLessonCameraPreview.IsActive = shouldShowCamera;
+
+        if (VideoLessonWebcamPreview != null)
+            VideoLessonWebcamPreview.IsActive = shouldShowCamera;
 
         if (shouldShowCamera)
             EnsurePipPositioned();
@@ -255,8 +266,26 @@ public partial class SinglePlayerPage : ContentPage
             if (VideoLessonCameraPreview != null)
                 VideoLessonCameraPreview.IsActive = _videoLessonCameraEnabled;
 
+            if (VideoLessonWebcamPreview != null)
+                VideoLessonWebcamPreview.IsActive = _videoLessonCameraEnabled;
+
             if (_videoLessonCameraEnabled)
                 EnsurePipPositioned();
+
+            // En Windows a veces el layout todavía no está listo; re-posicionar tras un tick
+            MainThread.BeginInvokeOnMainThread(async () =>
+            {
+                try
+                {
+                    await Task.Delay(75);
+                    if (_isVideoLessonRecording && _videoLessonCameraEnabled)
+                        EnsurePipPositioned();
+                }
+                catch
+                {
+                    // Ignorar
+                }
+            });
             UpdateVideoLessonToggleVisualState();
             UpdateVideoLessonOptionsVisualState();
             StartRecordingTimer();
@@ -273,6 +302,9 @@ public partial class SinglePlayerPage : ContentPage
 
             if (VideoLessonCameraPreview != null)
                 VideoLessonCameraPreview.IsActive = false;
+
+            if (VideoLessonWebcamPreview != null)
+                VideoLessonWebcamPreview.IsActive = false;
 
             // VideoLessonOptionsPanel siempre visible
             StopRecordingTimer();
@@ -299,6 +331,9 @@ public partial class SinglePlayerPage : ContentPage
             if (VideoLessonCameraPreview != null)
                 VideoLessonCameraPreview.IsActive = false;
 
+            if (VideoLessonWebcamPreview != null)
+                VideoLessonWebcamPreview.IsActive = false;
+
             StopRecordingTimer();
             _currentVideoLessonPath = null;
             return;
@@ -307,6 +342,8 @@ public partial class SinglePlayerPage : ContentPage
         try
         {
             _isVideoLessonStartStopInProgress = true;
+            var path = _currentVideoLessonPath;
+            AppLog.Info("SinglePlayerPage", $"StopVideoLessonRecordingAsync: stopping recorder | path='{path}'");
             await _videoLessonRecorder.StopAsync();
             _isVideoLessonRecording = false;
             _isVideoLessonMode = false;
@@ -319,24 +356,34 @@ public partial class SinglePlayerPage : ContentPage
             if (VideoLessonCameraPreview != null)
                 VideoLessonCameraPreview.IsActive = false;
 
+            if (VideoLessonWebcamPreview != null)
+                VideoLessonWebcamPreview.IsActive = false;
+
             // VideoLessonOptionsPanel siempre visible
             StopRecordingTimer();
 
             var sessionId = _viewModel.VideoClip?.SessionId ?? 0;
-            if (!string.IsNullOrWhiteSpace(_currentVideoLessonPath) && File.Exists(_currentVideoLessonPath))
+            if (!string.IsNullOrWhiteSpace(path)
+                && await WaitForVideoLessonFileReadyAsync(path).ConfigureAwait(false))
             {
+                long size = 0;
+                try { size = new FileInfo(path).Length; } catch { }
+                AppLog.Info("SinglePlayerPage", $"StopVideoLessonRecordingAsync: file ready | size={size} | path='{path}'");
+
                 var lesson = new VideoLesson
                 {
                     SessionId = sessionId,
                     CreatedAtUtc = DateTime.UtcNow,
-                    FilePath = _currentVideoLessonPath,
+                    FilePath = path,
                     Title = null
                 };
 
-                await _databaseService.SaveVideoLessonAsync(lesson);
+                var savedId = await _databaseService.SaveVideoLessonAsync(lesson);
+                AppLog.Info("SinglePlayerPage", $"StopVideoLessonRecordingAsync: saved VideoLesson | id={savedId} | sessionId={sessionId}");
             }
             else
             {
+                AppLog.Info("SinglePlayerPage", $"StopVideoLessonRecordingAsync: file NOT ready or missing | path='{path}' | exists={(path != null && File.Exists(path))}");
                 await DisplayAlert("Grabación finalizada", "La grabación terminó, pero no se encontró el archivo generado.", "OK");
             }
         }
@@ -413,13 +460,14 @@ public partial class SinglePlayerPage : ContentPage
 
     private void PositionPipTopCenter()
     {
-        if (RootGrid == null || VideoLessonCameraPip == null)
+        if (VideoLessonCameraPip == null)
             return;
 
         const double inset = 16;
 
-        var containerWidth = RootGrid.Width;
-        var containerHeight = RootGrid.Height;
+        var container = VideoLessonCameraPip.Parent as VisualElement;
+        var containerWidth = container?.Width ?? RootGrid?.Width ?? 0;
+        var containerHeight = container?.Height ?? RootGrid?.Height ?? 0;
         if (containerWidth <= 0 || containerHeight <= 0)
             return;
 
@@ -442,13 +490,14 @@ public partial class SinglePlayerPage : ContentPage
 
     private void ClampPipWithinBounds()
     {
-        if (RootGrid == null || VideoLessonCameraPip == null)
+        if (VideoLessonCameraPip == null)
             return;
 
         const double inset = 16;
 
-        var containerWidth = RootGrid.Width;
-        var containerHeight = RootGrid.Height;
+        var container = VideoLessonCameraPip.Parent as VisualElement;
+        var containerWidth = container?.Width ?? RootGrid?.Width ?? 0;
+        var containerHeight = container?.Height ?? RootGrid?.Height ?? 0;
         if (containerWidth <= 0 || containerHeight <= 0)
             return;
 
@@ -643,6 +692,57 @@ public partial class SinglePlayerPage : ContentPage
     {
         AppLog.Info("SinglePlayerPage", "CleanupResources BEGIN");
 
+        // Si el usuario sale con una videolección en curso, detenerla aquí
+        // (si no, ffmpeg sigue ejecutándose y el MP4 queda sin finalizar).
+        if (_videoLessonRecorder.IsRecording)
+        {
+            var pathToSave = _currentVideoLessonPath;
+            var sessionIdToSave = _viewModel.VideoClip?.SessionId ?? 0;
+
+            AppLog.Info("SinglePlayerPage", $"CleanupResources: leaving while recording | path='{pathToSave}' | sessionId={sessionIdToSave}");
+
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _videoLessonRecorder.StopAsync().ConfigureAwait(false);
+
+                    if (!string.IsNullOrWhiteSpace(pathToSave)
+                        && sessionIdToSave > 0
+                        && await WaitForVideoLessonFileReadyAsync(pathToSave).ConfigureAwait(false))
+                    {
+                        long size = 0;
+                        try { size = new FileInfo(pathToSave).Length; } catch { }
+                        AppLog.Info("SinglePlayerPage", $"CleanupResources: file ready | size={size} | path='{pathToSave}'");
+
+                        var lesson = new VideoLesson
+                        {
+                            SessionId = sessionIdToSave,
+                            CreatedAtUtc = DateTime.UtcNow,
+                            FilePath = pathToSave,
+                            Title = null
+                        };
+                        var savedId = await _databaseService.SaveVideoLessonAsync(lesson).ConfigureAwait(false);
+                        AppLog.Info("SinglePlayerPage", $"CleanupResources: saved VideoLesson | id={savedId} | sessionId={sessionIdToSave}");
+                    }
+                    else
+                    {
+                        AppLog.Info("SinglePlayerPage", $"CleanupResources: file NOT ready or missing | path='{pathToSave}' | exists={(pathToSave != null && File.Exists(pathToSave))}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    AppLog.Error("SinglePlayerPage", "CleanupResources: stop videolección failed", ex);
+                }
+            });
+
+            // Evitar que la UI piense que sigue grabando
+            _isVideoLessonRecording = false;
+            _isVideoLessonMode = false;
+            _isVideoLessonStartStopInProgress = false;
+            _currentVideoLessonPath = null;
+        }
+
         if (RootGrid != null)
             RootGrid.SizeChanged -= OnRootGridSizeChanged;
 
@@ -654,6 +754,8 @@ public partial class SinglePlayerPage : ContentPage
         {
             if (VideoLessonCameraPreview != null)
                 VideoLessonCameraPreview.IsActive = false;
+            if (VideoLessonWebcamPreview != null)
+                VideoLessonWebcamPreview.IsActive = false;
         }
         catch (Exception ex)
         {
@@ -724,6 +826,40 @@ public partial class SinglePlayerPage : ContentPage
         }
 
         AppLog.Info("SinglePlayerPage", "CleanupResources END");
+    }
+
+    private static async Task<bool> WaitForVideoLessonFileReadyAsync(string path, int minBytes = 1024, int timeoutMs = 2500)
+    {
+        var start = Environment.TickCount;
+
+        while (Environment.TickCount - start < timeoutMs)
+        {
+            try
+            {
+                if (!File.Exists(path))
+                {
+                    await Task.Delay(100).ConfigureAwait(false);
+                    continue;
+                }
+
+                var info = new FileInfo(path);
+                if (info.Length < minBytes)
+                {
+                    await Task.Delay(100).ConfigureAwait(false);
+                    continue;
+                }
+
+                using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                return stream.Length >= minBytes;
+            }
+            catch
+            {
+                // El archivo puede estar aún en escritura/bloqueado; reintentar.
+                await Task.Delay(100).ConfigureAwait(false);
+            }
+        }
+
+        return File.Exists(path) && new FileInfo(path).Length >= minBytes;
     }
 
     private void OnToggleDrawingToolsTapped(object? sender, TappedEventArgs e)

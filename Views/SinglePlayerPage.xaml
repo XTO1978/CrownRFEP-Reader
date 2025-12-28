@@ -1911,30 +1911,52 @@
                         TintColor="White"
                         WidthRequest="{StaticResource IconSizeLarge}" />
                 </Border>
-            </Grid>
-        </Border>
 
-        <!-- PiP cámara (Videolección) - por encima de todo y arrastrable -->
-        <Border
-            x:Name="VideoLessonCameraPip"
-            Grid.RowSpan="3"
-            Margin="0"
-            Padding="0"
-            BackgroundColor="#CC000000"
-            HorizontalOptions="Start"
-            IsVisible="False"
-            StrokeShape="RoundRectangle 10"
-            StrokeThickness="0"
-            VerticalOptions="Start"
-            WidthRequest="300"
-            HeightRequest="200"
-            ZIndex="1000">
-            <Border.GestureRecognizers>
-                <PanGestureRecognizer PanUpdated="OnVideoLessonPipPanUpdated" />
-            </Border.GestureRecognizers>
-            <controls:ReplayKitCameraPreview
-                x:Name="VideoLessonCameraPreview"
-                IsActive="False" />
+                <!-- PiP cámara (Videolección) - overlay dentro del área del vídeo (WinUI puede tapar overlays fuera del surface) -->
+                <Border
+                    x:Name="VideoLessonCameraPip"
+                    Margin="0"
+                    Padding="0"
+                    BackgroundColor="#CC000000"
+                    HorizontalOptions="Start"
+                    IsVisible="False"
+                    StrokeShape="RoundRectangle 10"
+                    StrokeThickness="0"
+                    VerticalOptions="Start"
+                    WidthRequest="300"
+                    HeightRequest="200"
+                    ZIndex="1000">
+                    <Border.GestureRecognizers>
+                        <PanGestureRecognizer PanUpdated="OnVideoLessonPipPanUpdated" />
+                    </Border.GestureRecognizers>
+
+                    <!-- MacCatalyst: ReplayKit camera preview -->
+                    <controls:ReplayKitCameraPreview
+                        x:Name="VideoLessonCameraPreview"
+                        IsActive="False">
+                        <controls:ReplayKitCameraPreview.IsVisible>
+                            <OnPlatform x:TypeArguments="x:Boolean">
+                                <On Platform="MacCatalyst" Value="True" />
+                                <On Platform="Default" Value="False" />
+                            </OnPlatform>
+                        </controls:ReplayKitCameraPreview.IsVisible>
+                    </controls:ReplayKitCameraPreview>
+
+                    <!-- Windows: WebcamPreview usando MediaCapture -->
+                    <controls:WebcamPreview
+                        x:Name="VideoLessonWebcamPreview"
+                        HorizontalOptions="Fill"
+                        VerticalOptions="Fill"
+                        IsActive="False">
+                        <controls:WebcamPreview.IsVisible>
+                            <OnPlatform x:TypeArguments="x:Boolean">
+                                <On Platform="WinUI" Value="True" />
+                                <On Platform="Default" Value="False" />
+                            </OnPlatform>
+                        </controls:WebcamPreview.IsVisible>
+                    </controls:WebcamPreview>
+                </Border>
+            </Grid>
         </Border>
 
         <!--  Controles de reproducción  -->

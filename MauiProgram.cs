@@ -35,7 +35,7 @@ public static class MauiProgram
 #endif
 
 #if WINDOWS
-				handlers.AddHandler(typeof(ReplayKitCameraPreview), typeof(ReplayKitCameraPreviewHandler));
+				handlers.AddHandler(typeof(WebcamPreview), typeof(WebcamPreviewHandler));
 #endif
 				
 #if MACCATALYST || IOS || WINDOWS
