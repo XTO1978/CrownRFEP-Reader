@@ -83,6 +83,12 @@ public class HoverVideoPreviewBehavior : Behavior<View>
                         break;
                 }
             });
+
+            // Importante en MacCatalyst: no cancelar clicks/taps del control.
+            _hoverRecognizer.CancelsTouchesInView = false;
+            _hoverRecognizer.DelaysTouchesBegan = false;
+            _hoverRecognizer.DelaysTouchesEnded = false;
+
             platformView.AddGestureRecognizer(_hoverRecognizer);
         }
 #endif

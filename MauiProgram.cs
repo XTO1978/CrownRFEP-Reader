@@ -9,8 +9,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Handlers;
 #if MACCATALYST
 using CrownRFEP_Reader.Platforms.MacCatalyst;
-#endif
-#if MACCATALYST
 using UIKit;
 using Foundation;
 #endif
@@ -42,7 +40,7 @@ public static class MauiProgram
 				handlers.AddHandler(typeof(PrecisionVideoPlayer), typeof(PrecisionVideoPlayerHandler));
 #endif
 
-#if MACCATALYST || IOS
+#if MACCATALYST
 				// Forzar texto blanco en DatePicker para MacCatalyst
 				DatePickerHandler.Mapper.AppendToMapping("WhiteTextColor", (handler, view) =>
 				{
@@ -73,7 +71,7 @@ public static class MauiProgram
 		builder.Services.AddSingleton<StatisticsService>();
 		builder.Services.AddSingleton<ThumbnailService>();
 
-#if MACCATALYST || IOS
+#if MACCATALYST
 		builder.Services.AddSingleton<IVideoLessonRecorder, ReplayKitVideoLessonRecorder>();
 #elif WINDOWS
 		builder.Services.AddSingleton<IVideoLessonRecorder, CrownRFEP_Reader.Platforms.Windows.WindowsVideoLessonRecorder>();
@@ -81,12 +79,8 @@ public static class MauiProgram
 		builder.Services.AddSingleton<IVideoLessonRecorder, NullVideoLessonRecorder>();
 #endif
 
-		// HealthKit solo está disponible en iOS real (iPhone/iPad), no en macOS/MacCatalyst
-#if IOS && !MACCATALYST
-		builder.Services.AddSingleton<IHealthKitService, AppleHealthKitService>();
-#else
+		// HealthKit - usar stub para todas las plataformas por ahora
 		builder.Services.AddSingleton<IHealthKitService, StubHealthKitService>();
-#endif
 
 		// Servicio de composición de video
 #if MACCATALYST

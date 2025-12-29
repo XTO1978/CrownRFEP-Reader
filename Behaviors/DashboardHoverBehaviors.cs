@@ -150,6 +150,11 @@ public class DashboardSessionItemHoverBehavior : Behavior<Border>
             }
         });
 
+        // Importante en MacCatalyst: no cancelar clicks/taps del control.
+        _hoverRecognizer.CancelsTouchesInView = false;
+        _hoverRecognizer.DelaysTouchesBegan = false;
+        _hoverRecognizer.DelaysTouchesEnded = false;
+
         view.AddGestureRecognizer(_hoverRecognizer);
 #endif
     }
@@ -257,6 +262,11 @@ public class DashboardAllGalleryHoverBehavior : Behavior<Border>
                     break;
             }
         });
+
+        // Importante en MacCatalyst: no cancelar clicks/taps del control.
+        _hoverRecognizer.CancelsTouchesInView = false;
+        _hoverRecognizer.DelaysTouchesBegan = false;
+        _hoverRecognizer.DelaysTouchesEnded = false;
 
         view.AddGestureRecognizer(_hoverRecognizer);
 #endif

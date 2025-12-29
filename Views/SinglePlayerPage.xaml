@@ -1933,30 +1933,19 @@
                     </Border.GestureRecognizers>
 
                     <!-- MacCatalyst: ReplayKit camera preview -->
+                    <!-- IMPORTANTE: usar x:Load para evitar instanciar controles de otras plataformas (si no, faltan handlers y crashea) -->
                     <controls:ReplayKitCameraPreview
                         x:Name="VideoLessonCameraPreview"
-                        IsActive="False">
-                        <controls:ReplayKitCameraPreview.IsVisible>
-                            <OnPlatform x:TypeArguments="x:Boolean">
-                                <On Platform="MacCatalyst" Value="True" />
-                                <On Platform="Default" Value="False" />
-                            </OnPlatform>
-                        </controls:ReplayKitCameraPreview.IsVisible>
-                    </controls:ReplayKitCameraPreview>
+                        x:Load="{OnPlatform MacCatalyst=True, Default=False}"
+                        IsActive="False" />
 
                     <!-- Windows: WebcamPreview usando MediaCapture -->
                     <controls:WebcamPreview
                         x:Name="VideoLessonWebcamPreview"
+                        x:Load="{OnPlatform WinUI=True, Default=False}"
                         HorizontalOptions="Fill"
                         VerticalOptions="Fill"
-                        IsActive="False">
-                        <controls:WebcamPreview.IsVisible>
-                            <OnPlatform x:TypeArguments="x:Boolean">
-                                <On Platform="WinUI" Value="True" />
-                                <On Platform="Default" Value="False" />
-                            </OnPlatform>
-                        </controls:WebcamPreview.IsVisible>
-                    </controls:WebcamPreview>
+                        IsActive="False" />
                 </Border>
             </Grid>
         </Border>
