@@ -275,11 +275,13 @@ public class PrecisionVideoPlayer : View, INotifyPropertyChanged
         _isUpdatingPositionFromHandler = true;
         SetValue(PositionProperty, position);
         _isUpdatingPositionFromHandler = false;
+        System.Diagnostics.Debug.WriteLine($"[PrecisionVideoPlayer] UpdatePosition: {position} -> RaisePositionChanged");
         RaisePositionChanged(position);
     }
 
     internal void UpdateDuration(TimeSpan duration)
     {
+        System.Diagnostics.Debug.WriteLine($"[PrecisionVideoPlayer] UpdateDuration: {duration}");
         SetValue(DurationProperty, duration);
     }
 

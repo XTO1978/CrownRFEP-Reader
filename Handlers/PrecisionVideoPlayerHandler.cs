@@ -919,6 +919,7 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
 
             // Actualizar duración
             var duration = sender.PlaybackSession.NaturalDuration;
+            System.Diagnostics.Debug.WriteLine($"[WinHandler] OnMediaOpened: duration={duration}");
             VirtualView.UpdateDuration(duration);
 
             // Intentar detectar frame rate (usar 30 fps por defecto)
@@ -958,7 +959,9 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
         if (_isDisconnecting || _mediaPlayer == null || VirtualView == null || _isUpdatingPosition) return;
 
         _isUpdatingPosition = true;
-        VirtualView.UpdatePosition(_mediaPlayer.PlaybackSession.Position);
+        var pos = _mediaPlayer.PlaybackSession.Position;
+        System.Diagnostics.Debug.WriteLine($"[WinHandler] OnPositionTimerTick: pos={pos}");
+        VirtualView.UpdatePosition(pos);
         _isUpdatingPosition = false;
     }
 
@@ -970,6 +973,7 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
     {
         if (_isDisconnecting || _mediaPlayer == null) return;
 
+        System.Diagnostics.Debug.WriteLine($"[WinHandler] OnPlayRequested: starting timer");
         _mediaPlayer.Play();
         _positionTimer?.Start();
     }

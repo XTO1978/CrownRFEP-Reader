@@ -1082,12 +1082,27 @@ public partial class SinglePlayerPage : ContentPage
 
     private void OnPositionChanged(object? sender, TimeSpan position)
     {
-        if (!_isPageActive || _isDraggingSlider) return;
+        if (!_isPageActive || _isDraggingSlider || _isScrubbing)
+        {
+            System.Diagnostics.Debug.WriteLine($"[SinglePlayerPage] OnPositionChanged SKIPPED: _isPageActive={_isPageActive}, _isDraggingSlider={_isDraggingSlider}, _isScrubbing={_isScrubbing}");
+            return;
+        }
 
+        System.Diagnostics.Debug.WriteLine($"[SinglePlayerPage] OnPositionChanged: {position}");
         MainThread.BeginInvokeOnMainThread(() =>
         {
             if (!_isPageActive) return;
             _viewModel.CurrentPosition = position;
+            
+            // En Windows, actualizar el slider directamente como respaldo
+#if WINDOWS
+            if (ProgressSlider != null && _viewModel.Duration.TotalSeconds > 0)
+            {
+                var progress = position.TotalSeconds / _viewModel.Duration.TotalSeconds;
+                System.Diagnostics.Debug.WriteLine($"[SinglePlayerPage] Updating ProgressSlider.Value={progress}");
+                ProgressSlider.Value = progress;
+            }
+#endif
         });
     }
 

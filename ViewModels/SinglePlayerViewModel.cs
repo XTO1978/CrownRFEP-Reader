@@ -203,6 +203,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             OnPropertyChanged();
             OnPropertyChanged(nameof(CurrentPositionText));
             UpdateProgress();
+            System.Diagnostics.Debug.WriteLine($"[SinglePlayerVM] CurrentPosition={value}, Progress={_progress}");
         }
     }
 
@@ -211,6 +212,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         get => _duration;
         set
         {
+            System.Diagnostics.Debug.WriteLine($"[SinglePlayerVM] Duration SET: {value}");
             _duration = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(DurationText));

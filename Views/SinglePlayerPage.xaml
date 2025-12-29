@@ -80,6 +80,8 @@
                     x:Name="MediaPlayer"
                     Aspect="{Binding VideoAspect}"
                     IsMuted="False"
+                    Duration="{Binding Duration, Mode=OneWayToSource}"
+                    Position="{Binding CurrentPosition, Mode=OneWayToSource}"
                     Source="{Binding VideoPath}" />
                 
                 <!--  Overlay transparente para capturar gestos de scrubbing (trackpad/mouse wheel)  -->
