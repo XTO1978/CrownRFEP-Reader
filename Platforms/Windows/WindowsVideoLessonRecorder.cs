@@ -8,7 +8,6 @@ using Windows.Graphics;
 using Windows.Graphics.Capture;
 using Windows.Graphics.DirectX;
 using Windows.Graphics.DirectX.Direct3D11;
-using Windows.Media.Capture;
 using Windows.Media.Core;
 using Windows.Media.Editing;
 using Windows.Media.MediaProperties;
@@ -16,6 +15,8 @@ using Windows.Media.Transcoding;
 using Windows.Storage;
 using Windows.Storage.Streams;
 using Microsoft.UI.Xaml;
+using NAudio.CoreAudioApi;
+using NAudio.Wave;
 using WinRT;
 
 namespace CrownRFEP_Reader.Platforms.Windows;
@@ -24,7 +25,7 @@ namespace CrownRFEP_Reader.Platforms.Windows;
 /// Implementación de grabación de videolección para Windows usando Windows.Graphics.Capture.
 /// Esta API funciona con apps unpackaged (sin MSIX), a diferencia de AppRecording.
 /// - Video: Windows.Graphics.Capture (captura la ventana de la app)
-/// - Audio: MediaCapture (micrófono) y mux a MP4 (MediaComposition)
+/// - Audio: WASAPI (loopback + mic) vía NAudio y mux a MP4 (MediaComposition)
 /// </summary>
 public sealed class WindowsVideoLessonRecorder : IVideoLessonRecorder, IDisposable
 {
@@ -53,8 +54,10 @@ public sealed class WindowsVideoLessonRecorder : IVideoLessonRecorder, IDisposab
     private TimeSpan _nextVideoTimestamp;
     private static readonly TimeSpan VideoFrameDuration = TimeSpan.FromSeconds(1.0 / 30.0);
     
-    // Audio
-    private MediaCapture? _micCapture;
+    // Audio (WASAPI via NAudio)
+    private NaudioWavRecorder? _micRecorder;
+    private NaudioWavRecorder? _loopbackRecorder;
+    private string? _systemAudioPath;
     
     // State
     private bool _isRecording;
@@ -101,10 +104,23 @@ public sealed class WindowsVideoLessonRecorder : IVideoLessonRecorder, IDisposab
             var baseName = Path.GetFileNameWithoutExtension(outputFilePath);
             _rawVideoPath = Path.Combine(dir, $"{baseName}_raw.mp4");
             _micAudioPath = Path.Combine(dir, $"{baseName}_mic.wav");
+            _systemAudioPath = Path.Combine(dir, $"{baseName}_system.wav");
 
             TryDeleteFile(_rawVideoPath);
             TryDeleteFile(_micAudioPath);
+            TryDeleteFile(_systemAudioPath);
             TryDeleteFile(outputFilePath);
+
+            // Iniciar captura de audio del sistema (loopback) - siempre para capturar el video
+            try
+            {
+                await StartSystemAudioCaptureAsync(_systemAudioPath, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[WindowsVideoLessonRecorder] System audio capture failed (non-fatal): {ex.Message}");
+                // No lanzar, el video puede funcionar sin audio del sistema en algunos casos
+            }
 
             // Iniciar micrófono si está habilitado
             if (_microphoneEnabled)
@@ -155,10 +171,12 @@ public sealed class WindowsVideoLessonRecorder : IVideoLessonRecorder, IDisposab
             // Detener captura
             await StopWindowCaptureAsync();
             await StopMicrophoneRecordingAsync();
+            await StopSystemAudioCaptureAsync();
 
             var finalPath = _finalOutputPath;
             var rawVideoPath = _rawVideoPath;
             var micAudioPath = _micAudioPath;
+            var systemAudioPath = _systemAudioPath;
 
             var capturedCount = _capturedFrameCount;
             var elapsed = _recordingStopwatch?.Elapsed ?? TimeSpan.Zero;
@@ -176,28 +194,38 @@ public sealed class WindowsVideoLessonRecorder : IVideoLessonRecorder, IDisposab
                 throw new InvalidOperationException("No se generó el archivo de video.");
             }
 
-            // Si hay audio de micrófono, muxear
-            if (_microphoneEnabled && !string.IsNullOrWhiteSpace(micAudioPath) && File.Exists(micAudioPath))
+            // Determinar qué audios tenemos disponibles (evitamos WAVs vacíos/solo-cabecera)
+            var hasSystemAudio = IsUsableAudioFile(systemAudioPath);
+            var hasMicAudio = _microphoneEnabled && IsUsableAudioFile(micAudioPath);
+
+            Debug.WriteLine($"[WindowsVideoLessonRecorder] Audio sources: hasSystemAudio={hasSystemAudio}, hasMicAudio={hasMicAudio}");
+
+            // Muxear video con audio(s)
+            if (hasSystemAudio || hasMicAudio)
             {
                 await WaitForFileReadyAsync(rawVideoPath, cancellationToken);
-                await WaitForFileReadyAsync(micAudioPath, cancellationToken);
+                if (hasSystemAudio) await WaitForFileReadyAsync(systemAudioPath!, cancellationToken);
+                if (hasMicAudio) await WaitForFileReadyAsync(micAudioPath!, cancellationToken);
+                
                 try
                 {
-                    await MuxVideoAndMicToMp4Async(rawVideoPath, micAudioPath, finalPath, cancellationToken);
+                    await MuxVideoAndAudioToMp4Async(rawVideoPath, systemAudioPath, micAudioPath, finalPath, cancellationToken);
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"[WindowsVideoLessonRecorder] MuxVideoAndMicToMp4Async error: {ex.Message} (0x{ex.HResult:X8})");
+                    Debug.WriteLine($"[WindowsVideoLessonRecorder] MuxVideoAndAudioToMp4Async error: {ex.Message} (0x{ex.HResult:X8})");
                     throw;
                 }
                 TryDeleteFile(rawVideoPath);
                 TryDeleteFile(micAudioPath);
+                TryDeleteFile(systemAudioPath);
             }
             else
             {
                 TryDeleteFile(finalPath);
                 File.Move(rawVideoPath!, finalPath);
                 TryDeleteFile(micAudioPath);
+                TryDeleteFile(systemAudioPath);
             }
         }
         finally
@@ -207,6 +235,7 @@ public sealed class WindowsVideoLessonRecorder : IVideoLessonRecorder, IDisposab
             _finalOutputPath = null;
             _rawVideoPath = null;
             _micAudioPath = null;
+            _systemAudioPath = null;
             _gate.Release();
         }
     }
@@ -863,44 +892,34 @@ public sealed class WindowsVideoLessonRecorder : IVideoLessonRecorder, IDisposab
 
     private async Task StartMicrophoneRecordingAsync(string micAudioPath, CancellationToken cancellationToken)
     {
-        await Microsoft.Maui.ApplicationModel.MainThread.InvokeOnMainThreadAsync(async () =>
+        await Task.Run(() =>
         {
+            Debug.WriteLine("[WindowsVideoLessonRecorder] Starting microphone capture (NAudio WASAPI)");
             try
             {
-                var settings = new MediaCaptureInitializationSettings
-                {
-                    StreamingCaptureMode = StreamingCaptureMode.Audio,
-                    MediaCategory = MediaCategory.Communications
-                };
-
-                _micCapture = new MediaCapture();
-                await _micCapture.InitializeAsync(settings);
-
-                var wavProfile = MediaEncodingProfile.CreateWav(AudioEncodingQuality.High);
-                var micFile = await CreateStorageFileForPathAsync(micAudioPath, cancellationToken);
-                await _micCapture.StartRecordToStorageFileAsync(wavProfile, micFile);
+                _micRecorder?.Dispose();
+                _micRecorder = NaudioWavRecorder.CreateMicrophone(micAudioPath);
+                _micRecorder.Start();
             }
             catch
             {
-                try { _micCapture?.Dispose(); } catch { }
-                _micCapture = null;
+                try { _micRecorder?.Dispose(); } catch { }
+                _micRecorder = null;
                 throw;
             }
-        });
-
-        await Task.Delay(150, cancellationToken);
+        }, cancellationToken);
     }
 
     private async Task StopMicrophoneRecordingAsync()
     {
-        var mic = _micCapture;
-        _micCapture = null;
+        var mic = _micRecorder;
+        _micRecorder = null;
         if (mic == null)
             return;
 
         try
         {
-            await mic.StopRecordAsync();
+            await mic.StopAsync();
         }
         catch (Exception ex)
         {
@@ -909,6 +928,204 @@ public sealed class WindowsVideoLessonRecorder : IVideoLessonRecorder, IDisposab
         finally
         {
             mic.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// Inicia la captura de audio del sistema (loopback) usando WASAPI.
+    /// Esto captura el audio que sale por los altavoces, incluyendo el audio del video.
+    /// </summary>
+    private async Task StartSystemAudioCaptureAsync(string systemAudioPath, CancellationToken cancellationToken)
+    {
+        await Task.Run(() =>
+        {
+            try
+            {
+                Debug.WriteLine("[WindowsVideoLessonRecorder] Starting system audio capture (NAudio WASAPI loopback)");
+
+                _loopbackRecorder?.Dispose();
+                _loopbackRecorder = NaudioWavRecorder.CreateLoopback(systemAudioPath);
+                _loopbackRecorder.Start();
+
+                Debug.WriteLine("[WindowsVideoLessonRecorder] System audio loopback capture started");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[WindowsVideoLessonRecorder] StartSystemAudioCaptureAsync error: {ex.Message}");
+
+                try { _loopbackRecorder?.Dispose(); } catch { }
+                _loopbackRecorder = null;
+                
+                throw;
+            }
+        }, cancellationToken);
+    }
+
+    private async Task StopSystemAudioCaptureAsync()
+    {
+        var capture = _loopbackRecorder;
+        _loopbackRecorder = null;
+        
+        if (capture == null)
+            return;
+
+        try
+        {
+            await Task.Run(() =>
+            {
+                capture.StopAsync().GetAwaiter().GetResult();
+                Debug.WriteLine("[WindowsVideoLessonRecorder] System audio loopback capture stopped");
+            });
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[WindowsVideoLessonRecorder] StopSystemAudioCaptureAsync error: {ex.Message}");
+        }
+        finally
+        {
+            try { capture?.Dispose(); } catch { }
+        }
+    }
+
+    /// <summary>
+    /// Muxea el video con las pistas de audio disponibles (sistema y/o micrófono).
+    /// </summary>
+    private static async Task MuxVideoAndAudioToMp4Async(
+        string rawVideoPath, 
+        string? systemAudioPath, 
+        string? micAudioPath, 
+        string outputPath, 
+        CancellationToken cancellationToken)
+    {
+        Debug.WriteLine($"[WindowsVideoLessonRecorder] MuxVideoAndAudio start | raw='{rawVideoPath}' | system='{systemAudioPath}' | mic='{micAudioPath}' | out='{outputPath}'");
+
+        // Obtener archivos de entrada
+        var rawVideoFile = await StorageFile.GetFileFromPathAsync(rawVideoPath).AsTask(cancellationToken);
+        
+        StorageFile? systemAudioFile = null;
+        StorageFile? micAudioFile = null;
+        
+        if (IsUsableAudioFile(systemAudioPath))
+        {
+            try
+            {
+                systemAudioFile = await StorageFile.GetFileFromPathAsync(systemAudioPath).AsTask(cancellationToken);
+                var sysInfo = new FileInfo(systemAudioPath);
+                Debug.WriteLine($"[WindowsVideoLessonRecorder] System audio: {sysInfo.Length} bytes");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[WindowsVideoLessonRecorder] Could not load system audio: {ex.Message}");
+            }
+        }
+        
+        if (IsUsableAudioFile(micAudioPath))
+        {
+            try
+            {
+                micAudioFile = await StorageFile.GetFileFromPathAsync(micAudioPath).AsTask(cancellationToken);
+                var micInfo = new FileInfo(micAudioPath);
+                Debug.WriteLine($"[WindowsVideoLessonRecorder] Mic audio: {micInfo.Length} bytes");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[WindowsVideoLessonRecorder] Could not load mic audio: {ex.Message}");
+            }
+        }
+
+        // Crear carpeta y archivo de salida
+        var outDir = Path.GetDirectoryName(outputPath);
+        if (string.IsNullOrEmpty(outDir))
+            throw new InvalidOperationException("Ruta de salida inválida.");
+
+        var outFolder = await StorageFolder.GetFolderFromPathAsync(outDir).AsTask(cancellationToken);
+        var outFile = await outFolder.CreateFileAsync(Path.GetFileName(outputPath), CreationCollisionOption.GenerateUniqueName)
+            .AsTask(cancellationToken);
+
+        try
+        {
+            var composition = new MediaComposition();
+
+            // Añadir clip de video
+            var videoClip = await MediaClip.CreateFromFileAsync(rawVideoFile).AsTask(cancellationToken);
+            composition.Clips.Add(videoClip);
+            Debug.WriteLine($"[WindowsVideoLessonRecorder] Video clip duration: {videoClip.OriginalDuration}");
+
+            // Añadir pistas de audio
+            composition.BackgroundAudioTracks.Clear();
+            
+            // Primero el audio del sistema (el video que se está reproduciendo)
+            if (systemAudioFile != null)
+            {
+                try
+                {
+                    var systemTrack = await BackgroundAudioTrack.CreateFromFileAsync(systemAudioFile).AsTask(cancellationToken);
+                    composition.BackgroundAudioTracks.Add(systemTrack);
+                    Debug.WriteLine($"[WindowsVideoLessonRecorder] System audio track added: {systemTrack.OriginalDuration}");
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[WindowsVideoLessonRecorder] Failed to add system audio track: {ex.Message}");
+                }
+            }
+            
+            // Luego el micrófono (si está habilitado)
+            if (micAudioFile != null)
+            {
+                try
+                {
+                    var micTrack = await BackgroundAudioTrack.CreateFromFileAsync(micAudioFile).AsTask(cancellationToken);
+                    // Reducir un poco el volumen del micrófono para que no tape el audio del sistema
+                    micTrack.Volume = 0.8;
+                    composition.BackgroundAudioTracks.Add(micTrack);
+                    Debug.WriteLine($"[WindowsVideoLessonRecorder] Mic audio track added: {micTrack.OriginalDuration}");
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[WindowsVideoLessonRecorder] Failed to add mic audio track: {ex.Message}");
+                }
+            }
+
+            // Renderizar
+            var profile = MediaEncodingProfile.CreateMp4(VideoEncodingQuality.Auto);
+            Debug.WriteLine($"[WindowsVideoLessonRecorder] Rendering to '{outFile.Path}'");
+            
+            try
+            {
+                await composition.RenderToFileAsync(outFile, MediaTrimmingPreference.Precise, profile).AsTask(cancellationToken);
+            }
+            catch (Exception ex) when (ex.HResult == unchecked((int)0xC00D36E6))
+            {
+                // Retry con perfil más compatible
+                Debug.WriteLine($"[WindowsVideoLessonRecorder] Retry with HD720p profile due to 0xC00D36E6");
+                profile = MediaEncodingProfile.CreateMp4(VideoEncodingQuality.HD720p);
+                try { profile.Audio = AudioEncodingProperties.CreateAac(48000, 2, 192000); } catch { }
+                await composition.RenderToFileAsync(outFile, MediaTrimmingPreference.Fast, profile).AsTask(cancellationToken);
+            }
+
+            Debug.WriteLine($"[WindowsVideoLessonRecorder] Render complete");
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[WindowsVideoLessonRecorder] MuxVideoAndAudioToMp4Async RenderToFileAsync error: {ex.Message} (0x{ex.HResult:X8})");
+            throw;
+        }
+
+        // Mover archivo final
+        try
+        {
+            if (!string.Equals(outFile.Path, outputPath, StringComparison.OrdinalIgnoreCase))
+            {
+                TryDeleteFile(outputPath);
+                File.Copy(outFile.Path, outputPath, overwrite: true);
+                TryDeleteFile(outFile.Path);
+            }
+            Debug.WriteLine("[WindowsVideoLessonRecorder] MuxVideoAndAudioToMp4Async done");
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[WindowsVideoLessonRecorder] Finalize copy error: {ex.Message}");
+            throw;
         }
     }
 
@@ -1051,6 +1268,22 @@ public sealed class WindowsVideoLessonRecorder : IVideoLessonRecorder, IDisposab
         catch { }
     }
 
+    private static bool IsUsableAudioFile(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+            return false;
+
+        try
+        {
+            // WAV header is typically 44 bytes. Use a slightly higher threshold to avoid muxing empty/silent placeholder files.
+            return new FileInfo(path).Length > 256;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     private static async Task WaitForFileReadyAsync(string path, CancellationToken cancellationToken)
     {
         for (var i = 0; i < 30; i++)
@@ -1077,7 +1310,8 @@ public sealed class WindowsVideoLessonRecorder : IVideoLessonRecorder, IDisposab
             _captureSession?.Dispose();
             _framePool?.Dispose();
             _d3dDevice?.Dispose();
-            _micCapture?.Dispose();
+            _micRecorder?.Dispose();
+            _loopbackRecorder?.Dispose();
         }
         catch { }
     }
@@ -1133,4 +1367,5 @@ public sealed class WindowsVideoLessonRecorder : IVideoLessonRecorder, IDisposab
     [DllImport("user32.dll")]
     private static extern bool IsIconic(IntPtr hWnd);
 }
+
 #endif
