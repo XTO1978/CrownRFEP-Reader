@@ -2042,8 +2042,7 @@
                                 Minimum="0"
                                 MinimumTrackColor="#FF6DDDFF"
                                 ThumbColor="#FF6DDDFF"
-                                ValueChanged="OnSliderValueChanged"
-                                Value="{Binding Progress, Mode=OneWay}" />
+                                ValueChanged="OnSliderValueChanged" />
                         </Grid>
                     </Grid>
                     <Label

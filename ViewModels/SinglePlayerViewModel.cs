@@ -27,6 +27,9 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     private double _progress;
     private double _playbackSpeed = 1.0;
     
+    // Flag para evitar actualizar Progress mientras el usuario arrastra el slider
+    private bool _isDraggingSlider;
+    
     // Información del video para el overlay
     private VideoClip? _videoClip;
     private bool _showOverlay = true;
@@ -223,6 +226,16 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     {
         get => _progress;
         set { _progress = value; OnPropertyChanged(); }
+    }
+    
+    /// <summary>
+    /// Flag que indica si el usuario está arrastrando el slider.
+    /// Cuando está activo, UpdateProgress() no actualiza Progress para evitar conflictos.
+    /// </summary>
+    public bool IsDraggingSlider
+    {
+        get => _isDraggingSlider;
+        set => _isDraggingSlider = value;
     }
 
     public double PlaybackSpeed
@@ -909,6 +922,11 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     private void UpdateProgress()
     {
+        // No actualizar Progress si el usuario está arrastrando el slider
+        // para evitar conflictos con el binding que causa parpadeo
+        if (_isDraggingSlider)
+            return;
+            
         if (Duration.TotalSeconds > 0)
             Progress = CurrentPosition.TotalSeconds / Duration.TotalSeconds;
         else

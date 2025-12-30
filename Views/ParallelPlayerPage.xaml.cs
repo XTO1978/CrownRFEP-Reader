@@ -355,6 +355,8 @@ public partial class ParallelPlayerPage : ContentPage
         
         MainThread.BeginInvokeOnMainThread(() =>
         {
+            if (_isDraggingSlider || _isDraggingSlider1) return;
+            
             if (_viewModel.IsSimultaneousMode)
             {
                 // En modo sincronizado, la posición global es relativa al sync point
@@ -362,10 +364,24 @@ public partial class ParallelPlayerPage : ContentPage
                 if (relativePosition < TimeSpan.Zero)
                     relativePosition = TimeSpan.Zero;
                 _viewModel.CurrentPosition = relativePosition;
+                
+                // Actualizar slider global directamente
+                if (_viewModel.Duration.TotalSeconds > 0)
+                {
+                    ProgressSlider.Value = relativePosition.TotalSeconds / _viewModel.Duration.TotalSeconds;
+                }
             }
             else
             {
                 _viewModel.CurrentPosition1 = position;
+                
+                // Actualizar sliders de video 1 directamente
+                if (_viewModel.Duration1.TotalSeconds > 0)
+                {
+                    var progress = position.TotalSeconds / _viewModel.Duration1.TotalSeconds;
+                    ProgressSlider1H.Value = progress;
+                    ProgressSlider1V.Value = progress;
+                }
             }
         });
     }
@@ -378,7 +394,17 @@ public partial class ParallelPlayerPage : ContentPage
         {
             MainThread.BeginInvokeOnMainThread(() =>
             {
+                if (_isDraggingSlider || _isDraggingSlider2) return;
+                
                 _viewModel.CurrentPosition2 = position;
+                
+                // Actualizar sliders de video 2 directamente
+                if (_viewModel.Duration2.TotalSeconds > 0)
+                {
+                    var progress = position.TotalSeconds / _viewModel.Duration2.TotalSeconds;
+                    ProgressSlider2H.Value = progress;
+                    ProgressSlider2V.Value = progress;
+                }
             });
         }
     }
@@ -591,6 +617,7 @@ public partial class ParallelPlayerPage : ContentPage
     private void OnSliderDragStarted(object? sender, EventArgs e)
     {
         _isDraggingSlider = true;
+        _viewModel.IsDraggingSlider = true;
         _wasPlayingBeforeDrag = _viewModel.IsPlaying;
         if (_wasPlayingBeforeDrag)
         {
@@ -604,17 +631,16 @@ public partial class ParallelPlayerPage : ContentPage
     {
         if (!_isDraggingSlider) return;
         
-        // Seek en tiempo real mientras se arrastra (frame-by-frame scrubbing)
-        // La posición es relativa a los sync points
+        // Calcular la posición objetivo
         var relativePosition = TimeSpan.FromSeconds(e.NewValue * _viewModel.Duration.TotalSeconds);
+        _viewModel.CurrentPosition = relativePosition;
         
         // Aplicar los sync points como offset para cada reproductor
         var absolutePos1 = _viewModel.SyncPoint1 + relativePosition;
         var absolutePos2 = _viewModel.SyncPoint2 + relativePosition;
         
-        _viewModel.CurrentPosition = relativePosition;
 #if WINDOWS
-        // En Windows, throttle seeks para evitar bloqueos
+        // En Windows, hacer seek en tiempo real con throttle
         var now = DateTime.UtcNow;
         if ((now - _lastSeekTime).TotalMilliseconds >= SeekThrottleMs)
         {
@@ -623,27 +649,31 @@ public partial class ParallelPlayerPage : ContentPage
             _activePlayer2?.SeekTo(absolutePos2);
         }
 #else
+        // En MacCatalyst/iOS: hacer seek para mostrar el frame actual
         _activePlayer1?.SeekTo(absolutePos1);
         _activePlayer2?.SeekTo(absolutePos2);
 #endif
-        // No actualizamos CurrentPosition aquí para evitar un bucle de actualización
-        // La posición se sincronizará completamente en OnSliderDragCompleted
     }
 
     private void OnSliderDragCompleted(object? sender, EventArgs e)
     {
-        _isDraggingSlider = false;
-        var newPosition = _viewModel.Progress * _viewModel.Duration.TotalSeconds;
-        _viewModel.SeekToPosition(_viewModel.Progress);
+        // Primero hacer el seek final
+        var relativePosition = TimeSpan.FromSeconds(ProgressSlider.Value * _viewModel.Duration.TotalSeconds);
+        var absolutePos1 = _viewModel.SyncPoint1 + relativePosition;
+        var absolutePos2 = _viewModel.SyncPoint2 + relativePosition;
+        _activePlayer1?.SeekTo(absolutePos1);
+        _activePlayer2?.SeekTo(absolutePos2);
         
-        // Mantener el reproductor en pausa mostrando el frame seleccionado
-        // El usuario debe pulsar play manualmente para reanudar
+        // Después desactivar los flags
+        _isDraggingSlider = false;
+        _viewModel.IsDraggingSlider = false;
     }
 
     // --- Slider video 1 (modo individual) ---
     private void OnSlider1DragStarted(object? sender, EventArgs e)
     {
         _isDraggingSlider1 = true;
+        _viewModel.IsDraggingSlider1 = true;
         _wasPlaying1BeforeDrag = _viewModel.IsPlaying1;
         if (_wasPlaying1BeforeDrag)
         {
@@ -666,27 +696,28 @@ public partial class ParallelPlayerPage : ContentPage
             _activePlayer1?.SeekTo(position);
         }
 #else
+        // En MacCatalyst/iOS: hacer seek para mostrar el frame actual
         _activePlayer1?.SeekTo(position);
 #endif
-        // No actualizamos CurrentPosition1 aquí para evitar un bucle de actualización
-        // El texto de posición se puede actualizar de forma segura:
-        // La posición se sincronizará completamente en OnSlider1DragCompleted
     }
 
     private void OnSlider1DragCompleted(object? sender, EventArgs e)
     {
-        _isDraggingSlider1 = false;
-        var newPosition = _viewModel.Progress1 * _viewModel.Duration1.TotalSeconds;
-        _viewModel.SeekToPosition1(_viewModel.Progress1);
+        // Primero hacer el seek final
+        var slider = _viewModel.IsHorizontalOrientation ? ProgressSlider1H : ProgressSlider1V;
+        var position = TimeSpan.FromSeconds(slider.Value * _viewModel.Duration1.TotalSeconds);
+        _activePlayer1?.SeekTo(position);
         
-        // Mantener el reproductor en pausa mostrando el frame seleccionado
-        // El usuario debe pulsar play manualmente para reanudar
+        // Después desactivar los flags
+        _isDraggingSlider1 = false;
+        _viewModel.IsDraggingSlider1 = false;
     }
 
     // --- Slider video 2 (modo individual) ---
     private void OnSlider2DragStarted(object? sender, EventArgs e)
     {
         _isDraggingSlider2 = true;
+        _viewModel.IsDraggingSlider2 = true;
         _wasPlaying2BeforeDrag = _viewModel.IsPlaying2;
         if (_wasPlaying2BeforeDrag)
         {
@@ -709,20 +740,21 @@ public partial class ParallelPlayerPage : ContentPage
             _activePlayer2?.SeekTo(position);
         }
 #else
+        // En MacCatalyst/iOS: hacer seek para mostrar el frame actual
         _activePlayer2?.SeekTo(position);
 #endif
-        // No actualizamos CurrentPosition2 aquí para evitar un bucle de actualización
-        // La posición se sincronizará completamente en OnSlider2DragCompleted
     }
 
     private void OnSlider2DragCompleted(object? sender, EventArgs e)
     {
-        _isDraggingSlider2 = false;
-        var newPosition = _viewModel.Progress2 * _viewModel.Duration2.TotalSeconds;
-        _viewModel.SeekToPosition2(_viewModel.Progress2);
+        // Primero hacer el seek final
+        var slider = _viewModel.IsHorizontalOrientation ? ProgressSlider2H : ProgressSlider2V;
+        var position = TimeSpan.FromSeconds(slider.Value * _viewModel.Duration2.TotalSeconds);
+        _activePlayer2?.SeekTo(position);
         
-        // Mantener el reproductor en pausa mostrando el frame seleccionado
-        // El usuario debe pulsar play manualmente para reanudar
+        // Después desactivar los flags
+        _isDraggingSlider2 = false;
+        _viewModel.IsDraggingSlider2 = false;
     }
 
     #endregion

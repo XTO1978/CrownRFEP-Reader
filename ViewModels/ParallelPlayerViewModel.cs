@@ -22,6 +22,11 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
     private bool _isSimultaneousMode = false; // Por defecto modo individual
     private double _playbackSpeed = 1.0;
 
+    // Flags para evitar actualizar Progress mientras el usuario arrastra los sliders
+    private bool _isDraggingSlider;
+    private bool _isDraggingSlider1;
+    private bool _isDraggingSlider2;
+
     // Estado global (modo simultáneo)
     private bool _isPlaying;
     private TimeSpan _currentPosition;
@@ -448,6 +453,28 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
         get => _progress;
         set { _progress = value; OnPropertyChanged(); }
     }
+    
+    /// <summary>
+    /// Flags para indicar si el usuario está arrastrando los sliders.
+    /// Cuando están activos, UpdateProgress no actualiza Progress para evitar conflictos.
+    /// </summary>
+    public bool IsDraggingSlider
+    {
+        get => _isDraggingSlider;
+        set => _isDraggingSlider = value;
+    }
+    
+    public bool IsDraggingSlider1
+    {
+        get => _isDraggingSlider1;
+        set => _isDraggingSlider1 = value;
+    }
+    
+    public bool IsDraggingSlider2
+    {
+        get => _isDraggingSlider2;
+        set => _isDraggingSlider2 = value;
+    }
 
     public string CurrentPositionText => $"{CurrentPosition:mm\\:ss\\.ff}";
     public string DurationText => $"{Duration:mm\\:ss\\.ff}";
@@ -771,6 +798,8 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
 
     private void UpdateProgress()
     {
+        if (_isDraggingSlider) return;
+        
         if (Duration.TotalSeconds > 0)
             Progress = CurrentPosition.TotalSeconds / Duration.TotalSeconds;
         else
@@ -818,6 +847,8 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
 
     private void UpdateProgress1()
     {
+        if (_isDraggingSlider1) return;
+        
         if (Duration1.TotalSeconds > 0)
             Progress1 = CurrentPosition1.TotalSeconds / Duration1.TotalSeconds;
         else
@@ -865,6 +896,8 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
 
     private void UpdateProgress2()
     {
+        if (_isDraggingSlider2) return;
+        
         if (Duration2.TotalSeconds > 0)
             Progress2 = CurrentPosition2.TotalSeconds / Duration2.TotalSeconds;
         else

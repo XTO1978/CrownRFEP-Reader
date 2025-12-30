@@ -507,12 +507,46 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
 
     private void OnPlayRequested(object? sender, EventArgs e)
     {
-        if (_player == null) return;
+        if (_player == null || _playerItem == null) return;
 
         // En MacCatalyst, si la app se queda con una AVAudioSession en PlayAndRecord
         // (por ejemplo tras una grabación), al reproducir un vídeo macOS puede reactivar
         // el input y mostrar el icono naranja de micrófono. Forzamos Playback aquí.
         TryConfigureAppleAudioSessionForPlayback();
+
+        // Si el video llegó al final, hacer seek al inicio antes de reproducir.
+        // AVPlayer no reproduce si está en la posición final.
+        var currentTime = _player.CurrentTime;
+        var duration = _playerItem.Duration;
+        
+        // Verificar que duration y currentTime son válidos usando sus Seconds
+        // Si el valor es NaN o infinito, no es válido
+        var durationSeconds = duration.Seconds;
+        var currentSeconds = currentTime.Seconds;
+        
+        bool durationIsValid = !double.IsNaN(durationSeconds) && !double.IsInfinity(durationSeconds) && durationSeconds > 0;
+        bool currentTimeIsValid = !double.IsNaN(currentSeconds) && !double.IsInfinity(currentSeconds);
+        
+        if (durationIsValid && currentTimeIsValid)
+        {
+            // Considerar "al final" si está a menos de 0.5 segundos del final
+            if (currentSeconds >= durationSeconds - 0.5)
+            {
+                _player.Seek(CMTime.Zero, CMTime.Zero, CMTime.Zero, (finished) =>
+                {
+                    if (finished)
+                    {
+                        MainThread.BeginInvokeOnMainThread(() =>
+                        {
+                            _player?.Play();
+                            if (_player != null)
+                                _player.Rate = (float)VirtualView.Speed;
+                        });
+                    }
+                });
+                return;
+            }
+        }
 
         _player.Rate = (float)VirtualView.Speed;
     }

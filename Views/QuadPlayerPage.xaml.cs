@@ -25,6 +25,8 @@ public partial class QuadPlayerPage : ContentPage
     private bool _isDragging2;
     private bool _isDragging3;
     private bool _isDragging4;
+    private bool _isDraggingGlobal;
+    private bool _wasPlayingBeforeDragGlobal;
 
 #if WINDOWS
     // Throttle para seeks en Windows (evitar bloqueos)
@@ -63,10 +65,6 @@ public partial class QuadPlayerPage : ContentPage
         _viewModel.PlayRequested4 += OnPlayRequested4;
         _viewModel.PauseRequested4 += OnPauseRequested4;
         _viewModel.SeekRequested4 += OnSeekRequested4;
-
-        // Configurar slider
-        ProgressSlider.DragStarted += OnSliderDragStarted;
-        ProgressSlider.DragCompleted += OnSliderDragCompleted;
     }
 
     protected override void OnAppearing()
@@ -203,16 +201,33 @@ public partial class QuadPlayerPage : ContentPage
         {
             // Actualizar posiciones individuales siempre (excepto cuando se está arrastrando el slider)
             if (_viewModel.HasVideo1 && !_isDragging1)
+            {
                 _viewModel.CurrentPosition1 = MediaPlayer1.Position;
+                // Actualizar slider directamente
+                if (_viewModel.Duration1.TotalSeconds > 0)
+                    ProgressSlider1.Value = MediaPlayer1.Position.TotalSeconds / _viewModel.Duration1.TotalSeconds;
+            }
             if (_viewModel.HasVideo2 && !_isDragging2)
+            {
                 _viewModel.CurrentPosition2 = MediaPlayer2.Position;
+                if (_viewModel.Duration2.TotalSeconds > 0)
+                    ProgressSlider2.Value = MediaPlayer2.Position.TotalSeconds / _viewModel.Duration2.TotalSeconds;
+            }
             if (_viewModel.HasVideo3 && !_isDragging3)
+            {
                 _viewModel.CurrentPosition3 = MediaPlayer3.Position;
+                if (_viewModel.Duration3.TotalSeconds > 0)
+                    ProgressSlider3.Value = MediaPlayer3.Position.TotalSeconds / _viewModel.Duration3.TotalSeconds;
+            }
             if (_viewModel.HasVideo4 && !_isDragging4)
+            {
                 _viewModel.CurrentPosition4 = MediaPlayer4.Position;
+                if (_viewModel.Duration4.TotalSeconds > 0)
+                    ProgressSlider4.Value = MediaPlayer4.Position.TotalSeconds / _viewModel.Duration4.TotalSeconds;
+            }
 
             // Actualizar posición global solo si está en modo simultáneo y reproduciendo
-            if (!_viewModel.IsPlaying) return;
+            if (!_viewModel.IsPlaying || _isDraggingGlobal) return;
             
             // Usar la posición del primer video disponible
             var position = TimeSpan.Zero;
@@ -226,25 +241,43 @@ public partial class QuadPlayerPage : ContentPage
                 position = MediaPlayer4.Position;
             
             _viewModel.UpdatePositionFromPage(position);
+            
+            // Actualizar slider global directamente
+            if (_viewModel.Duration.TotalSeconds > 0)
+                ProgressSlider.Value = position.TotalSeconds / _viewModel.Duration.TotalSeconds;
         });
     }
 
-    #region Slider Handling
+    #region Global Slider Handling (Simultaneous Mode)
 
-    private bool _wasPlayingBeforeDrag;
-
-    private void OnSliderDragStarted(object? sender, EventArgs e)
+    private void OnProgressSliderDragStarted(object? sender, EventArgs e)
     {
-        _wasPlayingBeforeDrag = _viewModel.IsPlaying;
+        _isDraggingGlobal = true;
+        _wasPlayingBeforeDragGlobal = _viewModel.IsPlaying;
         PauseAllPlayers();
     }
 
-    private void OnSliderDragCompleted(object? sender, EventArgs e)
+    private void OnProgressSliderValueChanged(object? sender, ValueChangedEventArgs e)
+    {
+        if (!_isDraggingGlobal) return;
+        
+        // Actualizar texto de posición
+        var totalSeconds = e.NewValue * _viewModel.Duration.TotalSeconds;
+        var position = TimeSpan.FromSeconds(totalSeconds);
+        _viewModel.UpdatePositionFromPage(position);
+        
+        // Hacer seek para mostrar preview durante el arrastre
+        SeekAllToPosition(totalSeconds);
+    }
+
+    private void OnProgressSliderDragCompleted(object? sender, EventArgs e)
     {
         var position = ProgressSlider.Value * _viewModel.Duration.TotalSeconds;
         SeekAllToPosition(position);
         
-        if (_wasPlayingBeforeDrag)
+        _isDraggingGlobal = false;
+        
+        if (_wasPlayingBeforeDragGlobal)
             PlayAllPlayers();
     }
 
@@ -579,6 +612,7 @@ public partial class QuadPlayerPage : ContentPage
     private void OnProgressSlider1DragStarted(object? sender, EventArgs e)
     {
         _isDragging1 = true;
+        _viewModel.IsDragging1 = true;
         _wasPlaying1BeforeDrag = _viewModel.IsPlaying1;
         MediaPlayer1.Pause();
         _viewModel.IsPlaying1 = false;
@@ -586,9 +620,11 @@ public partial class QuadPlayerPage : ContentPage
 
     private void OnProgressSlider1DragCompleted(object? sender, EventArgs e)
     {
-        _isDragging1 = false;
         var position = ProgressSlider1.Value * _viewModel.Duration1.TotalSeconds;
         MediaPlayer1.SeekTo(TimeSpan.FromSeconds(position));
+        
+        _isDragging1 = false;
+        _viewModel.IsDragging1 = false;
         
         if (_wasPlaying1BeforeDrag)
         {
@@ -601,6 +637,7 @@ public partial class QuadPlayerPage : ContentPage
     private void OnProgressSlider2DragStarted(object? sender, EventArgs e)
     {
         _isDragging2 = true;
+        _viewModel.IsDragging2 = true;
         _wasPlaying2BeforeDrag = _viewModel.IsPlaying2;
         MediaPlayer2.Pause();
         _viewModel.IsPlaying2 = false;
@@ -608,9 +645,11 @@ public partial class QuadPlayerPage : ContentPage
 
     private void OnProgressSlider2DragCompleted(object? sender, EventArgs e)
     {
-        _isDragging2 = false;
         var position = ProgressSlider2.Value * _viewModel.Duration2.TotalSeconds;
         MediaPlayer2.SeekTo(TimeSpan.FromSeconds(position));
+        
+        _isDragging2 = false;
+        _viewModel.IsDragging2 = false;
         
         if (_wasPlaying2BeforeDrag)
         {
@@ -623,6 +662,7 @@ public partial class QuadPlayerPage : ContentPage
     private void OnProgressSlider3DragStarted(object? sender, EventArgs e)
     {
         _isDragging3 = true;
+        _viewModel.IsDragging3 = true;
         _wasPlaying3BeforeDrag = _viewModel.IsPlaying3;
         MediaPlayer3.Pause();
         _viewModel.IsPlaying3 = false;
@@ -630,9 +670,11 @@ public partial class QuadPlayerPage : ContentPage
 
     private void OnProgressSlider3DragCompleted(object? sender, EventArgs e)
     {
-        _isDragging3 = false;
         var position = ProgressSlider3.Value * _viewModel.Duration3.TotalSeconds;
         MediaPlayer3.SeekTo(TimeSpan.FromSeconds(position));
+        
+        _isDragging3 = false;
+        _viewModel.IsDragging3 = false;
         
         if (_wasPlaying3BeforeDrag)
         {
@@ -645,6 +687,7 @@ public partial class QuadPlayerPage : ContentPage
     private void OnProgressSlider4DragStarted(object? sender, EventArgs e)
     {
         _isDragging4 = true;
+        _viewModel.IsDragging4 = true;
         _wasPlaying4BeforeDrag = _viewModel.IsPlaying4;
         MediaPlayer4.Pause();
         _viewModel.IsPlaying4 = false;
@@ -652,9 +695,11 @@ public partial class QuadPlayerPage : ContentPage
 
     private void OnProgressSlider4DragCompleted(object? sender, EventArgs e)
     {
-        _isDragging4 = false;
         var position = ProgressSlider4.Value * _viewModel.Duration4.TotalSeconds;
         MediaPlayer4.SeekTo(TimeSpan.FromSeconds(position));
+        
+        _isDragging4 = false;
+        _viewModel.IsDragging4 = false;
         
         if (_wasPlaying4BeforeDrag)
         {
@@ -663,14 +708,13 @@ public partial class QuadPlayerPage : ContentPage
         }
     }
 
-    // ValueChanged handlers - seek mientras se arrastra
+    // ValueChanged handlers - seek en tiempo real mientras se arrastra
     private void OnProgressSlider1ValueChanged(object? sender, ValueChangedEventArgs e)
     {
         if (!_isDragging1) return;
         var position = e.NewValue * _viewModel.Duration1.TotalSeconds;
         _viewModel.CurrentPosition1 = TimeSpan.FromSeconds(position);
 #if WINDOWS
-        // En Windows, throttle seeks para evitar bloqueos
         var now = DateTime.UtcNow;
         if ((now - _lastSeekTime1).TotalMilliseconds >= SeekThrottleMs)
         {
@@ -678,6 +722,7 @@ public partial class QuadPlayerPage : ContentPage
             MediaPlayer1.SeekTo(TimeSpan.FromSeconds(position));
         }
 #else
+        // En MacCatalyst/iOS: hacer seek para mostrar el frame actual
         MediaPlayer1.SeekTo(TimeSpan.FromSeconds(position));
 #endif
     }
@@ -695,6 +740,7 @@ public partial class QuadPlayerPage : ContentPage
             MediaPlayer2.SeekTo(TimeSpan.FromSeconds(position));
         }
 #else
+        // En MacCatalyst/iOS: hacer seek para mostrar el frame actual
         MediaPlayer2.SeekTo(TimeSpan.FromSeconds(position));
 #endif
     }
@@ -712,6 +758,7 @@ public partial class QuadPlayerPage : ContentPage
             MediaPlayer3.SeekTo(TimeSpan.FromSeconds(position));
         }
 #else
+        // En MacCatalyst/iOS: hacer seek para mostrar el frame actual
         MediaPlayer3.SeekTo(TimeSpan.FromSeconds(position));
 #endif
     }
@@ -729,6 +776,7 @@ public partial class QuadPlayerPage : ContentPage
             MediaPlayer4.SeekTo(TimeSpan.FromSeconds(position));
         }
 #else
+        // En MacCatalyst/iOS: hacer seek para mostrar el frame actual
         MediaPlayer4.SeekTo(TimeSpan.FromSeconds(position));
 #endif
     }

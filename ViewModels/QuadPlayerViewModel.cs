@@ -21,6 +21,12 @@ public class QuadPlayerViewModel : INotifyPropertyChanged
     private double _playbackSpeed = 1.0;
     private bool _isSimultaneousMode = false;
 
+    // Flags para evitar actualizar Progress mientras el usuario arrastra los sliders
+    private bool _isDragging1;
+    private bool _isDragging2;
+    private bool _isDragging3;
+    private bool _isDragging4;
+
     // Estado global (sincronizado)
     private bool _isPlaying;
     private TimeSpan _currentPosition;
@@ -203,6 +209,15 @@ public class QuadPlayerViewModel : INotifyPropertyChanged
         get => _progress;
         set { _progress = value; OnPropertyChanged(); }
     }
+    
+    /// <summary>
+    /// Flags para indicar si el usuario está arrastrando los sliders.
+    /// Cuando están activos, UpdateProgress no actualiza Progress para evitar conflictos.
+    /// </summary>
+    public bool IsDragging1 { get => _isDragging1; set => _isDragging1 = value; }
+    public bool IsDragging2 { get => _isDragging2; set => _isDragging2 = value; }
+    public bool IsDragging3 { get => _isDragging3; set => _isDragging3 = value; }
+    public bool IsDragging4 { get => _isDragging4; set => _isDragging4 = value; }
 
     public string PlayPauseIcon => IsPlaying ? "pause.fill" : "play.fill";
     public string CurrentPositionText => FormatTime(CurrentPosition);
@@ -822,6 +837,8 @@ public class QuadPlayerViewModel : INotifyPropertyChanged
 
     private void UpdateProgress1()
     {
+        if (_isDragging1) return;
+        
         if (Duration1.TotalSeconds > 0)
             Progress1 = CurrentPosition1.TotalSeconds / Duration1.TotalSeconds;
         else
@@ -850,6 +867,8 @@ public class QuadPlayerViewModel : INotifyPropertyChanged
 
     private void UpdateProgress2()
     {
+        if (_isDragging2) return;
+        
         if (Duration2.TotalSeconds > 0)
             Progress2 = CurrentPosition2.TotalSeconds / Duration2.TotalSeconds;
         else
@@ -878,6 +897,8 @@ public class QuadPlayerViewModel : INotifyPropertyChanged
 
     private void UpdateProgress3()
     {
+        if (_isDragging3) return;
+        
         if (Duration3.TotalSeconds > 0)
             Progress3 = CurrentPosition3.TotalSeconds / Duration3.TotalSeconds;
         else
@@ -906,6 +927,8 @@ public class QuadPlayerViewModel : INotifyPropertyChanged
 
     private void UpdateProgress4()
     {
+        if (_isDragging4) return;
+        
         if (Duration4.TotalSeconds > 0)
             Progress4 = CurrentPosition4.TotalSeconds / Duration4.TotalSeconds;
         else

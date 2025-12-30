@@ -1126,18 +1126,15 @@ public partial class SinglePlayerPage : ContentPage
         System.Diagnostics.Debug.WriteLine($"[SinglePlayerPage] OnPositionChanged: {position}");
         MainThread.BeginInvokeOnMainThread(() =>
         {
-            if (!_isPageActive) return;
+            if (!_isPageActive || _isDraggingSlider) return;
             _viewModel.CurrentPosition = position;
             
-            // En Windows, actualizar el slider directamente como respaldo
-#if WINDOWS
+            // Actualizar el slider directamente (sin binding para evitar conflictos)
             if (ProgressSlider != null && _viewModel.Duration.TotalSeconds > 0)
             {
                 var progress = position.TotalSeconds / _viewModel.Duration.TotalSeconds;
-                System.Diagnostics.Debug.WriteLine($"[SinglePlayerPage] Updating ProgressSlider.Value={progress}");
                 ProgressSlider.Value = progress;
             }
-#endif
         });
     }
 
@@ -1159,6 +1156,17 @@ public partial class SinglePlayerPage : ContentPage
     private void OnPlayRequested(object? sender, EventArgs e)
     {
         if (!_isPageActive) return;
+        
+        // Resetear flags de drag/scrub por si quedaron atascados
+        // (puede ocurrir en MacCatalyst si el DragCompleted no se dispara)
+        if (_isDraggingSlider || _isScrubbing)
+        {
+            System.Diagnostics.Debug.WriteLine($"[SinglePlayerPage] OnPlayRequested: Resetting drag/scrub flags (isDragging={_isDraggingSlider}, isScrubbing={_isScrubbing})");
+            _isDraggingSlider = false;
+            _isScrubbing = false;
+            _viewModel.IsDraggingSlider = false; // También resetear en el ViewModel
+        }
+        
         MediaPlayer?.Play();
     }
 
@@ -1207,6 +1215,7 @@ public partial class SinglePlayerPage : ContentPage
     private void OnSliderDragStarted(object? sender, EventArgs e)
     {
         _isDraggingSlider = true;
+        _viewModel.IsDraggingSlider = true; // Notificar al ViewModel para evitar actualizar Progress
         _wasPlayingBeforeDrag = _viewModel.IsPlaying;
         if (_wasPlayingBeforeDrag)
         {
@@ -1219,9 +1228,12 @@ public partial class SinglePlayerPage : ContentPage
     {
         if (!_isDraggingSlider) return;
 
-        // Seek en tiempo real mientras se arrastra
+        // Calcular la posición objetivo
         var position = TimeSpan.FromSeconds(e.NewValue * _viewModel.Duration.TotalSeconds);
+        
+        // Actualizar el texto de tiempo
         _viewModel.CurrentPosition = position;
+        
 #if WINDOWS
         // En Windows, throttle seeks para evitar bloqueos
         var now = DateTime.UtcNow;
@@ -1231,14 +1243,21 @@ public partial class SinglePlayerPage : ContentPage
             MediaPlayer?.SeekTo(position);
         }
 #else
+        // En MacCatalyst/iOS: hacer seek para mostrar el frame actual
+        // El parpadeo ya no ocurre porque eliminamos el binding del slider
         MediaPlayer?.SeekTo(position);
 #endif
     }
 
     private void OnSliderDragCompleted(object? sender, EventArgs e)
     {
+        // Primero hacer el seek al frame deseado
+        var position = TimeSpan.FromSeconds(ProgressSlider.Value * _viewModel.Duration.TotalSeconds);
+        MediaPlayer?.SeekTo(position);
+        
+        // Después desactivar los flags para que Progress se actualice normalmente
         _isDraggingSlider = false;
-        _viewModel.SeekToPosition(_viewModel.Progress);
+        _viewModel.IsDraggingSlider = false;
         
         // Mantener el reproductor en pausa mostrando el frame seleccionado
         // El usuario debe pulsar play manualmente para reanudar
