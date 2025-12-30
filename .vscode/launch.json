@@ -4,12 +4,37 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-        
         {
             "name": ".NET MAUI",
             "type": "maui",
             "request": "launch",
             "preLaunchTask": "maui: Build"
+        },
+        {
+            "name": "MAUI: MacCatalyst (Debug + Run)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "MAUI: Build MacCatalyst",
+            "program": "${workspaceFolder}/bin/Debug/net9.0-maccatalyst/maccatalyst-arm64/CrownRFEP Reader.app/Contents/MacOS/CrownRFEP Reader",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "console": "internalConsole",
+            "stopAtEntry": false,
+            "justMyCode": true,
+            "requireExactSource": false
+        },
+        {
+            "name": "MAUI: MacCatalyst (Run Only)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "MAUI: Build MacCatalyst",
+            "program": "/usr/bin/open",
+            "args": [
+                "-a",
+                "${workspaceFolder}/bin/Debug/net9.0-maccatalyst/maccatalyst-arm64/CrownRFEP Reader.app"
+            ],
+            "cwd": "${workspaceFolder}",
+            "console": "internalConsole"
         }
     ]
 }

@@ -7,6 +7,11 @@ using CrownRFEP_Reader.Views.Controls;
 using CrownRFEP_Reader.Handlers;
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Handlers;
+using Plugin.Maui.Audio;
+#if MACCATALYST || IOS
+using AVFoundation;
+using Foundation;
+#endif
 #if MACCATALYST
 using CrownRFEP_Reader.Platforms.MacCatalyst;
 using UIKit;
@@ -70,8 +75,12 @@ public static class MauiProgram
 		builder.Services.AddSingleton<CrownFileService>();
 		builder.Services.AddSingleton<StatisticsService>();
 		builder.Services.AddSingleton<ThumbnailService>();
+		
+		// Plugin.Maui.Audio para grabación de micrófono
+		builder.Services.AddSingleton(AudioManager.Current);
 
 #if MACCATALYST
+		// Usar el recorder original - V2 tiene incompatibilidades de API
 		builder.Services.AddSingleton<IVideoLessonRecorder, ReplayKitVideoLessonRecorder>();
 #elif WINDOWS
 		builder.Services.AddSingleton<IVideoLessonRecorder, CrownRFEP_Reader.Platforms.Windows.WindowsVideoLessonRecorder>();
@@ -133,6 +142,10 @@ public static class MauiProgram
 #endif
 
 		var app = builder.Build();
+
+#if MACCATALYST || IOS
+		TryConfigureAppleAudioSessionForPlayback();
+#endif
 		
 		// Conectar StatusBarService al DatabaseService para logging
 		var databaseService = app.Services.GetService<DatabaseService>();
@@ -144,4 +157,24 @@ public static class MauiProgram
 
 		return app;
 	}
+
+#if MACCATALYST || IOS
+	private static void TryConfigureAppleAudioSessionForPlayback()
+	{
+		try
+		{
+			var session = AVAudioSession.SharedInstance();
+			NSError? error;
+
+			// Playback: asegura salida de audio para AVPlayer/MediaElement.
+			// MixWithOthers: evita cortar audio del sistema si no es necesario.
+			session.SetCategory(AVAudioSessionCategory.Playback, AVAudioSessionCategoryOptions.MixWithOthers, out error);
+			session.SetActive(true, out error);
+		}
+		catch
+		{
+			// Best-effort: no bloquear arranque por configuración de audio.
+		}
+	}
+#endif
 }

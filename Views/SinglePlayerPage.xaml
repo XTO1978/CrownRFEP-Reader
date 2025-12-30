@@ -1932,20 +1932,11 @@
                         <PanGestureRecognizer PanUpdated="OnVideoLessonPipPanUpdated" />
                     </Border.GestureRecognizers>
 
-                    <!-- MacCatalyst: ReplayKit camera preview -->
-                    <!-- IMPORTANTE: usar x:Load para evitar instanciar controles de otras plataformas (si no, faltan handlers y crashea) -->
-                    <controls:ReplayKitCameraPreview
-                        x:Name="VideoLessonCameraPreview"
-                        x:Load="{OnPlatform MacCatalyst=True, Default=False}"
-                        IsActive="False" />
-
-                    <!-- Windows: WebcamPreview usando MediaCapture -->
-                    <controls:WebcamPreview
-                        x:Name="VideoLessonWebcamPreview"
-                        x:Load="{OnPlatform WinUI=True, Default=False}"
+                    <!-- Host del preview de cámara: se instancia en code-behind por plataforma -->
+                    <ContentView
+                        x:Name="VideoLessonCameraHost"
                         HorizontalOptions="Fill"
-                        VerticalOptions="Fill"
-                        IsActive="False" />
+                        VerticalOptions="Fill" />
                 </Border>
             </Grid>
         </Border>

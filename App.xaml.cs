@@ -78,6 +78,59 @@ public partial class App : Application
 			}
 		}
 
+#if MACCATALYST
+		// Solicitar permiso de micrófono al inicio para que aparezca en Preferencias del Sistema
+		_ = Task.Run(async () =>
+		{
+			try
+			{
+				await RequestMicrophonePermissionAsync();
+			}
+			catch (Exception ex)
+			{
+				AppLog.Error("App", "Error solicitando permiso de micrófono", ex);
+			}
+		});
+#endif
+
 		return new Window(new AppShell());
 	}
+
+#if MACCATALYST
+	private static async Task RequestMicrophonePermissionAsync()
+	{
+		AppLog.Info("App", "Solicitando permiso de micrófono al sistema (AVCaptureDevice)...");
+		
+		try
+		{
+			// Usar AVCaptureDevice que funciona mejor en MacCatalyst
+			var authStatus = AVFoundation.AVCaptureDevice.GetAuthorizationStatus(AVFoundation.AVAuthorizationMediaType.Audio);
+			AppLog.Info("App", $"Estado actual del permiso de micrófono (AVCaptureDevice): {authStatus}");
+			
+			if (authStatus == AVFoundation.AVAuthorizationStatus.NotDetermined)
+			{
+				AppLog.Info("App", "Permiso no determinado, solicitando con AVCaptureDevice...");
+				
+				var granted = await AVFoundation.AVCaptureDevice.RequestAccessForMediaTypeAsync(AVFoundation.AVAuthorizationMediaType.Audio);
+				AppLog.Info("App", $"Resultado de solicitud de permiso (AVCaptureDevice): {(granted ? "CONCEDIDO" : "DENEGADO")}");
+			}
+			else if (authStatus == AVFoundation.AVAuthorizationStatus.Denied)
+			{
+				AppLog.Warn("App", "El permiso de micrófono está DENEGADO. El usuario debe habilitarlo en Preferencias del Sistema.");
+			}
+			else if (authStatus == AVFoundation.AVAuthorizationStatus.Authorized)
+			{
+				AppLog.Info("App", "El permiso de micrófono ya está concedido.");
+			}
+			else if (authStatus == AVFoundation.AVAuthorizationStatus.Restricted)
+			{
+				AppLog.Warn("App", "El permiso de micrófono está RESTRINGIDO por políticas del sistema.");
+			}
+		}
+		catch (Exception ex)
+		{
+			AppLog.Error("App", "Error en RequestMicrophonePermissionAsync", ex);
+		}
+	}
+#endif
 }

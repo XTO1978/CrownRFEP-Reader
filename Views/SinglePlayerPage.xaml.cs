@@ -19,6 +19,9 @@ public partial class SinglePlayerPage : ContentPage
     private readonly DatabaseService _databaseService;
     private readonly IVideoLessonRecorder _videoLessonRecorder;
 
+    private ReplayKitCameraPreview? VideoLessonCameraPreview;
+    private WebcamPreview? VideoLessonWebcamPreview;
+
     private bool _isDrawingMode;
 
     private bool _isVideoLessonMode;
@@ -100,7 +103,39 @@ public partial class SinglePlayerPage : ContentPage
         if (AnalysisCanvas != null)
             AnalysisCanvas.TextRequested += OnAnalysisCanvasTextRequested;
 
+        InitializeVideoLessonCameraPreview();
+
         SyncVideoLessonUiFromRecorder();
+    }
+
+    private void InitializeVideoLessonCameraPreview()
+    {
+        if (VideoLessonCameraHost == null)
+            return;
+
+        // Evita instanciar el control incorrecto en plataformas donde no hay handler.
+        // Importante: no referenciar/crear WebcamPreview desde XAML en MacCatalyst.
+#if MACCATALYST
+        VideoLessonCameraPreview = new ReplayKitCameraPreview
+        {
+            HorizontalOptions = LayoutOptions.Fill,
+            VerticalOptions = LayoutOptions.Fill,
+            IsActive = false
+        };
+
+        VideoLessonCameraHost.Content = VideoLessonCameraPreview;
+#elif WINDOWS
+        VideoLessonWebcamPreview = new WebcamPreview
+        {
+            HorizontalOptions = LayoutOptions.Fill,
+            VerticalOptions = LayoutOptions.Fill,
+            IsActive = false
+        };
+
+        VideoLessonCameraHost.Content = VideoLessonWebcamPreview;
+#else
+        VideoLessonCameraHost.Content = null;
+#endif
     }
 
     private void SyncVideoLessonUiFromRecorder()

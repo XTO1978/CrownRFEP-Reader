@@ -332,6 +332,19 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
         if (url == null)
             return;
 
+#if DEBUG
+        try
+        {
+            using var asset = AVAsset.FromUrl(url);
+            var audioTracks = asset.GetTracks(AVMediaTypes.Audio);
+            AppLog.Info("PrecisionVideoPlayerHandler", $"LoadSource | muted={VirtualView.IsMuted} | audioTracks={audioTracks?.Length ?? 0} | url={url}");
+        }
+        catch (Exception ex)
+        {
+            AppLog.Warn("PrecisionVideoPlayerHandler", $"LoadSource audioTracks probe failed: {ex.Message}");
+        }
+#endif
+
         _playerItem = new AVPlayerItem(url);
         _player = new AVPlayer(_playerItem);
         _player.Muted = VirtualView.IsMuted;
@@ -495,7 +508,39 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
     private void OnPlayRequested(object? sender, EventArgs e)
     {
         if (_player == null) return;
+
+        // En MacCatalyst, si la app se queda con una AVAudioSession en PlayAndRecord
+        // (por ejemplo tras una grabación), al reproducir un vídeo macOS puede reactivar
+        // el input y mostrar el icono naranja de micrófono. Forzamos Playback aquí.
+        TryConfigureAppleAudioSessionForPlayback();
+
         _player.Rate = (float)VirtualView.Speed;
+    }
+
+    private static void TryConfigureAppleAudioSessionForPlayback()
+    {
+        try
+        {
+            var session = AVAudioSession.SharedInstance();
+            NSError? error;
+
+            // Si la sesión ya está en PlayAndRecord, probablemente estamos en modo videolección.
+            // No forzar Playback aquí: cambiar de categoría mientras se graba puede dejar el mic
+            // capturando silencio (metering en -120 dB) aunque el recorder siga "Recording=true".
+            // La sesión se restaura a Playback cuando termina la grabación.
+            var currentCategory = session.Category?.ToString();
+            if (string.Equals(currentCategory, AVAudioSessionCategory.PlayAndRecord.ToString(), StringComparison.Ordinal))
+                return;
+
+            // Playback: no requiere micrófono.
+            // MixWithOthers: menos intrusivo con audio del sistema.
+            session.SetCategory(AVAudioSessionCategory.Playback, AVAudioSessionCategoryOptions.MixWithOthers, out error);
+            session.SetActive(true, out error);
+        }
+        catch
+        {
+            // Best-effort.
+        }
     }
 
     private void OnPauseRequested(object? sender, EventArgs e)
