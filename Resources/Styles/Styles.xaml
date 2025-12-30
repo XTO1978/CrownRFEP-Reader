@@ -140,11 +140,13 @@
 
     <OnPlatform x:TypeArguments="x:Double" x:Key="ElementHeightDefault">
         <On Platform="WinUI" Value="32" />
+        <On Platform="iOS" Value="36" />
         <On Platform="Default" Value="44" />
     </OnPlatform>
 
     <OnPlatform x:TypeArguments="x:Double" x:Key="ElementHeightLarge">
         <On Platform="WinUI" Value="40" />
+        <On Platform="iOS" Value="40" />
         <On Platform="Default" Value="56" />
     </OnPlatform>
 
@@ -195,6 +197,7 @@
     <!-- Padding para items de sidebar/lista lateral -->
     <OnPlatform x:TypeArguments="Thickness" x:Key="PaddingSidebarItem">
         <On Platform="WinUI" Value="10,0" />
+        <On Platform="iOS" Value="12,4" />
         <On Platform="Default" Value="16,10" />
     </OnPlatform>
 

@@ -27,20 +27,30 @@
                 <controls:SessionsListRowTemplateSelector.HeaderTemplate>
                     <DataTemplate x:DataType="vm:SessionGroupHeaderRow">
                         <Border
-                            Margin="0,6,0,0"
                             BackgroundColor="Transparent"
                             Stroke="Transparent"
                             StrokeThickness="0"
                             StrokeShape="RoundRectangle 4">
+                            <Border.Margin>
+                                <OnPlatform x:TypeArguments="Thickness">
+                                    <On Platform="iOS" Value="0,2,0,0" />
+                                    <On Platform="MacCatalyst,WinUI" Value="0,6,0,0" />
+                                </OnPlatform>
+                            </Border.Margin>
                             <Border.GestureRecognizers>
                                 <TapGestureRecognizer
                                     Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ToggleSessionGroupExpandedCommand}"
                                     CommandParameter="{Binding Key}" />
                             </Border.GestureRecognizers>
                             <Grid
-                                Padding="16,8"
                                 ColumnDefinitions="*,Auto"
                                 VerticalOptions="Center">
+                                <Grid.Padding>
+                                    <OnPlatform x:TypeArguments="Thickness">
+                                        <On Platform="iOS" Value="16,4" />
+                                        <On Platform="MacCatalyst,WinUI" Value="16,8" />
+                                    </OnPlatform>
+                                </Grid.Padding>
                                 <Label
                                     Grid.Column="0"
                                     FontFamily="{StaticResource AppFontBody}"
@@ -71,9 +81,14 @@
                                 <behaviors:DashboardSessionItemHoverBehavior />
                             </Border.Behaviors>
                             <HorizontalStackLayout
-                                Padding="16,10"
                                 Spacing="8"
                                 VerticalOptions="Center">
+                                <HorizontalStackLayout.Padding>
+                                    <OnPlatform x:TypeArguments="Thickness">
+                                        <On Platform="iOS" Value="16,4" />
+                                        <On Platform="MacCatalyst,WinUI" Value="16,10" />
+                                    </OnPlatform>
+                                </HorizontalStackLayout.Padding>
                                 <controls:SymbolIcon
                                     HeightRequest="{StaticResource IconSizeSmall}"
                                     SymbolName="arrow.turn.down.right"
