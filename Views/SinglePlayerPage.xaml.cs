@@ -71,13 +71,21 @@ public partial class SinglePlayerPage : ContentPage
 
         AppLog.Info("SinglePlayerPage", "CTOR");
 
-#if WINDOWS
-        // En Windows: controles de reproducción como overlay en Row 0, anclados abajo
+#if WINDOWS || IOS
+        // En Windows e iOS: controles de reproducción como overlay en Row 0, anclados abajo
         if (PlayerControlsBorder != null)
         {
             Grid.SetRow(PlayerControlsBorder, 0);
             PlayerControlsBorder.VerticalOptions = LayoutOptions.End;
         }
+#if WINDOWS
+        // Solo en Windows: barra de navegación también como overlay en la parte superior
+        if (NavigationFiltersBorder != null)
+        {
+            Grid.SetRow(NavigationFiltersBorder, 0);
+            NavigationFiltersBorder.VerticalOptions = LayoutOptions.Start;
+        }
+#endif
 #else
         // En otras plataformas: controles en Row 1 separados del video
         if (PlayerControlsBorder != null)
@@ -1130,10 +1138,15 @@ public partial class SinglePlayerPage : ContentPage
             _viewModel.CurrentPosition = position;
             
             // Actualizar el slider directamente (sin binding para evitar conflictos)
-            if (ProgressSlider != null && _viewModel.Duration.TotalSeconds > 0)
+            if (_viewModel.Duration.TotalSeconds > 0)
             {
                 var progress = position.TotalSeconds / _viewModel.Duration.TotalSeconds;
-                ProgressSlider.Value = progress;
+                if (ProgressSlider != null)
+                    ProgressSlider.Value = progress;
+#if IOS
+                if (ProgressSliderIOS != null)
+                    ProgressSliderIOS.Value = progress;
+#endif
             }
         });
     }
@@ -1251,8 +1264,19 @@ public partial class SinglePlayerPage : ContentPage
 
     private void OnSliderDragCompleted(object? sender, EventArgs e)
     {
+        // Obtener el valor del slider que disparó el evento
+        var sliderValue = 0.0;
+        if (sender is Slider slider)
+        {
+            sliderValue = slider.Value;
+        }
+        else if (ProgressSlider != null)
+        {
+            sliderValue = ProgressSlider.Value;
+        }
+        
         // Primero hacer el seek al frame deseado
-        var position = TimeSpan.FromSeconds(ProgressSlider.Value * _viewModel.Duration.TotalSeconds);
+        var position = TimeSpan.FromSeconds(sliderValue * _viewModel.Duration.TotalSeconds);
         MediaPlayer?.SeekTo(position);
         
         // Después desactivar los flags para que Progress se actualice normalmente

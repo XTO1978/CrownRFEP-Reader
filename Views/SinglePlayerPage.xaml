@@ -37,31 +37,42 @@
         <!-- Altura de la fila de controles del reproductor -->
         <OnPlatform x:TypeArguments="GridLength" x:Key="PlayerControlsRowHeight">
             <On Platform="WinUI" Value="100" />
+            <On Platform="iOS" Value="80" />
             <On Platform="Default" Value="170" />
         </OnPlatform>
         
         <!-- Padding para botones del reproductor -->
         <OnPlatform x:TypeArguments="Thickness" x:Key="PlayerButtonPadding">
             <On Platform="WinUI" Value="12,4" />
+            <On Platform="iOS" Value="6,4" />
             <On Platform="Default" Value="16,6" />
         </OnPlatform>
         
         <!-- Padding para botón Play/Pause (más ancho) -->
         <OnPlatform x:TypeArguments="Thickness" x:Key="PlayerPlayButtonPadding">
             <On Platform="WinUI" Value="28,4" />
+            <On Platform="iOS" Value="14,4" />
             <On Platform="Default" Value="36,6" />
         </OnPlatform>
         
         <!-- Padding para botones de velocidad -->
         <OnPlatform x:TypeArguments="Thickness" x:Key="PlayerSpeedButtonPadding">
             <On Platform="WinUI" Value="12,4" />
+            <On Platform="iOS" Value="6,3" />
             <On Platform="Default" Value="16,6" />
         </OnPlatform>
         
         <!-- Padding para contenedor de velocidad -->
         <OnPlatform x:TypeArguments="Thickness" x:Key="PlayerSpeedContainerPadding">
             <On Platform="WinUI" Value="20,4" />
+            <On Platform="iOS" Value="8,4" />
             <On Platform="Default" Value="26,6" />
+        </OnPlatform>
+        
+        <!-- Tamaño de iconos para iOS (más pequeños) -->
+        <OnPlatform x:TypeArguments="x:Double" x:Key="iOSPlayerIconSize">
+            <On Platform="iOS" Value="18" />
+            <On Platform="Default" Value="24" />
         </OnPlatform>
     </ContentPage.Resources>
 
@@ -1948,32 +1959,259 @@
             x:Name="PlayerControlsBorder"
             StrokeShape="RoundRectangle 8"
             StrokeThickness="0"
-            HorizontalOptions="Center">
+            HorizontalOptions="Fill">
             <Border.WidthRequest>
                 <OnPlatform x:TypeArguments="x:Double">
                     <On Platform="WinUI" Value="600" />
+                    <On Platform="iOS" Value="-1" />
                     <On Platform="Default" Value="-1" />
                 </OnPlatform>
             </Border.WidthRequest>
+            <Border.HorizontalOptions>
+                <OnPlatform x:TypeArguments="LayoutOptions">
+                    <On Platform="iOS" Value="Fill" />
+                    <On Platform="Default" Value="Center" />
+                </OnPlatform>
+            </Border.HorizontalOptions>
             <Border.BackgroundColor>
                 <OnPlatform x:TypeArguments="Color">
                     <On Platform="WinUI" Value="#CC121212" />
+                    <On Platform="iOS" Value="#CC000000" />
                     <On Platform="Default" Value="#FF121212" />
                 </OnPlatform>
             </Border.BackgroundColor>
             <Border.Margin>
                 <OnPlatform x:TypeArguments="Thickness">
                     <On Platform="WinUI" Value="12,0,12,4" />
+                    <On Platform="iOS" Value="8,0,8,4" />
                     <On Platform="Default" Value="16" />
                 </OnPlatform>
             </Border.Margin>
             <Border.Padding>
                 <OnPlatform x:TypeArguments="Thickness">
                     <On Platform="WinUI" Value="12,4" />
+                    <On Platform="iOS" Value="8,6" />
                     <On Platform="Default" Value="16" />
                 </OnPlatform>
             </Border.Padding>
-            <VerticalStackLayout>
+            
+            <!-- Grid contenedor único para ambos layouts -->
+            <Grid>
+                <!-- ===================== LAYOUT iOS: Slider izquierda, botones derecha ===================== -->
+                <Grid RowDefinitions="Auto,Auto" RowSpacing="8">
+                    <Grid.IsVisible>
+                        <OnPlatform x:TypeArguments="x:Boolean">
+                            <On Platform="iOS" Value="True" />
+                            <On Platform="Default" Value="False" />
+                        </OnPlatform>
+                    </Grid.IsVisible>
+                    
+                    <!-- Fila 0: Controles principales -->
+                    <Grid Grid.Row="0" ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                    <!--  Slider con tiempo (izquierda)  -->
+                    <Grid Grid.Column="0" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" VerticalOptions="Center">
+                        <Label
+                            Grid.Column="0"
+                            FontSize="11"
+                            Text="{Binding CurrentPositionText}"
+                            TextColor="#FFB1B1B1"
+                            VerticalOptions="Center" />
+                        <Slider
+                            x:Name="ProgressSliderIOS"
+                            Grid.Column="1"
+                            DragCompleted="OnSliderDragCompleted"
+                            DragStarted="OnSliderDragStarted"
+                            Maximum="1"
+                            MaximumTrackColor="#FF3A3A3A"
+                            Minimum="0"
+                            MinimumTrackColor="#FF6DDDFF"
+                            ThumbColor="#FF6DDDFF"
+                            ValueChanged="OnSliderValueChanged" />
+                        <Label
+                            Grid.Column="2"
+                            FontSize="11"
+                            Text="{Binding DurationText}"
+                            TextColor="#FFB1B1B1"
+                            VerticalOptions="Center" />
+                    </Grid>
+                    
+                    <!--  Botones de control (derecha)  -->
+                    <HorizontalStackLayout Grid.Column="1" Spacing="4" VerticalOptions="Center">
+                        <!--  Frame anterior  -->
+                        <Border Padding="6,4" BackgroundColor="#FF2A2A2A" StrokeShape="RoundRectangle 4" StrokeThickness="0">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding FrameBackwardCommand}" />
+                            </Border.GestureRecognizers>
+                            <controls:SymbolIcon HeightRequest="16" WidthRequest="16" SymbolName="backward.frame.fill" TintColor="White" />
+                        </Border>
+                        <!--  Retroceso 5s  -->
+                        <Border Padding="6,4" BackgroundColor="#FF2A2A2A" StrokeShape="RoundRectangle 4" StrokeThickness="0">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding SeekBackwardCommand}" />
+                            </Border.GestureRecognizers>
+                            <controls:SymbolIcon HeightRequest="16" WidthRequest="16" SymbolName="gobackward.5" TintColor="White" />
+                        </Border>
+                        <!--  Play/Pause  -->
+                        <Border Padding="12,4" BackgroundColor="#FF6DDDFF" StrokeShape="RoundRectangle 4" StrokeThickness="0">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding PlayPauseCommand}" />
+                            </Border.GestureRecognizers>
+                            <controls:SymbolIcon HeightRequest="16" WidthRequest="16" SymbolName="{Binding PlayPauseIcon}" TintColor="Black" />
+                        </Border>
+                        <!--  Avance 5s  -->
+                        <Border Padding="6,4" BackgroundColor="#FF2A2A2A" StrokeShape="RoundRectangle 4" StrokeThickness="0">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding SeekForwardCommand}" />
+                            </Border.GestureRecognizers>
+                            <controls:SymbolIcon HeightRequest="16" WidthRequest="16" SymbolName="goforward.5" TintColor="White" />
+                        </Border>
+                        <!--  Frame siguiente  -->
+                        <Border Padding="6,4" BackgroundColor="#FF2A2A2A" StrokeShape="RoundRectangle 4" StrokeThickness="0">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding FrameForwardCommand}" />
+                            </Border.GestureRecognizers>
+                            <controls:SymbolIcon HeightRequest="16" WidthRequest="16" SymbolName="forward.frame.fill" TintColor="White" />
+                        </Border>
+                        <!--  Separador  -->
+                        <BoxView WidthRequest="1" HeightRequest="20" BackgroundColor="#FF3A3A3A" Margin="4,0" />
+                        <!--  Navegación anterior  -->
+                        <Border Padding="6,4" BackgroundColor="#FF2A2A2A" StrokeShape="RoundRectangle 4" StrokeThickness="0"
+                                IsEnabled="{Binding CanGoPrevious}" Opacity="{Binding CanGoPrevious, Converter={StaticResource BoolToOpacityConverter}}">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding PreviousVideoCommand}" />
+                            </Border.GestureRecognizers>
+                            <controls:SymbolIcon HeightRequest="14" WidthRequest="14" SymbolName="chevron.left" TintColor="White" />
+                        </Border>
+                        <!--  Posición + Filtros  -->
+                        <Label FontSize="10" Text="{Binding PlaylistPositionText}" TextColor="#FFB1B1B1" VerticalOptions="Center" />
+                        <Border Padding="6,4" BackgroundColor="#FF2A2A2A" StrokeShape="RoundRectangle 4" StrokeThickness="0">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding ToggleFiltersCommand}" />
+                            </Border.GestureRecognizers>
+                            <controls:SymbolIcon HeightRequest="12" WidthRequest="12" SymbolName="line.3.horizontal.decrease" TintColor="#FF6DDDFF" />
+                        </Border>
+                        <!--  Navegación siguiente  -->
+                        <Border Padding="6,4" BackgroundColor="#FF2A2A2A" StrokeShape="RoundRectangle 4" StrokeThickness="0"
+                                IsEnabled="{Binding CanGoNext}" Opacity="{Binding CanGoNext, Converter={StaticResource BoolToOpacityConverter}}">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding NextVideoCommand}" />
+                            </Border.GestureRecognizers>
+                            <controls:SymbolIcon HeightRequest="14" WidthRequest="14" SymbolName="chevron.right" TintColor="White" />
+                        </Border>
+                    </HorizontalStackLayout>
+                    </Grid>
+                    
+                    <!-- Fila 1: Panel de filtros iOS (visible cuando ShowFilters=True) -->
+                    <HorizontalStackLayout
+                        Grid.Row="1"
+                        HorizontalOptions="Center"
+                        IsVisible="{Binding ShowFilters}"
+                        Spacing="8">
+                        
+                        <!--  Filtro de atleta  -->
+                        <Border
+                            x:Name="AthleteDropdownIOS"
+                            Padding="8,6"
+                            BackgroundColor="#FF2A2A2A"
+                            StrokeShape="RoundRectangle 4"
+                            StrokeThickness="0">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="OnAthleteDropdownTapped" />
+                            </Border.GestureRecognizers>
+                            <HorizontalStackLayout Spacing="6">
+                                <Label
+                                    FontSize="11"
+                                    MaximumWidthRequest="100"
+                                    LineBreakMode="TailTruncation"
+                                    Text="{Binding SelectedAthlete.DisplayName, FallbackValue='Atleta'}"
+                                    TextColor="White"
+                                    VerticalOptions="Center" />
+                                <controls:SymbolIcon
+                                    HeightRequest="10"
+                                    SymbolName="chevron.down"
+                                    TintColor="#FF888888"
+                                    WidthRequest="10" />
+                            </HorizontalStackLayout>
+                        </Border>
+                        
+                        <!--  Filtro de sección  -->
+                        <Border
+                            x:Name="SectionDropdownIOS"
+                            Padding="8,6"
+                            BackgroundColor="#FF2A2A2A"
+                            StrokeShape="RoundRectangle 4"
+                            StrokeThickness="0">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="OnSectionDropdownTapped" />
+                            </Border.GestureRecognizers>
+                            <HorizontalStackLayout Spacing="6">
+                                <Label
+                                    FontSize="11"
+                                    MaximumWidthRequest="100"
+                                    LineBreakMode="TailTruncation"
+                                    Text="{Binding SelectedSection.DisplayName, FallbackValue='Sección'}"
+                                    TextColor="White"
+                                    VerticalOptions="Center" />
+                                <controls:SymbolIcon
+                                    HeightRequest="10"
+                                    SymbolName="chevron.down"
+                                    TintColor="#FF888888"
+                                    WidthRequest="10" />
+                            </HorizontalStackLayout>
+                        </Border>
+                        
+                        <!--  Filtro de categoría  -->
+                        <Border
+                            x:Name="CategoryDropdownIOS"
+                            Padding="8,6"
+                            BackgroundColor="#FF2A2A2A"
+                            StrokeShape="RoundRectangle 4"
+                            StrokeThickness="0">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="OnCategoryDropdownTapped" />
+                            </Border.GestureRecognizers>
+                            <HorizontalStackLayout Spacing="6">
+                                <Label
+                                    FontSize="11"
+                                    MaximumWidthRequest="100"
+                                    LineBreakMode="TailTruncation"
+                                    Text="{Binding SelectedCategory.DisplayName, FallbackValue='Categoría'}"
+                                    TextColor="White"
+                                    VerticalOptions="Center" />
+                                <controls:SymbolIcon
+                                    HeightRequest="10"
+                                    SymbolName="chevron.down"
+                                    TintColor="#FF888888"
+                                    WidthRequest="10" />
+                            </HorizontalStackLayout>
+                        </Border>
+                        
+                        <!--  Botón limpiar filtros  -->
+                        <Border
+                            Padding="8,6"
+                            BackgroundColor="#FF2A2A2A"
+                            StrokeShape="RoundRectangle 4"
+                            StrokeThickness="0">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding ClearFiltersCommand}" />
+                            </Border.GestureRecognizers>
+                            <controls:SymbolIcon
+                                HeightRequest="12"
+                                SymbolName="xmark.circle.fill"
+                                TintColor="#FF888888"
+                                WidthRequest="12" />
+                        </Border>
+                    </HorizontalStackLayout>
+                </Grid>
+            
+                <!-- ===================== LAYOUT otras plataformas: Slider arriba, botones abajo ===================== -->
+                <VerticalStackLayout>
+                <VerticalStackLayout.IsVisible>
+                    <OnPlatform x:TypeArguments="x:Boolean">
+                        <On Platform="iOS" Value="False" />
+                        <On Platform="Default" Value="True" />
+                    </OnPlatform>
+                </VerticalStackLayout.IsVisible>
                 <VerticalStackLayout.Spacing>
                     <OnPlatform x:TypeArguments="x:Double">
                         <On Platform="WinUI" Value="4" />
@@ -2054,7 +2292,13 @@
                 </Grid>
 
                 <!--  Botones de control principales  -->
-                <HorizontalStackLayout HorizontalOptions="Center" Spacing="12">
+                <HorizontalStackLayout HorizontalOptions="Center">
+                    <HorizontalStackLayout.Spacing>
+                        <OnPlatform x:TypeArguments="x:Double">
+                            <On Platform="iOS" Value="6" />
+                            <On Platform="Default" Value="12" />
+                        </OnPlatform>
+                    </HorizontalStackLayout.Spacing>
                     <!--  Frame anterior  -->
                     <Border
                         Padding="{StaticResource PlayerButtonPadding}"
@@ -2065,10 +2309,21 @@
                             <TapGestureRecognizer Command="{Binding FrameBackwardCommand}" />
                         </Border.GestureRecognizers>
                         <controls:SymbolIcon
-                            HeightRequest="{StaticResource IconSizeLarge}"
                             SymbolName="backward.frame.fill"
-                            TintColor="White"
-                            WidthRequest="{StaticResource IconSizeLarge}" />
+                            TintColor="White">
+                            <controls:SymbolIcon.HeightRequest>
+                                <OnPlatform x:TypeArguments="x:Double">
+                                    <On Platform="iOS" Value="18" />
+                                    <On Platform="Default" Value="24" />
+                                </OnPlatform>
+                            </controls:SymbolIcon.HeightRequest>
+                            <controls:SymbolIcon.WidthRequest>
+                                <OnPlatform x:TypeArguments="x:Double">
+                                    <On Platform="iOS" Value="18" />
+                                    <On Platform="Default" Value="24" />
+                                </OnPlatform>
+                            </controls:SymbolIcon.WidthRequest>
+                        </controls:SymbolIcon>
                     </Border>
 
                     <!--  Retroceso 5s  -->
@@ -2081,10 +2336,21 @@
                             <TapGestureRecognizer Command="{Binding SeekBackwardCommand}" />
                         </Border.GestureRecognizers>
                         <controls:SymbolIcon
-                            HeightRequest="{StaticResource IconSizeLarge}"
                             SymbolName="gobackward.5"
-                            TintColor="White"
-                            WidthRequest="{StaticResource IconSizeLarge}" />
+                            TintColor="White">
+                            <controls:SymbolIcon.HeightRequest>
+                                <OnPlatform x:TypeArguments="x:Double">
+                                    <On Platform="iOS" Value="18" />
+                                    <On Platform="Default" Value="24" />
+                                </OnPlatform>
+                            </controls:SymbolIcon.HeightRequest>
+                            <controls:SymbolIcon.WidthRequest>
+                                <OnPlatform x:TypeArguments="x:Double">
+                                    <On Platform="iOS" Value="18" />
+                                    <On Platform="Default" Value="24" />
+                                </OnPlatform>
+                            </controls:SymbolIcon.WidthRequest>
+                        </controls:SymbolIcon>
                     </Border>
 
                     <!--  Play/Pause  -->
@@ -2097,10 +2363,21 @@
                             <TapGestureRecognizer Command="{Binding PlayPauseCommand}" />
                         </Border.GestureRecognizers>
                         <controls:SymbolIcon
-                            HeightRequest="{StaticResource IconSizeLarge}"
                             SymbolName="{Binding PlayPauseIcon}"
-                            TintColor="Black"
-                            WidthRequest="{StaticResource IconSizeLarge}" />
+                            TintColor="Black">
+                            <controls:SymbolIcon.HeightRequest>
+                                <OnPlatform x:TypeArguments="x:Double">
+                                    <On Platform="iOS" Value="18" />
+                                    <On Platform="Default" Value="24" />
+                                </OnPlatform>
+                            </controls:SymbolIcon.HeightRequest>
+                            <controls:SymbolIcon.WidthRequest>
+                                <OnPlatform x:TypeArguments="x:Double">
+                                    <On Platform="iOS" Value="18" />
+                                    <On Platform="Default" Value="24" />
+                                </OnPlatform>
+                            </controls:SymbolIcon.WidthRequest>
+                        </controls:SymbolIcon>
                     </Border>
 
                     <!--  Avance 5s  -->
@@ -2113,10 +2390,21 @@
                             <TapGestureRecognizer Command="{Binding SeekForwardCommand}" />
                         </Border.GestureRecognizers>
                         <controls:SymbolIcon
-                            HeightRequest="{StaticResource IconSizeLarge}"
                             SymbolName="goforward.5"
-                            TintColor="White"
-                            WidthRequest="{StaticResource IconSizeLarge}" />
+                            TintColor="White">
+                            <controls:SymbolIcon.HeightRequest>
+                                <OnPlatform x:TypeArguments="x:Double">
+                                    <On Platform="iOS" Value="18" />
+                                    <On Platform="Default" Value="24" />
+                                </OnPlatform>
+                            </controls:SymbolIcon.HeightRequest>
+                            <controls:SymbolIcon.WidthRequest>
+                                <OnPlatform x:TypeArguments="x:Double">
+                                    <On Platform="iOS" Value="18" />
+                                    <On Platform="Default" Value="24" />
+                                </OnPlatform>
+                            </controls:SymbolIcon.WidthRequest>
+                        </controls:SymbolIcon>
                     </Border>
 
                     <!--  Frame siguiente  -->
@@ -2129,25 +2417,49 @@
                             <TapGestureRecognizer Command="{Binding FrameForwardCommand}" />
                         </Border.GestureRecognizers>
                         <controls:SymbolIcon
-                            HeightRequest="{StaticResource IconSizeLarge}"
                             SymbolName="forward.frame.fill"
-                            TintColor="White"
-                            WidthRequest="{StaticResource IconSizeLarge}" />
+                            TintColor="White">
+                            <controls:SymbolIcon.HeightRequest>
+                                <OnPlatform x:TypeArguments="x:Double">
+                                    <On Platform="iOS" Value="18" />
+                                    <On Platform="Default" Value="24" />
+                                </OnPlatform>
+                            </controls:SymbolIcon.HeightRequest>
+                            <controls:SymbolIcon.WidthRequest>
+                                <OnPlatform x:TypeArguments="x:Double">
+                                    <On Platform="iOS" Value="18" />
+                                    <On Platform="Default" Value="24" />
+                                </OnPlatform>
+                            </controls:SymbolIcon.WidthRequest>
+                        </controls:SymbolIcon>
                     </Border>
 
-                    <!--  Separador  -->
+                    <!--  Separador (oculto en iOS)  -->
                     <BoxView
                         Margin="8,0"
                         BackgroundColor="#FF3A3A3A"
                         HeightRequest="30"
-                        WidthRequest="1" />
+                        WidthRequest="1">
+                        <BoxView.IsVisible>
+                            <OnPlatform x:TypeArguments="x:Boolean">
+                                <On Platform="iOS" Value="False" />
+                                <On Platform="Default" Value="True" />
+                            </OnPlatform>
+                        </BoxView.IsVisible>
+                    </BoxView>
 
-                    <!--  Velocidad  -->
+                    <!--  Velocidad (oculto en iOS - muy grande)  -->
                     <Border
                         Padding="{StaticResource PlayerSpeedContainerPadding}"
                         BackgroundColor="#FF2A2A2A"
                         StrokeShape="RoundRectangle 4"
                         StrokeThickness="0">
+                        <Border.IsVisible>
+                            <OnPlatform x:TypeArguments="x:Boolean">
+                                <On Platform="iOS" Value="False" />
+                                <On Platform="Default" Value="True" />
+                            </OnPlatform>
+                        </Border.IsVisible>
                         <HorizontalStackLayout Spacing="8">
                             <Label
                                 FontSize="{StaticResource FontSizeBody}"
@@ -2213,15 +2525,28 @@
                 </HorizontalStackLayout>
 
             </VerticalStackLayout>
+            </Grid>
         </Border>
 
-        <!--  Barra de navegación y filtros  -->
+        <!--  Barra de navegación y filtros (oculta en iOS, visible en otras plataformas)  -->
         <Border
+            x:Name="NavigationFiltersBorder"
             Grid.Row="2"
-            BackgroundColor="#FF121212"
             Stroke="#FF3A3A3A"
             StrokeShape="RoundRectangle 8"
             StrokeThickness="0">
+            <Border.IsVisible>
+                <OnPlatform x:TypeArguments="x:Boolean">
+                    <On Platform="iOS" Value="False" />
+                    <On Platform="Default" Value="True" />
+                </OnPlatform>
+            </Border.IsVisible>
+            <Border.BackgroundColor>
+                <OnPlatform x:TypeArguments="Color">
+                    <On Platform="WinUI" Value="#FF121212" />
+                    <On Platform="Default" Value="#FF121212" />
+                </OnPlatform>
+            </Border.BackgroundColor>
             <Border.Margin>
                 <OnPlatform x:TypeArguments="Thickness">
                     <On Platform="WinUI" Value="16,0,16,8" />
