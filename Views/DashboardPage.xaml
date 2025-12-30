@@ -553,7 +553,7 @@
                     <GridItemsLayout
                         HorizontalItemSpacing="{StaticResource SpacingXSmall}"
                         Orientation="Vertical"
-                        Span="4"
+                        Span="{StaticResource GalleryColumnCount}"
                         VerticalItemSpacing="{StaticResource SpacingSmall}" />
                 </CollectionView.ItemsLayout>
 
@@ -783,7 +783,7 @@
                     <GridItemsLayout
                         HorizontalItemSpacing="{StaticResource SpacingXSmall}"
                         Orientation="Vertical"
-                        Span="4"
+                        Span="{StaticResource GalleryColumnCount}"
                         VerticalItemSpacing="{StaticResource SpacingSmall}" />
                 </CollectionView.ItemsLayout>
 
@@ -950,16 +950,39 @@
                         <Border.GestureRecognizers>
                             <TapGestureRecognizer Command="{Binding SelectCrudTechTabCommand}" />
                         </Border.GestureRecognizers>
-                        <Label Text="Acciones y Análisis" TextColor="White" HorizontalOptions="Center" FontSize="{StaticResource FontSizeSmall}">
-                            <Label.Triggers>
-                                <DataTrigger TargetType="Label" Binding="{Binding IsCrudTechTabSelected}" Value="True">
-                                    <Setter Property="FontAttributes" Value="Bold" />
-                                </DataTrigger>
-                                <DataTrigger TargetType="Label" Binding="{Binding IsCrudTechTabSelected}" Value="False">
-                                    <Setter Property="FontAttributes" Value="None" />
-                                </DataTrigger>
-                            </Label.Triggers>
-                        </Label>
+                        <Grid>
+                            <!-- iOS: Solo icono -->
+                            <controls:SymbolIcon
+                                SymbolName="slider.horizontal.3"
+                                TintColor="White"
+                                HeightRequest="18"
+                                WidthRequest="18"
+                                HorizontalOptions="Center">
+                                <controls:SymbolIcon.IsVisible>
+                                    <OnPlatform x:TypeArguments="x:Boolean">
+                                        <On Platform="iOS" Value="True" />
+                                        <On Platform="Default" Value="False" />
+                                    </OnPlatform>
+                                </controls:SymbolIcon.IsVisible>
+                            </controls:SymbolIcon>
+                            <!-- Otras plataformas: Texto -->
+                            <Label Text="Acciones y Análisis" TextColor="White" HorizontalOptions="Center" FontSize="{StaticResource FontSizeSmall}">
+                                <Label.IsVisible>
+                                    <OnPlatform x:TypeArguments="x:Boolean">
+                                        <On Platform="iOS" Value="False" />
+                                        <On Platform="Default" Value="True" />
+                                    </OnPlatform>
+                                </Label.IsVisible>
+                                <Label.Triggers>
+                                    <DataTrigger TargetType="Label" Binding="{Binding IsCrudTechTabSelected}" Value="True">
+                                        <Setter Property="FontAttributes" Value="Bold" />
+                                    </DataTrigger>
+                                    <DataTrigger TargetType="Label" Binding="{Binding IsCrudTechTabSelected}" Value="False">
+                                        <Setter Property="FontAttributes" Value="None" />
+                                    </DataTrigger>
+                                </Label.Triggers>
+                            </Label>
+                        </Grid>
                     </Border>
 
                     <Border
@@ -976,16 +999,39 @@
                         <Border.GestureRecognizers>
                             <TapGestureRecognizer Command="{Binding SelectStatsTabCommand}" />
                         </Border.GestureRecognizers>
-                        <Label Text="Filtros y Estadísticas" TextColor="White" HorizontalOptions="Center" FontSize="{StaticResource FontSizeSmall}">
-                            <Label.Triggers>
-                                <DataTrigger TargetType="Label" Binding="{Binding IsStatsTabSelected}" Value="True">
-                                    <Setter Property="FontAttributes" Value="Bold" />
-                                </DataTrigger>
-                                <DataTrigger TargetType="Label" Binding="{Binding IsStatsTabSelected}" Value="False">
-                                    <Setter Property="FontAttributes" Value="None" />
-                                </DataTrigger>
-                            </Label.Triggers>
-                        </Label>
+                        <Grid>
+                            <!-- iOS: Solo icono -->
+                            <controls:SymbolIcon
+                                SymbolName="chart.bar.fill"
+                                TintColor="White"
+                                HeightRequest="18"
+                                WidthRequest="18"
+                                HorizontalOptions="Center">
+                                <controls:SymbolIcon.IsVisible>
+                                    <OnPlatform x:TypeArguments="x:Boolean">
+                                        <On Platform="iOS" Value="True" />
+                                        <On Platform="Default" Value="False" />
+                                    </OnPlatform>
+                                </controls:SymbolIcon.IsVisible>
+                            </controls:SymbolIcon>
+                            <!-- Otras plataformas: Texto -->
+                            <Label Text="Filtros y Estadísticas" TextColor="White" HorizontalOptions="Center" FontSize="{StaticResource FontSizeSmall}">
+                                <Label.IsVisible>
+                                    <OnPlatform x:TypeArguments="x:Boolean">
+                                        <On Platform="iOS" Value="False" />
+                                        <On Platform="Default" Value="True" />
+                                    </OnPlatform>
+                                </Label.IsVisible>
+                                <Label.Triggers>
+                                    <DataTrigger TargetType="Label" Binding="{Binding IsStatsTabSelected}" Value="True">
+                                        <Setter Property="FontAttributes" Value="Bold" />
+                                    </DataTrigger>
+                                    <DataTrigger TargetType="Label" Binding="{Binding IsStatsTabSelected}" Value="False">
+                                        <Setter Property="FontAttributes" Value="None" />
+                                    </DataTrigger>
+                                </Label.Triggers>
+                            </Label>
+                        </Grid>
                     </Border>
 
                     <Border
@@ -1003,16 +1049,39 @@
                         <Border.GestureRecognizers>
                             <TapGestureRecognizer Command="{Binding SelectDiaryTabCommand}" />
                         </Border.GestureRecognizers>
-                        <Label Text="Diario de Sesión" TextColor="White" HorizontalOptions="Center" FontSize="{StaticResource FontSizeSmall}">
-                            <Label.Triggers>
-                                <DataTrigger TargetType="Label" Binding="{Binding IsDiaryTabSelected}" Value="True">
-                                    <Setter Property="FontAttributes" Value="Bold" />
-                                </DataTrigger>
-                                <DataTrigger TargetType="Label" Binding="{Binding IsDiaryTabSelected}" Value="False">
-                                    <Setter Property="FontAttributes" Value="None" />
-                                </DataTrigger>
-                            </Label.Triggers>
-                        </Label>
+                        <Grid>
+                            <!-- iOS: Solo icono -->
+                            <controls:SymbolIcon
+                                SymbolName="calendar"
+                                TintColor="White"
+                                HeightRequest="18"
+                                WidthRequest="18"
+                                HorizontalOptions="Center">
+                                <controls:SymbolIcon.IsVisible>
+                                    <OnPlatform x:TypeArguments="x:Boolean">
+                                        <On Platform="iOS" Value="True" />
+                                        <On Platform="Default" Value="False" />
+                                    </OnPlatform>
+                                </controls:SymbolIcon.IsVisible>
+                            </controls:SymbolIcon>
+                            <!-- Otras plataformas: Texto -->
+                            <Label Text="Diario de Sesión" TextColor="White" HorizontalOptions="Center" FontSize="{StaticResource FontSizeSmall}">
+                                <Label.IsVisible>
+                                    <OnPlatform x:TypeArguments="x:Boolean">
+                                        <On Platform="iOS" Value="False" />
+                                        <On Platform="Default" Value="True" />
+                                    </OnPlatform>
+                                </Label.IsVisible>
+                                <Label.Triggers>
+                                    <DataTrigger TargetType="Label" Binding="{Binding IsDiaryTabSelected}" Value="True">
+                                        <Setter Property="FontAttributes" Value="Bold" />
+                                    </DataTrigger>
+                                    <DataTrigger TargetType="Label" Binding="{Binding IsDiaryTabSelected}" Value="False">
+                                        <Setter Property="FontAttributes" Value="None" />
+                                    </DataTrigger>
+                                </Label.Triggers>
+                            </Label>
+                        </Grid>
                     </Border>
 
                 </Grid>
@@ -1260,7 +1329,13 @@
                                 <On Platform="Default" Value="0,0,0,8" />
                             </OnPlatform>
                         </HorizontalStackLayout.Margin>
-                        <HorizontalStackLayout Spacing="6">
+                        <HorizontalStackLayout>
+                            <HorizontalStackLayout.Spacing>
+                                <OnPlatform x:TypeArguments="x:Double">
+                                    <On Platform="iOS" Value="2" />
+                                    <On Platform="Default" Value="6" />
+                                </OnPlatform>
+                            </HorizontalStackLayout.Spacing>
                             <RadioButton
                                 GroupName="AnalysisMode"
                                 IsChecked="{Binding IsSingleVideoMode}"
@@ -1286,9 +1361,34 @@
                                     </ControlTemplate>
                                 </RadioButton.ControlTemplate>
                             </RadioButton>
-                            <Label Text="Único" TextColor="White" VerticalOptions="Center" />
+                            <Grid>
+                                <!-- iOS: Icono -->
+                                <controls:SymbolIcon SymbolName="rectangle.fill" TintColor="White" HeightRequest="16" WidthRequest="16" VerticalOptions="Center">
+                                    <controls:SymbolIcon.IsVisible>
+                                        <OnPlatform x:TypeArguments="x:Boolean">
+                                            <On Platform="iOS" Value="True" />
+                                            <On Platform="Default" Value="False" />
+                                        </OnPlatform>
+                                    </controls:SymbolIcon.IsVisible>
+                                </controls:SymbolIcon>
+                                <!-- Otras plataformas: Texto -->
+                                <Label Text="Único" TextColor="White" VerticalOptions="Center">
+                                    <Label.IsVisible>
+                                        <OnPlatform x:TypeArguments="x:Boolean">
+                                            <On Platform="iOS" Value="False" />
+                                            <On Platform="Default" Value="True" />
+                                        </OnPlatform>
+                                    </Label.IsVisible>
+                                </Label>
+                            </Grid>
                         </HorizontalStackLayout>
-                        <HorizontalStackLayout Spacing="6">
+                        <HorizontalStackLayout>
+                            <HorizontalStackLayout.Spacing>
+                                <OnPlatform x:TypeArguments="x:Double">
+                                    <On Platform="iOS" Value="2" />
+                                    <On Platform="Default" Value="6" />
+                                </OnPlatform>
+                            </HorizontalStackLayout.Spacing>
                             <RadioButton
                                 GroupName="AnalysisMode"
                                 IsChecked="{Binding IsParallelVideoMode}"
@@ -1314,9 +1414,34 @@
                                     </ControlTemplate>
                                 </RadioButton.ControlTemplate>
                             </RadioButton>
-                            <Label Text="Paralelo" TextColor="White" VerticalOptions="Center" />
+                            <Grid>
+                                <!-- iOS: Icono -->
+                                <controls:SymbolIcon SymbolName="rectangle.split.2x1.fill" TintColor="White" HeightRequest="16" WidthRequest="16" VerticalOptions="Center">
+                                    <controls:SymbolIcon.IsVisible>
+                                        <OnPlatform x:TypeArguments="x:Boolean">
+                                            <On Platform="iOS" Value="True" />
+                                            <On Platform="Default" Value="False" />
+                                        </OnPlatform>
+                                    </controls:SymbolIcon.IsVisible>
+                                </controls:SymbolIcon>
+                                <!-- Otras plataformas: Texto -->
+                                <Label Text="Paralelo" TextColor="White" VerticalOptions="Center">
+                                    <Label.IsVisible>
+                                        <OnPlatform x:TypeArguments="x:Boolean">
+                                            <On Platform="iOS" Value="False" />
+                                            <On Platform="Default" Value="True" />
+                                        </OnPlatform>
+                                    </Label.IsVisible>
+                                </Label>
+                            </Grid>
                         </HorizontalStackLayout>
-                        <HorizontalStackLayout Spacing="6">
+                        <HorizontalStackLayout>
+                            <HorizontalStackLayout.Spacing>
+                                <OnPlatform x:TypeArguments="x:Double">
+                                    <On Platform="iOS" Value="2" />
+                                    <On Platform="Default" Value="6" />
+                                </OnPlatform>
+                            </HorizontalStackLayout.Spacing>
                             <RadioButton
                                 GroupName="AnalysisMode"
                                 IsChecked="{Binding IsQuadVideoMode}"
@@ -1342,7 +1467,26 @@
                                     </ControlTemplate>
                                 </RadioButton.ControlTemplate>
                             </RadioButton>
-                            <Label Text="Cuádruple" TextColor="White" VerticalOptions="Center" />
+                            <Grid>
+                                <!-- iOS: Icono -->
+                                <controls:SymbolIcon SymbolName="rectangle.split.2x2.fill" TintColor="White" HeightRequest="16" WidthRequest="16" VerticalOptions="Center">
+                                    <controls:SymbolIcon.IsVisible>
+                                        <OnPlatform x:TypeArguments="x:Boolean">
+                                            <On Platform="iOS" Value="True" />
+                                            <On Platform="Default" Value="False" />
+                                        </OnPlatform>
+                                    </controls:SymbolIcon.IsVisible>
+                                </controls:SymbolIcon>
+                                <!-- Otras plataformas: Texto -->
+                                <Label Text="Cuádruple" TextColor="White" VerticalOptions="Center">
+                                    <Label.IsVisible>
+                                        <OnPlatform x:TypeArguments="x:Boolean">
+                                            <On Platform="iOS" Value="False" />
+                                            <On Platform="Default" Value="True" />
+                                        </OnPlatform>
+                                    </Label.IsVisible>
+                                </Label>
+                            </Grid>
                         </HorizontalStackLayout>
                     </HorizontalStackLayout>
 

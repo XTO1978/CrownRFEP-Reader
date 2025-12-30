@@ -111,7 +111,17 @@
          ==================================================================== -->
     <OnPlatform x:TypeArguments="x:Double" x:Key="SidebarWidthDefault">
         <On Platform="WinUI" Value="260" />
+        <On Platform="iOS" Value="230" />
         <On Platform="Default" Value="350" />
+    </OnPlatform>
+
+    <!-- ====================================================================
+         ADAPTIVE GALLERY COLUMNS
+         Número de columnas en galerías de video - iOS usa menos columnas.
+         ==================================================================== -->
+    <OnPlatform x:TypeArguments="x:Int32" x:Key="GalleryColumnCount">
+        <On Platform="iOS" Value="3" />
+        <On Platform="Default" Value="4" />
     </OnPlatform>
 
     <!-- ====================================================================
