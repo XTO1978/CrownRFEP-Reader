@@ -356,13 +356,33 @@ public class ImportViewModel : BaseViewModel
 
             await Task.Run(() =>
             {
+                List<(string Name, string Path, string Icon)> quickAccess;
+
+#if IOS
+                // En iOS, el acceso al sistema de archivos está restringido al sandbox de la app
+                var documentsDir = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+                var libraryDir = Path.Combine(documentsDir, "..", "Library");
+                var cachesDir = Path.Combine(libraryDir, "Caches");
+                var tmpDir = Path.GetTempPath();
+                
+                // Directorio de archivos compartidos (accesible desde la app Archivos)
+                var inboxDir = Path.Combine(documentsDir, "Inbox");
+                
+                quickAccess = new List<(string Name, string Path, string Icon)>
+                {
+                    ("Documentos", documentsDir, "doc.on.doc"),
+                    ("Bandeja entrada", inboxDir, "tray.and.arrow.down"),
+                    ("Caché", cachesDir, "internaldrive"),
+                    ("Temporal", tmpDir, "clock.arrow.circlepath")
+                };
+#else
                 // En macOS, empezamos con el directorio home y algunos accesos rápidos
                 var homeDir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
                 var desktopDir = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
                 var documentsDir = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
                 var downloadsDir = Path.Combine(homeDir, "Downloads");
 
-                var quickAccess = new List<(string Name, string Path, string Icon)>
+                quickAccess = new List<(string Name, string Path, string Icon)>
                 {
                     ("Escritorio", desktopDir, "menubar.dock.rectangle"),
                     ("Documentos", documentsDir, "doc.on.doc"),
@@ -370,6 +390,7 @@ public class ImportViewModel : BaseViewModel
                     ("Inicio", homeDir, "house"),
                     ("Raíz", "/", "externaldrive.fill")
                 };
+#endif
 
                 MainThread.BeginInvokeOnMainThread(() =>
                 {
@@ -812,6 +833,14 @@ public class ImportViewModel : BaseViewModel
         {
             System.Diagnostics.Debug.WriteLine($"Error picking videos: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// Añade un archivo de video a la lista de pendientes (público para uso desde iOS)
+    /// </summary>
+    public void AddVideoFromPath(string filePath)
+    {
+        AddVideoFile(filePath);
     }
 
     /// <summary>

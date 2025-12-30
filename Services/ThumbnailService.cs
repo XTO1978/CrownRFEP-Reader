@@ -4,7 +4,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-#if MACCATALYST
+#if MACCATALYST || IOS
 using AVFoundation;
 using CoreMedia;
 using CoreGraphics;
@@ -103,7 +103,7 @@ public class ThumbnailService
                 Directory.CreateDirectory(outputDir);
             }
 
-#if MACCATALYST
+#if MACCATALYST || IOS
             return await GenerateThumbnailMacAsync(videoPath, outputPath);
 #elif WINDOWS
             return await GenerateThumbnailWindowsAsync(videoPath, outputPath);
@@ -119,7 +119,7 @@ public class ThumbnailService
         }
     }
 
-#if MACCATALYST
+#if MACCATALYST || IOS
     private async Task<bool> GenerateThumbnailMacAsync(string videoPath, string outputPath)
     {
         return await Task.Run(() =>
