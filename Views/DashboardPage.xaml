@@ -582,6 +582,14 @@
                                 <!--  Thumbnail con aspect ratio 16:9  -->
                                 <controls:AspectRatioContainer AspectRatio="1.777">
                                     <Grid>
+                                        <!--  Behavior de long press para preview en iOS  -->
+                                        <Grid.Behaviors>
+                                            <OnPlatform x:TypeArguments="Behavior">
+                                                <On Platform="iOS">
+                                                    <behaviors:LongPressVideoPreviewBehavior />
+                                                </On>
+                                            </OnPlatform>
+                                        </Grid.Behaviors>
                                         <Image
                                             Aspect="AspectFill"
                                             BackgroundColor="{StaticResource Gray300}"
@@ -715,7 +723,7 @@
                                         </ScrollView>
                                     </VerticalStackLayout>
 
-                                    <!--  Zona de vista previa (hover para mostrar preview)  -->
+                                    <!--  Zona de vista previa (hover para mostrar preview) - Solo en desktop  -->
                                     <Border
                                         Grid.Column="1"
                                         Padding="6"
@@ -723,6 +731,12 @@
                                         StrokeShape="RoundRectangle 4"
                                         StrokeThickness="0"
                                         VerticalOptions="Center">
+                                        <Border.IsVisible>
+                                            <OnPlatform x:TypeArguments="x:Boolean">
+                                                <On Platform="iOS" Value="False" />
+                                                <On Platform="MacCatalyst,WinUI" Value="True" />
+                                            </OnPlatform>
+                                        </Border.IsVisible>
                                         <Border.Behaviors>
                                             <behaviors:HoverVideoPreviewBehavior />
                                         </Border.Behaviors>

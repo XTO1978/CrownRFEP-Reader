@@ -111,7 +111,7 @@
          ==================================================================== -->
     <OnPlatform x:TypeArguments="x:Double" x:Key="SidebarWidthDefault">
         <On Platform="WinUI" Value="260" />
-        <On Platform="iOS" Value="230" />
+        <On Platform="iOS" Value="240" />
         <On Platform="Default" Value="350" />
     </OnPlatform>
 

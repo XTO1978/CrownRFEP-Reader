@@ -39,6 +39,12 @@ public partial class DashboardPage : ContentPage
         VideoScrubBehavior.ScrubUpdated += OnScrubUpdated;
         VideoScrubBehavior.ScrubEnded += OnScrubEnded;
         
+#if IOS
+        // Suscribirse a eventos de long press para preview en iOS
+        LongPressVideoPreviewBehavior.VideoLongPressStarted += OnVideoLongPressStarted;
+        LongPressVideoPreviewBehavior.VideoLongPressEnded += OnVideoLongPressEnded;
+#endif
+        
 #if MACCATALYST
         // Suscribirse a eventos de teclado
         KeyPressHandler.SpaceBarPressed += OnSpaceBarPressed;
@@ -51,6 +57,11 @@ public partial class DashboardPage : ContentPage
         HoverVideoPreviewBehavior.VideoHoverEnded -= OnVideoHoverEnded;
         VideoScrubBehavior.ScrubUpdated -= OnScrubUpdated;
         VideoScrubBehavior.ScrubEnded -= OnScrubEnded;
+        
+#if IOS
+        LongPressVideoPreviewBehavior.VideoLongPressStarted -= OnVideoLongPressStarted;
+        LongPressVideoPreviewBehavior.VideoLongPressEnded -= OnVideoLongPressEnded;
+#endif
         
 #if MACCATALYST
         KeyPressHandler.SpaceBarPressed -= OnSpaceBarPressed;
@@ -143,6 +154,24 @@ public partial class DashboardPage : ContentPage
             _viewModel.HoverVideo = null;
         });
     }
+
+#if IOS
+    private void OnVideoLongPressStarted(object? sender, LongPressVideoEventArgs e)
+    {
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            _viewModel.HoverVideo = e.Video;
+        });
+    }
+
+    private void OnVideoLongPressEnded(object? sender, LongPressVideoEventArgs e)
+    {
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            _viewModel.HoverVideo = null;
+        });
+    }
+#endif
 
     private void OnFilterChipTapped(object? sender, TappedEventArgs e)
     {
