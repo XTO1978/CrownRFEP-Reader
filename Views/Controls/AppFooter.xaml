@@ -4,10 +4,22 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:controls="clr-namespace:CrownRFEP_Reader.Views.Controls"
-    BackgroundColor="Transparent"
     HeightRequest="{StaticResource FooterHeight}">
 
+    <ContentView.BackgroundColor>
+        <OnPlatform x:TypeArguments="Color">
+            <On Platform="iOS" Value="{StaticResource OffBlack}" />
+            <On Platform="MacCatalyst,WinUI" Value="Transparent" />
+        </OnPlatform>
+    </ContentView.BackgroundColor>
+
     <Grid>
+        <Grid.BackgroundColor>
+            <OnPlatform x:TypeArguments="Color">
+                <On Platform="iOS" Value="{StaticResource OffBlack}" />
+                <On Platform="MacCatalyst,WinUI" Value="Transparent" />
+            </OnPlatform>
+        </Grid.BackgroundColor>
         <!--  Línea separadora superior  -->
         <BoxView
             HeightRequest="0.6"
@@ -19,6 +31,12 @@
             ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto,Auto"
             ColumnSpacing="20"
             VerticalOptions="Center">
+            <Grid.BackgroundColor>
+                <OnPlatform x:TypeArguments="Color">
+                    <On Platform="iOS" Value="{StaticResource OffBlack}" />
+                    <On Platform="MacCatalyst,WinUI" Value="Transparent" />
+                </OnPlatform>
+            </Grid.BackgroundColor>
 
             <!--  Estado de la BD con botón de logs  -->
             <Border
@@ -81,7 +99,14 @@
                 VerticalOptions="Center" />
 
             <!--  Spacer central  -->
-            <BoxView Grid.Column="2" Color="Transparent" />
+            <BoxView Grid.Column="2">
+                <BoxView.Color>
+                    <OnPlatform x:TypeArguments="Color">
+                        <On Platform="iOS" Value="{StaticResource OffBlack}" />
+                        <On Platform="MacCatalyst,WinUI" Value="Transparent" />
+                    </OnPlatform>
+                </BoxView.Color>
+            </BoxView>
 
             <!--  Contador de vídeos  -->
             <HorizontalStackLayout
