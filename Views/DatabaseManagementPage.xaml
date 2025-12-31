@@ -14,7 +14,7 @@
         <controls:TopTabsBar Grid.Row="0" HorizontalOptions="Center" VerticalOptions="Start"/>
 
         <!-- Título y acciones -->
-        <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto" Margin="30,15,30,5">
+        <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto,Auto,Auto,Auto" Margin="30,15,30,5">
             <HorizontalStackLayout Spacing="10">
                 <Label Text="Gestión de Base de Datos" 
                        FontSize="24"
@@ -22,6 +22,38 @@
             </HorizontalStackLayout>
             
             <Button Grid.Column="1"
+                    Text="Añadir"
+                    Command="{Binding AddNewCommand}"
+                    BackgroundColor="#FF2A7A2A"
+                    TextColor="White"
+                    FontSize="14"
+                    Padding="16,6"
+                    Margin="0,0,10,0"
+                    CornerRadius="4"/>
+            
+            <Button Grid.Column="2"
+                    Text="{Binding CurrentSelectedCount, StringFormat='Editar ({0})'}"
+                    Command="{Binding EditSelectedCommand}"
+                    IsEnabled="{Binding CanEditCurrentTab}"
+                    BackgroundColor="#FF2A2A2A"
+                    TextColor="#FF6DDDFF"
+                    FontSize="14"
+                    Padding="16,6"
+                    Margin="0,0,10,0"
+                    CornerRadius="4"/>
+            
+            <Button Grid.Column="3"
+                    Text="{Binding CurrentSelectedCount, StringFormat='Eliminar ({0})'}"
+                    Command="{Binding DeleteSelectedCommand}"
+                    IsEnabled="{Binding CanDeleteCurrentTab}"
+                    BackgroundColor="#FF2A2A2A"
+                    TextColor="#FFFF6B6B"
+                    FontSize="14"
+                    Padding="16,6"
+                    Margin="0,0,10,0"
+                    CornerRadius="4"/>
+            
+            <Button Grid.Column="4"
                     Text="{Binding CurrentSelectedCount, StringFormat='Son el mismo ({0})'}"
                     Command="{Binding MergeSelectedCommand}"
                     IsEnabled="{Binding CanMergeCurrentTab}"
@@ -30,16 +62,6 @@
                     FontSize="14"
                     Padding="16,6"
                     Margin="0,0,10,0"
-                    CornerRadius="4"/>
-            
-            <Button Grid.Column="2"
-                    Text="Consolidar atletas automático"
-                    Command="{Binding ConsolidateAthletesCommand}"
-                    IsVisible="{Binding IsAthletesTab}"
-                    BackgroundColor="#FF2A2A2A"
-                    TextColor="White"
-                    FontSize="14"
-                    Padding="16,6"
                     CornerRadius="4"/>
         </Grid>
 
@@ -81,11 +103,11 @@
                     Padding="14,8"
                     CornerRadius="4"/>
             
-            <Button Text="{Binding SessionTypes.Count, StringFormat='Tipos Sesión ({0})'}"
+            <Button Text="{Binding Events.Count, StringFormat='Eventos ({0})'}"
                     Command="{Binding SelectTabCommand}"
                     CommandParameter="4"
-                    BackgroundColor="{Binding IsSessionTypesTab, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF6DDDFF|#FF2A2A2A'}"
-                    TextColor="{Binding IsSessionTypesTab, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF000000|#FFFFFFFF'}"
+                    BackgroundColor="{Binding IsEventsTab, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF6DDDFF|#FF2A2A2A'}"
+                    TextColor="{Binding IsEventsTab, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF000000|#FFFFFFFF'}"
                     FontSize="13"
                     Padding="14,8"
                     CornerRadius="4"/>
@@ -123,6 +145,7 @@
                                         </Border.GestureRecognizers>
                                         <Grid ColumnDefinitions="50,80,*,*" Padding="12,10">
                                             <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                                      InputTransparent="True"
                                                       HorizontalOptions="Center" VerticalOptions="Center" Color="#FF6DDDFF"/>
                                             <Border Grid.Column="1" BackgroundColor="#FF2A2A2A" StrokeThickness="0"
                                                     StrokeShape="RoundRectangle 4" WidthRequest="45" HeightRequest="28" HorizontalOptions="Start">
@@ -167,6 +190,7 @@
                                         </Border.GestureRecognizers>
                                         <Grid ColumnDefinitions="50,80,*" Padding="12,10">
                                             <CheckBox IsChecked="{Binding IsSelectedForMerge, Mode=TwoWay}"
+                                                      InputTransparent="True"
                                                       HorizontalOptions="Center" VerticalOptions="Center" Color="#FF6DDDFF"/>
                                             <Border Grid.Column="1" BackgroundColor="#FF2A2A2A" StrokeThickness="0"
                                                     StrokeShape="RoundRectangle 4" WidthRequest="45" HeightRequest="28" HorizontalOptions="Start">
@@ -211,6 +235,7 @@
                                         </Border.GestureRecognizers>
                                         <Grid ColumnDefinitions="50,80,*" Padding="12,10">
                                             <CheckBox IsChecked="{Binding IsSelectedForMerge, Mode=TwoWay}"
+                                                      InputTransparent="True"
                                                       HorizontalOptions="Center" VerticalOptions="Center" Color="#FF6DDDFF"/>
                                             <Border Grid.Column="1" BackgroundColor="#FF2A2A2A" StrokeThickness="0"
                                                     StrokeShape="RoundRectangle 4" WidthRequest="45" HeightRequest="28" HorizontalOptions="Start">
@@ -255,6 +280,7 @@
                                         </Border.GestureRecognizers>
                                         <Grid ColumnDefinitions="50,80,*" Padding="12,10">
                                             <CheckBox IsChecked="{Binding IsSelectedForMerge, Mode=TwoWay}"
+                                                      InputTransparent="True"
                                                       HorizontalOptions="Center" VerticalOptions="Center" Color="#FF6DDDFF"/>
                                             <Border Grid.Column="1" BackgroundColor="#FF2A2A2A" StrokeThickness="0"
                                                     StrokeShape="RoundRectangle 4" WidthRequest="45" HeightRequest="28" HorizontalOptions="Start">
@@ -270,8 +296,8 @@
                 </Grid>
             </Border>
 
-            <!-- Tab Tipos de Sesión -->
-            <Border IsVisible="{Binding IsSessionTypesTab}"
+            <!-- Tab Eventos -->
+            <Border IsVisible="{Binding IsEventsTab}"
                     BackgroundColor="#FF1A1A1A"
                     StrokeThickness="0"
                     StrokeShape="RoundRectangle 8">
@@ -280,31 +306,32 @@
                         <Grid ColumnDefinitions="50,80,*" Padding="12,10">
                             <Label Text="✓" TextColor="White" HorizontalOptions="Center"/>
                             <Label Grid.Column="1" Text="ID" TextColor="White"/>
-                            <Label Grid.Column="2" Text="Tipo de Sesión" TextColor="White"/>
+                            <Label Grid.Column="2" Text="Nombre del Evento" TextColor="White"/>
                         </Grid>
                     </Border>
                     
                     <ScrollView Grid.Row="1">
-                        <VerticalStackLayout BindableLayout.ItemsSource="{Binding SessionTypes}" Spacing="0">
+                        <VerticalStackLayout BindableLayout.ItemsSource="{Binding Events}" Spacing="0">
                             <BindableLayout.EmptyView>
-                                <Label Text="No hay tipos de sesión registrados" TextColor="Gray" HorizontalOptions="Center" Margin="40"/>
+                                <Label Text="No hay eventos registrados" TextColor="Gray" HorizontalOptions="Center" Margin="40"/>
                             </BindableLayout.EmptyView>
                             <BindableLayout.ItemTemplate>
-                                <DataTemplate x:DataType="models:SessionType">
+                                <DataTemplate x:DataType="models:EventTagDefinition">
                                     <Border StrokeThickness="0,0,0,0.6" Stroke="#FF393939" BackgroundColor="Transparent">
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer 
-                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DatabaseManagementViewModel}}, Path=ToggleSessionTypeSelectionCommand}"
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DatabaseManagementViewModel}}, Path=ToggleEventSelectionCommand}"
                                                 CommandParameter="{Binding .}"/>
                                         </Border.GestureRecognizers>
                                         <Grid ColumnDefinitions="50,80,*" Padding="12,10">
-                                            <CheckBox IsChecked="{Binding IsSelectedForMerge, Mode=TwoWay}"
+                                            <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                                      InputTransparent="True"
                                                       HorizontalOptions="Center" VerticalOptions="Center" Color="#FF6DDDFF"/>
                                             <Border Grid.Column="1" BackgroundColor="#FF2A2A2A" StrokeThickness="0"
                                                     StrokeShape="RoundRectangle 4" WidthRequest="45" HeightRequest="28" HorizontalOptions="Start">
                                                 <Label Text="{Binding Id}" TextColor="White" HorizontalOptions="Center" VerticalOptions="Center"/>
                                             </Border>
-                                            <Label Grid.Column="2" Text="{Binding TipoSesion}" TextColor="White" FontSize="14" VerticalOptions="Center"/>
+                                            <Label Grid.Column="2" Text="{Binding Nombre}" TextColor="White" FontSize="14" VerticalOptions="Center"/>
                                         </Grid>
                                     </Border>
                                 </DataTemplate>

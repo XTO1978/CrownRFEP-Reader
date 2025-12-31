@@ -19,14 +19,14 @@ public class DatabaseManagementViewModel : BaseViewModel
     private int _selectedPlacesCount;
     private int _selectedCategoriesCount;
     private int _selectedTagsCount;
-    private int _selectedSessionTypesCount;
+    private int _selectedEventsCount;
 
     // Colecciones
     public ObservableCollection<Athlete> Athletes { get; } = new();
     public ObservableCollection<Place> Places { get; } = new();
     public ObservableCollection<Category> Categories { get; } = new();
     public ObservableCollection<Tag> Tags { get; } = new();
-    public ObservableCollection<SessionType> SessionTypes { get; } = new();
+    public ObservableCollection<EventTagDefinition> Events { get; } = new();
 
     #region Properties
 
@@ -41,7 +41,7 @@ public class DatabaseManagementViewModel : BaseViewModel
                 OnPropertyChanged(nameof(IsPlacesTab));
                 OnPropertyChanged(nameof(IsCategoriesTab));
                 OnPropertyChanged(nameof(IsTagsTab));
-                OnPropertyChanged(nameof(IsSessionTypesTab));
+                OnPropertyChanged(nameof(IsEventsTab));
                 OnPropertyChanged(nameof(CurrentTabTitle));
                 OnPropertyChanged(nameof(CanMergeCurrentTab));
                 OnPropertyChanged(nameof(CurrentSelectedCount));
@@ -53,7 +53,7 @@ public class DatabaseManagementViewModel : BaseViewModel
     public bool IsPlacesTab => SelectedTabIndex == 1;
     public bool IsCategoriesTab => SelectedTabIndex == 2;
     public bool IsTagsTab => SelectedTabIndex == 3;
-    public bool IsSessionTypesTab => SelectedTabIndex == 4;
+    public bool IsEventsTab => SelectedTabIndex == 4;
 
     public string CurrentTabTitle => SelectedTabIndex switch
     {
@@ -61,38 +61,38 @@ public class DatabaseManagementViewModel : BaseViewModel
         1 => "Lugares",
         2 => "Categorías",
         3 => "Tags",
-        4 => "Tipos de Sesión",
+        4 => "Eventos",
         _ => ""
     };
 
     public int SelectedAthletesCount
     {
         get => _selectedAthletesCount;
-        set { SetProperty(ref _selectedAthletesCount, value); OnPropertyChanged(nameof(CanMergeCurrentTab)); OnPropertyChanged(nameof(CurrentSelectedCount)); }
+        set { SetProperty(ref _selectedAthletesCount, value); OnPropertyChanged(nameof(CanMergeCurrentTab)); OnPropertyChanged(nameof(CanDeleteCurrentTab)); OnPropertyChanged(nameof(CanEditCurrentTab)); OnPropertyChanged(nameof(CurrentSelectedCount)); }
     }
 
     public int SelectedPlacesCount
     {
         get => _selectedPlacesCount;
-        set { SetProperty(ref _selectedPlacesCount, value); OnPropertyChanged(nameof(CanMergeCurrentTab)); OnPropertyChanged(nameof(CurrentSelectedCount)); }
+        set { SetProperty(ref _selectedPlacesCount, value); OnPropertyChanged(nameof(CanMergeCurrentTab)); OnPropertyChanged(nameof(CanDeleteCurrentTab)); OnPropertyChanged(nameof(CanEditCurrentTab)); OnPropertyChanged(nameof(CurrentSelectedCount)); }
     }
 
     public int SelectedCategoriesCount
     {
         get => _selectedCategoriesCount;
-        set { SetProperty(ref _selectedCategoriesCount, value); OnPropertyChanged(nameof(CanMergeCurrentTab)); OnPropertyChanged(nameof(CurrentSelectedCount)); }
+        set { SetProperty(ref _selectedCategoriesCount, value); OnPropertyChanged(nameof(CanMergeCurrentTab)); OnPropertyChanged(nameof(CanDeleteCurrentTab)); OnPropertyChanged(nameof(CanEditCurrentTab)); OnPropertyChanged(nameof(CurrentSelectedCount)); }
     }
 
     public int SelectedTagsCount
     {
         get => _selectedTagsCount;
-        set { SetProperty(ref _selectedTagsCount, value); OnPropertyChanged(nameof(CanMergeCurrentTab)); OnPropertyChanged(nameof(CurrentSelectedCount)); }
+        set { SetProperty(ref _selectedTagsCount, value); OnPropertyChanged(nameof(CanMergeCurrentTab)); OnPropertyChanged(nameof(CanDeleteCurrentTab)); OnPropertyChanged(nameof(CanEditCurrentTab)); OnPropertyChanged(nameof(CurrentSelectedCount)); }
     }
 
-    public int SelectedSessionTypesCount
+    public int SelectedEventsCount
     {
-        get => _selectedSessionTypesCount;
-        set { SetProperty(ref _selectedSessionTypesCount, value); OnPropertyChanged(nameof(CanMergeCurrentTab)); OnPropertyChanged(nameof(CurrentSelectedCount)); }
+        get => _selectedEventsCount;
+        set { SetProperty(ref _selectedEventsCount, value); OnPropertyChanged(nameof(CanMergeCurrentTab)); OnPropertyChanged(nameof(CanDeleteCurrentTab)); OnPropertyChanged(nameof(CanEditCurrentTab)); OnPropertyChanged(nameof(CurrentSelectedCount)); }
     }
 
     public int CurrentSelectedCount => SelectedTabIndex switch
@@ -101,7 +101,7 @@ public class DatabaseManagementViewModel : BaseViewModel
         1 => SelectedPlacesCount,
         2 => SelectedCategoriesCount,
         3 => SelectedTagsCount,
-        4 => SelectedSessionTypesCount,
+        4 => SelectedEventsCount,
         _ => 0
     };
 
@@ -128,8 +128,17 @@ public class DatabaseManagementViewModel : BaseViewModel
     // Tags
     public ICommand ToggleTagSelectionCommand { get; }
     
-    // Tipos de Sesión
-    public ICommand ToggleSessionTypeSelectionCommand { get; }
+    // Tipos de Sesión -> Eventos
+    public ICommand ToggleEventSelectionCommand { get; }
+    
+    // Acciones generales
+    public ICommand DeleteSelectedCommand { get; }
+    public ICommand EditSelectedCommand { get; }
+    public ICommand AddNewCommand { get; }
+    
+    // Propiedades para habilitar botones
+    public bool CanDeleteCurrentTab => CurrentSelectedCount >= 1;
+    public bool CanEditCurrentTab => CurrentSelectedCount == 1;
 
     #endregion
 
@@ -155,8 +164,13 @@ public class DatabaseManagementViewModel : BaseViewModel
         // Tags
         ToggleTagSelectionCommand = new Command<Tag>(ToggleTagSelection);
         
-        // Tipos de Sesión
-        ToggleSessionTypeSelectionCommand = new Command<SessionType>(ToggleSessionTypeSelection);
+        // Eventos
+        ToggleEventSelectionCommand = new Command<EventTagDefinition>(ToggleEventSelection);
+        
+        // Acciones generales
+        DeleteSelectedCommand = new AsyncRelayCommand(DeleteSelectedAsync);
+        EditSelectedCommand = new AsyncRelayCommand(EditSelectedAsync);
+        AddNewCommand = new AsyncRelayCommand(AddNewAsync);
     }
 
     #region Data Loading
@@ -188,8 +202,8 @@ public class DatabaseManagementViewModel : BaseViewModel
             System.Diagnostics.Debug.WriteLine("[LoadAllDataAsync] Cargando tags...");
             await LoadTagsAsync();
             
-            System.Diagnostics.Debug.WriteLine("[LoadAllDataAsync] Cargando tipos de sesión...");
-            await LoadSessionTypesAsync();
+            System.Diagnostics.Debug.WriteLine("[LoadAllDataAsync] Cargando eventos...");
+            await LoadEventsAsync();
             
             System.Diagnostics.Debug.WriteLine("[LoadAllDataAsync] Completado");
         }
@@ -272,17 +286,17 @@ public class DatabaseManagementViewModel : BaseViewModel
         });
     }
 
-    private async Task LoadSessionTypesAsync()
+    private async Task LoadEventsAsync()
     {
-        var sessionTypes = await _databaseService.GetAllSessionTypesAsync();
+        var events = await _databaseService.GetAllEventTagsAsync();
         await MainThread.InvokeOnMainThreadAsync(() =>
         {
-            SessionTypes.Clear();
-            foreach (var sessionType in sessionTypes)
+            Events.Clear();
+            foreach (var evt in events)
             {
-                SessionTypes.Add(sessionType);
+                Events.Add(evt);
             }
-            UpdateSessionTypesSelectedCount();
+            UpdateEventsSelectedCount();
         });
     }
 
@@ -330,18 +344,18 @@ public class DatabaseManagementViewModel : BaseViewModel
         UpdateTagsSelectedCount();
     }
 
-    private void ToggleSessionTypeSelection(SessionType? sessionType)
+    private void ToggleEventSelection(EventTagDefinition? eventTag)
     {
-        if (sessionType == null) return;
-        sessionType.IsSelectedForMerge = !sessionType.IsSelectedForMerge;
-        UpdateSessionTypesSelectedCount();
+        if (eventTag == null) return;
+        eventTag.IsSelected = !eventTag.IsSelected;
+        UpdateEventsSelectedCount();
     }
 
     public void UpdateAthletesSelectedCount() => SelectedAthletesCount = Athletes.Count(a => a.IsSelected);
     public void UpdatePlacesSelectedCount() => SelectedPlacesCount = Places.Count(p => p.IsSelectedForMerge);
     public void UpdateCategoriesSelectedCount() => SelectedCategoriesCount = Categories.Count(c => c.IsSelectedForMerge);
     public void UpdateTagsSelectedCount() => SelectedTagsCount = Tags.Count(t => t.IsSelectedForMerge);
-    public void UpdateSessionTypesSelectedCount() => SelectedSessionTypesCount = SessionTypes.Count(s => s.IsSelectedForMerge);
+    public void UpdateEventsSelectedCount() => SelectedEventsCount = Events.Count(e => e.IsSelected);
 
     #endregion
 
@@ -355,7 +369,7 @@ public class DatabaseManagementViewModel : BaseViewModel
             case 1: await MergePlacesAsync(); break;
             case 2: await MergeCategoriesAsync(); break;
             case 3: await MergeTagsAsync(); break;
-            case 4: await MergeSessionTypesAsync(); break;
+            case 4: await MergeEventsAsync(); break;
         }
     }
 
@@ -539,22 +553,29 @@ public class DatabaseManagementViewModel : BaseViewModel
         }
     }
 
-    private async Task MergeSessionTypesAsync()
+    private async Task MergeEventsAsync()
     {
-        var selected = SessionTypes.Where(s => s.IsSelectedForMerge).OrderBy(s => s.Id).ToList();
+        var selected = Events.Where(e => e.IsSelected).OrderBy(e => e.Id).ToList();
         if (selected.Count < 2)
         {
-            await Shell.Current.DisplayAlert("Aviso", "Selecciona al menos 2 tipos de sesión para fusionar.", "OK");
+            await Shell.Current.DisplayAlert("Aviso", "Selecciona al menos 2 eventos para fusionar.", "OK");
+            return;
+        }
+
+        // Verificar que no haya eventos de sistema seleccionados
+        if (selected.Any(e => e.IsSystem))
+        {
+            await Shell.Current.DisplayAlert("Aviso", "No se pueden fusionar eventos de sistema.", "OK");
             return;
         }
 
         var options = selected
-            .Select(s => s.TipoSesion ?? $"Tipo {s.Id}")
+            .Select(e => e.Nombre ?? $"Evento {e.Id}")
             .Distinct()
             .ToArray();
 
         var chosenName = await Shell.Current.DisplayActionSheet(
-            "¿Qué nombre quieres usar para este tipo de sesión?",
+            "¿Qué nombre quieres usar para este evento?",
             "Cancelar", null, options);
 
         if (string.IsNullOrEmpty(chosenName) || chosenName == "Cancelar") return;
@@ -562,16 +583,16 @@ public class DatabaseManagementViewModel : BaseViewModel
         try
         {
             IsBusy = true;
-            var keepType = selected.FirstOrDefault(s => s.TipoSesion == chosenName) ?? selected.First();
-            keepType.TipoSesion = chosenName;
-            await _databaseService.SaveSessionTypeAsync(keepType);
+            var keepEvent = selected.FirstOrDefault(e => e.Nombre == chosenName) ?? selected.First();
+            keepEvent.Nombre = chosenName;
+            await _databaseService.SaveEventTagAsync(keepEvent);
 
-            var duplicates = selected.Where(s => s.Id != keepType.Id).Select(s => s.Id).ToList();
-            var merged = await _databaseService.MergeSessionTypesAsync(keepType.Id, duplicates);
+            var duplicates = selected.Where(e => e.Id != keepEvent.Id).Select(e => e.Id).ToList();
+            var merged = await _databaseService.MergeEventTagsAsync(keepEvent.Id, duplicates);
 
             await Shell.Current.DisplayAlert("Fusión completada",
-                $"Se han fusionado {merged + 1} tipos de sesión bajo el nombre '{chosenName}'.", "OK");
-            await LoadSessionTypesAsync();
+                $"Se han fusionado {merged + 1} eventos bajo el nombre '{chosenName}'.", "OK");
+            await LoadEventsAsync();
         }
         catch (Exception ex)
         {
@@ -613,6 +634,392 @@ public class DatabaseManagementViewModel : BaseViewModel
         {
             IsBusy = false;
         }
+    }
+
+    #endregion
+
+    #region Delete & Edit Operations
+
+    private async Task DeleteSelectedAsync()
+    {
+        if (IsBusy || CurrentSelectedCount < 1) return;
+
+        var entityName = SelectedTabIndex switch
+        {
+            0 => CurrentSelectedCount == 1 ? "atleta" : "atletas",
+            1 => CurrentSelectedCount == 1 ? "lugar" : "lugares",
+            2 => CurrentSelectedCount == 1 ? "categoría" : "categorías",
+            3 => CurrentSelectedCount == 1 ? "tag" : "tags",
+            4 => CurrentSelectedCount == 1 ? "evento" : "eventos",
+            _ => "elementos"
+        };
+
+        var confirm = await Shell.Current.DisplayAlert(
+            "Confirmar eliminación",
+            $"¿Estás seguro de que deseas eliminar {CurrentSelectedCount} {entityName}? Esta acción no se puede deshacer.",
+            "Eliminar", "Cancelar");
+
+        if (!confirm) return;
+
+        try
+        {
+            IsBusy = true;
+
+            switch (SelectedTabIndex)
+            {
+                case 0: await DeleteSelectedAthletesAsync(); break;
+                case 1: await DeleteSelectedPlacesAsync(); break;
+                case 2: await DeleteSelectedCategoriesAsync(); break;
+                case 3: await DeleteSelectedTagsAsync(); break;
+                case 4: await DeleteSelectedEventsAsync(); break;
+            }
+        }
+        catch (Exception ex)
+        {
+            await Shell.Current.DisplayAlert("Error", $"Error al eliminar: {ex.Message}", "OK");
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private async Task DeleteSelectedAthletesAsync()
+    {
+        var selected = Athletes.Where(a => a.IsSelected).ToList();
+        foreach (var athlete in selected)
+        {
+            await _databaseService.DeleteAthleteAsync(athlete);
+        }
+        await Shell.Current.DisplayAlert("Eliminación completada", $"Se han eliminado {selected.Count} atleta(s).", "OK");
+        await LoadAthletesAsync();
+    }
+
+    private async Task DeleteSelectedPlacesAsync()
+    {
+        var selected = Places.Where(p => p.IsSelectedForMerge).ToList();
+        foreach (var place in selected)
+        {
+            await _databaseService.DeletePlaceAsync(place);
+        }
+        await Shell.Current.DisplayAlert("Eliminación completada", $"Se han eliminado {selected.Count} lugar(es).", "OK");
+        await LoadPlacesAsync();
+    }
+
+    private async Task DeleteSelectedCategoriesAsync()
+    {
+        var selected = Categories.Where(c => c.IsSelectedForMerge).ToList();
+        foreach (var category in selected)
+        {
+            await _databaseService.DeleteCategoryAsync(category);
+        }
+        await Shell.Current.DisplayAlert("Eliminación completada", $"Se han eliminado {selected.Count} categoría(s).", "OK");
+        await LoadCategoriesAsync();
+    }
+
+    private async Task DeleteSelectedTagsAsync()
+    {
+        var selected = Tags.Where(t => t.IsSelectedForMerge).ToList();
+        foreach (var tag in selected)
+        {
+            await _databaseService.DeleteTagAsync(tag);
+        }
+        await Shell.Current.DisplayAlert("Eliminación completada", $"Se han eliminado {selected.Count} tag(s).", "OK");
+        await LoadTagsAsync();
+    }
+
+    private async Task DeleteSelectedEventsAsync()
+    {
+        var selected = Events.Where(e => e.IsSelected).ToList();
+        
+        // Verificar si hay eventos de sistema seleccionados
+        var systemEvents = selected.Where(e => e.IsSystem).ToList();
+        if (systemEvents.Count > 0)
+        {
+            await Shell.Current.DisplayAlert("Aviso", 
+                $"No se pueden eliminar {systemEvents.Count} evento(s) de sistema.", "OK");
+            selected = selected.Where(e => !e.IsSystem).ToList();
+            if (selected.Count == 0) return;
+        }
+        
+        foreach (var evt in selected)
+        {
+            await _databaseService.DeleteEventTagAsync(evt.Id);
+        }
+        await Shell.Current.DisplayAlert("Eliminación completada", $"Se han eliminado {selected.Count} evento(s).", "OK");
+        await LoadEventsAsync();
+    }
+
+    private async Task EditSelectedAsync()
+    {
+        if (IsBusy || CurrentSelectedCount != 1) return;
+
+        try
+        {
+            IsBusy = true;
+
+            switch (SelectedTabIndex)
+            {
+                case 0: await EditSelectedAthleteAsync(); break;
+                case 1: await EditSelectedPlaceAsync(); break;
+                case 2: await EditSelectedCategoryAsync(); break;
+                case 3: await EditSelectedTagAsync(); break;
+                case 4: await EditSelectedEventAsync(); break;
+            }
+        }
+        catch (Exception ex)
+        {
+            await Shell.Current.DisplayAlert("Error", $"Error al editar: {ex.Message}", "OK");
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private async Task EditSelectedAthleteAsync()
+    {
+        var athlete = Athletes.FirstOrDefault(a => a.IsSelected);
+        if (athlete == null) return;
+
+        var newName = await Shell.Current.DisplayPromptAsync(
+            "Editar Atleta",
+            "Nombre:",
+            initialValue: athlete.Nombre ?? "",
+            placeholder: "Nombre");
+
+        if (string.IsNullOrEmpty(newName)) return;
+
+        var newSurname = await Shell.Current.DisplayPromptAsync(
+            "Editar Atleta",
+            "Apellido:",
+            initialValue: athlete.Apellido ?? "",
+            placeholder: "Apellido");
+
+        if (newSurname == null) return; // Canceló
+
+        athlete.Nombre = newName;
+        athlete.Apellido = newSurname;
+        await _databaseService.SaveAthleteAsync(athlete);
+        await Shell.Current.DisplayAlert("Editado", "Atleta actualizado correctamente.", "OK");
+        await LoadAthletesAsync();
+    }
+
+    private async Task EditSelectedPlaceAsync()
+    {
+        var place = Places.FirstOrDefault(p => p.IsSelectedForMerge);
+        if (place == null) return;
+
+        var newName = await Shell.Current.DisplayPromptAsync(
+            "Editar Lugar",
+            "Nombre del lugar:",
+            initialValue: place.NombreLugar ?? "",
+            placeholder: "Nombre");
+
+        if (string.IsNullOrEmpty(newName)) return;
+
+        place.NombreLugar = newName;
+        await _databaseService.SavePlaceAsync(place);
+        await Shell.Current.DisplayAlert("Editado", "Lugar actualizado correctamente.", "OK");
+        await LoadPlacesAsync();
+    }
+
+    private async Task EditSelectedCategoryAsync()
+    {
+        var category = Categories.FirstOrDefault(c => c.IsSelectedForMerge);
+        if (category == null) return;
+
+        var newName = await Shell.Current.DisplayPromptAsync(
+            "Editar Categoría",
+            "Nombre de la categoría:",
+            initialValue: category.NombreCategoria ?? "",
+            placeholder: "Nombre");
+
+        if (string.IsNullOrEmpty(newName)) return;
+
+        category.NombreCategoria = newName;
+        await _databaseService.SaveCategoryAsync(category);
+        await Shell.Current.DisplayAlert("Editado", "Categoría actualizada correctamente.", "OK");
+        await LoadCategoriesAsync();
+    }
+
+    private async Task EditSelectedTagAsync()
+    {
+        var tag = Tags.FirstOrDefault(t => t.IsSelectedForMerge);
+        if (tag == null) return;
+
+        var newName = await Shell.Current.DisplayPromptAsync(
+            "Editar Tag",
+            "Nombre del tag:",
+            initialValue: tag.NombreTag ?? "",
+            placeholder: "Nombre");
+
+        if (string.IsNullOrEmpty(newName)) return;
+
+        tag.NombreTag = newName;
+        await _databaseService.SaveTagAsync(tag);
+        await Shell.Current.DisplayAlert("Editado", "Tag actualizado correctamente.", "OK");
+        await LoadTagsAsync();
+    }
+
+    private async Task EditSelectedEventAsync()
+    {
+        var eventTag = Events.FirstOrDefault(e => e.IsSelected);
+        if (eventTag == null) return;
+
+        if (eventTag.IsSystem)
+        {
+            await Shell.Current.DisplayAlert("Aviso", "No se pueden editar eventos de sistema.", "OK");
+            return;
+        }
+
+        var newName = await Shell.Current.DisplayPromptAsync(
+            "Editar Evento",
+            "Nombre del evento:",
+            initialValue: eventTag.Nombre ?? "",
+            placeholder: "Nombre");
+
+        if (string.IsNullOrEmpty(newName)) return;
+
+        eventTag.Nombre = newName;
+        await _databaseService.SaveEventTagAsync(eventTag);
+        await Shell.Current.DisplayAlert("Editado", "Evento actualizado correctamente.", "OK");
+        await LoadEventsAsync();
+    }
+
+    #endregion
+
+    #region Add New Operations
+
+    private async Task AddNewAsync()
+    {
+        if (IsBusy) return;
+
+        try
+        {
+            IsBusy = true;
+
+            switch (SelectedTabIndex)
+            {
+                case 0: await AddNewAthleteAsync(); break;
+                case 1: await AddNewPlaceAsync(); break;
+                case 2: await AddNewCategoryAsync(); break;
+                case 3: await AddNewTagAsync(); break;
+                case 4: await AddNewEventAsync(); break;
+            }
+        }
+        catch (Exception ex)
+        {
+            await Shell.Current.DisplayAlert("Error", $"Error al añadir: {ex.Message}", "OK");
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private async Task AddNewAthleteAsync()
+    {
+        var nombre = await Shell.Current.DisplayPromptAsync(
+            "Nuevo Atleta",
+            "Nombre:",
+            placeholder: "Nombre");
+
+        if (string.IsNullOrEmpty(nombre)) return;
+
+        var apellido = await Shell.Current.DisplayPromptAsync(
+            "Nuevo Atleta",
+            "Apellido:",
+            placeholder: "Apellido");
+
+        if (apellido == null) return; // Canceló
+
+        var athlete = new Athlete
+        {
+            Nombre = nombre,
+            Apellido = apellido
+        };
+
+        await _databaseService.SaveAthleteAsync(athlete);
+        await Shell.Current.DisplayAlert("Añadido", "Atleta añadido correctamente.", "OK");
+        await LoadAthletesAsync();
+    }
+
+    private async Task AddNewPlaceAsync()
+    {
+        var nombre = await Shell.Current.DisplayPromptAsync(
+            "Nuevo Lugar",
+            "Nombre del lugar:",
+            placeholder: "Nombre");
+
+        if (string.IsNullOrEmpty(nombre)) return;
+
+        var place = new Place
+        {
+            NombreLugar = nombre
+        };
+
+        await _databaseService.SavePlaceAsync(place);
+        await Shell.Current.DisplayAlert("Añadido", "Lugar añadido correctamente.", "OK");
+        await LoadPlacesAsync();
+    }
+
+    private async Task AddNewCategoryAsync()
+    {
+        var nombre = await Shell.Current.DisplayPromptAsync(
+            "Nueva Categoría",
+            "Nombre de la categoría:",
+            placeholder: "Nombre");
+
+        if (string.IsNullOrEmpty(nombre)) return;
+
+        var category = new Category
+        {
+            NombreCategoria = nombre
+        };
+
+        await _databaseService.SaveCategoryAsync(category);
+        await Shell.Current.DisplayAlert("Añadido", "Categoría añadida correctamente.", "OK");
+        await LoadCategoriesAsync();
+    }
+
+    private async Task AddNewTagAsync()
+    {
+        var nombre = await Shell.Current.DisplayPromptAsync(
+            "Nuevo Tag",
+            "Nombre del tag:",
+            placeholder: "Nombre");
+
+        if (string.IsNullOrEmpty(nombre)) return;
+
+        var tag = new Tag
+        {
+            NombreTag = nombre
+        };
+
+        await _databaseService.SaveTagAsync(tag);
+        await Shell.Current.DisplayAlert("Añadido", "Tag añadido correctamente.", "OK");
+        await LoadTagsAsync();
+    }
+
+    private async Task AddNewEventAsync()
+    {
+        var nombre = await Shell.Current.DisplayPromptAsync(
+            "Nuevo Evento",
+            "Nombre del evento:",
+            placeholder: "Nombre");
+
+        if (string.IsNullOrEmpty(nombre)) return;
+
+        var eventTag = new EventTagDefinition
+        {
+            Nombre = nombre,
+            IsSystem = false
+        };
+
+        await _databaseService.SaveEventTagAsync(eventTag);
+        await Shell.Current.DisplayAlert("Añadido", "Evento añadido correctamente.", "OK");
+        await LoadEventsAsync();
     }
 
     #endregion

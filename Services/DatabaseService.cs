@@ -1114,6 +1114,25 @@ public class DatabaseService
         return await db.Table<Tag>().OrderBy(t => t.NombreTag).ToListAsync();
     }
 
+    /// <summary>
+    /// Guarda o actualiza un tag en la base de datos
+    /// </summary>
+    public async Task<int> SaveTagAsync(Tag tag)
+    {
+        var db = await GetConnectionAsync();
+        var existing = await db.Table<Tag>().FirstOrDefaultAsync(t => t.Id == tag.Id);
+        if (existing != null)
+        {
+            await db.UpdateAsync(tag);
+            return tag.Id;
+        }
+        else
+        {
+            await db.InsertAsync(tag);
+            return tag.Id;
+        }
+    }
+
     // ==================== EVENT TAG DEFINITIONS ====================
     public async Task<List<EventTagDefinition>> GetAllEventTagsAsync()
     {
@@ -2033,6 +2052,112 @@ public class DatabaseService
             merged++;
         }
 
+        return merged;
+    }
+
+    #endregion
+
+    #region Delete Operations for Database Management
+
+    /// <summary>
+    /// Elimina un atleta de la base de datos
+    /// </summary>
+    public async Task DeleteAthleteAsync(Athlete athlete)
+    {
+        var db = await GetConnectionAsync();
+        await db.DeleteAsync(athlete);
+        _athleteCache = null;
+    }
+
+    /// <summary>
+    /// Elimina un lugar de la base de datos
+    /// </summary>
+    public async Task DeletePlaceAsync(Place place)
+    {
+        var db = await GetConnectionAsync();
+        await db.DeleteAsync(place);
+    }
+
+    /// <summary>
+    /// Elimina una categoría de la base de datos
+    /// </summary>
+    public async Task DeleteCategoryAsync(Category category)
+    {
+        var db = await GetConnectionAsync();
+        await db.DeleteAsync(category);
+        _categoryCache = null;
+    }
+
+    /// <summary>
+    /// Elimina un tag de la base de datos (modelo Tag)
+    /// </summary>
+    public async Task DeleteTagAsync(Tag tag)
+    {
+        var db = await GetConnectionAsync();
+        // Primero eliminar todas las referencias de ASIGNACIÓN (no eventos)
+        await db.ExecuteAsync("DELETE FROM \"input\" WHERE IsEvent = 0 AND InputTypeID = ?", tag.Id);
+        // Luego eliminar el tag del catálogo general
+        await db.ExecuteAsync("DELETE FROM \"tags\" WHERE id = ?", tag.Id);
+        _tagCache = null;
+    }
+
+    /// <summary>
+    /// Elimina un tipo de sesión de la base de datos
+    /// </summary>
+    public async Task DeleteSessionTypeAsync(SessionType sessionType)
+    {
+        var db = await GetConnectionAsync();
+        await db.DeleteAsync(sessionType);
+    }
+
+    /// <summary>
+    /// Guarda o actualiza un EventTag en la base de datos
+    /// </summary>
+    public async Task<int> SaveEventTagAsync(EventTagDefinition eventTag)
+    {
+        var db = await GetConnectionAsync();
+        if (eventTag.Id != 0)
+        {
+            await db.UpdateAsync(eventTag);
+            return eventTag.Id;
+        }
+        else
+        {
+            await db.InsertAsync(eventTag);
+            return eventTag.Id;
+        }
+    }
+
+    /// <summary>
+    /// Fusiona event tags: mantiene el de keepId y actualiza referencias en inputs.
+    /// </summary>
+    public async Task<int> MergeEventTagsAsync(int keepEventTagId, List<int> mergeEventTagIds)
+    {
+        var db = await GetConnectionAsync();
+        int merged = 0;
+
+        foreach (var duplicateId in mergeEventTagIds)
+        {
+            if (duplicateId == keepEventTagId) continue;
+
+            // Verificar si es un tag de sistema - no se puede fusionar
+            var eventTag = await db.Table<EventTagDefinition>()
+                .Where(t => t.Id == duplicateId)
+                .FirstOrDefaultAsync();
+            
+            if (eventTag?.IsSystem == true) continue;
+
+            // Actualizar inputs que referencian el event tag duplicado
+            await db.ExecuteAsync(
+                "UPDATE \"input\" SET InputTypeID = ? WHERE IsEvent = 1 AND InputTypeID = ?",
+                keepEventTagId, duplicateId);
+
+            // Eliminar el event tag duplicado
+            await db.ExecuteAsync("DELETE FROM \"event_tags\" WHERE id = ?", duplicateId);
+            merged++;
+        }
+
+        _eventTagCache = null;
         return merged;
     }
 
