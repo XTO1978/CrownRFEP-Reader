@@ -388,6 +388,16 @@ public class DashboardViewModel : BaseViewModel
                     IsVideoLessonsSelected = false;
                     IsDiaryViewSelected = false;
                 }
+                else
+                {
+                    // Deseleccionar el SessionRow actual cuando SelectedSession = null
+                    if (_selectedSessionListItem is SessionRow oldRow)
+                    {
+                        oldRow.IsSelected = false;
+                    }
+                    _selectedSessionListItem = null;
+                    OnPropertyChanged(nameof(SelectedSessionListItem));
+                }
                 OnPropertyChanged(nameof(SelectedSessionTitle));
                 OnPropertyChanged(nameof(HasSpecificSessionSelected));
                 _ = LoadSelectedSessionVideosAsync(value);
@@ -3295,9 +3305,8 @@ public class DashboardViewModel : BaseViewModel
     private async Task SelectAllGalleryAsync()
     {
         System.Diagnostics.Debug.WriteLine($"[SelectAllGalleryAsync] Called");
-        // Deseleccionar sesión actual
-        _selectedSession = null;
-        OnPropertyChanged(nameof(SelectedSession));
+        // Deseleccionar sesión actual usando el setter para que se deseleccione el row
+        SelectedSession = null;
         
         IsAllGallerySelected = true;
         System.Diagnostics.Debug.WriteLine($"[SelectAllGalleryAsync] IsAllGallerySelected = true, calling LoadAllVideosAsync...");
