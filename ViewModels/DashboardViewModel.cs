@@ -1429,7 +1429,17 @@ public class DashboardViewModel : BaseViewModel
                 continue;
 
             foreach (var s in g)
-                SessionRows.Add(new SessionRow(s));
+            {
+                var row = new SessionRow(s);
+                // Marcar como seleccionado si corresponde a la sesión actual (comparar por Id)
+                if (SelectedSession != null && s.Id == SelectedSession.Id)
+                {
+                    row.IsSelected = true;
+                    _selectedSessionListItem = row; // Sincronizar referencia
+                    SelectedSession = s; // Actualizar referencia a la nueva instancia
+                }
+                SessionRows.Add(row);
+            }
         }
     }
 

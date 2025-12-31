@@ -20,7 +20,7 @@ public class SidebarHoverBehavior : Behavior<Border>
 #endif
 
     private static Color HoverColor => Color.FromArgb("#FF404040"); // Gray600
-    private static Color SelectionColor => Color.FromArgb("#FF6E6E6E"); // Gray500
+    private static Color SelectionColor => Color.FromArgb("#FF2A2A2A"); // Más oscuro que hover
 
     protected override void OnAttachedTo(Border bindable)
     {

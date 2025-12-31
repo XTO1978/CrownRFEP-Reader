@@ -85,7 +85,7 @@
                                     TargetType="Border"
                                     Binding="{Binding IsSelected}"
                                     Value="True">
-                                    <Setter Property="BackgroundColor" Value="{StaticResource Gray500}" />
+                                    <Setter Property="BackgroundColor" Value="#FF2A2A2A" />
                                 </DataTrigger>
                             </Border.Triggers>
                             <HorizontalStackLayout
@@ -230,7 +230,7 @@
                                     TargetType="Border"
                                     Binding="{Binding IsAllGallerySelected}"
                                     Value="True">
-                                    <Setter Property="BackgroundColor" Value="{StaticResource Gray500}" />
+                                    <Setter Property="BackgroundColor" Value="#FF2A2A2A" />
                                 </DataTrigger>
                             </Border.Triggers>
                             <Border.GestureRecognizers>
@@ -272,7 +272,7 @@
                                     TargetType="Border"
                                     Binding="{Binding IsVideoLessonsSelected}"
                                     Value="True">
-                                    <Setter Property="BackgroundColor" Value="{StaticResource Gray500}" />
+                                    <Setter Property="BackgroundColor" Value="#FF2A2A2A" />
                                 </DataTrigger>
                             </Border.Triggers>
                             <Border.GestureRecognizers>
@@ -315,7 +315,7 @@
                                     TargetType="Border"
                                     Binding="{Binding IsDiaryViewSelected}"
                                     Value="True">
-                                    <Setter Property="BackgroundColor" Value="{StaticResource Gray500}" />
+                                    <Setter Property="BackgroundColor" Value="#FF2A2A2A" />
                                 </DataTrigger>
                             </Border.Triggers>
                             <Border.GestureRecognizers>
