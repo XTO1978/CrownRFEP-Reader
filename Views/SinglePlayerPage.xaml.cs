@@ -123,7 +123,7 @@ public partial class SinglePlayerPage : ContentPage
 
         // Evita instanciar el control incorrecto en plataformas donde no hay handler.
         // Importante: no referenciar/crear WebcamPreview desde XAML en MacCatalyst.
-#if MACCATALYST
+#if MACCATALYST || IOS
         VideoLessonCameraPreview = new ReplayKitCameraPreview
         {
             HorizontalOptions = LayoutOptions.Fill,
@@ -245,9 +245,10 @@ public partial class SinglePlayerPage : ContentPage
 #if MACCATALYST
         if (_videoLessonRecorder is CrownRFEP_Reader.Platforms.MacCatalyst.ReplayKitVideoLessonRecorder replayKit)
             replayKit.SetOptions(cameraEnabled: _videoLessonCameraEnabled, microphoneEnabled: _videoLessonMicEnabled);
-#endif
-
-#if WINDOWS
+#elif IOS
+        if (_videoLessonRecorder is CrownRFEP_Reader.Platforms.iOS.IOSVideoLessonRecorder iosRecorder)
+            iosRecorder.SetOptions(cameraEnabled: _videoLessonCameraEnabled, microphoneEnabled: _videoLessonMicEnabled);
+#elif WINDOWS
         if (_videoLessonRecorder is CrownRFEP_Reader.Platforms.Windows.WindowsVideoLessonRecorder windowsRecorder)
             windowsRecorder.SetOptions(cameraEnabled: _videoLessonCameraEnabled, microphoneEnabled: _videoLessonMicEnabled);
 #endif

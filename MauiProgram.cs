@@ -33,7 +33,7 @@ public static class MauiProgram
 			{
 				handlers.AddHandler(typeof(SymbolIcon), typeof(SymbolIconHandler));
 
-#if MACCATALYST
+#if MACCATALYST || IOS
 				handlers.AddHandler(typeof(ReplayKitCameraPreview), typeof(ReplayKitCameraPreviewHandler));
 #endif
 
@@ -82,6 +82,8 @@ public static class MauiProgram
 #if MACCATALYST
 		// Usar el recorder original - V2 tiene incompatibilidades de API
 		builder.Services.AddSingleton<IVideoLessonRecorder, ReplayKitVideoLessonRecorder>();
+#elif IOS
+		builder.Services.AddSingleton<IVideoLessonRecorder, CrownRFEP_Reader.Platforms.iOS.IOSVideoLessonRecorder>();
 #elif WINDOWS
 		builder.Services.AddSingleton<IVideoLessonRecorder, CrownRFEP_Reader.Platforms.Windows.WindowsVideoLessonRecorder>();
 #else

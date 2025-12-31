@@ -1,6 +1,7 @@
-#if MACCATALYST
+#if MACCATALYST || IOS
 using AVFoundation;
 using CoreAnimation;
+using CoreFoundation;
 using Foundation;
 using Microsoft.Maui.Handlers;
 using Microsoft.Maui.Platform;
@@ -17,6 +18,7 @@ public sealed class ReplayKitCameraPreviewHandler : ViewHandler<ReplayKitCameraP
 
     private AVCaptureSession? _captureSession;
     private AVCaptureVideoPreviewLayer? _captureLayer;
+    private NSObject? _orientationObserver;
 
     public static IPropertyMapper<ReplayKitCameraPreview, ReplayKitCameraPreviewHandler> Mapper
         = new PropertyMapper<ReplayKitCameraPreview, ReplayKitCameraPreviewHandler>(ViewMapper)
@@ -51,7 +53,8 @@ public sealed class ReplayKitCameraPreviewHandler : ViewHandler<ReplayKitCameraP
 
     private void EnsurePreview(UIView platformView)
     {
-        // 1) Preferimos el preview nativo de ReplayKit si está disponible.
+        // En todas las plataformas, intentamos primero usar ReplayKit CameraPreviewView
+        // ya que es el que funciona cuando la cámara está siendo usada por la grabación
         var attachedReplayKit = TryAttachReplayKitPreview(platformView);
         if (attachedReplayKit)
         {
@@ -59,10 +62,39 @@ public sealed class ReplayKitCameraPreviewHandler : ViewHandler<ReplayKitCameraP
             return;
         }
 
-        // 2) Si ReplayKit no lo proporciona (común en MacCatalyst), usamos cámara real.
+#if IOS
+        // En iOS, si ReplayKit no proporciona preview, esperamos un poco y reintentamos
+        // ya que el preview puede tardar en estar disponible después de iniciar la grabación
+        _attachTimer?.Invalidate();
+        _attachTimer = NSTimer.CreateRepeatingScheduledTimer(TimeSpan.FromMilliseconds(100), _ =>
+        {
+            try
+            {
+                var active = VirtualView?.IsActive == true;
+                if (!active)
+                {
+                    _attachTimer?.Invalidate();
+                    _attachTimer = null;
+                    return;
+                }
+
+                if (TryAttachReplayKitPreview(platformView))
+                {
+                    _attachTimer?.Invalidate();
+                    _attachTimer = null;
+                }
+            }
+            catch
+            {
+                _attachTimer?.Invalidate();
+                _attachTimer = null;
+            }
+        });
+#else
+        // En MacCatalyst, usamos fallback a AVCaptureSession si ReplayKit no da preview
         EnsureFallbackCamera(platformView);
 
-        // 3) Opcional: reintentar enganchar ReplayKit por si aparece al iniciar grabación.
+        // Opcional: reintentar enganchar ReplayKit por si aparece al iniciar grabación.
         _attachTimer?.Invalidate();
         _attachTimer = NSTimer.CreateRepeatingScheduledTimer(TimeSpan.FromMilliseconds(500), _ =>
         {
@@ -90,6 +122,7 @@ public sealed class ReplayKitCameraPreviewHandler : ViewHandler<ReplayKitCameraP
                 _attachTimer = null;
             }
         });
+#endif
     }
 
     private bool TryAttachReplayKitPreview(UIView platformView)
@@ -139,11 +172,11 @@ public sealed class ReplayKitCameraPreviewHandler : ViewHandler<ReplayKitCameraP
 
         // Permisos cámara
         try
-            {
-                var status = AVCaptureDevice.GetAuthorizationStatus(AVAuthorizationMediaType.Video);
+        {
+            var status = AVCaptureDevice.GetAuthorizationStatus(AVAuthorizationMediaType.Video);
             if (status == AVAuthorizationStatus.NotDetermined)
-                {
-                    var granted = await AVCaptureDevice.RequestAccessForMediaTypeAsync(AVAuthorizationMediaType.Video);
+            {
+                var granted = await AVCaptureDevice.RequestAccessForMediaTypeAsync(AVAuthorizationMediaType.Video);
                 if (!granted)
                     return;
             }
@@ -167,7 +200,7 @@ public sealed class ReplayKitCameraPreviewHandler : ViewHandler<ReplayKitCameraP
             return;
 
         var session = new AVCaptureSession();
-        session.SessionPreset = AVCaptureSession.PresetMedium;
+        session.SessionPreset = AVCaptureSession.Preset640x480;
 
         if (session.CanAddInput(input))
             session.AddInput(input);
@@ -178,6 +211,16 @@ public sealed class ReplayKitCameraPreviewHandler : ViewHandler<ReplayKitCameraP
             Frame = platformView.Bounds
         };
 
+#if IOS
+        // Configurar la orientación correcta para iOS
+        UpdateLayerOrientation(layer);
+        
+        // Observar cambios de orientación
+        _orientationObserver = NSNotificationCenter.DefaultCenter.AddObserver(
+            UIDevice.OrientationDidChangeNotification,
+            _ => MainThread.BeginInvokeOnMainThread(() => UpdateLayerOrientation(layer)));
+#endif
+
         // Limpieza de layers previas
         StopFallbackCamera();
 
@@ -185,11 +228,65 @@ public sealed class ReplayKitCameraPreviewHandler : ViewHandler<ReplayKitCameraP
         _captureSession = session;
         _captureLayer = layer;
 
-        session.StartRunning();
+        // Iniciar la sesión en la cola de DispatchQueue para iOS
+        DispatchQueue.DefaultGlobalQueue.DispatchAsync(() =>
+        {
+            try
+            {
+                session.StartRunning();
+            }
+            catch
+            {
+                // Ignorar errores al iniciar
+            }
+        });
     }
+
+#if IOS
+    private void UpdateLayerOrientation(AVCaptureVideoPreviewLayer layer)
+    {
+        if (layer.Connection == null || !layer.Connection.SupportsVideoOrientation)
+            return;
+
+        // Obtener la orientación de la interfaz en lugar de la del dispositivo
+        var windowScene = UIApplication.SharedApplication.ConnectedScenes
+            .OfType<UIWindowScene>()
+            .FirstOrDefault();
+        
+        var interfaceOrientation = windowScene?.InterfaceOrientation ?? UIInterfaceOrientation.Portrait;
+        AVCaptureVideoOrientation videoOrientation;
+
+        switch (interfaceOrientation)
+        {
+            case UIInterfaceOrientation.LandscapeLeft:
+                videoOrientation = AVCaptureVideoOrientation.LandscapeLeft;
+                break;
+            case UIInterfaceOrientation.LandscapeRight:
+                videoOrientation = AVCaptureVideoOrientation.LandscapeRight;
+                break;
+            case UIInterfaceOrientation.PortraitUpsideDown:
+                videoOrientation = AVCaptureVideoOrientation.PortraitUpsideDown;
+                break;
+            default:
+                videoOrientation = AVCaptureVideoOrientation.Portrait;
+                break;
+        }
+
+        layer.Connection.VideoOrientation = videoOrientation;
+    }
+#endif
 
     private void StopFallbackCamera()
     {
+#if IOS
+        // Remover observer de orientación
+        if (_orientationObserver != null)
+        {
+            NSNotificationCenter.DefaultCenter.RemoveObserver(_orientationObserver);
+            _orientationObserver = null;
+        }
+#endif
+
         try
         {
             if (_captureSession != null && _captureSession.Running)

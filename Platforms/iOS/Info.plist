@@ -28,5 +28,11 @@
 	</array>
 	<key>XSAppIconAssets</key>
 	<string>Assets.xcassets/appicon.appiconset</string>
+	
+	<!-- Permisos para grabación de videolecciones -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Se requiere acceso al micrófono para grabar el audio de las videolecciones.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Se requiere acceso a la cámara para grabar videolecciones con tu imagen.</string>
 </dict>
 </plist>
