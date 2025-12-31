@@ -4050,19 +4050,22 @@ public class DashboardViewModel : BaseViewModel
 
     private async Task ViewVideoLessonsAsync()
     {
-        _selectedSessionVideosCts?.Cancel();
-        _selectedSessionVideosCts?.Dispose();
-        _selectedSessionVideosCts = new CancellationTokenSource();
-        var ct = _selectedSessionVideosCts.Token;
-
         try
         {
             IsLoadingSelectedSessionVideos = true;
 
             // Cambiar modo en el Dashboard (sin navegar)
+            // NOTA: Esto cancela _selectedSessionVideosCts, así que creamos el token DESPUÉS
             SelectedSession = null;
             IsAllGallerySelected = false;
             IsVideoLessonsSelected = true;
+
+            // Crear nuevo CancellationTokenSource DESPUÉS de SelectedSession = null
+            // porque el setter de SelectedSession cancela el token anterior
+            _selectedSessionVideosCts?.Cancel();
+            _selectedSessionVideosCts?.Dispose();
+            _selectedSessionVideosCts = new CancellationTokenSource();
+            var ct = _selectedSessionVideosCts.Token;
 
             // Desactivar selección múltiple (no aplica a videolecciones)
             IsMultiSelectMode = false;
@@ -4078,12 +4081,12 @@ public class DashboardViewModel : BaseViewModel
         }
         catch (Exception ex)
         {
-            if (!ct.IsCancellationRequested)
+            if (_selectedSessionVideosCts?.Token.IsCancellationRequested != true)
                 await Shell.Current.DisplayAlert("Error", $"No se pudieron cargar las videolecciones: {ex.Message}", "OK");
         }
         finally
         {
-            if (!ct.IsCancellationRequested)
+            if (_selectedSessionVideosCts?.Token.IsCancellationRequested != true)
                 IsLoadingSelectedSessionVideos = false;
         }
     }
