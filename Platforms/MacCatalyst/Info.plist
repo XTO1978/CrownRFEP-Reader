@@ -11,6 +11,15 @@
     <!-- Please consult https://developer.apple.com/documentation/bundleresources/information_property_list/lsapplicationcategorytype -->
     <!-- <key>LSApplicationCategoryType</key> -->
     <!-- <string>public.app-category.YOUR-CATEGORY-HERE</string> -->
+	
+	<!-- Forzar modo oscuro para la barra de título -->
+	<key>UIUserInterfaceStyle</key>
+	<string>Dark</string>
+	
+	<!-- Permitir que la app adopte el modo oscuro de macOS (necesario para titlebar oscura) -->
+	<key>NSRequiresAquaSystemAppearance</key>
+	<false/>
+	
 	<key>UIDeviceFamily</key>
 	<array>
 		<integer>2</integer>

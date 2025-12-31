@@ -9,6 +9,52 @@ public class AppDelegate : MauiUIApplicationDelegate
 {
 	protected override MauiApp CreateMauiApp() => MauiProgram.CreateMauiApp();
 
+	public override bool FinishedLaunching(UIApplication application, NSDictionary launchOptions)
+	{
+		var result = base.FinishedLaunching(application, launchOptions);
+		ConfigureTitleBar();
+		return result;
+	}
+
+	private void ConfigureTitleBar()
+	{
+		// Esperar a que la ventana esté disponible
+		MainThread.BeginInvokeOnMainThread(async () =>
+		{
+			await Task.Delay(100);
+			
+			try
+			{
+				var scenes = UIApplication.SharedApplication.ConnectedScenes;
+				foreach (var scene in scenes)
+				{
+					if (scene is UIWindowScene windowScene)
+					{
+						// Configurar la titlebar para modo oscuro
+						var titlebar = windowScene.Titlebar;
+						if (titlebar != null)
+						{
+							// Ocultar el título para un look más limpio
+							titlebar.TitleVisibility = UITitlebarTitleVisibility.Hidden;
+						}
+
+						// Forzar modo oscuro en todas las ventanas
+						foreach (var window in windowScene.Windows)
+						{
+							window.OverrideUserInterfaceStyle = UIUserInterfaceStyle.Dark;
+						}
+					}
+				}
+				
+				System.Diagnostics.Debug.WriteLine("[AppDelegate] Titlebar configurada con modo oscuro");
+			}
+			catch (Exception ex)
+			{
+				System.Diagnostics.Debug.WriteLine($"[AppDelegate] Error configurando titlebar: {ex.Message}");
+			}
+		});
+	}
+
 	public override UIKeyCommand[] KeyCommands
 	{
 		get
