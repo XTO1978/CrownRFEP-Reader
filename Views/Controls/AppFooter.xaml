@@ -4,22 +4,10 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:controls="clr-namespace:CrownRFEP_Reader.Views.Controls"
-    HeightRequest="{StaticResource FooterHeight}">
+    HeightRequest="{StaticResource FooterHeight}"
+    BackgroundColor="{StaticResource OffBlack}">
 
-    <ContentView.BackgroundColor>
-        <OnPlatform x:TypeArguments="Color">
-            <On Platform="iOS" Value="{StaticResource OffBlack}" />
-            <On Platform="MacCatalyst,WinUI" Value="Transparent" />
-        </OnPlatform>
-    </ContentView.BackgroundColor>
-
-    <Grid>
-        <Grid.BackgroundColor>
-            <OnPlatform x:TypeArguments="Color">
-                <On Platform="iOS" Value="{StaticResource OffBlack}" />
-                <On Platform="MacCatalyst,WinUI" Value="Transparent" />
-            </OnPlatform>
-        </Grid.BackgroundColor>
+    <Grid BackgroundColor="{StaticResource OffBlack}">
         <!--  Línea separadora superior  -->
         <BoxView
             HeightRequest="0.6"
@@ -28,15 +16,10 @@
         <!--  Contenido principal del footer  -->
         <Grid
             Padding="16,0"
+            BackgroundColor="{StaticResource OffBlack}"
             ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto,Auto"
             ColumnSpacing="20"
             VerticalOptions="Center">
-            <Grid.BackgroundColor>
-                <OnPlatform x:TypeArguments="Color">
-                    <On Platform="iOS" Value="{StaticResource OffBlack}" />
-                    <On Platform="MacCatalyst,WinUI" Value="Transparent" />
-                </OnPlatform>
-            </Grid.BackgroundColor>
 
             <!--  Estado de la BD con botón de logs  -->
             <Border
@@ -99,14 +82,7 @@
                 VerticalOptions="Center" />
 
             <!--  Spacer central  -->
-            <BoxView Grid.Column="2">
-                <BoxView.Color>
-                    <OnPlatform x:TypeArguments="Color">
-                        <On Platform="iOS" Value="{StaticResource OffBlack}" />
-                        <On Platform="MacCatalyst,WinUI" Value="Transparent" />
-                    </OnPlatform>
-                </BoxView.Color>
-            </BoxView>
+            <BoxView Grid.Column="2" Color="{StaticResource OffBlack}" />
 
             <!--  Contador de vídeos  -->
             <HorizontalStackLayout
