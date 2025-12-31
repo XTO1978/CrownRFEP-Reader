@@ -110,8 +110,12 @@ public static class MauiProgram
 		builder.Services.AddSingleton<IVideoLessonRecorder, NullVideoLessonRecorder>();
 #endif
 
-		// HealthKit - usar stub para todas las plataformas por ahora
+		// HealthKit - usar implementación nativa en Apple, stub en otras plataformas
+#if MACCATALYST || IOS
+		builder.Services.AddSingleton<IHealthKitService, AppleHealthKitService>();
+#else
 		builder.Services.AddSingleton<IHealthKitService, StubHealthKitService>();
+#endif
 
 		// Servicio de composición de video
 #if MACCATALYST

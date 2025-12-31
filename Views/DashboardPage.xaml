@@ -3309,8 +3309,8 @@
                 <VerticalStackLayout IsVisible="{Binding IsDiaryViewSelected}" Spacing="16">
                     
                     <!--  Título y botón agregar sesión  -->
-                    <Grid ColumnDefinitions="*,Auto">
-                        <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                        <HorizontalStackLayout Grid.Column="0" Spacing="12" VerticalOptions="Center">
                             <controls:SymbolIcon
                                 HeightRequest="{StaticResource IconSizeLarge}"
                                 SymbolName="book"
@@ -3324,18 +3324,23 @@
                         </HorizontalStackLayout>
                         
                         <!--  Botón agregar sesión  -->
-                        <Button
+                        <Border
                             Grid.Column="1"
-                            Text="+ Nueva sesión"
+                            Padding="8"
                             BackgroundColor="#FF2A2A2A"
-                            TextColor="#FF6DDDFF"
-                            FontSize="{StaticResource FontSizeSmall}"
-                            CornerRadius="6"
-                            Padding="12,6"
-                            HeightRequest="{StaticResource ElementHeightDefault}"
+                            StrokeShape="RoundRectangle 8"
+                            StrokeThickness="0"
                             VerticalOptions="Center"
-                            Command="{Binding ToggleAddNewSessionCommand}"
-                            IsVisible="{Binding IsAddingNewSession, Converter={toolkit:InvertedBoolConverter}}" />
+                            IsVisible="{Binding IsAddingNewSession, Converter={toolkit:InvertedBoolConverter}}">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding ToggleAddNewSessionCommand}" />
+                            </Border.GestureRecognizers>
+                            <controls:SymbolIcon
+                                HeightRequest="{StaticResource IconSizeLarge}"
+                                WidthRequest="{StaticResource IconSizeLarge}"
+                                SymbolName="plus.circle.fill"
+                                TintColor="#FF6DDDFF" />
+                        </Border>
                     </Grid>
                     
                     <!--  Fecha seleccionada  -->
@@ -3777,6 +3782,32 @@
                             <VerticalStackLayout 
                                 Spacing="12"
                                 IsVisible="{Binding IsEditingWellness}">
+                                
+                                <!--  Botón importar de Apple Salud (solo visible si HealthKit disponible)  -->
+                                <Border
+                                    Padding="12"
+                                    BackgroundColor="#FF1A3A1A"
+                                    StrokeShape="RoundRectangle 8"
+                                    Stroke="#FF4CD964"
+                                    StrokeThickness="1"
+                                    IsVisible="{Binding IsHealthKitAvailable}">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Command="{Binding ImportHealthDataToWellnessCommand}" />
+                                    </Border.GestureRecognizers>
+                                    <HorizontalStackLayout Spacing="12" HorizontalOptions="Center">
+                                        <controls:SymbolIcon
+                                            HeightRequest="{StaticResource IconSizeLarge}"
+                                            WidthRequest="{StaticResource IconSizeLarge}"
+                                            SymbolName="heart.text.square.fill"
+                                            TintColor="#FF4CD964"
+                                            VerticalOptions="Center" />
+                                        <Label
+                                            Text="Importar datos de Salud"
+                                            TextColor="#FF4CD964"
+                                            FontSize="{StaticResource FontSizeBody}"
+                                            VerticalOptions="Center" />
+                                    </HorizontalStackLayout>
+                                </Border>
                                 
                                 <!--  Sueño  -->
                                 <Border

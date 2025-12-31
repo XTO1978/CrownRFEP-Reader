@@ -2083,6 +2083,7 @@ public class DashboardViewModel : BaseViewModel
     public ICommand SaveCalendarDiaryCommand { get; }
     public ICommand ViewSessionAsPlaylistCommand { get; }
     public ICommand ConnectHealthKitCommand { get; }
+    public ICommand ImportHealthDataToWellnessCommand { get; }
     public ICommand SaveWellnessCommand { get; }
     public ICommand StartEditWellnessCommand { get; }
     public ICommand CancelEditWellnessCommand { get; }
@@ -2248,6 +2249,7 @@ public class DashboardViewModel : BaseViewModel
         SaveCalendarDiaryCommand = new AsyncRelayCommand<SessionWithDiary>(SaveCalendarDiaryAsync);
         ViewSessionAsPlaylistCommand = new AsyncRelayCommand<SessionWithDiary>(ViewSessionAsPlaylistAsync);
         ConnectHealthKitCommand = new AsyncRelayCommand(ConnectHealthKitAsync);
+        ImportHealthDataToWellnessCommand = new AsyncRelayCommand(ImportHealthDataToWellnessAsync);
         SaveWellnessCommand = new AsyncRelayCommand(SaveWellnessAsync);
         StartEditWellnessCommand = new RelayCommand(() => IsEditingWellness = true);
         CancelEditWellnessCommand = new RelayCommand(CancelEditWellness);
@@ -4423,6 +4425,80 @@ public class DashboardViewModel : BaseViewModel
         {
             System.Diagnostics.Debug.WriteLine($"Error cargando datos de bienestar: {ex}");
             SelectedDateWellness = new DailyWellness { Date = date };
+        }
+    }
+
+    private async Task ImportHealthDataToWellnessAsync()
+    {
+        if (!_healthKitService.IsAvailable)
+        {
+            await Shell.Current.DisplayAlert("No disponible", 
+                "La app Salud no está disponible en este dispositivo.", "OK");
+            return;
+        }
+
+        try
+        {
+            // Si no está autorizado, solicitar autorización
+            if (!IsHealthKitAuthorized)
+            {
+                var authorized = await _healthKitService.RequestAuthorizationAsync();
+                IsHealthKitAuthorized = authorized;
+                
+                if (!authorized)
+                {
+                    await Shell.Current.DisplayAlert("Permiso denegado", 
+                        "Para importar datos de salud, ve a Ajustes > Privacidad > Salud y permite el acceso a CrownRFEP Reader.", "OK");
+                    return;
+                }
+            }
+
+            // Obtener datos de salud para la fecha seleccionada
+            var healthData = await _healthKitService.GetHealthDataForDateAsync(SelectedDiaryDate);
+            
+            if (healthData == null || !healthData.HasData)
+            {
+                await Shell.Current.DisplayAlert("Sin datos", 
+                    $"No hay datos de salud disponibles para el {SelectedDiaryDate:d MMMM yyyy}.", "OK");
+                return;
+            }
+
+            // Rellenar los campos del formulario con los datos de HealthKit
+            var fieldsUpdated = new List<string>();
+            
+            if (healthData.SleepHours.HasValue && healthData.SleepHours > 0)
+            {
+                WellnessSleepHours = Math.Round(healthData.SleepHours.Value, 1);
+                fieldsUpdated.Add($"Sueño: {WellnessSleepHours:F1} h");
+            }
+            
+            if (healthData.RestingHeartRate.HasValue)
+            {
+                WellnessRestingHeartRate = healthData.RestingHeartRate.Value;
+                fieldsUpdated.Add($"FC reposo: {WellnessRestingHeartRate} bpm");
+            }
+            
+            if (healthData.HeartRateVariability.HasValue)
+            {
+                WellnessHRV = (int)Math.Round(healthData.HeartRateVariability.Value);
+                fieldsUpdated.Add($"HRV: {WellnessHRV} ms");
+            }
+
+            if (fieldsUpdated.Any())
+            {
+                await Shell.Current.DisplayAlert("Datos importados", 
+                    $"Se han importado los siguientes datos de la app Salud:\n\n• {string.Join("\n• ", fieldsUpdated)}", "OK");
+            }
+            else
+            {
+                await Shell.Current.DisplayAlert("Sin datos útiles", 
+                    "No se encontraron datos relevantes (sueño, FC, HRV) para importar.", "OK");
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error importando datos de salud: {ex}");
+            await Shell.Current.DisplayAlert("Error", $"No se pudieron importar los datos: {ex.Message}", "OK");
         }
     }
 
