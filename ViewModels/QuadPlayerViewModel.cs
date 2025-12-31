@@ -20,6 +20,7 @@ public class QuadPlayerViewModel : INotifyPropertyChanged
     private VideoClip? _video4;
     private double _playbackSpeed = 1.0;
     private bool _isSimultaneousMode = false;
+    private bool _isMuted = true; // Silenciado por defecto
 
     // Flags para evitar actualizar Progress mientras el usuario arrastra los sliders
     private bool _isDragging1;
@@ -103,6 +104,7 @@ public class QuadPlayerViewModel : INotifyPropertyChanged
         SetSpeedCommand = new Command<string>(SetSpeed);
         CloseCommand = new Command(async () => await CloseAsync());
         ToggleModeCommand = new Command(ToggleMode);
+        ToggleMuteCommand = new Command(() => IsMuted = !IsMuted);
         SyncVideosCommand = new Command(SyncVideos);
         
         // Comando de exportación
@@ -164,6 +166,22 @@ public class QuadPlayerViewModel : INotifyPropertyChanged
 
     public bool IsIndividualMode => !IsSimultaneousMode;
     public string ModeText => IsSimultaneousMode ? "Simultáneo" : "Individual";
+
+    public bool IsMuted
+    {
+        get => _isMuted;
+        set
+        {
+            if (_isMuted != value)
+            {
+                _isMuted = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(MuteIcon));
+            }
+        }
+    }
+
+    public string MuteIcon => IsMuted ? "speaker.slash.fill" : "speaker.wave.2.fill";
 
     public double PlaybackSpeed
     {
@@ -399,6 +417,7 @@ public class QuadPlayerViewModel : INotifyPropertyChanged
     public ICommand SetSpeedCommand { get; }
     public ICommand CloseCommand { get; }
     public ICommand ToggleModeCommand { get; }
+    public ICommand ToggleMuteCommand { get; }
     public ICommand SyncVideosCommand { get; }
     public ICommand ExportCommand { get; }
 

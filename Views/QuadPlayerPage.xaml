@@ -42,7 +42,7 @@
                     <precision:PrecisionVideoPlayer
                         x:Name="MediaPlayer1"
                         Aspect="AspectFill"
-                        IsMuted="False"
+                        IsMuted="{Binding IsMuted}ing IsMuted}"
                         BackgroundColor="#FF0D0D0D"
                         Source="{Binding Video1.LocalClipPath}" />
                     <!--  Overlay para scrubbing  -->
@@ -107,6 +107,16 @@
                                 FontSize="{StaticResource FontSizeCaption}"
                                 Text="{Binding CurrentPositionText1}"
                                 TextColor="#CCFFFFFF" />
+                            <!--  Mute  -->
+                            <controls:SymbolIcon
+                                SymbolName="{Binding MuteIcon}"
+                                TintColor="White"
+                                WidthRequest="{StaticResource IconSizeDefault}"
+                                HeightRequest="{StaticResource IconSizeDefault}">
+                                <controls:SymbolIcon.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding ToggleMuteCommand}" />
+                                </controls:SymbolIcon.GestureRecognizers>
+                            </controls:SymbolIcon>
                         </HorizontalStackLayout>
                     </Border>
                     <!--  Nombre del atleta  -->
@@ -139,7 +149,7 @@
                     <precision:PrecisionVideoPlayer
                         x:Name="MediaPlayer2"
                         Aspect="AspectFill"
-                        IsMuted="True"
+                        IsMuted="{Binding IsMuted}ding IsMuted}"
                         BackgroundColor="#FF0D0D0D"
                         Source="{Binding Video2.LocalClipPath}" />
                     <!--  Overlay para scrubbing  -->
@@ -204,6 +214,16 @@
                                 FontSize="{StaticResource FontSizeCaption}"
                                 Text="{Binding CurrentPositionText2}"
                                 TextColor="#CCFFFFFF" />
+                            <!--  Mute  -->
+                            <controls:SymbolIcon
+                                SymbolName="{Binding MuteIcon}"
+                                TintColor="White"
+                                WidthRequest="{StaticResource IconSizeDefault}"
+                                HeightRequest="{StaticResource IconSizeDefault}">
+                                <controls:SymbolIcon.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding ToggleMuteCommand}" />
+                                </controls:SymbolIcon.GestureRecognizers>
+                            </controls:SymbolIcon>
                         </HorizontalStackLayout>
                     </Border>
                     <!--  Nombre del atleta  -->
@@ -236,7 +256,7 @@
                     <precision:PrecisionVideoPlayer
                         x:Name="MediaPlayer3"
                         Aspect="AspectFill"
-                        IsMuted="True"
+                        IsMuted="{Binding IsMuted}ding IsMuted}"
                         BackgroundColor="#FF0D0D0D"
                         Source="{Binding Video3.LocalClipPath}" />
                     <!--  Overlay para scrubbing  -->
@@ -301,6 +321,16 @@
                                 FontSize="{StaticResource FontSizeCaption}"
                                 Text="{Binding CurrentPositionText3}"
                                 TextColor="#CCFFFFFF" />
+                            <!--  Mute  -->
+                            <controls:SymbolIcon
+                                SymbolName="{Binding MuteIcon}"
+                                TintColor="White"
+                                WidthRequest="{StaticResource IconSizeDefault}"
+                                HeightRequest="{StaticResource IconSizeDefault}">
+                                <controls:SymbolIcon.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding ToggleMuteCommand}" />
+                                </controls:SymbolIcon.GestureRecognizers>
+                            </controls:SymbolIcon>
                         </HorizontalStackLayout>
                     </Border>
                     <!--  Nombre del atleta  -->
@@ -333,7 +363,7 @@
                     <precision:PrecisionVideoPlayer
                         x:Name="MediaPlayer4"
                         Aspect="AspectFill"
-                        IsMuted="True"
+                        IsMuted="{Binding IsMuted}ding IsMuted}"
                         BackgroundColor="#FF0D0D0D"
                         Source="{Binding Video4.LocalClipPath}" />
                     <!--  Overlay para scrubbing  -->
@@ -398,6 +428,16 @@
                                 FontSize="{StaticResource FontSizeCaption}"
                                 Text="{Binding CurrentPositionText4}"
                                 TextColor="#CCFFFFFF" />
+                            <!--  Mute  -->
+                            <controls:SymbolIcon
+                                SymbolName="{Binding MuteIcon}"
+                                TintColor="White"
+                                WidthRequest="{StaticResource IconSizeDefault}"
+                                HeightRequest="{StaticResource IconSizeDefault}">
+                                <controls:SymbolIcon.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding ToggleMuteCommand}" />
+                                </controls:SymbolIcon.GestureRecognizers>
+                            </controls:SymbolIcon>
                         </HorizontalStackLayout>
                     </Border>
                     <!--  Nombre del atleta  -->
@@ -608,6 +648,22 @@
                                 Text="{Binding ModeText}"
                                 TextColor="{Binding IsSimultaneousMode, Converter={StaticResource BoolToColorConverter}, ConverterParameter='Black|White'}" />
                         </HorizontalStackLayout>
+                    </Border>
+
+                    <!--  Mute  -->
+                    <Border
+                        Padding="8,4"
+                        BackgroundColor="#FF2A2A2A"
+                        StrokeShape="RoundRectangle 6"
+                        StrokeThickness="0">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding ToggleMuteCommand}" />
+                        </Border.GestureRecognizers>
+                        <controls:SymbolIcon
+                            SymbolName="{Binding MuteIcon}"
+                            TintColor="White"
+                            WidthRequest="{StaticResource IconSizeMedium}"
+                            HeightRequest="{StaticResource IconSizeMedium}" />
                     </Border>
 
                     <!--  Separador  -->

@@ -90,7 +90,7 @@
                 <precision:PrecisionVideoPlayer
                     x:Name="MediaPlayer"
                     Aspect="{Binding VideoAspect}"
-                    IsMuted="False"
+                    IsMuted="{Binding IsMuted}"
                     Duration="{Binding Duration, Mode=OneWayToSource}"
                     Position="{Binding CurrentPosition, Mode=OneWayToSource}"
                     Source="{Binding VideoPath}" />
@@ -2074,6 +2074,15 @@
                         </Border>
                         <!--  Separador  -->
                         <BoxView WidthRequest="1" HeightRequest="20" BackgroundColor="#FF3A3A3A" Margin="4,0" />
+                        <!--  Mute  -->
+                        <Border Padding="6,4" BackgroundColor="#FF2A2A2A" StrokeShape="RoundRectangle 4" StrokeThickness="0">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding ToggleMuteCommand}" />
+                            </Border.GestureRecognizers>
+                            <controls:SymbolIcon HeightRequest="16" WidthRequest="16" SymbolName="{Binding MuteIcon}" TintColor="White" />
+                        </Border>
+                        <!--  Separador  -->
+                        <BoxView WidthRequest="1" HeightRequest="20" BackgroundColor="#FF3A3A3A" Margin="4,0" />
                         <!--  Navegación anterior  -->
                         <Border Padding="6,4" BackgroundColor="#FF2A2A2A" StrokeShape="RoundRectangle 4" StrokeThickness="0"
                                 IsEnabled="{Binding CanGoPrevious}" Opacity="{Binding CanGoPrevious, Converter={StaticResource BoolToOpacityConverter}}">
@@ -2521,6 +2530,53 @@
                                 </Border>
                             </HorizontalStackLayout>
                         </HorizontalStackLayout>
+                    </Border>
+
+                    <!--  Separador (oculto en iOS)  -->
+                    <BoxView
+                        Margin="8,0"
+                        BackgroundColor="#FF3A3A3A"
+                        HeightRequest="30"
+                        WidthRequest="1">
+                        <BoxView.IsVisible>
+                            <OnPlatform x:TypeArguments="x:Boolean">
+                                <On Platform="iOS" Value="False" />
+                                <On Platform="Default" Value="True" />
+                            </OnPlatform>
+                        </BoxView.IsVisible>
+                    </BoxView>
+
+                    <!--  Mute  -->
+                    <Border
+                        Padding="{StaticResource PlayerButtonPadding}"
+                        BackgroundColor="#FF2A2A2A"
+                        StrokeShape="RoundRectangle 4"
+                        StrokeThickness="0">
+                        <Border.IsVisible>
+                            <OnPlatform x:TypeArguments="x:Boolean">
+                                <On Platform="iOS" Value="False" />
+                                <On Platform="Default" Value="True" />
+                            </OnPlatform>
+                        </Border.IsVisible>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding ToggleMuteCommand}" />
+                        </Border.GestureRecognizers>
+                        <controls:SymbolIcon
+                            SymbolName="{Binding MuteIcon}"
+                            TintColor="White">
+                            <controls:SymbolIcon.HeightRequest>
+                                <OnPlatform x:TypeArguments="x:Double">
+                                    <On Platform="iOS" Value="18" />
+                                    <On Platform="Default" Value="24" />
+                                </OnPlatform>
+                            </controls:SymbolIcon.HeightRequest>
+                            <controls:SymbolIcon.WidthRequest>
+                                <OnPlatform x:TypeArguments="x:Double">
+                                    <On Platform="iOS" Value="18" />
+                                    <On Platform="Default" Value="24" />
+                                </OnPlatform>
+                            </controls:SymbolIcon.WidthRequest>
+                        </controls:SymbolIcon>
                     </Border>
                 </HorizontalStackLayout>
 

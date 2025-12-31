@@ -17,6 +17,7 @@
                                   Source="{Binding VideoPath}"
                                   ShouldAutoPlay="True"
                                   ShouldShowPlaybackControls="True"
+                                  ShouldMute="{Binding IsMuted}"
                                   Aspect="AspectFit"
                                   BackgroundColor="Black"/>
         </Grid>

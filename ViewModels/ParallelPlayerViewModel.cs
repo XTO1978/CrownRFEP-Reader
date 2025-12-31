@@ -20,6 +20,7 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
     private VideoClip? _video2;
     private bool _isHorizontalOrientation;
     private bool _isSimultaneousMode = false; // Por defecto modo individual
+    private bool _isMuted = true; // Silenciado por defecto
     private double _playbackSpeed = 1.0;
 
     // Flags para evitar actualizar Progress mientras el usuario arrastra los sliders
@@ -83,6 +84,7 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
         SetSpeedCommand = new Command<string>(SetSpeed);
         ToggleOrientationCommand = new Command(ToggleOrientation);
         ToggleModeCommand = new Command(ToggleMode);
+        ToggleMuteCommand = new Command(() => IsMuted = !IsMuted);
         CloseCommand = new Command(async () => await CloseAsync());
 
         // Comandos de selección de reproductor
@@ -374,6 +376,22 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
     public string ModeIcon => IsSimultaneousMode ? "link.badge.plus" : "link";
     public string ModeText => IsSimultaneousMode ? "Desincronizar" : "Sincronizar";
 
+    public bool IsMuted
+    {
+        get => _isMuted;
+        set
+        {
+            if (_isMuted != value)
+            {
+                _isMuted = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(MuteIcon));
+            }
+        }
+    }
+
+    public string MuteIcon => IsMuted ? "speaker.slash.fill" : "speaker.wave.2.fill";
+
     /// <summary>
     /// Reproductor seleccionado en modo individual (1 o 2).
     /// Los controles de teclado actuarán sobre este reproductor.
@@ -621,6 +639,7 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
     public ICommand SetSpeedCommand { get; }
     public ICommand ToggleOrientationCommand { get; }
     public ICommand ToggleModeCommand { get; }
+    public ICommand ToggleMuteCommand { get; }
     public ICommand CloseCommand { get; }
     public ICommand SelectPlayer1Command { get; }
     public ICommand SelectPlayer2Command { get; }

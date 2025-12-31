@@ -22,6 +22,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     private string _videoPath = "";
     private string _videoTitle = "";
     private bool _isPlaying;
+    private bool _isMuted = true; // Silenciado por defecto
     private TimeSpan _currentPosition;
     private TimeSpan _duration;
     private double _progress;
@@ -95,6 +96,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         FrameForwardCommand = new Command(StepForward);
         SetSpeedCommand = new Command<string>(SetSpeed);
         ToggleOverlayCommand = new Command(() => ShowOverlay = !ShowOverlay);
+        ToggleMuteCommand = new Command(() => IsMuted = !IsMuted);
         
         // Comandos de navegación de playlist
         PreviousVideoCommand = new Command(GoToPreviousVideo, () => CanGoPrevious);
@@ -196,6 +198,22 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             }
         }
     }
+
+    public bool IsMuted
+    {
+        get => _isMuted;
+        set
+        {
+            if (_isMuted != value)
+            {
+                _isMuted = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(MuteIcon));
+            }
+        }
+    }
+
+    public string MuteIcon => IsMuted ? "speaker.slash.fill" : "speaker.wave.2.fill";
 
     public TimeSpan CurrentPosition
     {
@@ -679,6 +697,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     public ICommand FrameForwardCommand { get; }
     public ICommand SetSpeedCommand { get; }
     public ICommand ToggleOverlayCommand { get; }
+    public ICommand ToggleMuteCommand { get; }
     
     // Comandos de navegación de playlist
     public ICommand PreviousVideoCommand { get; }

@@ -11,6 +11,7 @@ public class VideoPlayerViewModel : BaseViewModel
     private string _videoPath = "";
     private string _videoTitle = "";
     private bool _isPlaying;
+    private bool _isMuted = true; // Silenciado por defecto
     private double _currentPosition;
     private double _duration;
 
@@ -36,6 +37,20 @@ public class VideoPlayerViewModel : BaseViewModel
         get => _isPlaying;
         set => SetProperty(ref _isPlaying, value);
     }
+
+    public bool IsMuted
+    {
+        get => _isMuted;
+        set
+        {
+            if (SetProperty(ref _isMuted, value))
+            {
+                OnPropertyChanged(nameof(MuteIcon));
+            }
+        }
+    }
+
+    public string MuteIcon => IsMuted ? "speaker.slash.fill" : "speaker.wave.2.fill";
 
     public double CurrentPosition
     {
@@ -70,6 +85,7 @@ public class VideoPlayerViewModel : BaseViewModel
     public ICommand PlayPauseCommand { get; }
     public ICommand SeekCommand { get; }
     public ICommand GoBackCommand { get; }
+    public ICommand ToggleMuteCommand { get; }
 
     public VideoPlayerViewModel()
     {
@@ -77,6 +93,7 @@ public class VideoPlayerViewModel : BaseViewModel
         PlayPauseCommand = new RelayCommand(TogglePlayPause);
         SeekCommand = new RelayCommand<double>(Seek);
         GoBackCommand = new AsyncRelayCommand(GoBackAsync);
+        ToggleMuteCommand = new RelayCommand(() => IsMuted = !IsMuted);
     }
 
     private void TogglePlayPause()
