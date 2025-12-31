@@ -223,8 +223,8 @@ public class DashboardViewModel : BaseViewModel
     private bool _isSingleVideoMode = false;
     private bool _isQuadVideoMode = false;
     
-    // Orientación análisis paralelo
-    private bool _isHorizontalOrientation = false;
+    // Orientación análisis paralelo (horizontal por defecto)
+    private bool _isHorizontalOrientation = true;
 
     // Vídeos para análisis paralelo/cuádruple
     private VideoClip? _parallelVideo1;
