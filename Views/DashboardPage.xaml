@@ -116,29 +116,23 @@
                                     WidthRequest="{StaticResource IconSizeMedium}" />
                                 <Label
                                     FontFamily="{StaticResource AppFontBody}"
-                                    FontSize="{StaticResource FontSizeBody}"
                                     LineBreakMode="TailTruncation"
                                     TextColor="White">
                                     <Label.FormattedText>
                                         <FormattedString>
                                             <Span
-                                                FontSize="{StaticResource FontSizeBody}"
                                                 Text="{Binding Session.FechaDateTime, StringFormat='{0:dd/MM/yyyy}'}"
                                                 TextColor="White" />
                                             <Span
-                                                FontSize="{StaticResource FontSizeBody}"
                                                 Text=" en "
                                                 TextColor="White" />
                                             <Span
-                                                FontSize="{StaticResource FontSizeBody}"
                                                 Text="{Binding Session.Lugar}"
                                                 TextColor="White" />
                                             <Span
-                                                FontSize="{StaticResource FontSizeBody}"
                                                 Text=" - "
                                                 TextColor="White" />
                                             <Span
-                                                FontSize="{StaticResource FontSizeBody}"
                                                 Text="{Binding Session.DisplayName}"
                                                 TextColor="White" />
                                         </FormattedString>
@@ -978,7 +972,7 @@
                                 </controls:SymbolIcon.IsVisible>
                             </controls:SymbolIcon>
                             <!-- Otras plataformas: Texto -->
-                            <Label Text="Acciones y Análisis" TextColor="White" HorizontalOptions="Center" FontSize="{StaticResource FontSizeSmall}">
+                            <Label Text="Acciones y Análisis" TextColor="White" HorizontalOptions="Center">
                                 <Label.IsVisible>
                                     <OnPlatform x:TypeArguments="x:Boolean">
                                         <On Platform="iOS" Value="False" />
@@ -1027,7 +1021,7 @@
                                 </controls:SymbolIcon.IsVisible>
                             </controls:SymbolIcon>
                             <!-- Otras plataformas: Texto -->
-                            <Label Text="Filtros y Estadísticas" TextColor="White" HorizontalOptions="Center" FontSize="{StaticResource FontSizeSmall}">
+                            <Label Text="Filtros y Estadísticas" TextColor="White" HorizontalOptions="Center">
                                 <Label.IsVisible>
                                     <OnPlatform x:TypeArguments="x:Boolean">
                                         <On Platform="iOS" Value="False" />
@@ -1077,7 +1071,7 @@
                                 </controls:SymbolIcon.IsVisible>
                             </controls:SymbolIcon>
                             <!-- Otras plataformas: Texto -->
-                            <Label Text="Diario de Sesión" TextColor="White" HorizontalOptions="Center" FontSize="{StaticResource FontSizeSmall}">
+                            <Label Text="Diario de Sesión" TextColor="White" HorizontalOptions="Center">
                                 <Label.IsVisible>
                                     <OnPlatform x:TypeArguments="x:Boolean">
                                         <On Platform="iOS" Value="False" />
@@ -1217,7 +1211,7 @@
                                     TintColor="White"
                                     WidthRequest="{StaticResource IconSizeMedium}"
                                     VerticalOptions="Center" />
-                                <Label Text="Playlist" TextColor="White" VerticalOptions="Center" FontSize="{StaticResource FontSizeSmall}" />
+                                <Label Text="Playlist" TextColor="White" VerticalOptions="Center" />
                             </HorizontalStackLayout>
                         </Border>
 
@@ -1239,7 +1233,7 @@
                                     TintColor="White"
                                     WidthRequest="{StaticResource IconSizeMedium}"
                                     VerticalOptions="Center" />
-                                <Label Text="Editar" TextColor="White" VerticalOptions="Center" FontSize="{StaticResource FontSizeSmall}" />
+                                <Label Text="Editar" TextColor="White" VerticalOptions="Center" />
                             </HorizontalStackLayout>
                         </Border>
 
@@ -1261,7 +1255,7 @@
                                     TintColor="#FF6DDDFF"
                                     WidthRequest="{StaticResource IconSizeMedium}"
                                     VerticalOptions="Center" />
-                                <Label Text="Compartir" TextColor="#FF6DDDFF" VerticalOptions="Center" FontSize="{StaticResource FontSizeSmall}" />
+                                <Label Text="Compartir" TextColor="#FF6DDDFF" VerticalOptions="Center" />
                             </HorizontalStackLayout>
                         </Border>
 
@@ -1283,7 +1277,7 @@
                                     TintColor="#FFFF6B6B"
                                     WidthRequest="{StaticResource IconSizeMedium}"
                                     VerticalOptions="Center" />
-                                <Label Text="Eliminar" TextColor="#FFFF6B6B" VerticalOptions="Center" FontSize="{StaticResource FontSizeSmall}" />
+                                <Label Text="Eliminar" TextColor="#FFFF6B6B" VerticalOptions="Center" />
                             </HorizontalStackLayout>
                         </Border>
                     </Grid>
