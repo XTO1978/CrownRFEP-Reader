@@ -1379,10 +1379,18 @@ public class DashboardViewModel : BaseViewModel
                 return;
             }
 
+            var oldRow = _selectedSessionListItem as SessionRow;
             if (SetProperty(ref _selectedSessionListItem, value))
             {
-                if (value is SessionRow row)
-                    SelectedSession = row.Session;
+                // Actualizar IsSelected en los SessionRow
+                if (oldRow != null)
+                    oldRow.IsSelected = false;
+
+                if (value is SessionRow newRow)
+                {
+                    newRow.IsSelected = true;
+                    SelectedSession = newRow.Session;
+                }
             }
         }
     }

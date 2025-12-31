@@ -10,6 +10,13 @@ namespace CrownRFEP_Reader.Behaviors;
 
 internal static class HoverHelpers
 {
+    public static Color ResolveRestColor()
+    {
+        // Usamos el mismo fondo del Dashboard para que los items parezcan transparentes,
+        // pero sin dejar ver el highlight/hover nativo del contenedor (UICollectionViewCell) en MacCatalyst.
+        return Color.FromArgb("#FF121212");
+    }
+
     public static Color ResolveHoverColor()
     {
         if (Application.Current?.Resources.TryGetValue("Gray600", out var value) == true && value is Color c)
@@ -35,8 +42,9 @@ internal static class HoverHelpers
 
 public class DashboardSessionItemHoverBehavior : Behavior<Border>
 {
-    private Color? _originalBackground;
+#if !MACCATALYST
     private PointerGestureRecognizer? _pointerRecognizer;
+#endif
 
 #if MACCATALYST
     private UIHoverGestureRecognizer? _hoverRecognizer;
@@ -100,30 +108,21 @@ public class DashboardSessionItemHoverBehavior : Behavior<Border>
 
     private void ApplyHover(Border border)
     {
-        if (_originalBackground == null)
-            _originalBackground = border.BackgroundColor;
-
+        // Aplicar color de hover
         border.BackgroundColor = HoverHelpers.ResolveHoverColor();
     }
 
     private void RemoveHover(Border border)
     {
+        // Si está seleccionado, mantener color de selección
         if (IsSelected(border))
         {
             border.BackgroundColor = Color.FromArgb("#FF3A3A3A");
-            _originalBackground = null;
             return;
         }
 
-        if (_originalBackground != null)
-        {
-            border.BackgroundColor = _originalBackground;
-            _originalBackground = null;
-        }
-        else
-        {
-            border.BackgroundColor = Colors.Transparent;
-        }
+        // Si no está seleccionado, restaurar al color base del Dashboard (simula transparencia)
+        border.BackgroundColor = HoverHelpers.ResolveRestColor();
     }
 
     private void TryAttachPlatformHover(Border bindable)
@@ -136,6 +135,15 @@ public class DashboardSessionItemHoverBehavior : Behavior<Border>
             return;
 
         view.UserInteractionEnabled = true;
+        
+        // Desactivar el efecto de pointer/hover automático de UIKit
+        foreach (var interaction in view.Interactions.ToArray())
+        {
+            if (interaction is UIPointerInteraction)
+            {
+                view.RemoveInteraction(interaction);
+            }
+        }
 
         _hoverRecognizer = new UIHoverGestureRecognizer(recognizer =>
         {
@@ -166,8 +174,9 @@ public class DashboardSessionItemHoverBehavior : Behavior<Border>
 
 public class DashboardAllGalleryHoverBehavior : Behavior<Border>
 {
-    private Color? _originalBackground;
+#if !MACCATALYST
     private PointerGestureRecognizer? _pointerRecognizer;
+#endif
 
 #if MACCATALYST
     private UIHoverGestureRecognizer? _hoverRecognizer;
@@ -228,19 +237,21 @@ public class DashboardAllGalleryHoverBehavior : Behavior<Border>
 
     private void ApplyHover(Border border)
     {
-        if (_originalBackground == null)
-            _originalBackground = border.BackgroundColor;
-
+        // Aplicar color de hover
         border.BackgroundColor = HoverHelpers.ResolveHoverColor();
     }
 
     private void RemoveHover(Border border)
     {
-        border.BackgroundColor = IsSelected(border)
-            ? Color.FromArgb("#FF3A3A3A")
-            : (_originalBackground ?? Colors.Transparent);
+        // Si está seleccionado, mantener color de selección
+        if (IsSelected(border))
+        {
+            border.BackgroundColor = Color.FromArgb("#FF3A3A3A");
+            return;
+        }
 
-        _originalBackground = null;
+        // Si no está seleccionado, restaurar al color base del Dashboard (simula transparencia)
+        border.BackgroundColor = HoverHelpers.ResolveRestColor();
     }
 
     private void TryAttachPlatformHover(Border bindable)
@@ -253,6 +264,15 @@ public class DashboardAllGalleryHoverBehavior : Behavior<Border>
             return;
 
         view.UserInteractionEnabled = true;
+        
+        // Desactivar el efecto de pointer/hover automático de UIKit
+        foreach (var interaction in view.Interactions.ToArray())
+        {
+            if (interaction is UIPointerInteraction)
+            {
+                view.RemoveInteraction(interaction);
+            }
+        }
 
         _hoverRecognizer = new UIHoverGestureRecognizer(recognizer =>
         {

@@ -58,6 +58,24 @@ public static class MauiProgram
 						picker.OverrideUserInterfaceStyle = UIUserInterfaceStyle.Dark;
 					}
 				});
+
+				// Desactivar highlight hover nativo en CollectionView para MacCatalyst
+				Microsoft.Maui.Controls.Handlers.Items.CollectionViewHandler.Mapper.AppendToMapping("DisableHoverHighlight", (handler, view) =>
+				{
+					if (handler.PlatformView is UICollectionView collectionView)
+					{
+						// Desactivar efectos visuales de selección
+						collectionView.AllowsSelection = true;
+						collectionView.AllowsMultipleSelection = false;
+						collectionView.BackgroundColor = UIColor.Clear;
+					}
+				});
+
+				// Handler para Border: asegurar fondo claro por defecto
+				BorderHandler.Mapper.AppendToMapping("ClearBackground", (handler, view) =>
+				{
+					// No hacer nada aquí - el background se maneja en XAML
+				});
 #endif
 			})
 			.ConfigureFonts(fonts =>

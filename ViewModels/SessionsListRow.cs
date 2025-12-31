@@ -1,4 +1,6 @@
 using CrownRFEP_Reader.Models;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 
 namespace CrownRFEP_Reader.ViewModels;
 
@@ -20,12 +22,30 @@ public sealed class SessionGroupHeaderRow : SessionsListRow
     }
 }
 
-public sealed class SessionRow : SessionsListRow
+public sealed class SessionRow : SessionsListRow, INotifyPropertyChanged
 {
     public Session Session { get; }
+
+    private bool _isSelected;
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set
+        {
+            if (_isSelected != value)
+            {
+                _isSelected = value;
+                OnPropertyChanged();
+            }
+        }
+    }
 
     public SessionRow(Session session)
     {
         Session = session;
     }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+    private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }

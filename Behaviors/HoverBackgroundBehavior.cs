@@ -120,6 +120,15 @@ public class HoverBackgroundBehavior : Behavior<View>
 
         // Habilita interacción de puntero en MacCatalyst/iPadOS.
         view.UserInteractionEnabled = true;
+        
+        // Desactivar el efecto de pointer/hover automático de UIKit
+        foreach (var interaction in view.Interactions.ToArray())
+        {
+            if (interaction is UIPointerInteraction)
+            {
+                view.RemoveInteraction(interaction);
+            }
+        }
 
         _hoverRecognizer = new UIHoverGestureRecognizer(recognizer =>
         {
