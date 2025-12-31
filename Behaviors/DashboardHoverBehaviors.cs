@@ -48,11 +48,13 @@ public class DashboardSessionItemHoverBehavior : Behavior<Border>
 
         bindable.HandlerChanged += OnHandlerChanged;
         
-        // Fallback: PointerGestureRecognizer para Windows y otras plataformas
+#if !MACCATALYST
+        // Fallback: PointerGestureRecognizer solo para Windows y otras plataformas (NO MacCatalyst)
         _pointerRecognizer = new PointerGestureRecognizer();
         _pointerRecognizer.PointerEntered += (_, _) => ApplyHover(bindable);
         _pointerRecognizer.PointerExited += (_, _) => RemoveHover(bindable);
         bindable.GestureRecognizers.Add(_pointerRecognizer);
+#endif
         
         TryAttachPlatformHover(bindable);
     }
@@ -61,11 +63,13 @@ public class DashboardSessionItemHoverBehavior : Behavior<Border>
     {
         bindable.HandlerChanged -= OnHandlerChanged;
         
+#if !MACCATALYST
         if (_pointerRecognizer != null)
         {
             bindable.GestureRecognizers.Remove(_pointerRecognizer);
             _pointerRecognizer = null;
         }
+#endif
 
 #if MACCATALYST
         if (_hoverRecognizer != null && bindable.Handler?.PlatformView is UIView view)
@@ -175,11 +179,13 @@ public class DashboardAllGalleryHoverBehavior : Behavior<Border>
 
         bindable.HandlerChanged += OnHandlerChanged;
         
-        // Fallback: PointerGestureRecognizer para Windows y otras plataformas
+#if !MACCATALYST
+        // Fallback: PointerGestureRecognizer solo para Windows y otras plataformas (NO MacCatalyst)
         _pointerRecognizer = new PointerGestureRecognizer();
         _pointerRecognizer.PointerEntered += (_, _) => ApplyHover(bindable);
         _pointerRecognizer.PointerExited += (_, _) => RemoveHover(bindable);
         bindable.GestureRecognizers.Add(_pointerRecognizer);
+#endif
         
         TryAttachPlatformHover(bindable);
     }
@@ -188,11 +194,13 @@ public class DashboardAllGalleryHoverBehavior : Behavior<Border>
     {
         bindable.HandlerChanged -= OnHandlerChanged;
         
+#if !MACCATALYST
         if (_pointerRecognizer != null)
         {
             bindable.GestureRecognizers.Remove(_pointerRecognizer);
             _pointerRecognizer = null;
         }
+#endif
 
 #if MACCATALYST
         if (_hoverRecognizer != null && bindable.Handler?.PlatformView is UIView view)

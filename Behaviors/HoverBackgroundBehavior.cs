@@ -23,11 +23,13 @@ public class HoverBackgroundBehavior : Behavior<View>
         bindable.HandlerChanged += OnHandlerChanged;
         bindable.PropertyChanged += OnBindablePropertyChanged;
 
-        // Fallback: si alguna plataforma soporta PointerGestureRecognizer, lo dejamos puesto.
+#if !MACCATALYST
+        // Fallback: PointerGestureRecognizer solo para Windows y otras plataformas (NO MacCatalyst)
         var pointer = new PointerGestureRecognizer();
         pointer.PointerEntered += (_, _) => ApplyHover(bindable);
         pointer.PointerExited += (_, _) => RemoveHover(bindable);
         bindable.GestureRecognizers.Add(pointer);
+#endif
 
         TryAttachPlatformHover(bindable);
     }

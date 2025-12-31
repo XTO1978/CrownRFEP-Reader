@@ -557,7 +557,7 @@
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="models:VideoClip">
                         <Border
-                            BackgroundColor="#FF2A2A2A"
+                            BackgroundColor="Transparent"
                             Stroke="Transparent"
                             StrokeShape="RoundRectangle 4"
                             StrokeThickness="0">
@@ -801,7 +801,7 @@
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="models:VideoLesson">
                         <Border
-                            BackgroundColor="#FF2A2A2A"
+                            BackgroundColor="Transparent"
                             Stroke="Transparent"
                             StrokeShape="RoundRectangle 4"
                             StrokeThickness="0">
