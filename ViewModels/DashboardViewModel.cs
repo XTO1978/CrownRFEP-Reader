@@ -2061,6 +2061,7 @@ public class DashboardViewModel : BaseViewModel
     public ICommand ClearFiltersCommand { get; }
     public ICommand ToggleSessionsListExpandedCommand { get; }
     public ICommand ToggleSessionGroupExpandedCommand { get; }
+    public ICommand SelectSessionRowCommand { get; }
     public ICommand TogglePlacesExpandedCommand { get; }
     public ICommand ToggleAthletesExpandedCommand { get; }
     public ICommand ToggleSectionsExpandedCommand { get; }
@@ -2224,6 +2225,7 @@ public class DashboardViewModel : BaseViewModel
         ClearFiltersCommand = new RelayCommand(ClearFilters);
         ToggleSessionsListExpandedCommand = new RelayCommand(() => IsSessionsListExpanded = !IsSessionsListExpanded);
         ToggleSessionGroupExpandedCommand = new RelayCommand<string>(ToggleSessionGroupExpanded);
+        SelectSessionRowCommand = new RelayCommand<SessionRow>(row => { if (row != null) SelectedSessionListItem = row; });
         TogglePlacesExpandedCommand = new RelayCommand(() => IsPlacesExpanded = !IsPlacesExpanded);
         ToggleAthletesExpandedCommand = new RelayCommand(() => IsAthletesExpanded = !IsAthletesExpanded);
         ToggleSectionsExpandedCommand = new RelayCommand(() => IsSectionsExpanded = !IsSectionsExpanded);

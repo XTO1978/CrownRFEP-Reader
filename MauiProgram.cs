@@ -59,15 +59,16 @@ public static class MauiProgram
 					}
 				});
 
-				// Desactivar highlight hover nativo en CollectionView para MacCatalyst
-				Microsoft.Maui.Controls.Handlers.Items.CollectionViewHandler.Mapper.AppendToMapping("DisableHoverHighlight", (handler, view) =>
+				// Desactivar highlight hover y selección nativo en CollectionView para MacCatalyst
+				Microsoft.Maui.Controls.Handlers.Items.CollectionViewHandler.Mapper.AppendToMapping("DisableNativeSelectionHighlight", (handler, view) =>
 				{
 					if (handler.PlatformView is UICollectionView collectionView)
 					{
-						// Desactivar efectos visuales de selección
-						collectionView.AllowsSelection = true;
-						collectionView.AllowsMultipleSelection = false;
+						// Configurar CollectionView para no mostrar highlight nativo
 						collectionView.BackgroundColor = UIColor.Clear;
+						
+						// Limpiar backgrounds de celdas existentes
+						CollectionViewSelectionFix.ClearCellBackgrounds(collectionView);
 					}
 				});
 

@@ -77,6 +77,11 @@
                             BackgroundColor="Transparent"
                             Stroke="Transparent"
                             StrokeShape="RoundRectangle 4">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer
+                                    Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=SelectSessionRowCommand}"
+                                    CommandParameter="{Binding .}" />
+                            </Border.GestureRecognizers>
                             <Border.Behaviors>
                                 <behaviors:SidebarHoverBehavior />
                             </Border.Behaviors>
@@ -207,8 +212,7 @@
                 BackgroundColor="#00BBBABA"
                 ItemsSource="{Binding SessionRows}"
                 ItemTemplate="{StaticResource SessionsListRowTemplateSelector}"
-                SelectedItem="{Binding SelectedSessionListItem, Mode=TwoWay}"
-                SelectionMode="Single">
+                SelectionMode="None">
 
                 <!--  Items fijos: Galería General + Videolecciones  -->
                 <CollectionView.Header>
