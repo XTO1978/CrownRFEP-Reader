@@ -346,7 +346,7 @@
                             </HorizontalStackLayout>
                         </Border>
 
-                        <!--  Item padre: Sesiones (expandir/colapsar)  -->
+                        <!--  Item padre: Sesiones (no expandible)  -->
                         <Border
                             x:Name="SessionsHeaderBorder"
                             Margin="0"
@@ -356,40 +356,23 @@
                             Stroke="Transparent"
                             StrokeThickness="0"
                             StrokeShape="RoundRectangle 4">
-                            <Border.Behaviors>
-                                <behaviors:DashboardAllGalleryHoverBehavior />
-                            </Border.Behaviors>
-                            <Border.GestureRecognizers>
-                                <TapGestureRecognizer Command="{Binding ToggleSessionsListExpandedCommand}" />
-                            </Border.GestureRecognizers>
-                            <Grid
-                                ColumnDefinitions="*,Auto"
+                            <HorizontalStackLayout
+                                Spacing="8"
                                 VerticalOptions="Center">
-                                <HorizontalStackLayout
-                                    Grid.Column="0"
-                                    Spacing="8"
-                                    VerticalOptions="Center">
-                                    <controls:SymbolIcon
-                                        HeightRequest="{StaticResource IconSizeLarge}"
-                                        SymbolName="clock"
-                                        TintColor="#FF6DDDFF"
-                                        VerticalOptions="Center"
-                                        WidthRequest="{StaticResource IconSizeLarge}" />
-                                    <Label
-                                        FontFamily="{StaticResource AppFontBody}"
-                                        FontSize="{StaticResource FontSizeSubtitle}"
-                                        Text="Sesiones"
-                                        TextColor="White"
-                                        VerticalOptions="Center"
-                                        VerticalTextAlignment="Center" />
-                                </HorizontalStackLayout>
+                                <controls:SymbolIcon
+                                    HeightRequest="{StaticResource IconSizeLarge}"
+                                    SymbolName="clock"
+                                    TintColor="#FF6DDDFF"
+                                    VerticalOptions="Center"
+                                    WidthRequest="{StaticResource IconSizeLarge}" />
                                 <Label
-                                    Grid.Column="1"
+                                    FontFamily="{StaticResource AppFontBody}"
                                     FontSize="{StaticResource FontSizeSubtitle}"
-                                    Text="{Binding IsSessionsListExpanded, Converter={StaticResource BoolToExpandIconConverter}}"
-                                    TextColor="Gray"
-                                    VerticalOptions="Center" />
-                            </Grid>
+                                    Text="Sesiones"
+                                    TextColor="White"
+                                    VerticalOptions="Center"
+                                    VerticalTextAlignment="Center" />
+                            </HorizontalStackLayout>
                         </Border>
 
                         <!--  Item de sesión en importación (con barra de progreso)  -->
@@ -460,8 +443,7 @@
                     <VerticalStackLayout
                         Padding="40"
                         HorizontalOptions="Center"
-                        VerticalOptions="Center"
-                        IsVisible="{Binding IsSessionsListExpanded}">
+                        VerticalOptions="Center">
                         <Label
                             FontSize="{StaticResource FontSizeTitle}"
                             HorizontalOptions="Center"

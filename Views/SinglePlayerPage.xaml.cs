@@ -18,6 +18,7 @@ public partial class SinglePlayerPage : ContentPage
     private readonly SinglePlayerViewModel _viewModel;
     private readonly DatabaseService _databaseService;
     private readonly IVideoLessonRecorder _videoLessonRecorder;
+    private readonly VideoLessonNotifier _videoLessonNotifier;
 
     private ReplayKitCameraPreview? VideoLessonCameraPreview;
     private WebcamPreview? VideoLessonWebcamPreview;
@@ -62,12 +63,13 @@ public partial class SinglePlayerPage : ContentPage
     private const float DefaultInkThickness = 3f;
     private const float DefaultTextSize = 16f;
 
-    public SinglePlayerPage(SinglePlayerViewModel viewModel, DatabaseService databaseService, IVideoLessonRecorder videoLessonRecorder)
+    public SinglePlayerPage(SinglePlayerViewModel viewModel, DatabaseService databaseService, IVideoLessonRecorder videoLessonRecorder, VideoLessonNotifier videoLessonNotifier)
     {
         InitializeComponent();
         BindingContext = _viewModel = viewModel;
         _databaseService = databaseService;
         _videoLessonRecorder = videoLessonRecorder;
+        _videoLessonNotifier = videoLessonNotifier;
 
         AppLog.Info("SinglePlayerPage", "CTOR");
 
@@ -424,6 +426,9 @@ public partial class SinglePlayerPage : ContentPage
 
                 var savedId = await _databaseService.SaveVideoLessonAsync(lesson);
                 AppLog.Info("SinglePlayerPage", $"StopVideoLessonRecordingAsync: saved VideoLesson | id={savedId} | sessionId={sessionId}");
+
+                // Notificar que se ha creado una videolección para actualizar la galería
+                _videoLessonNotifier.NotifyVideoLessonCreated(savedId, sessionId);
             }
             else
             {

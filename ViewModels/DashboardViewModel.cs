@@ -3627,8 +3627,16 @@ public class DashboardViewModel : BaseViewModel
                 SelectedSession = null;
             }
 
+            // Recargar videolecciones si están seleccionadas (al volver de SinglePlayerPage)
+            if (IsVideoLessonsSelected)
+            {
+                _selectedSessionVideosCts?.Cancel();
+                _selectedSessionVideosCts?.Dispose();
+                _selectedSessionVideosCts = new CancellationTokenSource();
+                await LoadVideoLessonsAsync(_selectedSessionVideosCts.Token);
+            }
             // Por defecto, mostrar Galería General al iniciar (solo si no hay ninguna vista activa)
-            if (SelectedSession == null && !IsAllGallerySelected && !IsVideoLessonsSelected && !IsDiaryViewSelected)
+            else if (SelectedSession == null && !IsAllGallerySelected && !IsDiaryViewSelected)
             {
                 await SelectAllGalleryAsync();
             }

@@ -70,6 +70,7 @@ public static class MauiProgram
 		builder.Services.AddSingleton<DatabaseService>();
 		builder.Services.AddSingleton<UserProfileNotifier>();
 		builder.Services.AddSingleton<VideoExportNotifier>();
+		builder.Services.AddSingleton<VideoLessonNotifier>();
 		builder.Services.AddSingleton<ImportProgressService>();
 		builder.Services.AddSingleton<StatusBarService>();
 		builder.Services.AddSingleton<CrownFileService>();

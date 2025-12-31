@@ -8,16 +8,30 @@ namespace CrownRFEP_Reader.ViewModels;
 public sealed class VideoLessonsViewModel : BaseViewModel
 {
     private readonly DatabaseService _databaseService;
+    private readonly VideoLessonNotifier _videoLessonNotifier;
 
     public ObservableCollection<VideoLesson> Lessons { get; } = new();
 
     public ICommand RefreshCommand { get; }
 
-    public VideoLessonsViewModel(DatabaseService databaseService)
+    public VideoLessonsViewModel(DatabaseService databaseService, VideoLessonNotifier videoLessonNotifier)
     {
         _databaseService = databaseService;
+        _videoLessonNotifier = videoLessonNotifier;
         Title = "Videolecciones";
         RefreshCommand = new AsyncRelayCommand(LoadAsync);
+
+        // Suscribirse a notificaciones de nuevas videolecciones
+        _videoLessonNotifier.VideoLessonCreated += OnVideoLessonCreated;
+    }
+
+    private async void OnVideoLessonCreated(object? sender, VideoLessonCreatedEventArgs e)
+    {
+        // Recargar la lista en el hilo principal
+        await MainThread.InvokeOnMainThreadAsync(async () =>
+        {
+            await LoadAsync();
+        });
     }
 
     public async Task LoadAsync()
