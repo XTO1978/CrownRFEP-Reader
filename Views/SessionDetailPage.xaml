@@ -13,7 +13,7 @@
         
         <!-- Info de la sesión -->
         <Frame Grid.Row="0" Padding="15" CornerRadius="12" HasShadow="True" Margin="0,0,0,10">
-            <Grid RowDefinitions="Auto,Auto,Auto,Auto" ColumnDefinitions="*,*">
+            <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnDefinitions="*,*">
                 <Label Grid.ColumnSpan="2" 
                        Text="{Binding Session.DisplayName}" 
                        FontSize="{StaticResource FontSizeHeader}" 
@@ -54,6 +54,18 @@
                        TextColor="Gray"
                        Margin="0,8,0,0"
                        LineBreakMode="WordWrap"/>
+
+                <!-- Botón Grabar Video (solo iOS) -->
+                <Button Grid.Row="4" Grid.ColumnSpan="2"
+                        Text="🎥 Grabar Video"
+                        Command="{Binding RecordVideoCommand}"
+                        IsVisible="{Binding CanRecordVideo}"
+                        BackgroundColor="{StaticResource Primary}"
+                        TextColor="White"
+                        FontAttributes="Bold"
+                        CornerRadius="8"
+                        Margin="0,12,0,0"
+                        HeightRequest="44" />
             </Grid>
         </Frame>
 

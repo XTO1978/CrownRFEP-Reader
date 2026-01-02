@@ -40,6 +40,12 @@ public class SessionsViewModel : BaseViewModel
     public ICommand ViewSessionCommand { get; }
     public ICommand DeleteSessionCommand { get; }
     public ICommand ViewVideoLessonsCommand { get; }
+    public ICommand RecordVideoCommand { get; }
+
+    /// <summary>
+    /// Indica si la grabación de video está disponible (solo iOS)
+    /// </summary>
+    public bool CanRecordVideo => DeviceInfo.Platform == DevicePlatform.iOS;
 
     public SessionsViewModel(DatabaseService databaseService)
     {
@@ -50,6 +56,33 @@ public class SessionsViewModel : BaseViewModel
         ViewSessionCommand = new AsyncRelayCommand<Session>(ViewSessionAsync);
         DeleteSessionCommand = new AsyncRelayCommand<Session>(DeleteSessionAsync);
         ViewVideoLessonsCommand = new AsyncRelayCommand(ViewVideoLessonsAsync);
+        RecordVideoCommand = new AsyncRelayCommand<Session>(RecordVideoAsync);
+    }
+
+    /// <summary>
+    /// Navega a la página de cámara para grabar videos de la sesión
+    /// </summary>
+    private async Task RecordVideoAsync(Session? session)
+    {
+        if (session == null) return;
+
+        try
+        {
+            var navigationParams = new Dictionary<string, object>
+            {
+                { "SessionId", session.Id },
+                { "SessionName", session.DisplayName },
+                { "SessionType", session.TipoSesion ?? "Entrenamiento" },
+                { "Place", session.Lugar ?? "" },
+                { "Date", session.FechaDateTime }
+            };
+
+            await Shell.Current.GoToAsync(nameof(CameraPage), navigationParams);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(nameof(SessionsViewModel), $"Error navigating to camera: {ex.Message}", ex);
+        }
     }
 
     private static async Task ViewVideoLessonsAsync()

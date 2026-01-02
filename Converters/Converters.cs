@@ -3,6 +3,34 @@ using System.Globalization;
 namespace CrownRFEP_Reader.Converters;
 
 /// <summary>
+/// Convierte un string de color hexadecimal a SolidColorBrush
+/// </summary>
+public class StringToBrushConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is string colorString && !string.IsNullOrEmpty(colorString))
+        {
+            try
+            {
+                var color = Color.FromArgb(colorString);
+                return new SolidColorBrush(color);
+            }
+            catch
+            {
+                return new SolidColorBrush(Colors.Gray);
+            }
+        }
+        return new SolidColorBrush(Colors.Gray);
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+/// <summary>
 /// Invierte un valor booleano
 /// </summary>
 public class InvertedBoolConverter : IValueConverter

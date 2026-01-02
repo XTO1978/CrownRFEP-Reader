@@ -100,10 +100,23 @@ public partial class TopTabsBar : Microsoft.Maui.Controls.ContentView
         }
     }
 
-    private static Task GoToRootAsync(string rootRoute)
+    private static async Task GoToRootAsync(string rootRoute)
     {
-        // Navegación absoluta al root de cada sección.
-        return Shell.Current?.GoToAsync($"//{rootRoute}") ?? Task.CompletedTask;
+        try
+        {
+            // Navegación absoluta al root de cada sección.
+            if (Shell.Current != null)
+            {
+                await MainThread.InvokeOnMainThreadAsync(async () =>
+                {
+                    await Shell.Current.GoToAsync($"//{rootRoute}");
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Navigation error to {rootRoute}: {ex.Message}");
+        }
     }
 
     private async void OnDashboardClicked(object sender, EventArgs e) => await GoToRootAsync("dashboard");
@@ -114,19 +127,32 @@ public partial class TopTabsBar : Microsoft.Maui.Controls.ContentView
     
     private async void OnProfileTapped(object sender, TappedEventArgs e)
     {
-        await ShowProfileAsync();
+        try
+        {
+            await ShowProfileAsync();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Profile navigation error: {ex.Message}");
+        }
     }
 
     private async Task ShowProfileAsync()
     {
-        await RefreshProfileButtonTextAsync();
+        try
+        {
+            await RefreshProfileButtonTextAsync();
 
-        var profilePage = Microsoft.Maui.Controls.Application.Current?.Handler?.MauiContext?.Services.GetService<UserProfilePage>();
-        if (profilePage == null) return;
+            var profilePage = Microsoft.Maui.Controls.Application.Current?.Handler?.MauiContext?.Services.GetService<UserProfilePage>();
+            if (profilePage == null)
+            {
+                System.Diagnostics.Debug.WriteLine("ShowProfileAsync: profilePage is null");
+                return;
+            }
 
-        // Asegurar que SIEMPRE se muestran los datos persistidos al abrir el modal.
-        if (profilePage.BindingContext is UserProfileViewModel vm)
-            await vm.LoadProfileAsync();
+            // Asegurar que SIEMPRE se muestran los datos persistidos al abrir el modal.
+            if (profilePage.BindingContext is UserProfileViewModel vm)
+                await vm.LoadProfileAsync();
 
 #if MACCATALYST
         var mauiContext = Microsoft.Maui.Controls.Application.Current?.Handler?.MauiContext;
@@ -181,9 +207,14 @@ public partial class TopTabsBar : Microsoft.Maui.Controls.ContentView
         await presenter.PresentViewControllerAsync(vc, true);
 #else
         // Otras plataformas: navegación modal estándar de MAUI
-    var nav = Shell.Current?.Navigation;
-    if (nav != null)
-        await nav.PushModalAsync(profilePage);
+        var nav = Shell.Current?.Navigation;
+        if (nav != null)
+            await nav.PushModalAsync(profilePage);
 #endif
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"ShowProfileAsync error: {ex.Message}");
+        }
     }
 }

@@ -1,4 +1,5 @@
 using CrownRFEP_Reader.ViewModels;
+using CrownRFEP_Reader.Services;
 
 #if MACCATALYST
 using CrownRFEP_Reader.Platforms.MacCatalyst;
@@ -6,7 +7,7 @@ using CrownRFEP_Reader.Platforms.MacCatalyst;
 
 namespace CrownRFEP_Reader.Views;
 
-public partial class VideoPlayerPage : ContentPage
+public partial class VideoPlayerPage : ContentPage, IShellNavigatingCleanup
 {
     private readonly VideoPlayerViewModel _viewModel;
 
@@ -39,6 +40,27 @@ public partial class VideoPlayerPage : ContentPage
 
         // Detener el video cuando se sale de la página
         mediaElement.Stop();
+    }
+
+    public async Task PrepareForShellNavigationAsync()
+    {
+        try
+        {
+            if (MainThread.IsMainThread)
+                PrepareForShellNavigation();
+            else
+                await MainThread.InvokeOnMainThreadAsync(PrepareForShellNavigation);
+        }
+        catch
+        {
+            // Best-effort cleanup: no rethrow en navegación
+        }
+    }
+
+    private void PrepareForShellNavigation()
+    {
+        try { mediaElement.Stop(); } catch { }
+        try { mediaElement.Source = null; } catch { }
     }
 
 #if MACCATALYST

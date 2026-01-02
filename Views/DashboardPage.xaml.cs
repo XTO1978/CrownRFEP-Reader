@@ -10,7 +10,7 @@ using CrownRFEP_Reader.Platforms.MacCatalyst;
 
 namespace CrownRFEP_Reader.Views;
 
-public partial class DashboardPage : ContentPage
+public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 {
     private readonly DashboardViewModel _viewModel;
     
@@ -49,6 +49,10 @@ public partial class DashboardPage : ContentPage
         // Suscribirse a eventos de teclado
         KeyPressHandler.SpaceBarPressed += OnSpaceBarPressed;
 #endif
+
+		// Hover preview: usamos PrecisionVideoPlayer (AVPlayerLayer). Autoplay+loop aquí.
+		HoverPreviewPlayer.MediaOpened += OnHoverPreviewOpened;
+		HoverPreviewPlayer.MediaEnded += OnHoverPreviewEnded;
     }
 
     ~DashboardPage()
@@ -66,6 +70,9 @@ public partial class DashboardPage : ContentPage
 #if MACCATALYST
         KeyPressHandler.SpaceBarPressed -= OnSpaceBarPressed;
 #endif
+
+		try { HoverPreviewPlayer.MediaOpened -= OnHoverPreviewOpened; } catch { }
+		try { HoverPreviewPlayer.MediaEnded -= OnHoverPreviewEnded; } catch { }
     }
 
 #if MACCATALYST
@@ -135,8 +142,69 @@ public partial class DashboardPage : ContentPage
         AppLog.Info(
             "DashboardPage",
             $"OnDisappearing | NavStack={Shell.Current?.Navigation?.NavigationStack?.Count} | ModalStack={Shell.Current?.Navigation?.ModalStack?.Count}");
-        // Pausar todos los videos al salir
-        PauseAllVideos();
+        
+        // Pausar y limpiar todos los videos al salir para evitar conflictos de jerarquía de ViewControllers
+        CleanupAllVideos();
+    }
+
+    public async Task PrepareForShellNavigationAsync()
+    {
+        try
+        {
+            if (MainThread.IsMainThread)
+                PrepareForShellNavigation();
+            else
+                await MainThread.InvokeOnMainThreadAsync(PrepareForShellNavigation);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "PrepareForShellNavigationAsync error", ex);
+        }
+    }
+
+    private void PrepareForShellNavigation()
+    {
+        try
+        {
+            AppLog.Info("DashboardPage", "PrepareForShellNavigation | stopping hover + cleaning players");
+
+            // Hover preview: parar y soltar el Source ANTES del cambio de ShellItem.
+            try { HoverPreviewPlayer?.PrepareForCleanup(); } catch { }
+            try { HoverPreviewPlayer?.Stop(); } catch { }
+            try { if (HoverPreviewPlayer != null) HoverPreviewPlayer.Source = null; } catch { }
+
+            // Forzar que el binding deje de referenciar el vídeo
+            _viewModel.HoverVideo = null;
+
+            // Limpia también los reproductores custom
+            CleanupAllVideos();
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "PrepareForShellNavigation error", ex);
+        }
+    }
+
+    private void OnHoverPreviewOpened(object? sender, EventArgs e)
+    {
+        if (!_isPageActive) return;
+        // Autoplay
+        try { HoverPreviewPlayer.Play(); } catch { }
+    }
+
+    private void OnHoverPreviewEnded(object? sender, EventArgs e)
+    {
+        if (!_isPageActive) return;
+        // Loop simple
+        try
+        {
+            HoverPreviewPlayer.SeekTo(TimeSpan.Zero);
+            HoverPreviewPlayer.Play();
+        }
+        catch
+        {
+            // best effort
+        }
     }
 
     private void OnVideoHoverStarted(object? sender, HoverVideoEventArgs e)
@@ -375,5 +443,53 @@ public partial class DashboardPage : ContentPage
         PreviewPlayer2Q?.Pause();
         PreviewPlayer3Q?.Pause();
         PreviewPlayer4Q?.Pause();
+    }
+
+    /// <summary>
+    /// Limpia completamente todos los reproductores de video para evitar conflictos
+    /// de jerarquía de ViewControllers en iOS al navegar entre páginas
+    /// </summary>
+    private void CleanupAllVideos()
+    {
+        try
+        {
+            // Primero pausar
+            PauseAllVideos();
+
+			// Hover preview (PrecisionVideoPlayer)
+			try { HoverPreviewPlayer?.PrepareForCleanup(); } catch { }
+			try { HoverPreviewPlayer?.Stop(); } catch { }
+            try { if (HoverPreviewPlayer != null) HoverPreviewPlayer.Source = null; } catch { }
+            
+            // Luego limpiar sources para desconectar AVPlayerViewController
+            ClearVideoSource(PreviewPlayerSingle);
+            ClearVideoSource(PreviewPlayer1H);
+            ClearVideoSource(PreviewPlayer2H);
+            ClearVideoSource(PreviewPlayer1V);
+            ClearVideoSource(PreviewPlayer2V);
+            ClearVideoSource(PreviewPlayer1Q);
+            ClearVideoSource(PreviewPlayer2Q);
+            ClearVideoSource(PreviewPlayer3Q);
+            ClearVideoSource(PreviewPlayer4Q);
+            
+            // Limpiar también en el ViewModel
+            _viewModel.ClearPreviewVideos();
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "Error cleaning up videos", ex);
+        }
+    }
+    
+    private void ClearVideoSource(PrecisionVideoPlayer? player)
+    {
+        if (player != null)
+        {
+            try
+            {
+                player.Source = null;
+            }
+            catch { }
+        }
     }
 }

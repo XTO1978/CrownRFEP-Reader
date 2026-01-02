@@ -77,6 +77,12 @@ public class SessionDetailViewModel : BaseViewModel
     public ICommand ClearFiltersCommand { get; }
     public ICommand FilterByAthleteCommand { get; }
     public ICommand FilterBySectionCommand { get; }
+    public ICommand RecordVideoCommand { get; }
+
+    /// <summary>
+    /// Indica si la grabación de video está disponible (solo iOS)
+    /// </summary>
+    public bool CanRecordVideo => DeviceInfo.Platform == DevicePlatform.iOS;
 
     public SessionDetailViewModel(DatabaseService databaseService, StatisticsService statisticsService)
     {
@@ -88,6 +94,33 @@ public class SessionDetailViewModel : BaseViewModel
         ClearFiltersCommand = new RelayCommand(ClearFilters);
         FilterByAthleteCommand = new RelayCommand<Athlete>(athlete => SelectedAthleteFilter = athlete);
         FilterBySectionCommand = new RelayCommand<int?>(section => SelectedSectionFilter = section);
+        RecordVideoCommand = new AsyncRelayCommand(RecordVideoAsync);
+    }
+
+    /// <summary>
+    /// Navega a la página de cámara para grabar videos de esta sesión
+    /// </summary>
+    private async Task RecordVideoAsync()
+    {
+        if (Session == null) return;
+
+        try
+        {
+            var navigationParams = new Dictionary<string, object>
+            {
+                { "SessionId", Session.Id },
+                { "SessionName", Session.DisplayName },
+                { "SessionType", Session.TipoSesion ?? "Entrenamiento" },
+                { "Place", Session.Lugar ?? "" },
+                { "Date", Session.FechaDateTime }
+            };
+
+            await Shell.Current.GoToAsync("CameraPage", navigationParams);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(nameof(SessionDetailViewModel), $"Error navigating to camera: {ex.Message}", ex);
+        }
     }
 
     public async Task LoadSessionAsync()

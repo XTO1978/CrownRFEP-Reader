@@ -501,6 +501,32 @@
                         </HorizontalStackLayout>
                     </Border>
                 </Grid>
+                
+                <!--  Botón Nueva sesión (solo iOS)  -->
+                <Border
+                    Padding="{StaticResource PaddingActionButton}"
+                    BackgroundColor="#FF2A2A2A"
+                    Stroke="Transparent"
+                    StrokeShape="RoundRectangle 4">
+                    <Border.IsVisible>
+                        <OnPlatform x:TypeArguments="x:Boolean">
+                            <On Platform="iOS" Value="True" />
+                            <On Platform="MacCatalyst,WinUI,Android" Value="False" />
+                        </OnPlatform>
+                    </Border.IsVisible>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding OpenNewSessionSidebarPopupCommand}" />
+                    </Border.GestureRecognizers>
+                    <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
+                        <controls:SymbolIcon
+                            HeightRequest="{StaticResource IconSizeMedium}"
+                            SymbolName="video.badge.plus"
+                            TintColor="White"
+                            WidthRequest="{StaticResource IconSizeMedium}"
+                            VerticalOptions="Center" />
+                        <Label Text="Nueva sesión" TextColor="White" VerticalOptions="Center" />
+                    </HorizontalStackLayout>
+                </Border>
             </VerticalStackLayout>
         </Grid>
 
@@ -510,12 +536,44 @@
             Grid.Column="2"
             Padding="20"
             RowDefinitions="Auto,Auto,*">
-            <Label
-                Grid.Row="0"
-                FontSize="{StaticResource FontSizeTitle}"
-                LineBreakMode="TailTruncation"
-                Text="{Binding SelectedSessionTitle}"
-                TextColor="White" />
+            
+            <!--  Header con título y botón Grabar  -->
+            <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                <Label
+                    Grid.Column="0"
+                    FontSize="{StaticResource FontSizeTitle}"
+                    LineBreakMode="TailTruncation"
+                    Text="{Binding SelectedSessionTitle}"
+                    TextColor="White"
+                    VerticalOptions="Center" />
+                
+                <!--  Botón Grabar (solo iOS, solo cuando hay sesión seleccionada)  -->
+                <Border
+                    Grid.Column="1"
+                    Padding="12,8"
+                    BackgroundColor="#FFFF3B30"
+                    Stroke="Transparent"
+                    StrokeShape="RoundRectangle 4"
+                    IsVisible="{Binding CanShowRecordButton}">
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding RecordForSelectedSessionCommand}" />
+                    </Border.GestureRecognizers>
+                    <HorizontalStackLayout Spacing="6">
+                        <controls:SymbolIcon
+                            HeightRequest="{StaticResource IconSizeMedium}"
+                            SymbolName="video.fill"
+                            TintColor="White"
+                            WidthRequest="{StaticResource IconSizeMedium}"
+                            VerticalOptions="Center" />
+                        <Label 
+                            Text="Grabar" 
+                            TextColor="White" 
+                            FontAttributes="Bold" 
+                            FontSize="{StaticResource FontSizeBody}"
+                            VerticalOptions="Center" />
+                    </HorizontalStackLayout>
+                </Border>
+            </Grid>
 
             <HorizontalStackLayout
                 Grid.Row="1"
@@ -3324,23 +3382,28 @@
                         </HorizontalStackLayout>
                         
                         <!--  Botón agregar sesión  -->
-                        <Border
+                        <HorizontalStackLayout
                             Grid.Column="1"
-                            Padding="8"
-                            BackgroundColor="#FF2A2A2A"
-                            StrokeShape="RoundRectangle 8"
-                            StrokeThickness="0"
+                            Spacing="8"
                             VerticalOptions="Center"
                             IsVisible="{Binding IsAddingNewSession, Converter={toolkit:InvertedBoolConverter}}">
-                            <Border.GestureRecognizers>
-                                <TapGestureRecognizer Command="{Binding ToggleAddNewSessionCommand}" />
-                            </Border.GestureRecognizers>
-                            <controls:SymbolIcon
-                                HeightRequest="{StaticResource IconSizeLarge}"
-                                WidthRequest="{StaticResource IconSizeLarge}"
-                                SymbolName="plus.circle.fill"
-                                TintColor="#FF6DDDFF" />
-                        </Border>
+                            
+                            <!--  Botón + Nueva sesión manual  -->
+                            <Border
+                                Padding="6"
+                                BackgroundColor="#FF2A2A2A"
+                                StrokeShape="RoundRectangle 8"
+                                StrokeThickness="0">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding ToggleAddNewSessionCommand}" />
+                                </Border.GestureRecognizers>
+                                <controls:SymbolIcon
+                                    HeightRequest="{StaticResource IconSizeLarge}"
+                                    WidthRequest="{StaticResource IconSizeLarge}"
+                                    SymbolName="plus.circle.fill"
+                                    TintColor="#FF6DDDFF" />
+                            </Border>
+                        </HorizontalStackLayout>
                     </Grid>
                     
                     <!--  Fecha seleccionada  -->
@@ -3429,7 +3492,7 @@
                             </VerticalStackLayout>
                             
                             <!--  Botones  -->
-                            <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12">
                                 <Button
                                     Text="Cancelar"
                                     BackgroundColor="#FF2A2A2A"
@@ -4434,13 +4497,10 @@
             WidthRequest="480">
             <Grid RowDefinitions="Auto,Auto">
                 <controls:AspectRatioContainer AspectRatio="1.777">
-                    <toolkit:MediaElement
-                        x:Name="HoverPreviewMedia"
+                    <appcontrols:PrecisionVideoPlayer
+                        x:Name="HoverPreviewPlayer"
                         Aspect="AspectFill"
-                        ShouldAutoPlay="True"
-                        ShouldLoopPlayback="True"
-                        ShouldMute="True"
-                        ShouldShowPlaybackControls="False"
+                        IsMuted="True"
                         Source="{Binding HoverVideo.LocalClipPath}" />
                 </controls:AspectRatioContainer>
                 <Label
@@ -4461,6 +4521,141 @@
             IsVisible="{Binding IsBusy}"
             VerticalOptions="Center"
             Color="#FF6DDDFF" />
+
+        <!--  Popup de nueva sesión desde barra lateral (solo iOS)  -->
+        <Grid
+            Grid.Row="0"
+            Grid.RowSpan="2"
+            Grid.ColumnSpan="5"
+            BackgroundColor="#CC000000"
+            IsVisible="{Binding ShowNewSessionSidebarPopup}">
+            <Border
+                Padding="24"
+                BackgroundColor="#FF1E1E1E"
+                HorizontalOptions="Center"
+                Stroke="#FF3A3A3A"
+                StrokeShape="RoundRectangle 12"
+                StrokeThickness="1"
+                VerticalOptions="Center"
+                WidthRequest="400">
+                <VerticalStackLayout Spacing="16">
+                    <!--  Título  -->
+                    <Grid ColumnDefinitions="*,Auto">
+                        <VerticalStackLayout Grid.Column="0">
+                            <Label
+                                FontAttributes="Bold"
+                                FontSize="{StaticResource FontSizeTitle}"
+                                Text="Nueva sesión de grabación"
+                                TextColor="White" />
+                            <Label
+                                FontSize="{StaticResource FontSizeSmall}"
+                                Text="Crea una sesión y graba vídeos directamente"
+                                TextColor="#FF888888" />
+                        </VerticalStackLayout>
+                        <Border
+                            Grid.Column="1"
+                            Padding="4"
+                            BackgroundColor="Transparent"
+                            Stroke="Transparent"
+                            StrokeShape="RoundRectangle 4">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding CancelNewSessionSidebarPopupCommand}" />
+                            </Border.GestureRecognizers>
+                            <controls:SymbolIcon
+                                HeightRequest="{StaticResource IconSizeLarge}"
+                                SymbolName="xmark"
+                                TintColor="#FF888888"
+                                WidthRequest="{StaticResource IconSizeLarge}" />
+                        </Border>
+                    </Grid>
+
+                    <!--  Nombre de la sesión  -->
+                    <VerticalStackLayout Spacing="4">
+                        <Label
+                            FontSize="{StaticResource FontSizeSmall}"
+                            Text="Nombre de la sesión"
+                            TextColor="#FFB1B1B1" />
+                        <Entry
+                            Placeholder="Ej: Entrenamiento mañana"
+                            PlaceholderColor="#FF666666"
+                            Text="{Binding NewSessionName}"
+                            TextColor="White"
+                            BackgroundColor="#FF2A2A2A" />
+                    </VerticalStackLayout>
+
+                    <!--  Tipo de sesión  -->
+                    <VerticalStackLayout Spacing="8">
+                        <Label
+                            FontSize="{StaticResource FontSizeSmall}"
+                            Text="Tipo de sesión"
+                            TextColor="#FFB1B1B1" />
+                        <FlexLayout 
+                            Wrap="Wrap" 
+                            JustifyContent="Start"
+                            BindableLayout.ItemsSource="{Binding SessionTypeOptions}">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate x:DataType="vm:SessionTypeOption">
+                                    <Border
+                                        Margin="0,0,8,8"
+                                        Padding="12,6"
+                                        StrokeShape="RoundRectangle 6"
+                                        StrokeThickness="0"
+                                        BackgroundColor="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF6DDDFF|#FF2A2A2A}"
+                                        Stroke="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF6DDDFF|#FF404040}">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer 
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=SelectSessionTypeCommand}"
+                                                CommandParameter="{Binding .}" />
+                                        </Border.GestureRecognizers>
+                                        <Label
+                                            FontSize="{StaticResource FontSizeSmall}"
+                                            Text="{Binding Name}"
+                                            TextColor="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF121212|#FFB1B1B1}"
+                                            FontAttributes="{Binding IsSelected, Converter={StaticResource BoolToFontAttributesConverter}}"
+                                            VerticalOptions="Center" />
+                                    </Border>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </FlexLayout>
+                    </VerticalStackLayout>
+
+                    <!--  Lugar  -->
+                    <VerticalStackLayout Spacing="4">
+                        <Label
+                            FontSize="{StaticResource FontSizeSmall}"
+                            Text="Lugar (opcional)"
+                            TextColor="#FFB1B1B1" />
+                        <Entry
+                            Placeholder="Ej: Canal olímpico"
+                            PlaceholderColor="#FF666666"
+                            Text="{Binding NewSessionLugar}"
+                            TextColor="White"
+                            BackgroundColor="#FF2A2A2A" />
+                    </VerticalStackLayout>
+
+                    <!--  Botones  -->
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="12" Margin="0,8,0,0">
+                        <Button
+                            Grid.Column="0"
+                            Text="Cancelar"
+                            BackgroundColor="#FF2A2A2A"
+                            TextColor="#FFB1B1B1"
+                            CornerRadius="8"
+                            HeightRequest="{StaticResource ElementHeightLarge}"
+                            Command="{Binding CancelNewSessionSidebarPopupCommand}" />
+                        <Button
+                            Grid.Column="1"
+                            Text="Crear y grabar"
+                            BackgroundColor="#FFFF3B30"
+                            TextColor="White"
+                            FontAttributes="Bold"
+                            CornerRadius="8"
+                            HeightRequest="{StaticResource ElementHeightLarge}"
+                            Command="{Binding CreateSessionAndRecordCommand}" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+        </Grid>
 
         <!--  Popup de edición en lote  -->
         <Grid

@@ -172,6 +172,7 @@ public class DashboardViewModel : BaseViewModel
     private string _newSessionName = "";
     private string _newSessionType = "Gimnasio";
     private string _newSessionLugar = "";
+    private bool _showNewSessionSidebarPopup;
 
     // HealthKit / Datos de Salud (solo iOS) y Bienestar manual
     private DailyHealthData? _selectedDateHealthData;
@@ -400,6 +401,7 @@ public class DashboardViewModel : BaseViewModel
                 }
                 OnPropertyChanged(nameof(SelectedSessionTitle));
                 OnPropertyChanged(nameof(HasSpecificSessionSelected));
+                OnPropertyChanged(nameof(CanShowRecordButton));
                 _ = LoadSelectedSessionVideosAsync(value);
                 
                 // Recargar datos de la pestaña activa
@@ -585,6 +587,17 @@ public class DashboardViewModel : BaseViewModel
         get => _newSessionLugar;
         set => SetProperty(ref _newSessionLugar, value);
     }
+
+    public bool ShowNewSessionSidebarPopup
+    {
+        get => _showNewSessionSidebarPopup;
+        set => SetProperty(ref _showNewSessionSidebarPopup, value);
+    }
+
+    /// <summary>
+    /// Indica si el botón Grabar debe mostrarse (solo iOS y con sesión seleccionada)
+    /// </summary>
+    public bool CanShowRecordButton => SelectedSession != null && DeviceInfo.Platform == DevicePlatform.iOS;
 
     public ObservableCollection<SessionTypeOption> SessionTypeOptions { get; } = new()
     {
@@ -2094,6 +2107,11 @@ public class DashboardViewModel : BaseViewModel
     public ICommand CreateNewSessionCommand { get; }
     public ICommand CancelNewSessionCommand { get; }
     public ICommand SelectSessionTypeCommand { get; }
+    public ICommand OpenCameraRecordingCommand { get; }
+    public ICommand OpenNewSessionSidebarPopupCommand { get; }
+    public ICommand CancelNewSessionSidebarPopupCommand { get; }
+    public ICommand CreateSessionAndRecordCommand { get; }
+    public ICommand RecordForSelectedSessionCommand { get; }
     public ICommand SetEvolutionPeriodCommand { get; }
     public ICommand ToggleMultiSelectModeCommand { get; }
     public ICommand ToggleSelectAllCommand { get; }
@@ -2276,6 +2294,20 @@ public class DashboardViewModel : BaseViewModel
         });
         CreateNewSessionCommand = new AsyncRelayCommand(CreateNewSessionAsync);
         CancelNewSessionCommand = new RelayCommand(() => IsAddingNewSession = false);
+        OpenCameraRecordingCommand = new AsyncRelayCommand(OpenCameraRecordingAsync);
+        OpenNewSessionSidebarPopupCommand = new RelayCommand(() =>
+        {
+            ShowNewSessionSidebarPopup = true;
+            // Valores por defecto
+            NewSessionName = "";
+            NewSessionType = "Entrenamiento";
+            NewSessionLugar = "";
+            foreach (var opt in SessionTypeOptions)
+                opt.IsSelected = opt.Name == "Entrenamiento" || (opt.Name == "Gimnasio" && !SessionTypeOptions.Any(o => o.Name == "Entrenamiento"));
+        });
+        CancelNewSessionSidebarPopupCommand = new RelayCommand(() => ShowNewSessionSidebarPopup = false);
+        CreateSessionAndRecordCommand = new AsyncRelayCommand(CreateSessionAndRecordAsync);
+        RecordForSelectedSessionCommand = new AsyncRelayCommand(RecordForSelectedSessionAsync);
         SelectSessionTypeCommand = new RelayCommand<SessionTypeOption>(option => 
         {
             if (option != null)
@@ -4651,6 +4683,136 @@ public class DashboardViewModel : BaseViewModel
         {
             System.Diagnostics.Debug.WriteLine($"Error creando sesión: {ex}");
             await Shell.Current.DisplayAlert("Error", $"No se pudo crear la sesión: {ex.Message}", "OK");
+        }
+    }
+
+    private async Task OpenCameraRecordingAsync()
+    {
+        try
+        {
+            // Cerrar el formulario de nueva sesión si está abierto
+            IsAddingNewSession = false;
+
+            // Navegar a la página de cámara con los parámetros de la sesión
+            var parameters = new Dictionary<string, object>
+            {
+                { "SessionName", NewSessionName ?? $"Sesión {SelectedDiaryDate:dd/MM/yyyy}" },
+                { "SessionType", NewSessionType ?? "Entrenamiento" },
+                { "Place", NewSessionLugar ?? "" },
+                { "Date", SelectedDiaryDate }
+            };
+
+            await Shell.Current.GoToAsync(nameof(Views.CameraPage), parameters);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error abriendo cámara: {ex}");
+            await Shell.Current.DisplayAlert("Error", $"No se pudo abrir la cámara: {ex.Message}", "OK");
+        }
+    }
+
+    /// <summary>
+    /// Crea una nueva sesión desde el popup de la barra lateral y abre la cámara para grabar
+    /// </summary>
+    private async Task CreateSessionAndRecordAsync()
+    {
+        try
+        {
+            // Crear la sesión sin requerir deportista
+            var sessionName = string.IsNullOrWhiteSpace(NewSessionName) 
+                ? $"Sesión {DateTime.Now:dd/MM/yyyy HH:mm}" 
+                : NewSessionName;
+
+            // Intentar obtener deportista de referencia o el primero disponible (opcional)
+            string participantes = "";
+            try
+            {
+                var profile = await _databaseService.GetUserProfileAsync();
+                int? athleteId = profile?.ReferenceAthleteId;
+                
+                if (athleteId == null)
+                {
+                    var athletes = await _databaseService.GetAllAthletesAsync();
+                    if (athletes != null && athletes.Count > 0)
+                    {
+                        athleteId = athletes[0].Id;
+                    }
+                }
+                
+                if (athleteId.HasValue)
+                {
+                    participantes = athleteId.Value.ToString();
+                }
+            }
+            catch
+            {
+                // Ignorar errores al obtener deportista - la sesión se creará sin él
+            }
+
+            var session = new Session
+            {
+                NombreSesion = sessionName,
+                TipoSesion = NewSessionType ?? "Entrenamiento",
+                Lugar = string.IsNullOrWhiteSpace(NewSessionLugar) ? null : NewSessionLugar,
+                Fecha = DateTimeOffset.Now.ToUnixTimeSeconds(),
+                Participantes = participantes
+            };
+
+            await _databaseService.SaveSessionAsync(session);
+            
+            // Cerrar el popup
+            ShowNewSessionSidebarPopup = false;
+
+            // Recargar las sesiones para mostrar la nueva (en background)
+            _ = LoadDataAsync();
+
+            // Navegar a la cámara con el SessionId
+            var parameters = new Dictionary<string, object>
+            {
+                { "SessionId", session.Id },
+                { "SessionName", session.NombreSesion ?? session.DisplayName },
+                { "SessionType", session.TipoSesion ?? "Entrenamiento" },
+                { "Place", session.Lugar ?? "" },
+                { "Date", session.FechaDateTime }
+            };
+
+            await Shell.Current.GoToAsync(nameof(Views.CameraPage), parameters);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error creando sesión y grabando: {ex}");
+            await Shell.Current.DisplayAlert("Error", $"No se pudo crear la sesión: {ex.Message}", "OK");
+        }
+    }
+
+    /// <summary>
+    /// Abre la cámara para grabar videos en la sesión actualmente seleccionada
+    /// </summary>
+    private async Task RecordForSelectedSessionAsync()
+    {
+        try
+        {
+            if (SelectedSession == null)
+            {
+                await Shell.Current.DisplayAlert("Error", "No hay ninguna sesión seleccionada", "OK");
+                return;
+            }
+
+            var parameters = new Dictionary<string, object>
+            {
+                { "SessionId", SelectedSession.Id },
+                { "SessionName", SelectedSession.NombreSesion ?? SelectedSession.DisplayName },
+                { "SessionType", SelectedSession.TipoSesion ?? "Entrenamiento" },
+                { "Place", SelectedSession.Lugar ?? "" },
+                { "Date", SelectedSession.FechaDateTime }
+            };
+
+            await Shell.Current.GoToAsync(nameof(Views.CameraPage), parameters);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error abriendo cámara para sesión: {ex}");
+            await Shell.Current.DisplayAlert("Error", $"No se pudo abrir la cámara: {ex.Message}", "OK");
         }
     }
 

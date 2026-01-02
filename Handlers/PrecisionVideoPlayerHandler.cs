@@ -1,6 +1,5 @@
 #if MACCATALYST || IOS
 using AVFoundation;
-using AVKit;
 using CoreMedia;
 using Foundation;
 using CrownRFEP_Reader.Services;
@@ -17,7 +16,8 @@ namespace CrownRFEP_Reader.Handlers;
 /// </summary>
 public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPlayer, UIView>
 {
-    private AVPlayerViewController? _playerViewController;
+    private PlayerContainerView? _containerView;
+    private AVPlayerLayer? _playerLayer;
     private AVPlayer? _player;
     private AVPlayerItem? _playerItem;
     private NSObject? _timeObserver;
@@ -29,6 +29,27 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
     private bool _isSeeking; // Flag para evitar seeks simultáneos
     private TimeSpan _pendingSeekPosition; // Posición pendiente si hay seek en progreso
     private bool _isDisconnected; // Flag para evitar acceso a VirtualView después de desconexión
+
+    private sealed class PlayerContainerView : UIView
+    {
+        public AVPlayerLayer PlayerLayer { get; }
+
+        public PlayerContainerView()
+        {
+            PlayerLayer = new AVPlayerLayer
+            {
+                VideoGravity = AVLayerVideoGravity.ResizeAspect
+            };
+
+            Layer.AddSublayer(PlayerLayer);
+        }
+
+        public override void LayoutSubviews()
+        {
+            base.LayoutSubviews();
+            PlayerLayer.Frame = Bounds;
+        }
+    }
 
     public static IPropertyMapper<Controls.PrecisionVideoPlayer, PrecisionVideoPlayerHandler> Mapper =
         new PropertyMapper<Controls.PrecisionVideoPlayer, PrecisionVideoPlayerHandler>(ViewHandler.ViewMapper)
@@ -45,13 +66,9 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
 
     protected override UIView CreatePlatformView()
     {
-        _playerViewController = new AVPlayerViewController
-        {
-            ShowsPlaybackControls = false,
-            VideoGravity = AVLayerVideoGravity.ResizeAspect
-        };
-
-        return _playerViewController.View!;
+        _containerView = new PlayerContainerView();
+        _playerLayer = _containerView.PlayerLayer;
+        return _containerView;
     }
 
     protected override void ConnectHandler(UIView platformView)
@@ -69,6 +86,7 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
         VirtualView.SpeedChangedInternal += OnSpeedChanged;
         VirtualView.MutedChangedInternal += OnMutedChanged;
         VirtualView.AspectChangedInternal += OnAspectChanged;
+        VirtualView.PrepareForCleanupRequested += OnPrepareForCleanupRequested;
     }
 
     protected override void DisconnectHandler(UIView platformView)
@@ -114,11 +132,26 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
         VirtualView.SpeedChangedInternal -= OnSpeedChanged;
         VirtualView.MutedChangedInternal -= OnMutedChanged;
         VirtualView.AspectChangedInternal -= OnAspectChanged;
+        VirtualView.PrepareForCleanupRequested -= OnPrepareForCleanupRequested;
 
         CleanupPlayer();
-        
-        _playerViewController?.Dispose();
-        _playerViewController = null;
+
+        try
+        {
+            if (_playerLayer != null)
+            {
+                _playerLayer.Player = null;
+                _playerLayer.RemoveFromSuperLayer();
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("PrecisionVideoPlayerHandler", "DisconnectHandler removing playerLayer threw", ex);
+        }
+
+        _playerLayer = null;
+        _containerView?.Dispose();
+        _containerView = null;
 
         base.DisconnectHandler(platformView);
 
@@ -217,8 +250,8 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
         try
         {
             // Desasociar del view controller para evitar callbacks tardíos.
-            if (_playerViewController != null)
-                _playerViewController.Player = null;
+            if (_playerLayer != null)
+                _playerLayer.Player = null;
         }
         catch (Exception ex)
         {
@@ -253,6 +286,28 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
 #endif
     }
 
+    /// <summary>
+    /// En iOS/MacCatalyst usamos AVPlayerLayer (sin UIViewController). Este hook
+    /// fuerza una limpieza anticipada (p.ej. OnDisappearing) para cortar callbacks tardíos.
+    /// </summary>
+    private void OnPrepareForCleanupRequested(object? sender, EventArgs e)
+    {
+        if (_isDisconnected)
+            return;
+
+        if (!MainThread.IsMainThread)
+        {
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                try { OnPrepareForCleanupRequested(sender, e); }
+                catch (Exception ex) { AppLog.Error("PrecisionVideoPlayerHandler", "PrepareForCleanup rescheduled threw", ex); }
+            });
+            return;
+        }
+
+        CleanupPlayer();
+    }
+
     #region Property Mappers
 
     private static void MapSource(PrecisionVideoPlayerHandler handler, Controls.PrecisionVideoPlayer view)
@@ -278,9 +333,9 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
 
     private static void MapAspect(PrecisionVideoPlayerHandler handler, Controls.PrecisionVideoPlayer view)
     {
-        if (handler._playerViewController != null)
+        if (handler._playerLayer != null)
         {
-            handler._playerViewController.VideoGravity = view.Aspect switch
+            handler._playerLayer.VideoGravity = view.Aspect switch
             {
                 Aspect.AspectFill => AVLayerVideoGravity.ResizeAspectFill,
                 Aspect.Fill => AVLayerVideoGravity.Resize,
@@ -314,7 +369,12 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
         CleanupPlayer();
 
         if (string.IsNullOrEmpty(source))
+        {
+            // Sin source: aseguramos que el layer no retenga player
+            if (_playerLayer != null)
+                _playerLayer.Player = null;
             return;
+        }
 
         NSUrl? url = null;
 
@@ -349,10 +409,8 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
         _player = new AVPlayer(_playerItem);
         _player.Muted = VirtualView.IsMuted;
 
-        if (_playerViewController != null)
-        {
-            _playerViewController.Player = _player;
-        }
+        if (_playerLayer != null)
+            _playerLayer.Player = _player;
 
         // Observar cuando el item está listo usando notificaciones
         _statusObserver = NSNotificationCenter.DefaultCenter.AddObserver(
@@ -739,9 +797,9 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
 
     private void OnAspectChanged(object? sender, Aspect aspect)
     {
-        if (_playerViewController != null)
+        if (_playerLayer != null)
         {
-            _playerViewController.VideoGravity = aspect switch
+            _playerLayer.VideoGravity = aspect switch
             {
                 Aspect.AspectFill => AVLayerVideoGravity.ResizeAspectFill,
                 Aspect.Fill => AVLayerVideoGravity.Resize,

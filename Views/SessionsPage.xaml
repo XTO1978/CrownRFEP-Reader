@@ -58,10 +58,12 @@
                                         CommandParameter="{Binding .}"/>
                                 </Frame.GestureRecognizers>
                                 
-                                <Grid Padding="0">
-                                    <Label FontSize="{StaticResource FontSizeSubtitle}"
+                                <Grid ColumnDefinitions="*,Auto" Padding="0">
+                                    <Label Grid.Column="0"
+                                           FontSize="{StaticResource FontSizeSubtitle}"
                                            TextColor="{AppThemeBinding Light={StaticResource PrimaryTextColor}, Dark={StaticResource PrimaryTextColor}}"
-                                           LineBreakMode="TailTruncation">
+                                           LineBreakMode="TailTruncation"
+                                           VerticalOptions="Center">
                                         <Label.FormattedText>
                                             <FormattedString>
                                                 <Span Text="{Binding FechaDateTime, StringFormat='{0:dd/MM/yyyy}'}" />
@@ -72,6 +74,20 @@
                                             </FormattedString>
                                         </Label.FormattedText>
                                     </Label>
+                                    
+                                    <!-- Botón Grabar (solo iOS) -->
+                                    <Button Grid.Column="1"
+                                            Text="🎥"
+                                            Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.RecordVideoCommand}"
+                                            CommandParameter="{Binding .}"
+                                            IsVisible="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.CanRecordVideo}"
+                                            BackgroundColor="{StaticResource Primary}"
+                                            TextColor="White"
+                                            CornerRadius="20"
+                                            WidthRequest="40"
+                                            HeightRequest="40"
+                                            Padding="0"
+                                            VerticalOptions="Center" />
                                 </Grid>
                             </Frame>
                         </SwipeView>

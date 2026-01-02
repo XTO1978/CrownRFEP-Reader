@@ -11,7 +11,12 @@
 
     <Grid RowDefinitions="Auto,Auto,Auto,*" Padding="0" BackgroundColor="#FF121212">
 
-        <controls:TopTabsBar Grid.Row="0" HorizontalOptions="Center" VerticalOptions="Start"/>
+        <controls:TopTabsBar 
+            Grid.Row="0" 
+            HorizontalOptions="Center" 
+            VerticalOptions="Start"
+            InputTransparent="False"
+            ZIndex="100"/>
 
         <!-- Título y acciones -->
         <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto,Auto,Auto,Auto" Margin="30,15,30,5">
@@ -137,7 +142,7 @@
                             </BindableLayout.EmptyView>
                             <BindableLayout.ItemTemplate>
                                 <DataTemplate x:DataType="models:Athlete">
-                                    <Border StrokeThickness="0,0,0,0.6" Stroke="#FF393939" BackgroundColor="Transparent">
+                                    <Border StrokeThickness="0" BackgroundColor="Transparent">
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer 
                                                 Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DatabaseManagementViewModel}}, Path=ToggleAthleteSelectionCommand}"
@@ -182,7 +187,7 @@
                             </BindableLayout.EmptyView>
                             <BindableLayout.ItemTemplate>
                                 <DataTemplate x:DataType="models:Place">
-                                    <Border StrokeThickness="0,0,0,0.6" Stroke="#FF393939" BackgroundColor="Transparent">
+                                    <Border StrokeThickness="0" BackgroundColor="Transparent">
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer 
                                                 Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DatabaseManagementViewModel}}, Path=TogglePlaceSelectionCommand}"
@@ -227,7 +232,7 @@
                             </BindableLayout.EmptyView>
                             <BindableLayout.ItemTemplate>
                                 <DataTemplate x:DataType="models:Category">
-                                    <Border StrokeThickness="0,0,0,0.6" Stroke="#FF393939" BackgroundColor="Transparent">
+                                    <Border StrokeThickness="0" BackgroundColor="Transparent">
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer 
                                                 Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DatabaseManagementViewModel}}, Path=ToggleCategorySelectionCommand}"
@@ -272,7 +277,7 @@
                             </BindableLayout.EmptyView>
                             <BindableLayout.ItemTemplate>
                                 <DataTemplate x:DataType="models:Tag">
-                                    <Border StrokeThickness="0,0,0,0.6" Stroke="#FF393939" BackgroundColor="Transparent">
+                                    <Border StrokeThickness="0" BackgroundColor="Transparent">
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer 
                                                 Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DatabaseManagementViewModel}}, Path=ToggleTagSelectionCommand}"
@@ -317,7 +322,7 @@
                             </BindableLayout.EmptyView>
                             <BindableLayout.ItemTemplate>
                                 <DataTemplate x:DataType="models:EventTagDefinition">
-                                    <Border StrokeThickness="0,0,0,0.6" Stroke="#FF393939" BackgroundColor="Transparent">
+                                    <Border StrokeThickness="0" BackgroundColor="Transparent">
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer 
                                                 Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DatabaseManagementViewModel}}, Path=ToggleEventSelectionCommand}"

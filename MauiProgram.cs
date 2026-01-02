@@ -15,7 +15,6 @@ using Foundation;
 #if MACCATALYST
 using CrownRFEP_Reader.Platforms.MacCatalyst;
 using UIKit;
-using Foundation;
 #endif
 
 namespace CrownRFEP_Reader;
@@ -35,6 +34,10 @@ public static class MauiProgram
 
 #if MACCATALYST || IOS
 				handlers.AddHandler(typeof(ReplayKitCameraPreview), typeof(ReplayKitCameraPreviewHandler));
+#endif
+
+#if IOS
+				handlers.AddHandler(typeof(CameraPreview), typeof(CameraPreviewHandler));
 #endif
 
 #if WINDOWS
@@ -117,6 +120,13 @@ public static class MauiProgram
 		builder.Services.AddSingleton<IHealthKitService, StubHealthKitService>();
 #endif
 
+		// Servicio de cámara para grabación de sesiones
+#if IOS
+		builder.Services.AddTransient<ICameraRecordingService, CrownRFEP_Reader.Platforms.iOS.IOSCameraRecordingService>();
+#else
+		builder.Services.AddTransient<ICameraRecordingService, NullCameraRecordingService>();
+#endif
+
 		// Servicio de composición de video
 #if MACCATALYST
 		builder.Services.AddSingleton<IVideoCompositionService, MacVideoCompositionService>();
@@ -146,6 +156,7 @@ public static class MauiProgram
 		builder.Services.AddSingleton<UserProfileViewModel>();
 		builder.Services.AddSingleton<VideoLessonsViewModel>();
 		builder.Services.AddSingleton<DatabaseManagementViewModel>();
+		builder.Services.AddTransient<CameraViewModel>();
 
 		// Páginas
 		builder.Services.AddSingleton<DashboardPage>();
@@ -162,6 +173,7 @@ public static class MauiProgram
 		builder.Services.AddSingleton<StatisticsPage>();
 		builder.Services.AddSingleton<UserProfilePage>();
 		builder.Services.AddSingleton<VideoLessonsPage>();
+		builder.Services.AddTransient<CameraPage>();
 
 #if DEBUG
 		builder.Logging.AddDebug();
