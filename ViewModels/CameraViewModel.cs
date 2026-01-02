@@ -6,6 +6,8 @@ using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using CrownRFEP_Reader.Models;
 using CrownRFEP_Reader.Services;
+using Microsoft.Maui.Devices;
+using Microsoft.Maui.Devices.Sensors;
 
 namespace CrownRFEP_Reader.ViewModels;
 
@@ -37,6 +39,10 @@ public class CameraViewModel : INotifyPropertyChanged, IDisposable
     private bool _athletesLoaded;
     private bool _tagsLoaded;
     private bool _sectionsLoaded;
+    private bool _isLevelMonitoring;
+    private DisplayRotation _displayRotation = DisplayRotation.Rotation0;
+    private double _levelAngleDegrees;
+    private bool _isLevel;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -275,6 +281,38 @@ public class CameraViewModel : INotifyPropertyChanged, IDisposable
 
     public bool HasError => !string.IsNullOrEmpty(ErrorMessage);
 
+    /// <summary>
+    /// Ángulo del nivel (línea del horizonte) en grados. 0 = horizontal.
+    /// </summary>
+    public double LevelAngleDegrees
+    {
+        get => _levelAngleDegrees;
+        private set
+        {
+            if (Math.Abs(_levelAngleDegrees - value) > 0.05)
+            {
+                _levelAngleDegrees = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public bool IsLevel
+    {
+        get => _isLevel;
+        private set
+        {
+            if (_isLevel != value)
+            {
+                _isLevel = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(LevelIndicatorColor));
+            }
+        }
+    }
+
+    public string LevelIndicatorColor => IsLevel ? "#FFB300" : "#6DDDFF";
+
     public string RecordButtonColor => IsRecording ? "#FF3B30" : "#FFFFFF";
     public string RecordButtonIcon => IsRecording ? "stop.fill" : "record.circle";
 
@@ -305,7 +343,6 @@ public class CameraViewModel : INotifyPropertyChanged, IDisposable
     }
 
     #endregion
-
     #region Commands
 
     public ICommand StartPreviewCommand { get; }
@@ -458,6 +495,8 @@ public class CameraViewModel : INotifyPropertyChanged, IDisposable
             MaxZoom = _cameraService.MaxZoom;
             ZoomFactor = 1.0;
 
+            StartLevelMonitoring();
+
             await StartPreviewAsync();
             
             // Cargar datos después de que la vista esté lista
@@ -472,6 +511,95 @@ public class CameraViewModel : INotifyPropertyChanged, IDisposable
         {
             IsInitializing = false;
         }
+    }
+
+    private void StartLevelMonitoring()
+    {
+        if (_isLevelMonitoring)
+            return;
+
+        _isLevelMonitoring = true;
+        try
+        {
+            _displayRotation = DeviceDisplay.MainDisplayInfo.Rotation;
+            DeviceDisplay.MainDisplayInfoChanged += OnMainDisplayInfoChanged;
+
+            if (Accelerometer.Default.IsSupported)
+            {
+                Accelerometer.Default.ReadingChanged += OnAccelerometerReadingChanged;
+                Accelerometer.Default.Start(SensorSpeed.Game);
+            }
+        }
+        catch
+        {
+            // Si el sensor falla, no bloqueamos la cámara.
+        }
+    }
+
+    private void StopLevelMonitoring()
+    {
+        if (!_isLevelMonitoring)
+            return;
+
+        _isLevelMonitoring = false;
+        try
+        {
+            DeviceDisplay.MainDisplayInfoChanged -= OnMainDisplayInfoChanged;
+
+            if (Accelerometer.Default.IsSupported)
+            {
+                Accelerometer.Default.ReadingChanged -= OnAccelerometerReadingChanged;
+                Accelerometer.Default.Stop();
+            }
+        }
+        catch
+        {
+            // Ignorar.
+        }
+    }
+
+    private void OnMainDisplayInfoChanged(object? sender, DisplayInfoChangedEventArgs e)
+    {
+        _displayRotation = e.DisplayInfo.Rotation;
+    }
+
+    private void OnAccelerometerReadingChanged(object? sender, AccelerometerChangedEventArgs e)
+    {
+        // Proyección de la gravedad en el plano de la pantalla (x,y) y rotación según orientación actual.
+        var x = e.Reading.Acceleration.X;
+        var y = e.Reading.Acceleration.Y;
+
+        var (gx, gy) = RotateToScreen(x, y, _displayRotation);
+
+        // Ángulo del vector gravedad respecto al eje X de pantalla.
+        var gravityAngle = Math.Atan2(gy, gx) * 180.0 / Math.PI;
+        var horizonAngle = gravityAngle + 90.0;
+
+        // Normalizar a (-180, 180]
+        horizonAngle = ((horizonAngle + 180.0) % 360.0) - 180.0;
+
+        // Mantenerlo cercano a horizontal para evitar saltos visuales.
+        if (horizonAngle > 90.0) horizonAngle -= 180.0;
+        if (horizonAngle < -90.0) horizonAngle += 180.0;
+
+        var isLevelNow = Math.Abs(horizonAngle) <= 1.0;
+
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            LevelAngleDegrees = horizonAngle;
+            IsLevel = isLevelNow;
+        });
+    }
+
+    private static (double x, double y) RotateToScreen(double x, double y, DisplayRotation rotation)
+    {
+        return rotation switch
+        {
+            DisplayRotation.Rotation90 => (y, -x),
+            DisplayRotation.Rotation180 => (-x, -y),
+            DisplayRotation.Rotation270 => (-y, x),
+            _ => (x, y)
+        };
     }
 
     /// <summary>
@@ -990,6 +1118,7 @@ public class CameraViewModel : INotifyPropertyChanged, IDisposable
         if (_disposed) return;
         _disposed = true;
 
+        StopLevelMonitoring();
         StopTimer();
         _ = _cameraService.DisposeAsync();
     }
@@ -1004,6 +1133,7 @@ public class CameraViewModel : INotifyPropertyChanged, IDisposable
 
         try
         {
+            StopLevelMonitoring();
             StopTimer();
             
             // Limpiar el preview handle
