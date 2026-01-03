@@ -117,7 +117,7 @@
                 <!-- Botón Cerrar -->
                 <Border
                     Grid.Column="0"
-                    Margin="0,-30,0,0"
+                    Margin="0,-20,0,0"
                     VerticalOptions="Start"
                     Style="{StaticResource ControlButtonStyle}">
                     <Border.GestureRecognizers>
