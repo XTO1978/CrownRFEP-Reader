@@ -343,7 +343,7 @@ public class CameraRecordingSession : INotifyPropertyChanged
     public RecordingEvent AddLap(string? label = null)
     {
         var lapNumber = LapCount + 1;
-        return AddEvent(RecordingEventType.Lap, label ?? $"Lap {lapNumber}");
+        return AddEvent(RecordingEventType.Lap, label ?? lapNumber.ToString());
     }
 
     /// <summary>

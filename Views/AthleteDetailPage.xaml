@@ -113,6 +113,23 @@
                                            FontSize="{StaticResource FontSizeCaption}" 
                                            TextColor="White"/>
                                 </Frame>
+
+                                    <!-- Indicador de tiempo/split -->
+                                    <Border BackgroundColor="#CC000000"
+                                         HeightRequest="24"
+                                         HorizontalOptions="Start"
+                                         VerticalOptions="End"
+                                         Margin="5"
+                                         Padding="5,3"
+                                         StrokeShape="RoundRectangle 4"
+                                         StrokeThickness="0"
+                                         IsVisible="{Binding HasTiming}">
+                                     <controls:SymbolIcon HeightRequest="{StaticResource IconSizeMedium}"
+                                                 WidthRequest="{StaticResource IconSizeMedium}"
+                                                 SymbolName="timer"
+                                                 TintColor="White"
+                                                 VerticalOptions="Center" />
+                                    </Border>
                                 
                                 <!-- Info -->
                                 <VerticalStackLayout Grid.Row="1" Padding="8" Spacing="2">

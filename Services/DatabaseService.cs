@@ -111,6 +111,7 @@ public class DatabaseService
         await _database.CreateTableAsync<Valoracion>();
         await _database.CreateTableAsync<Tag>();
         await _database.CreateTableAsync<EventTagDefinition>();
+        await _database.CreateTableAsync<ExecutionTimingEvent>();
         await _database.CreateTableAsync<WorkGroup>();
         await _database.CreateTableAsync<AthleteWorkGroup>();
         await _database.CreateTableAsync<UserProfile>();
@@ -243,6 +244,11 @@ public class DatabaseService
         public string name { get; set; } = "";
     }
 
+    private sealed class VideoIdOnlyRow
+    {
+        public int VideoID { get; set; }
+    }
+
     private static async Task EnsureColumnExistsAsync(SQLiteAsyncConnection db, string tableName, string columnName, string sqliteType)
     {
         var rows = await db.QueryAsync<SqliteTableInfoRow>($"PRAGMA table_info({tableName});");
@@ -291,6 +297,18 @@ public class DatabaseService
         var sql = $"SELECT * FROM \"input\" WHERE VideoID IN ({placeholders});";
         var args = videoIds.Cast<object>().ToArray();
         return await db.QueryAsync<Input>(sql, args);
+    }
+
+    private static async Task<HashSet<int>> GetVideoIdsWithExecutionTimingEventsAsync(SQLiteAsyncConnection db, IReadOnlyList<int> videoIds)
+    {
+        if (videoIds.Count == 0)
+            return new HashSet<int>();
+
+        var placeholders = string.Join(",", Enumerable.Repeat("?", videoIds.Count));
+        var sql = $"SELECT DISTINCT VideoID FROM execution_timing_events WHERE VideoID IN ({placeholders});";
+        var args = videoIds.Cast<object>().ToArray();
+        var rows = await db.QueryAsync<VideoIdOnlyRow>(sql, args);
+        return rows.Select(r => r.VideoID).ToHashSet();
     }
 
     // Tags internos que no se muestran en la galería
@@ -794,6 +812,16 @@ public class DatabaseService
         var allInputsForClips = await GetInputsForVideosAsync(db, clipIds);
         HydrateTagsForClipsInternal(clips, _tagCache!.Values.ToList(), _eventTagCache!.Values.ToList(), allInputsForClips);
 
+        // Indicar si hay cronometraje/split guardado para pintar un overlay en miniaturas
+        var splitVideoIds = allInputsForClips
+            .Where(i => i.InputTypeId == SplitTimeInputTypeId)
+            .Select(i => i.VideoId)
+            .ToHashSet();
+        var timingEventVideoIds = await GetVideoIdsWithExecutionTimingEventsAsync(db, clipIds);
+        splitVideoIds.UnionWith(timingEventVideoIds);
+        foreach (var clip in clips)
+            clip.HasTiming = splitVideoIds.Contains(clip.Id);
+
         return clips;
     }
 
@@ -819,6 +847,18 @@ public class DatabaseService
             sessionById.TryGetValue(clip.SessionId, out var session);
             HydrateLocalMediaPaths(clip, session?.PathSesion);
         }
+
+        // Indicar si hay cronometraje/split guardado para pintar un overlay en miniaturas
+        var clipIds = clips.Select(c => c.Id).ToList();
+        var allInputsForClips = await GetInputsForVideosAsync(db, clipIds);
+        var splitVideoIds = allInputsForClips
+            .Where(i => i.InputTypeId == SplitTimeInputTypeId)
+            .Select(i => i.VideoId)
+            .ToHashSet();
+        var timingEventVideoIds = await GetVideoIdsWithExecutionTimingEventsAsync(db, clipIds);
+        splitVideoIds.UnionWith(timingEventVideoIds);
+        foreach (var clip in clips)
+            clip.HasTiming = splitVideoIds.Contains(clip.Id);
 
         return clips;
     }
@@ -858,6 +898,16 @@ public class DatabaseService
         var clipIds = clips.Select(c => c.Id).ToList();
         var allInputsForClips = await GetInputsForVideosAsync(db, clipIds);
         HydrateTagsForClipsInternal(clips, _tagCache!.Values.ToList(), _eventTagCache!.Values.ToList(), allInputsForClips);
+
+        // Indicar si hay cronometraje/split guardado para pintar un overlay en miniaturas
+        var splitVideoIds = allInputsForClips
+            .Where(i => i.InputTypeId == SplitTimeInputTypeId)
+            .Select(i => i.VideoId)
+            .ToHashSet();
+        var timingEventVideoIds = await GetVideoIdsWithExecutionTimingEventsAsync(db, clipIds);
+        splitVideoIds.UnionWith(timingEventVideoIds);
+        foreach (var clip in clips)
+            clip.HasTiming = splitVideoIds.Contains(clip.Id);
 
         return clips;
     }
@@ -1277,6 +1327,40 @@ public class DatabaseService
     {
         var db = await GetConnectionAsync();
         await db.ExecuteAsync("DELETE FROM \"input\" WHERE id = ?", inputId);
+    }
+
+    // ==================== CRONOMETRAJE EJECUCIÓN ====================
+
+    /// <summary>
+    /// Guarda una lista de eventos de cronometraje de ejecución asociados a un vídeo.
+    /// </summary>
+    public async Task InsertExecutionTimingEventsAsync(IEnumerable<ExecutionTimingEvent> events)
+    {
+        var db = await GetConnectionAsync();
+        var list = events as IList<ExecutionTimingEvent> ?? events.ToList();
+        if (list.Count == 0) return;
+        await db.InsertAllAsync(list);
+    }
+
+    /// <summary>
+    /// Obtiene los eventos de cronometraje de ejecución de un vídeo.
+    /// </summary>
+    public async Task<List<ExecutionTimingEvent>> GetExecutionTimingEventsByVideoAsync(int videoId)
+    {
+        var db = await GetConnectionAsync();
+        return await db.Table<ExecutionTimingEvent>()
+            .Where(e => e.VideoId == videoId)
+            .OrderBy(e => e.ElapsedMilliseconds)
+            .ToListAsync();
+    }
+
+    /// <summary>
+    /// Elimina todos los eventos de cronometraje de ejecución asociados a un vídeo.
+    /// </summary>
+    public async Task DeleteExecutionTimingEventsByVideoAsync(int videoId)
+    {
+        var db = await GetConnectionAsync();
+        await db.ExecuteAsync("DELETE FROM \"execution_timing_events\" WHERE VideoID = ?", videoId);
     }
 
     /// <summary>

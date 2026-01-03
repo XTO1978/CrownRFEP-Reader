@@ -19,6 +19,7 @@
         <ResourceDictionary>
             <!-- Converters -->
             <converters:StringToBrushConverter x:Key="StringToBrushConverter" />
+            <converters:EventTagSelectedColorConverter x:Key="EventTagSelectedColorConverter" />
             
             <!-- Estilo para botones de control -->
             <Style x:Key="ControlButtonStyle" TargetType="Border">
@@ -95,7 +96,7 @@
                 Grid.Row="1"
                 Grid.Column="1"
                 WidthRequest="140"
-                HeightRequest="2"
+                HeightRequest="0.5"
                 BackgroundColor="{Binding LevelIndicatorColor}"
                 Rotation="{Binding LevelAngleDegrees}"
                 HorizontalOptions="Center"
@@ -116,6 +117,8 @@
                 <!-- Botón Cerrar -->
                 <Border
                     Grid.Column="0"
+                    Margin="0,-30,0,0"
+                    VerticalOptions="Start"
                     Style="{StaticResource ControlButtonStyle}">
                     <Border.GestureRecognizers>
                         <TapGestureRecognizer Command="{Binding CloseCommand}" />
@@ -156,6 +159,40 @@
                             FontSize="14"
                             HorizontalOptions="Center"
                             IsVisible="{Binding IsRecording}" />
+
+                        <!-- Mini-lista de laps/total (estilo Split Time) -->
+                        <Border
+                            Margin="0,6,0,0"
+                            BackgroundColor="#60000000"
+                            Stroke="#40FFFFFF"
+                            StrokeShape="RoundRectangle 6"
+                            Padding="10,8"
+                            HorizontalOptions="Center"
+                            MinimumWidthRequest="200"
+                            IsVisible="{Binding HasExecutionTimingRows}">
+                            <VerticalStackLayout
+                                Spacing="4"
+                                BindableLayout.ItemsSource="{Binding ExecutionTimingRows}">
+                                <BindableLayout.ItemTemplate>
+                                    <DataTemplate x:DataType="models:ExecutionTimingRow">
+                                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                                            <Label
+                                                Grid.Column="0"
+                                                Text="{Binding Title}"
+                                                TextColor="#AAAAAA"
+                                                FontSize="13" />
+                                            <Label
+                                                Grid.Column="1"
+                                                Text="{Binding Value}"
+                                                TextColor="White"
+                                                FontFamily="Menlo"
+                                                FontSize="13"
+                                                HorizontalTextAlignment="End" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </BindableLayout.ItemTemplate>
+                            </VerticalStackLayout>
+                        </Border>
                     </VerticalStackLayout>
                 </Border>
 
@@ -206,7 +243,7 @@
         <VerticalStackLayout
             HorizontalOptions="Start"
             VerticalOptions="Center"
-            Padding="20,0"
+            Padding="20,20,20,0"
             Spacing="12">
             
             <!-- Selector de deportista -->
@@ -254,6 +291,131 @@
                         LineBreakMode="TailTruncation" />
                 </HorizontalStackLayout>
             </Border>
+
+            <!-- Selector de eventos (tags con timestamp) -->
+            <Border
+                Style="{StaticResource QuickActionStyle}"
+                IsVisible="{Binding IsRecording}">
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding ToggleEventTagSelectorCommand}" />
+                </Border.GestureRecognizers>
+                <HorizontalStackLayout Spacing="8">
+                    <controls:SymbolIcon
+                        SymbolName="clock.badge.checkmark"
+                        TintColor="#FFFF7043"
+                        HeightRequest="20"
+                        WidthRequest="20"
+                        VerticalOptions="Center" />
+                    <Label
+                        Text="Eventos"
+                        TextColor="White"
+                        FontSize="14"
+                        VerticalOptions="Center"
+                        MaximumWidthRequest="120"
+                        LineBreakMode="TailTruncation" />
+                </HorizontalStackLayout>
+            </Border>
+
+            <!-- Penalizaciones (+2 / +50) y POI junto a Eventos -->
+            <HorizontalStackLayout
+                Spacing="8"
+                IsVisible="{Binding IsRecording}">
+                <Border
+                    Style="{StaticResource QuickActionStyle}"
+                    BackgroundColor="#80FF9800">
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding AddPenalty2sCommand}" />
+                    </Border.GestureRecognizers>
+                    <Label
+                        Text="+2"
+                        TextColor="White"
+                        FontSize="18"
+                        FontAttributes="Bold"
+                        VerticalOptions="Center"
+                        HorizontalOptions="Center" />
+                </Border>
+
+                <Border
+                    Style="{StaticResource QuickActionStyle}"
+                    BackgroundColor="#80F44336">
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding AddPenalty50sCommand}" />
+                    </Border.GestureRecognizers>
+                    <Label
+                        Text="+50"
+                        TextColor="White"
+                        FontSize="18"
+                        FontAttributes="Bold"
+                        VerticalOptions="Center"
+                        HorizontalOptions="Center" />
+                </Border>
+
+                <!-- Botón Punto de Interés (POI) -->
+                <Border
+                    Style="{StaticResource QuickActionStyle}"
+                    BackgroundColor="#809C27B0">
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding AddPointOfInterestCommand}" />
+                    </Border.GestureRecognizers>
+                    <Label
+                        Text="POI"
+                        TextColor="White"
+                        FontSize="18"
+                        FontAttributes="Bold"
+                        VerticalOptions="Center"
+                        HorizontalOptions="Center" />
+                </Border>
+            </HorizontalStackLayout>
+
+            <!-- Botones LAP e INICIO/FIN -->
+            <HorizontalStackLayout
+                Spacing="8"
+                IsVisible="{Binding IsRecording}">
+                
+                <!-- Botón Lap -->
+                <Border
+                    Style="{StaticResource QuickActionStyle}"
+                    BackgroundColor="#80FF9500"
+                    IsVisible="{Binding IsExecutionTimingRunning}">
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding AddLapCommand}" />
+                    </Border.GestureRecognizers>
+                    <Label
+                        Text="LAP"
+                        TextColor="White"
+                        FontSize="18"
+                        FontAttributes="Bold"
+                        VerticalOptions="Center"
+                        HorizontalOptions="Center" />
+                </Border>
+
+                <!-- Botón Inicio/Fin cronómetro de ejecución (toggle) -->
+                <Border
+                    Style="{StaticResource QuickActionStyle}"
+                    BackgroundColor="#804CAF50">
+                    <Border.Triggers>
+                        <DataTrigger TargetType="Border" Binding="{Binding IsExecutionTimingRunning}" Value="True">
+                            <Setter Property="BackgroundColor" Value="#80F44336" />
+                        </DataTrigger>
+                    </Border.Triggers>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding ToggleExecutionTimingCommand}" />
+                    </Border.GestureRecognizers>
+                    <Label
+                        Text="INICIO"
+                        TextColor="White"
+                        FontSize="18"
+                        FontAttributes="Bold"
+                        VerticalOptions="Center"
+                        HorizontalOptions="Center">
+                        <Label.Triggers>
+                            <DataTrigger TargetType="Label" Binding="{Binding IsExecutionTimingRunning}" Value="True">
+                                <Setter Property="Text" Value="FIN" />
+                            </DataTrigger>
+                        </Label.Triggers>
+                    </Label>
+                </Border>
+            </HorizontalStackLayout>
         </VerticalStackLayout>
 
         <!-- Panel lateral derecho: Control de Zoom estilo iOS -->
@@ -371,146 +533,7 @@
             </Border>
         </VerticalStackLayout>
 
-        <!-- Panel inferior: Controles de grabación (LAP, Inicio/Fin, TAG) -->
-        <Grid
-            VerticalOptions="End"
-            Padding="20,20,20,50"
-            RowDefinitions="Auto"
-            ColumnDefinitions="*">
-            
-            <!-- Botones de acción -->
-            <HorizontalStackLayout
-                Grid.Row="0"
-                Grid.Column="0"
-                HorizontalOptions="Center"
-                Spacing="16"
-                IsVisible="{Binding IsRecording}">
-                
-                <!-- Botón Lap -->
-                <Border
-                    Style="{StaticResource QuickActionStyle}"
-                    BackgroundColor="#80FF9500">
-                    <Border.GestureRecognizers>
-                        <TapGestureRecognizer Command="{Binding AddLapCommand}" />
-                    </Border.GestureRecognizers>
-                    <HorizontalStackLayout Spacing="8">
-                        <controls:SymbolIcon
-                            SymbolName="flag.fill"
-                            TintColor="White"
-                            HeightRequest="18"
-                            WidthRequest="18"
-                            VerticalOptions="Center" />
-                        <Label
-                            Text="LAP"
-                            TextColor="White"
-                            FontSize="14"
-                            FontAttributes="Bold"
-                            VerticalOptions="Center" />
-                    </HorizontalStackLayout>
-                </Border>
 
-                <!-- Botón Inicio Ejecución -->
-                <Border
-                    Style="{StaticResource QuickActionStyle}"
-                    BackgroundColor="#804CAF50">
-                    <Border.GestureRecognizers>
-                        <TapGestureRecognizer Command="{Binding MarkExecutionStartCommand}" />
-                    </Border.GestureRecognizers>
-                    <HorizontalStackLayout Spacing="8">
-                        <controls:SymbolIcon
-                            SymbolName="play.fill"
-                            TintColor="White"
-                            HeightRequest="18"
-                            WidthRequest="18"
-                            VerticalOptions="Center" />
-                        <Label
-                            Text="INICIO"
-                            TextColor="White"
-                            FontSize="14"
-                            FontAttributes="Bold"
-                            VerticalOptions="Center" />
-                    </HorizontalStackLayout>
-                </Border>
-
-                <!-- Botón Fin Ejecución -->
-                <Border
-                    Style="{StaticResource QuickActionStyle}"
-                    BackgroundColor="#80F44336">
-                    <Border.GestureRecognizers>
-                        <TapGestureRecognizer Command="{Binding MarkExecutionEndCommand}" />
-                    </Border.GestureRecognizers>
-                    <HorizontalStackLayout Spacing="8">
-                        <controls:SymbolIcon
-                            SymbolName="stop.fill"
-                            TintColor="White"
-                            HeightRequest="18"
-                            WidthRequest="18"
-                            VerticalOptions="Center" />
-                        <Label
-                            Text="FIN"
-                            TextColor="White"
-                            FontSize="14"
-                            FontAttributes="Bold"
-                            VerticalOptions="Center" />
-                    </HorizontalStackLayout>
-                </Border>
-
-                <!-- Botón Penalización +2s -->
-                <Border
-                    Style="{StaticResource QuickActionStyle}"
-                    BackgroundColor="#80FF9800">
-                    <Border.GestureRecognizers>
-                        <TapGestureRecognizer Command="{Binding AddPenalty2sCommand}" />
-                    </Border.GestureRecognizers>
-                    <Label
-                        Text="+2"
-                        TextColor="White"
-                        FontSize="18"
-                        FontAttributes="Bold"
-                        VerticalOptions="Center"
-                        HorizontalOptions="Center" />
-                </Border>
-
-                <!-- Botón Penalización +50s -->
-                <Border
-                    Style="{StaticResource QuickActionStyle}"
-                    BackgroundColor="#80F44336">
-                    <Border.GestureRecognizers>
-                        <TapGestureRecognizer Command="{Binding AddPenalty50sCommand}" />
-                    </Border.GestureRecognizers>
-                    <Label
-                        Text="+50"
-                        TextColor="White"
-                        FontSize="18"
-                        FontAttributes="Bold"
-                        VerticalOptions="Center"
-                        HorizontalOptions="Center" />
-                </Border>
-
-                <!-- Botón Punto de Interés -->
-                <Border
-                    Style="{StaticResource QuickActionStyle}"
-                    BackgroundColor="#809C27B0">
-                    <Border.GestureRecognizers>
-                        <TapGestureRecognizer Command="{Binding AddPointOfInterestCommand}" />
-                    </Border.GestureRecognizers>
-                    <HorizontalStackLayout Spacing="6">
-                        <controls:SymbolIcon
-                            SymbolName="mappin.and.ellipse"
-                            TintColor="White"
-                            HeightRequest="18"
-                            WidthRequest="18"
-                            VerticalOptions="Center" />
-                        <Label
-                            Text="POI"
-                            TextColor="White"
-                            FontSize="14"
-                            FontAttributes="Bold"
-                            VerticalOptions="Center" />
-                    </HorizontalStackLayout>
-                </Border>
-            </HorizontalStackLayout>
-        </Grid>
 
         <!-- Popup selector de deportistas -->
         <Border
@@ -608,6 +631,118 @@
             </VerticalStackLayout>
         </Border>
 
+        <!-- Popup selector de eventos (chips estilo SinglePlayerPage -> Eventos) -->
+        <Border
+            IsVisible="{Binding ShowEventTagSelector}"
+            BackgroundColor="#EE1E1E1E"
+            StrokeShape="RoundRectangle 16"
+            Stroke="#40FFFFFF"
+            Padding="16"
+            Margin="80,100"
+            WidthRequest="380"
+            HorizontalOptions="Start"
+            VerticalOptions="Center">
+            <VerticalStackLayout Spacing="12">
+                <Grid ColumnDefinitions="*,Auto">
+                    <HorizontalStackLayout Spacing="8">
+                        <controls:SymbolIcon
+                            HeightRequest="22"
+                            WidthRequest="22"
+                            SymbolName="clock.badge.checkmark"
+                            TintColor="#FFFF7043" />
+                        <Label
+                            Text="Eventos del video"
+                            TextColor="White"
+                            FontSize="18"
+                            FontAttributes="Bold"
+                            VerticalOptions="Center" />
+                    </HorizontalStackLayout>
+                    <Border
+                        Grid.Column="1"
+                        Padding="4"
+                        BackgroundColor="Transparent"
+                        StrokeThickness="0">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding ToggleEventTagSelectorCommand}" />
+                        </Border.GestureRecognizers>
+                        <controls:SymbolIcon
+                            HeightRequest="20"
+                            WidthRequest="20"
+                            SymbolName="xmark.circle.fill"
+                            TintColor="#FF888888" />
+                    </Border>
+                </Grid>
+
+                <Border
+                    Padding="12"
+                    BackgroundColor="#FF2A2A2A"
+                    StrokeShape="RoundRectangle 8"
+                    StrokeThickness="0">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                        <VerticalStackLayout Grid.Column="0" Spacing="6">
+                            <Label
+                                Text="Añadir evento en posición actual:"
+                                TextColor="#FF888888"
+                                FontSize="12" />
+                            <ScrollView HeightRequest="140" BackgroundColor="Transparent">
+                                <FlexLayout
+                                    BindableLayout.ItemsSource="{Binding AvailableEventTags}"
+                                    Wrap="Wrap"
+                                    Direction="Row"
+                                    JustifyContent="Start"
+                                    AlignItems="Start">
+                                    <BindableLayout.EmptyView>
+                                        <Label
+                                            Text="No hay etiquetas disponibles"
+                                            FontSize="12"
+                                            TextColor="#FF666666"
+                                            HorizontalOptions="Center"
+                                            Margin="0,20" />
+                                    </BindableLayout.EmptyView>
+                                    <BindableLayout.ItemTemplate>
+                                        <DataTemplate x:DataType="models:EventTagDefinition">
+                                            <Border
+                                                Margin="0,0,8,8"
+                                                Padding="8,6,4,6"
+                                                BackgroundColor="{Binding IsSelected, Converter={StaticResource EventTagSelectedColorConverter}}"
+                                                StrokeShape="RoundRectangle 12"
+                                                StrokeThickness="0">
+                                                <Border.GestureRecognizers>
+                                                    <TapGestureRecognizer
+                                                        Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.SelectEventTagToAddCommand}"
+                                                        CommandParameter="{Binding .}" />
+                                                </Border.GestureRecognizers>
+                                                <HorizontalStackLayout Spacing="4">
+                                                    <Label
+                                                        Text="{Binding DisplayName}"
+                                                        FontSize="12"
+                                                        TextColor="White"
+                                                        VerticalOptions="Center" />
+                                                </HorizontalStackLayout>
+                                            </Border>
+                                        </DataTemplate>
+                                    </BindableLayout.ItemTemplate>
+                                </FlexLayout>
+                            </ScrollView>
+                        </VerticalStackLayout>
+
+                        <Button
+                            Grid.Column="1"
+                            Command="{Binding AddEventTagCommand}"
+                            VerticalOptions="End"
+                            BackgroundColor="#FFFF7043"
+                            Padding="0"
+                            Text="+"
+                            TextColor="White"
+                            FontSize="22"
+                            CornerRadius="6"
+                            WidthRequest="44"
+                            HeightRequest="44" />
+                    </Grid>
+                </Border>
+            </VerticalStackLayout>
+        </Border>
+
 
 
         <!-- Lista de eventos en la parte izquierda -->
@@ -617,7 +752,7 @@
             StrokeShape="RoundRectangle 12"
             Stroke="Transparent"
             Padding="12"
-            Margin="20,140,0,180"
+            Margin="20,80,0,180"
             WidthRequest="220"
             MaximumHeightRequest="180"
             HorizontalOptions="Start"

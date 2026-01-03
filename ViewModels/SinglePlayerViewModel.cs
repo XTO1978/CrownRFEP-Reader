@@ -83,6 +83,11 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     private TimeSpan? _splitDuration;
     private bool _hasSavedSplit;
 
+    // Laps dentro del Split Time (se guardan en execution_timing_events, igual que en Camera)
+    private readonly ObservableCollection<ExecutionTimingRow> _splitLapRows = new();
+    private readonly List<long> _splitLapMarksMs = new();
+    private bool _hasSplitLaps;
+
     public SinglePlayerViewModel(DatabaseService databaseService)
     {
         _databaseService = databaseService;
@@ -158,6 +163,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         ToggleSplitTimePanelCommand = new Command(ToggleSplitTimePanel);
         SetSplitStartCommand = new Command(SetSplitStart);
         SetSplitEndCommand = new Command(SetSplitEnd);
+        AddSplitLapCommand = new Command(AddSplitLap);
         ClearSplitCommand = new Command(ClearSplit);
         SaveSplitCommand = new Command(async () => await SaveSplitAsync(), () => CanSaveSplit);
     }
@@ -685,6 +691,21 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     public string SplitEndTimeText => _splitEndTime.HasValue ? $"{_splitEndTime.Value:mm\\:ss\\.ff}" : "--:--:--";
     public string SplitDurationText => _splitDuration.HasValue ? $"{_splitDuration.Value:mm\\:ss\\.fff}" : "--:--:---";
 
+    public ObservableCollection<ExecutionTimingRow> SplitLapRows => _splitLapRows;
+
+    public bool HasSplitLaps
+    {
+        get => _hasSplitLaps;
+        private set
+        {
+            if (_hasSplitLaps != value)
+            {
+                _hasSplitLaps = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
     #endregion
 
     #region Comandos
@@ -740,6 +761,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     public ICommand ToggleSplitTimePanelCommand { get; }
     public ICommand SetSplitStartCommand { get; }
     public ICommand SetSplitEndCommand { get; }
+    public ICommand AddSplitLapCommand { get; }
     public ICommand ClearSplitCommand { get; }
     public ICommand SaveSplitCommand { get; }
 
@@ -792,6 +814,9 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         
         // Cargar eventos de etiquetas del video
         await LoadTagEventsAsync();
+
+        // Auto-abrir Split Time si existen laps/timing guardados
+        await AutoOpenSplitTimePanelIfHasTimingAsync();
     }
 
     /// <summary>
@@ -817,6 +842,9 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         
         // Cargar eventos de etiquetas del video
         await LoadTagEventsAsync();
+
+        // Auto-abrir Split Time si existen laps/timing guardados
+        await AutoOpenSplitTimePanelIfHasTimingAsync();
     }
     
     /// <summary>
@@ -891,7 +919,10 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     {
         if (_videoClip != null && _videoClip.Id > 0)
         {
-            MessagingCenter.Send(this, "VideoClipUpdated", _videoClip.Id);
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                MessagingCenter.Send(this, "VideoClipUpdated", _videoClip.Id);
+            });
         }
     }
 
@@ -1147,6 +1178,9 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         
         // Cargar eventos de etiquetas del nuevo video
         await LoadTagEventsAsync();
+
+        // Auto-abrir Split Time si existen laps/timing guardados
+        await AutoOpenSplitTimePanelIfHasTimingAsync();
         
         // Notificar al view para que recargue el video
         VideoChanged?.Invoke(this, newVideo);
@@ -1955,6 +1989,34 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     #region Split Time Methods
 
+    private async Task AutoOpenSplitTimePanelIfHasTimingAsync()
+    {
+        if (_videoClip == null)
+            return;
+
+        try
+        {
+            var timing = await _databaseService.GetExecutionTimingEventsByVideoAsync(_videoClip.Id);
+            if (timing.Count <= 0)
+                return;
+
+            // Cerrar otros paneles y abrir Split Time
+            ShowAthleteAssignPanel = false;
+            ShowSectionAssignPanel = false;
+            ShowTagsAssignPanel = false;
+            ShowTagEventsPanel = false;
+
+            if (!ShowSplitTimePanel)
+                ShowSplitTimePanel = true;
+
+            await LoadExistingSplitAsync();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error auto-abriendo Split Time: {ex.Message}");
+        }
+    }
+
     private void ToggleSplitTimePanel()
     {
         // Cerrar otros paneles si se va a abrir este
@@ -1977,11 +2039,48 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     private void SetSplitStart()
     {
         SplitStartTime = CurrentPosition;
+
+        // Igual que en Camera: al marcar inicio, empezamos nueva serie de laps
+        _splitLapMarksMs.Clear();
+        RebuildSplitLapRows();
     }
 
     private void SetSplitEnd()
     {
         SplitEndTime = CurrentPosition;
+
+        // Si hay laps fuera del rango, los filtramos
+        FilterLapMarksToRange();
+        RebuildSplitLapRows();
+    }
+
+    private void AddSplitLap()
+    {
+        if (_videoClip == null)
+            return;
+
+        if (!_splitStartTime.HasValue)
+            return;
+
+        var nowMs = (long)CurrentPosition.TotalMilliseconds;
+        var startMs = (long)_splitStartTime.Value.TotalMilliseconds;
+        if (nowMs < startMs)
+            return;
+
+        if (_splitEndTime.HasValue)
+        {
+            var endMs = (long)_splitEndTime.Value.TotalMilliseconds;
+            if (nowMs > endMs)
+                return;
+        }
+
+        // Evitar duplicados exactos
+        if (_splitLapMarksMs.Contains(nowMs))
+            return;
+
+        _splitLapMarksMs.Add(nowMs);
+        FilterLapMarksToRange();
+        RebuildSplitLapRows();
     }
 
     private void ClearSplit()
@@ -1989,6 +2088,63 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         SplitStartTime = null;
         SplitEndTime = null;
         SplitDuration = null;
+
+        _splitLapMarksMs.Clear();
+        _splitLapRows.Clear();
+        HasSplitLaps = false;
+    }
+
+    private void FilterLapMarksToRange()
+    {
+        if (!_splitStartTime.HasValue)
+        {
+            _splitLapMarksMs.Clear();
+            return;
+        }
+
+        var startMs = (long)_splitStartTime.Value.TotalMilliseconds;
+        long? endMs = _splitEndTime.HasValue ? (long)_splitEndTime.Value.TotalMilliseconds : null;
+
+        _splitLapMarksMs.RemoveAll(ms => ms < startMs || (endMs.HasValue && ms > endMs.Value));
+    }
+
+    private void RebuildSplitLapRows()
+    {
+        _splitLapMarksMs.Sort();
+
+        _splitLapRows.Clear();
+
+        if (!_splitStartTime.HasValue)
+        {
+            HasSplitLaps = false;
+            return;
+        }
+
+        var prev = (long)_splitStartTime.Value.TotalMilliseconds;
+        var lapIndex = 0;
+        foreach (var mark in _splitLapMarksMs)
+        {
+            lapIndex++;
+            var splitMs = mark - prev;
+            if (splitMs < 0) splitMs = 0;
+            prev = mark;
+
+            _splitLapRows.Add(new ExecutionTimingRow
+            {
+                Title = $"Lap {lapIndex}",
+                Value = FormatMs(splitMs),
+                IsTotal = false
+            });
+        }
+
+        HasSplitLaps = _splitLapRows.Count > 0;
+    }
+
+    private static string FormatMs(long ms)
+    {
+        if (ms < 0) ms = 0;
+        var ts = TimeSpan.FromMilliseconds(ms);
+        return $"{(int)ts.TotalMinutes:00}:{ts.Seconds:00}.{ts.Milliseconds:000}";
     }
 
     private void CalculateSplitDuration()
@@ -2012,6 +2168,9 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
         try
         {
+            // Evitar arrastrar datos de otros vídeos
+            ClearSplit();
+
             var existingSplit = await _databaseService.GetSplitTimeForVideoAsync(_videoClip.Id);
             if (existingSplit != null)
             {
@@ -2038,6 +2197,29 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             {
                 HasSavedSplit = false;
             }
+
+            // Cargar laps/inicio/fin desde tabla dedicada (si existe)
+            var timing = await _databaseService.GetExecutionTimingEventsByVideoAsync(_videoClip.Id);
+            if (timing.Count > 0)
+            {
+                var start = timing.FirstOrDefault(t => t.Kind == 0);
+                var end = timing.FirstOrDefault(t => t.Kind == 2);
+
+                if (start != null)
+                    SplitStartTime = TimeSpan.FromMilliseconds(start.ElapsedMilliseconds);
+                if (end != null)
+                    SplitEndTime = TimeSpan.FromMilliseconds(end.ElapsedMilliseconds);
+
+                _splitLapMarksMs.Clear();
+                foreach (var lap in timing.Where(t => t.Kind == 1).OrderBy(t => t.ElapsedMilliseconds))
+                    _splitLapMarksMs.Add(lap.ElapsedMilliseconds);
+
+                FilterLapMarksToRange();
+                RebuildSplitLapRows();
+
+                // Si hay timing guardado, lo consideramos "guardado"
+                HasSavedSplit = true;
+            }
         }
         catch (Exception ex)
         {
@@ -2062,6 +2244,77 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             var json = System.Text.Json.JsonSerializer.Serialize(splitData);
 
             await _databaseService.SaveSplitTimeAsync(_videoClip.Id, _videoClip.SessionId, json);
+
+            // Guardar también laps/inicio/fin en tabla dedicada (mismo formato que CameraPage)
+            await _databaseService.DeleteExecutionTimingEventsByVideoAsync(_videoClip.Id);
+
+            var sessionId = _videoClip.SessionId;
+            var athleteId = _videoClip.AtletaId;
+            var sectionId = _videoClip.Section;
+
+            var startMs = splitData.StartMs;
+            var endMs = splitData.EndMs;
+
+            var events = new List<ExecutionTimingEvent>();
+
+            events.Add(new ExecutionTimingEvent
+            {
+                VideoId = _videoClip.Id,
+                SessionId = sessionId,
+                AthleteId = athleteId,
+                SectionId = sectionId,
+                Kind = 0,
+                ElapsedMilliseconds = startMs,
+                SplitMilliseconds = 0,
+                LapIndex = 0,
+                RunIndex = 0,
+                CreatedAtUnixSeconds = DateTimeOffset.Now.ToUnixTimeSeconds(),
+            });
+
+            _splitLapMarksMs.Sort();
+            var prev = startMs;
+            var lapIndex = 0;
+            foreach (var lapMs in _splitLapMarksMs)
+            {
+                if (lapMs <= startMs || lapMs >= endMs)
+                    continue;
+
+                lapIndex++;
+                var splitMs = lapMs - prev;
+                if (splitMs < 0) splitMs = 0;
+                prev = lapMs;
+
+                events.Add(new ExecutionTimingEvent
+                {
+                    VideoId = _videoClip.Id,
+                    SessionId = sessionId,
+                    AthleteId = athleteId,
+                    SectionId = sectionId,
+                    Kind = 1,
+                    ElapsedMilliseconds = lapMs,
+                    SplitMilliseconds = splitMs,
+                    LapIndex = lapIndex,
+                    RunIndex = 0,
+                    CreatedAtUnixSeconds = DateTimeOffset.Now.ToUnixTimeSeconds(),
+                });
+            }
+
+            // FIN: SplitMs guarda el total (start->end) igual que CameraPage
+            events.Add(new ExecutionTimingEvent
+            {
+                VideoId = _videoClip.Id,
+                SessionId = sessionId,
+                AthleteId = athleteId,
+                SectionId = sectionId,
+                Kind = 2,
+                ElapsedMilliseconds = endMs,
+                SplitMilliseconds = splitData.DurationMs,
+                LapIndex = 0,
+                RunIndex = 0,
+                CreatedAtUnixSeconds = DateTimeOffset.Now.ToUnixTimeSeconds(),
+            });
+
+            await _databaseService.InsertExecutionTimingEventsAsync(events);
             HasSavedSplit = true;
 
             // Opcional: cerrar el panel después de guardar

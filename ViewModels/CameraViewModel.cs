@@ -7,7 +7,9 @@ using System.Windows.Input;
 using CrownRFEP_Reader.Models;
 using CrownRFEP_Reader.Services;
 using Microsoft.Maui.Devices;
+#if IOS
 using Microsoft.Maui.Devices.Sensors;
+#endif
 
 namespace CrownRFEP_Reader.ViewModels;
 
@@ -24,6 +26,7 @@ public class CameraViewModel : INotifyPropertyChanged, IDisposable
 
     private CameraRecordingSession _currentSession = new();
     private bool _isRecording;
+    private bool _isExecutionTimingRunning;
     private bool _isPreviewing;
     private bool _isInitializing;
     private string _elapsedTimeDisplay = "00:00.00";
@@ -35,14 +38,26 @@ public class CameraViewModel : INotifyPropertyChanged, IDisposable
     private Tag? _selectedTag;
     private bool _showAthleteSelector;
     private bool _showSectionSelector;
+    private bool _showEventTagSelector;
     private string? _errorMessage;
     private bool _athletesLoaded;
     private bool _tagsLoaded;
     private bool _sectionsLoaded;
+    private bool _eventTagsLoaded;
+
+    private readonly ObservableCollection<EventTagDefinition> _availableEventTags = new();
+    private EventTagDefinition? _selectedEventTagToAdd;
     private bool _isLevelMonitoring;
     private DisplayRotation _displayRotation = DisplayRotation.Rotation0;
     private double _levelAngleDegrees;
     private bool _isLevel;
+
+    private long? _executionRunStartMs;
+    private long? _executionLastSplitStartMs;
+    private int _executionLapIndex;
+    private bool _hasExecutionTimingRows;
+
+    private readonly ObservableCollection<ExecutionTimingRow> _executionTimingRows = new();
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -57,19 +72,23 @@ public class CameraViewModel : INotifyPropertyChanged, IDisposable
         StartRecordingCommand = new Command(async () => await StartRecordingAsync(), () => IsPreviewing && !IsRecording);
         StopRecordingCommand = new Command(async () => await StopRecordingAsync(), () => IsRecording);
         ToggleRecordingCommand = new Command(async () => await ToggleRecordingAsync());
-        AddLapCommand = new Command(AddLap, () => IsRecording);
+        ToggleExecutionTimingCommand = new Command(ToggleExecutionTiming, () => IsRecording);
+        AddLapCommand = new Command(AddLap, () => IsRecording && IsExecutionTimingRunning);
         AddTagCommand = new Command<Tag>(AddTag, _ => IsRecording);
         AddPenalty2sCommand = new Command(AddPenalty2s, () => IsRecording);
         AddPenalty50sCommand = new Command(AddPenalty50s, () => IsRecording);
         AddPointOfInterestCommand = new Command(AddPointOfInterest, () => IsRecording);
         SelectAthleteCommand = new Command<Athlete>(SelectAthlete);
         SelectSectionCommand = new Command<RiverSection>(SelectSection);
-        MarkExecutionStartCommand = new Command(MarkExecutionStart, () => IsRecording);
-        MarkExecutionEndCommand = new Command(MarkExecutionEnd, () => IsRecording);
+        MarkExecutionStartCommand = new Command(MarkExecutionStart, () => IsRecording && !IsExecutionTimingRunning);
+        MarkExecutionEndCommand = new Command(MarkExecutionEnd, () => IsRecording && IsExecutionTimingRunning);
         SwitchCameraCommand = new Command(async () => await SwitchCameraAsync());
         CloseCommand = new Command(async () => await CloseAsync());
         ToggleAthleteSelectorCommand = new Command(async () => await ToggleAthleteSelectorAsync());
         ToggleSectionSelectorCommand = new Command(() => ShowSectionSelector = !ShowSectionSelector);
+        ToggleEventTagSelectorCommand = new Command(async () => await ToggleEventTagSelectorAsync());
+        SelectEventTagToAddCommand = new Command<EventTagDefinition>(SelectEventTagToAdd);
+        AddEventTagCommand = new Command(AddSelectedEventTag, () => IsRecording && _selectedEventTagToAdd != null);
         SetZoom1xCommand = new Command(() => ZoomFactor = 1.0);
         SetZoom2xCommand = new Command(() => ZoomFactor = 2.0);
     }
@@ -97,9 +116,33 @@ public class CameraViewModel : INotifyPropertyChanged, IDisposable
             if (_isRecording != value)
             {
                 _isRecording = value;
+                if (!_isRecording)
+                    IsExecutionTimingRunning = false;
+                if (!_isRecording)
+                {
+                    _executionTimingRows.Clear();
+                    HasExecutionTimingRows = false;
+                    _executionRunStartMs = null;
+                    _executionLastSplitStartMs = null;
+                    _executionLapIndex = 0;
+                }
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(RecordButtonColor));
                 OnPropertyChanged(nameof(RecordButtonIcon));
+                UpdateCommandStates();
+            }
+        }
+    }
+
+    public bool IsExecutionTimingRunning
+    {
+        get => _isExecutionTimingRunning;
+        private set
+        {
+            if (_isExecutionTimingRunning != value)
+            {
+                _isExecutionTimingRunning = value;
+                OnPropertyChanged();
                 UpdateCommandStates();
             }
         }
@@ -260,6 +303,25 @@ public class CameraViewModel : INotifyPropertyChanged, IDisposable
                 if (value)
                 {
                     ShowAthleteSelector = false;
+                    ShowEventTagSelector = false;
+                }
+            }
+        }
+    }
+
+    public bool ShowEventTagSelector
+    {
+        get => _showEventTagSelector;
+        set
+        {
+            if (_showEventTagSelector != value)
+            {
+                _showEventTagSelector = value;
+                OnPropertyChanged();
+                if (value)
+                {
+                    ShowAthleteSelector = false;
+                    ShowSectionSelector = false;
                 }
             }
         }
@@ -321,6 +383,29 @@ public class CameraViewModel : INotifyPropertyChanged, IDisposable
     public ObservableCollection<Tag> Tags => CurrentSession.AvailableTags;
     public ObservableCollection<RecordingEvent> Events => CurrentSession.Events;
 
+    /// <summary>
+    /// Mini-lista de laps/total (estilo Split Time) para la ejecución actual.
+    /// </summary>
+    public ObservableCollection<ExecutionTimingRow> ExecutionTimingRows => _executionTimingRows;
+
+    public bool HasExecutionTimingRows
+    {
+        get => _hasExecutionTimingRows;
+        private set
+        {
+            if (_hasExecutionTimingRows != value)
+            {
+                _hasExecutionTimingRows = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Catálogo de tipos de evento (tabla event_tags) disponible para marcar durante grabación.
+    /// </summary>
+    public ObservableCollection<EventTagDefinition> AvailableEventTags => _availableEventTags;
+
     public int LapCount => CurrentSession.LapCount;
 
     public bool IsCameraAvailable => _cameraService.IsAvailable;
@@ -350,6 +435,7 @@ public class CameraViewModel : INotifyPropertyChanged, IDisposable
     public ICommand StartRecordingCommand { get; }
     public ICommand StopRecordingCommand { get; }
     public ICommand ToggleRecordingCommand { get; }
+    public ICommand ToggleExecutionTimingCommand { get; }
     public ICommand AddLapCommand { get; }
     public ICommand AddTagCommand { get; }
     public ICommand AddPenalty2sCommand { get; }
@@ -363,6 +449,9 @@ public class CameraViewModel : INotifyPropertyChanged, IDisposable
     public ICommand CloseCommand { get; }
     public ICommand ToggleAthleteSelectorCommand { get; }
     public ICommand ToggleSectionSelectorCommand { get; }
+    public ICommand ToggleEventTagSelectorCommand { get; }
+    public ICommand SelectEventTagToAddCommand { get; }
+    public ICommand AddEventTagCommand { get; }
     public ICommand SetZoom1xCommand { get; }
     public ICommand SetZoom2xCommand { get; }
 
@@ -460,6 +549,84 @@ public class CameraViewModel : INotifyPropertyChanged, IDisposable
         return Task.CompletedTask;
     }
 
+    private async Task EnsureEventTagsLoadedAsync(bool forceReload = false)
+    {
+        if (_eventTagsLoaded && !forceReload)
+            return;
+
+        var allEventTags = await _databaseService.GetAllEventTagsAsync();
+
+        // Excluir penalizaciones (+2/+50) y cualquier tag marcado como sistema.
+        var filtered = allEventTags
+            .Where(t => !t.IsSystem && t.PenaltySeconds <= 0)
+            .Where(t => !string.IsNullOrWhiteSpace(t.Nombre))
+            .OrderBy(t => t.Nombre)
+            .ToList();
+
+        await MainThread.InvokeOnMainThreadAsync(() =>
+        {
+            _availableEventTags.Clear();
+            foreach (var tag in filtered)
+                _availableEventTags.Add(tag);
+
+            OnPropertyChanged(nameof(AvailableEventTags));
+        });
+
+        _eventTagsLoaded = true;
+    }
+
+    private async Task ToggleEventTagSelectorAsync()
+    {
+        try
+        {
+            var shouldOpen = !ShowEventTagSelector;
+            if (shouldOpen)
+            {
+                await EnsureEventTagsLoadedAsync();
+            }
+
+            ShowEventTagSelector = shouldOpen;
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Error cargando eventos: {ex.Message}";
+            AppLog.Error(nameof(CameraViewModel), "Error toggling event tag selector", ex);
+        }
+    }
+
+    private void SelectEventTagToAdd(EventTagDefinition? tag)
+    {
+        if (tag == null)
+            return;
+
+        foreach (var t in _availableEventTags)
+            t.IsSelected = false;
+
+        tag.IsSelected = true;
+        _selectedEventTagToAdd = tag;
+        (AddEventTagCommand as Command)?.ChangeCanExecute();
+    }
+
+    private void AddSelectedEventTag()
+    {
+        if (!IsRecording)
+            return;
+
+        var selected = _selectedEventTagToAdd;
+        if (selected == null)
+            return;
+
+        // Registrar evento en la sesión actual usando el nombre del EventTagDefinition.
+        var recordingEvent = CurrentSession.AddEvent(RecordingEventType.Tag);
+        recordingEvent.TagId = selected.Id;
+        recordingEvent.TagName = selected.Nombre;
+
+        // Reset selección para siguiente evento
+        selected.IsSelected = false;
+        _selectedEventTagToAdd = null;
+        (AddEventTagCommand as Command)?.ChangeCanExecute();
+    }
+
     private async Task LoadDataAsync()
     {
         try
@@ -515,6 +682,9 @@ public class CameraViewModel : INotifyPropertyChanged, IDisposable
 
     private void StartLevelMonitoring()
     {
+#if !IOS
+        return;
+#else
         if (_isLevelMonitoring)
             return;
 
@@ -534,10 +704,14 @@ public class CameraViewModel : INotifyPropertyChanged, IDisposable
         {
             // Si el sensor falla, no bloqueamos la cámara.
         }
+#endif
     }
 
     private void StopLevelMonitoring()
     {
+#if !IOS
+        return;
+#else
         if (!_isLevelMonitoring)
             return;
 
@@ -556,6 +730,7 @@ public class CameraViewModel : INotifyPropertyChanged, IDisposable
         {
             // Ignorar.
         }
+#endif
     }
 
     private void OnMainDisplayInfoChanged(object? sender, DisplayInfoChangedEventArgs e)
@@ -563,6 +738,7 @@ public class CameraViewModel : INotifyPropertyChanged, IDisposable
         _displayRotation = e.DisplayInfo.Rotation;
     }
 
+#if IOS
     private void OnAccelerometerReadingChanged(object? sender, AccelerometerChangedEventArgs e)
     {
         // Proyección de la gravedad en el plano de la pantalla (x,y) y rotación según orientación actual.
@@ -601,6 +777,7 @@ public class CameraViewModel : INotifyPropertyChanged, IDisposable
             _ => (x, y)
         };
     }
+#endif
 
     /// <summary>
     /// Configura la sesión con los parámetros de navegación
@@ -673,6 +850,8 @@ public class CameraViewModel : INotifyPropertyChanged, IDisposable
         {
             ErrorMessage = null;
 
+            IsExecutionTimingRunning = false;
+
             // Limpiar eventos de grabaciones anteriores
             CurrentSession.Events.Clear();
 
@@ -711,6 +890,8 @@ public class CameraViewModel : INotifyPropertyChanged, IDisposable
 
         try
         {
+            IsExecutionTimingRunning = false;
+
             // Agregar evento de fin
             CurrentSession.AddEvent(RecordingEventType.Stop);
 
@@ -782,6 +963,9 @@ public class CameraViewModel : INotifyPropertyChanged, IDisposable
             // Guardar en la base de datos
             var videoId = await _databaseService.InsertVideoClipAsync(videoClip);
 
+            // Guardar tiempos/laps del cronometraje de ejecución en tabla dedicada (NO input/event_tags)
+            await PersistExecutionTimingToDatabaseAsync(videoId, videoClip);
+
             // Guardar eventos con timestamp en las mismas tablas que SinglePlayer:
             // - Catálogo en event_tags (EventTagDefinition)
             // - Ocurrencias en input (IsEvent=1)
@@ -819,11 +1003,12 @@ public class CameraViewModel : INotifyPropertyChanged, IDisposable
                 if (ev.EventType is RecordingEventType.Start or RecordingEventType.Stop or RecordingEventType.AthleteChange or RecordingEventType.SectionChange)
                     continue;
 
+                // IMPORTANTE: los tiempos del cronómetro (Inicio/Lap/Fin) NO se guardan como tags/eventos (SinglePlayer)
+                if (ev.EventType is RecordingEventType.Lap or RecordingEventType.ExecutionStart or RecordingEventType.ExecutionEnd)
+                    continue;
+
                 var rawName = ev.EventType switch
                 {
-                    RecordingEventType.Lap => "Lap",
-                    RecordingEventType.ExecutionStart => "Inicio ejecución",
-                    RecordingEventType.ExecutionEnd => "Fin ejecución",
                     RecordingEventType.Tag => ev.TagName ?? ev.Label ?? "Evento",
                     _ => null
                 };
@@ -892,6 +1077,130 @@ public class CameraViewModel : INotifyPropertyChanged, IDisposable
         }
     }
 
+    private async Task PersistExecutionTimingToDatabaseAsync(int videoId, VideoClip videoClip)
+    {
+        try
+        {
+            if (videoId <= 0)
+                return;
+
+            var sessionId = videoClip.SessionId;
+            var fallbackAthleteId = videoClip.AtletaId;
+            var fallbackSectionId = videoClip.Section;
+
+            var rows = new List<ExecutionTimingEvent>();
+
+            long? lastSplitStartMs = null;
+            long? runStartMs = null;
+            var lapIndex = 0;
+            var runIndex = 0;
+
+            foreach (var ev in CurrentSession.Events.OrderBy(e => e.ElapsedMilliseconds))
+            {
+                if (ev.EventType is not (RecordingEventType.ExecutionStart or RecordingEventType.Lap or RecordingEventType.ExecutionEnd))
+                    continue;
+
+                var athleteId = ev.AthleteId ?? fallbackAthleteId;
+                var sectionId = ev.SectionId ?? fallbackSectionId;
+                var elapsedMs = ev.ElapsedMilliseconds;
+                if (elapsedMs < 0) elapsedMs = 0;
+
+                if (ev.EventType == RecordingEventType.ExecutionStart)
+                {
+                    lapIndex = 0;
+                    runStartMs = elapsedMs;
+                    lastSplitStartMs = elapsedMs;
+
+                    rows.Add(new ExecutionTimingEvent
+                    {
+                        VideoId = videoId,
+                        SessionId = sessionId,
+                        AthleteId = athleteId,
+                        SectionId = sectionId,
+                        Kind = 0,
+                        ElapsedMilliseconds = elapsedMs,
+                        SplitMilliseconds = 0,
+                        LapIndex = 0,
+                        RunIndex = runIndex,
+                        CreatedAtUnixSeconds = DateTimeOffset.Now.ToUnixTimeSeconds(),
+                    });
+
+                    continue;
+                }
+
+                if (lastSplitStartMs is null || runStartMs is null)
+                    continue;
+
+                if (ev.EventType == RecordingEventType.Lap)
+                {
+                    lapIndex++;
+                    var splitMs = elapsedMs - lastSplitStartMs.Value;
+                    if (splitMs < 0) splitMs = 0;
+                    lastSplitStartMs = elapsedMs;
+
+                    rows.Add(new ExecutionTimingEvent
+                    {
+                        VideoId = videoId,
+                        SessionId = sessionId,
+                        AthleteId = athleteId,
+                        SectionId = sectionId,
+                        Kind = 1,
+                        ElapsedMilliseconds = elapsedMs,
+                        SplitMilliseconds = splitMs,
+                        LapIndex = lapIndex,
+                        RunIndex = runIndex,
+                        CreatedAtUnixSeconds = DateTimeOffset.Now.ToUnixTimeSeconds(),
+                    });
+
+                    continue;
+                }
+
+                if (ev.EventType == RecordingEventType.ExecutionEnd)
+                {
+                    var totalMs = elapsedMs - runStartMs.Value;
+                    if (totalMs < 0) totalMs = 0;
+
+                    // Guardar también como "Split Time" (mismo mecanismo que SinglePlayer: InputTypeId=-1)
+                    // Nota: DatabaseService lo sobreescribe si ya existe para ese vídeo.
+                    var splitData = new SplitTimeData
+                    {
+                        StartMs = runStartMs.Value,
+                        EndMs = elapsedMs,
+                        DurationMs = totalMs
+                    };
+                    var splitJson = System.Text.Json.JsonSerializer.Serialize(splitData);
+                    await _databaseService.SaveSplitTimeAsync(videoId, sessionId, splitJson);
+
+                    rows.Add(new ExecutionTimingEvent
+                    {
+                        VideoId = videoId,
+                        SessionId = sessionId,
+                        AthleteId = athleteId,
+                        SectionId = sectionId,
+                        Kind = 2,
+                        ElapsedMilliseconds = elapsedMs,
+                        SplitMilliseconds = totalMs,
+                        LapIndex = 0,
+                        RunIndex = runIndex,
+                        CreatedAtUnixSeconds = DateTimeOffset.Now.ToUnixTimeSeconds(),
+                    });
+
+                    lastSplitStartMs = null;
+                    runStartMs = null;
+                    lapIndex = 0;
+                    runIndex++;
+                }
+            }
+
+            if (rows.Count > 0)
+                await _databaseService.InsertExecutionTimingEventsAsync(rows);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Warn(nameof(CameraViewModel), $"Error persisting execution timing events: {ex.Message}");
+        }
+    }
+
     /// <summary>
     /// Genera un thumbnail para el video
     /// </summary>
@@ -938,10 +1247,28 @@ public class CameraViewModel : INotifyPropertyChanged, IDisposable
 
     private void AddLap()
     {
-        if (!IsRecording) return;
+        if (!IsRecording || !IsExecutionTimingRunning) return;
 
         CurrentSession.AddLap();
         OnPropertyChanged(nameof(LapCount));
+
+        if (_executionLastSplitStartMs is not null)
+        {
+            var nowMs = CurrentSession.ElapsedMilliseconds;
+            var splitMs = nowMs - _executionLastSplitStartMs.Value;
+            if (splitMs < 0) splitMs = 0;
+            _executionLastSplitStartMs = nowMs;
+
+            _executionLapIndex++;
+            _executionTimingRows.Clear();
+            _executionTimingRows.Add(new ExecutionTimingRow
+            {
+                Title = $"Lap {_executionLapIndex}",
+                Value = FormatMs(splitMs),
+                IsTotal = false
+            });
+            HasExecutionTimingRows = _executionTimingRows.Count > 0;
+        }
 
         AppLog.Info(nameof(CameraViewModel), $"Lap added at {CurrentSession.FormattedElapsedTime}");
     }
@@ -1032,18 +1359,76 @@ public class CameraViewModel : INotifyPropertyChanged, IDisposable
 
     private void MarkExecutionStart()
     {
-        if (!IsRecording) return;
+        if (!IsRecording || IsExecutionTimingRunning) return;
 
         CurrentSession.AddEvent(RecordingEventType.ExecutionStart);
+        IsExecutionTimingRunning = true;
+
+        _executionRunStartMs = CurrentSession.ElapsedMilliseconds;
+        _executionLastSplitStartMs = _executionRunStartMs;
+        _executionLapIndex = 0;
+        _executionTimingRows.Clear();
+        _executionTimingRows.Add(new ExecutionTimingRow
+        {
+            Title = "Inicio",
+            Value = FormatMs(0),
+            IsTotal = false
+        });
+        HasExecutionTimingRows = true;
+
         AppLog.Info(nameof(CameraViewModel), $"Execution start marked at {CurrentSession.FormattedElapsedTime}");
     }
 
     private void MarkExecutionEnd()
     {
-        if (!IsRecording) return;
+        if (!IsRecording || !IsExecutionTimingRunning) return;
 
         CurrentSession.AddEvent(RecordingEventType.ExecutionEnd);
+        IsExecutionTimingRunning = false;
+
+        if (_executionRunStartMs is not null)
+        {
+            var nowMs = CurrentSession.ElapsedMilliseconds;
+            var totalMs = nowMs - _executionRunStartMs.Value;
+            if (totalMs < 0) totalMs = 0;
+
+            _executionTimingRows.Clear();
+            _executionTimingRows.Add(new ExecutionTimingRow
+            {
+                Title = "Total",
+                Value = FormatMs(totalMs),
+                IsTotal = true
+            });
+            HasExecutionTimingRows = _executionTimingRows.Count > 0;
+        }
+
+        _executionRunStartMs = null;
+        _executionLastSplitStartMs = null;
+        _executionLapIndex = 0;
+
         AppLog.Info(nameof(CameraViewModel), $"Execution end marked at {CurrentSession.FormattedElapsedTime}");
+    }
+
+    private static string FormatMs(long ms)
+    {
+        if (ms < 0) ms = 0;
+        var ts = TimeSpan.FromMilliseconds(ms);
+        return $"{(int)ts.TotalMinutes:00}:{ts.Seconds:00}.{ts.Milliseconds:000}";
+    }
+
+    private void ToggleExecutionTiming()
+    {
+        if (!IsRecording)
+            return;
+
+        if (!IsExecutionTimingRunning)
+        {
+            MarkExecutionStart();
+        }
+        else
+        {
+            MarkExecutionEnd();
+        }
     }
 
     private async Task SwitchCameraAsync()
@@ -1103,9 +1488,11 @@ public class CameraViewModel : INotifyPropertyChanged, IDisposable
     {
         (StartRecordingCommand as Command)?.ChangeCanExecute();
         (StopRecordingCommand as Command)?.ChangeCanExecute();
+        (ToggleExecutionTimingCommand as Command)?.ChangeCanExecute();
         (AddLapCommand as Command)?.ChangeCanExecute();
         (MarkExecutionStartCommand as Command)?.ChangeCanExecute();
         (MarkExecutionEndCommand as Command)?.ChangeCanExecute();
+        (AddEventTagCommand as Command)?.ChangeCanExecute();
     }
 
     protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)

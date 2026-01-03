@@ -95,6 +95,16 @@ public class SessionDetailViewModel : BaseViewModel
         FilterByAthleteCommand = new RelayCommand<Athlete>(athlete => SelectedAthleteFilter = athlete);
         FilterBySectionCommand = new RelayCommand<int?>(section => SelectedSectionFilter = section);
         RecordVideoCommand = new AsyncRelayCommand(RecordVideoAsync);
+
+        // Refrescar galería/filtros si un VideoClip cambia (p.ej. asignación de atleta desde SinglePlayer)
+        MessagingCenter.Subscribe<SinglePlayerViewModel, int>(this, "VideoClipUpdated", (sender, videoId) =>
+        {
+            if (SessionId == 0) return;
+            MainThread.BeginInvokeOnMainThread(async () =>
+            {
+                await LoadSessionAsync();
+            });
+        });
     }
 
     /// <summary>

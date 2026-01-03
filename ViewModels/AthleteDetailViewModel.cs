@@ -69,6 +69,24 @@ public class AthleteDetailViewModel : BaseViewModel
 
         RefreshCommand = new AsyncRelayCommand(LoadAthleteAsync);
         PlayVideoCommand = new AsyncRelayCommand<VideoClip>(PlayVideoAsync);
+
+        // Refrescar lista si un video cambia (p.ej. reasignación de atleta desde SinglePlayer)
+        MessagingCenter.Subscribe<SinglePlayerViewModel, int>(this, "VideoClipUpdated", (sender, videoId) =>
+        {
+            if (AthleteId == 0) return;
+            _ = Task.Run(async () =>
+            {
+                var wasInList = Videos.Any(v => v.Id == videoId);
+                var updated = await _databaseService.GetVideoClipByIdAsync(videoId);
+                var shouldReload = wasInList || (updated != null && updated.AtletaId == AthleteId);
+                if (!shouldReload) return;
+
+                MainThread.BeginInvokeOnMainThread(async () =>
+                {
+                    await LoadAthleteAsync();
+                });
+            });
+        });
     }
 
     public async Task LoadAthleteAsync()

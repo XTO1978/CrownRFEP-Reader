@@ -698,6 +698,25 @@
                                                     FontAttributes="Bold" />
                                             </HorizontalStackLayout>
                                         </Border>
+
+                                        <!--  Indicador de tiempo/split  -->
+                                        <Border
+                                            BackgroundColor="#CC000000"
+                                            HeightRequest="28"
+                                            HorizontalOptions="Start"
+                                            IsVisible="{Binding HasTiming}"
+                                            Margin="6"
+                                            Padding="6,4"
+                                            StrokeShape="RoundRectangle 4"
+                                            StrokeThickness="0"
+                                            VerticalOptions="End">
+                                            <controls:SymbolIcon
+                                                HeightRequest="{StaticResource IconSizeMedium}"
+                                                SymbolName="timer"
+                                                TintColor="White"
+                                                VerticalOptions="Center"
+                                                WidthRequest="{StaticResource IconSizeMedium}" />
+                                        </Border>
                                     </Grid>
                                 </controls:AspectRatioContainer>
 

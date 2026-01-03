@@ -10,6 +10,7 @@ namespace CrownRFEP_Reader.Models;
 public class VideoClip : INotifyPropertyChanged
 {
     private bool _isSelected;
+    private bool _hasTiming;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -204,8 +205,31 @@ public class VideoClip : INotifyPropertyChanged
             if (_isSelected != value)
             {
                 _isSelected = value;
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsSelected)));
+                OnPropertyChanged(nameof(IsSelected));
             }
         }
+    }
+
+    /// <summary>
+    /// Indica si el vídeo tiene un tiempo/split guardado (cronometraje de ejecución).
+    /// Se usa para mostrar un indicador en la miniatura de la galería.
+    /// </summary>
+    [Ignore]
+    public bool HasTiming
+    {
+        get => _hasTiming;
+        set
+        {
+            if (_hasTiming != value)
+            {
+                _hasTiming = value;
+                OnPropertyChanged(nameof(HasTiming));
+            }
+        }
+    }
+
+    private void OnPropertyChanged(string propertyName)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }
