@@ -86,6 +86,8 @@ public class CameraViewModel : INotifyPropertyChanged, IDisposable
         CloseCommand = new Command(async () => await CloseAsync());
         ToggleAthleteSelectorCommand = new Command(async () => await ToggleAthleteSelectorAsync());
         ToggleSectionSelectorCommand = new Command(() => ShowSectionSelector = !ShowSectionSelector);
+        IncrementSectionCommand = new Command(IncrementSection);
+        DecrementSectionCommand = new Command(DecrementSection);
         ToggleEventTagSelectorCommand = new Command(async () => await ToggleEventTagSelectorAsync());
         SelectEventTagToAddCommand = new Command<EventTagDefinition>(SelectEventTagToAdd);
         AddEventTagCommand = new Command(AddSelectedEventTag, () => IsRecording && _selectedEventTagToAdd != null);
@@ -449,6 +451,8 @@ public class CameraViewModel : INotifyPropertyChanged, IDisposable
     public ICommand CloseCommand { get; }
     public ICommand ToggleAthleteSelectorCommand { get; }
     public ICommand ToggleSectionSelectorCommand { get; }
+    public ICommand IncrementSectionCommand { get; }
+    public ICommand DecrementSectionCommand { get; }
     public ICommand ToggleEventTagSelectorCommand { get; }
     public ICommand SelectEventTagToAddCommand { get; }
     public ICommand AddEventTagCommand { get; }
@@ -526,11 +530,12 @@ public class CameraViewModel : INotifyPropertyChanged, IDisposable
         // Crear secciones por defecto
         var defaultSections = new List<RiverSection>
         {
-            new RiverSection { Id = 1, Name = "Salida", Order = 1, Color = "#4CAF50" },
-            new RiverSection { Id = 2, Name = "Tramo 1", Order = 2, Color = "#2196F3" },
-            new RiverSection { Id = 3, Name = "Tramo 2", Order = 3, Color = "#FF9800" },
-            new RiverSection { Id = 4, Name = "Tramo 3", Order = 4, Color = "#9C27B0" },
-            new RiverSection { Id = 5, Name = "Llegada", Order = 5, Color = "#F44336" }
+            new RiverSection { Id = 1, Name = "Tramo 1", Order = 1, Color = "#4CAF50" },
+            new RiverSection { Id = 2, Name = "Tramo 2", Order = 2, Color = "#2196F3" },
+            new RiverSection { Id = 3, Name = "Tramo 3", Order = 3, Color = "#FF9800" },
+            new RiverSection { Id = 4, Name = "Tramo 4", Order = 4, Color = "#9C27B0" },
+            new RiverSection { Id = 5, Name = "Tramo 5", Order = 5, Color = "#F44336" },
+            new RiverSection { Id = 6, Name = "Tramo 6", Order = 6, Color = "#00BCD4" }
         };
 
         MainThread.BeginInvokeOnMainThread(() =>
@@ -547,6 +552,32 @@ public class CameraViewModel : INotifyPropertyChanged, IDisposable
 
         _sectionsLoaded = true;
         return Task.CompletedTask;
+    }
+
+    private void IncrementSection()
+    {
+        if (Sections.Count == 0) return;
+        
+        var currentIndex = SelectedSection != null ? Sections.IndexOf(SelectedSection) : -1;
+        var nextIndex = currentIndex + 1;
+        
+        if (nextIndex < Sections.Count)
+        {
+            SelectedSection = Sections[nextIndex];
+        }
+    }
+
+    private void DecrementSection()
+    {
+        if (Sections.Count == 0) return;
+        
+        var currentIndex = SelectedSection != null ? Sections.IndexOf(SelectedSection) : Sections.Count;
+        var prevIndex = currentIndex - 1;
+        
+        if (prevIndex >= 0)
+        {
+            SelectedSection = Sections[prevIndex];
+        }
     }
 
     private async Task EnsureEventTagsLoadedAsync(bool forceReload = false)

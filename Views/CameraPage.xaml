@@ -269,27 +269,90 @@
                 </HorizontalStackLayout>
             </Border>
 
-            <!-- Selector de sección -->
+            <!-- Selector de sección con stepper integrado -->
             <Border
-                Style="{StaticResource QuickActionStyle}">
-                <Border.GestureRecognizers>
-                    <TapGestureRecognizer Command="{Binding ToggleSectionSelectorCommand}" />
-                </Border.GestureRecognizers>
-                <HorizontalStackLayout Spacing="8">
-                    <controls:SymbolIcon
-                        SymbolName="mappin.and.ellipse"
-                        TintColor="#FFB300"
-                        HeightRequest="20"
-                        WidthRequest="20"
-                        VerticalOptions="Center" />
-                    <Label
-                        Text="{Binding SelectedSectionName}"
-                        TextColor="White"
-                        FontSize="14"
-                        VerticalOptions="Center"
-                        MaximumWidthRequest="120"
-                        LineBreakMode="TailTruncation" />
-                </HorizontalStackLayout>
+                Style="{StaticResource QuickActionStyle}"
+                Padding="0"
+                WidthRequest="180">
+                <Grid ColumnDefinitions="36,Auto,*,Auto,36">
+                    <!-- Botón decrementar -->
+                    <Border
+                        Grid.Column="0"
+                        BackgroundColor="Transparent"
+                        StrokeThickness="0"
+                        Padding="0">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding DecrementSectionCommand}" />
+                        </Border.GestureRecognizers>
+                        <Label
+                            Text="-"
+                            FontSize="18"
+                            FontAttributes="Bold"
+                            TextColor="White"
+                            HorizontalOptions="Center"
+                            VerticalOptions="Center" />
+                    </Border>
+                    
+                    <!-- Separador vertical -->
+                    <BoxView
+                        Grid.Column="1"
+                        WidthRequest="1"
+                        BackgroundColor="#40FFFFFF"
+                        VerticalOptions="Fill"
+                        Margin="0,6" />
+                    
+                    <!-- Sección actual -->
+                    <Border
+                        Grid.Column="2"
+                        BackgroundColor="Transparent"
+                        StrokeThickness="0"
+                        Padding="6,8">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding ToggleSectionSelectorCommand}" />
+                        </Border.GestureRecognizers>
+                        <HorizontalStackLayout Spacing="6" HorizontalOptions="Center">
+                            <controls:SymbolIcon
+                                SymbolName="mappin.and.ellipse"
+                                TintColor="#FFB300"
+                                HeightRequest="18"
+                                WidthRequest="18"
+                                VerticalOptions="Center" />
+                            <Label
+                                Text="{Binding SelectedSectionName}"
+                                TextColor="White"
+                                FontSize="13"
+                                VerticalOptions="Center"
+                                HorizontalTextAlignment="Center"
+                                LineBreakMode="TailTruncation" />
+                        </HorizontalStackLayout>
+                    </Border>
+                    
+                    <!-- Separador vertical -->
+                    <BoxView
+                        Grid.Column="3"
+                        WidthRequest="1"
+                        BackgroundColor="#40FFFFFF"
+                        VerticalOptions="Fill"
+                        Margin="0,6" />
+                    
+                    <!-- Botón incrementar -->
+                    <Border
+                        Grid.Column="4"
+                        BackgroundColor="Transparent"
+                        StrokeThickness="0"
+                        Padding="0">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding IncrementSectionCommand}" />
+                        </Border.GestureRecognizers>
+                        <Label
+                            Text="+"
+                            FontSize="18"
+                            FontAttributes="Bold"
+                            TextColor="White"
+                            HorizontalOptions="Center"
+                            VerticalOptions="Center" />
+                    </Border>
+                </Grid>
             </Border>
 
             <!-- Selector de eventos (tags con timestamp) -->
