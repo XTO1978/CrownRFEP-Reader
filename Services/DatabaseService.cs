@@ -462,13 +462,9 @@ public class DatabaseService
     {
         try
         {
-            var db = await GetConnectionAsync();
-            // Eliminar también los videos asociados
-            var deletedVideos = await db.Table<VideoClip>().DeleteAsync(v => v.SessionId == session.Id);
-            LogInfo($"Eliminados {deletedVideos} vídeos de la sesión");
-            var result = await db.DeleteAsync(session);
-            LogSuccess($"Sesión eliminada: {session.DisplayName}");
-            return result;
+            // Usar el método de eliminación en cascada que también borra archivos
+            await DeleteSessionCascadeAsync(session.Id, deleteSessionFiles: true);
+            return 1;
         }
         catch (Exception ex)
         {
@@ -1014,6 +1010,12 @@ public class DatabaseService
         return await db.Table<Category>().OrderBy(c => c.NombreCategoria).ToListAsync();
     }
 
+    public async Task<Category?> GetCategoryByIdAsync(int id)
+    {
+        var db = await GetConnectionAsync();
+        return await db.Table<Category>().FirstOrDefaultAsync(c => c.Id == id);
+    }
+
     public async Task<int> SaveCategoryAsync(Category category)
     {
         var db = await GetConnectionAsync();
@@ -1190,6 +1192,12 @@ public class DatabaseService
         return await db.Table<EventTagDefinition>().ToListAsync();
     }
 
+    public async Task<EventTagDefinition?> GetEventTagByIdAsync(int id)
+    {
+        var db = await GetConnectionAsync();
+        return await db.Table<EventTagDefinition>().FirstOrDefaultAsync(t => t.Id == id);
+    }
+
     public async Task<EventTagDefinition?> FindEventTagByNameAsync(string name)
     {
         var db = await GetConnectionAsync();
@@ -1260,6 +1268,17 @@ public class DatabaseService
         return allTags
             .Where(t => inputTypeIds.Contains(t.Id) && !string.IsNullOrEmpty(t.NombreTag))
             .ToList();
+    }
+
+    /// <summary>
+    /// Obtiene todos los inputs para un video específico
+    /// </summary>
+    public async Task<List<Input>> GetInputsForVideoAsync(int videoId)
+    {
+        var db = await GetConnectionAsync();
+        return await db.Table<Input>()
+            .Where(i => i.VideoId == videoId)
+            .ToListAsync();
     }
 
     /// <summary>
@@ -1411,6 +1430,40 @@ public class DatabaseService
 
         var session = await db.Table<Session>().FirstOrDefaultAsync(s => s.Id == sessionId);
 
+        // Obtener los videos antes de borrarlos para poder eliminar sus archivos
+        var videos = await db.Table<VideoClip>().Where(v => v.SessionId == sessionId).ToListAsync();
+
+        // Borrar archivos de video y miniaturas individuales
+        if (deleteSessionFiles)
+        {
+            foreach (var video in videos)
+            {
+                try
+                {
+                    // Eliminar archivo de video
+                    var videoPath = video.LocalClipPath;
+                    if (!string.IsNullOrEmpty(videoPath) && File.Exists(videoPath))
+                    {
+                        File.Delete(videoPath);
+                        LogInfo($"Archivo de video eliminado: {videoPath}");
+                    }
+
+                    // Eliminar miniatura
+                    var thumbPath = video.LocalThumbnailPath;
+                    if (!string.IsNullOrEmpty(thumbPath) && File.Exists(thumbPath))
+                    {
+                        File.Delete(thumbPath);
+                        LogInfo($"Miniatura eliminada: {thumbPath}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    LogError($"Error eliminando archivos del video {video.Id}: {ex.Message}");
+                    // Continuar con los demás videos
+                }
+            }
+        }
+
         // Borrar filas dependientes.
         // Nota: usamos SQL explícito para asegurar que se usa el nombre real de tabla/columna,
         // especialmente en tablas con nombres conflictivos como "input".
@@ -1421,7 +1474,7 @@ public class DatabaseService
         // Borrar sesión (la tabla real es "sesion" y la PK es "id")
         await db.ExecuteAsync("DELETE FROM sesion WHERE id = ?;", sessionId);
 
-        // Borrar archivos de la sesión (carpeta Media/<sesión>)
+        // Borrar carpeta de la sesión si existe (carpeta Media/<sesión>)
         if (deleteSessionFiles && !string.IsNullOrWhiteSpace(session?.PathSesion))
         {
             try
@@ -1435,14 +1488,20 @@ public class DatabaseService
                     var fullPath = Path.GetFullPath(path);
                     var fullRoot = Path.GetFullPath(mediaRoot);
                     if (fullPath.StartsWith(fullRoot, StringComparison.OrdinalIgnoreCase))
+                    {
                         Directory.Delete(fullPath, recursive: true);
+                        LogInfo($"Carpeta de sesión eliminada: {path}");
+                    }
                 }
             }
-            catch
+            catch (Exception ex)
             {
+                LogError($"Error eliminando carpeta de sesión: {ex.Message}");
                 // Si no se puede borrar, no bloqueamos el borrado en DB.
             }
         }
+        
+        LogSuccess($"Sesión {sessionId} eliminada completamente");
     }
 
     public async Task<int> GetTotalAthletesCountAsync()

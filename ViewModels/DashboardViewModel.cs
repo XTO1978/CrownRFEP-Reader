@@ -2112,6 +2112,7 @@ public class DashboardViewModel : BaseViewModel
     public ICommand CancelNewSessionSidebarPopupCommand { get; }
     public ICommand CreateSessionAndRecordCommand { get; }
     public ICommand RecordForSelectedSessionCommand { get; }
+    public ICommand ExportSelectedSessionCommand { get; }
     public ICommand SetEvolutionPeriodCommand { get; }
     public ICommand ToggleMultiSelectModeCommand { get; }
     public ICommand ToggleSelectAllCommand { get; }
@@ -2308,6 +2309,7 @@ public class DashboardViewModel : BaseViewModel
         CancelNewSessionSidebarPopupCommand = new RelayCommand(() => ShowNewSessionSidebarPopup = false);
         CreateSessionAndRecordCommand = new AsyncRelayCommand(CreateSessionAndRecordAsync);
         RecordForSelectedSessionCommand = new AsyncRelayCommand(RecordForSelectedSessionAsync);
+        ExportSelectedSessionCommand = new AsyncRelayCommand(ExportSelectedSessionAsync);
         SelectSessionTypeCommand = new RelayCommand<SessionTypeOption>(option => 
         {
             if (option != null)
@@ -4813,6 +4815,65 @@ public class DashboardViewModel : BaseViewModel
         {
             System.Diagnostics.Debug.WriteLine($"Error abriendo cámara para sesión: {ex}");
             await Shell.Current.DisplayAlert("Error", $"No se pudo abrir la cámara: {ex.Message}", "OK");
+        }
+    }
+
+    /// <summary>
+    /// Exporta la sesión seleccionada a un archivo .crown
+    /// </summary>
+    private async Task ExportSelectedSessionAsync()
+    {
+        try
+        {
+            if (SelectedSession == null)
+            {
+                await Shell.Current.DisplayAlert("Error", "No hay ninguna sesión seleccionada", "OK");
+                return;
+            }
+
+            // Mostrar indicador de progreso
+            var progress = new Progress<ImportProgress>(p =>
+            {
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    ImportProgressText = p.Message;
+                    ImportProgressValue = p.Percentage;
+                });
+            });
+
+            IsImporting = true;
+            ImportProgressText = "Preparando exportación...";
+            ImportProgressValue = 0;
+
+            var crownFileService = new CrownFileService(_databaseService);
+            var result = await crownFileService.ExportSessionAsync(SelectedSession.Id, progress);
+
+            IsImporting = false;
+
+            if (result.Success && !string.IsNullOrEmpty(result.FilePath))
+            {
+#if IOS
+                // Compartir el archivo usando Share API
+                await Share.Default.RequestAsync(new ShareFileRequest
+                {
+                    Title = $"Exportar {result.SessionName}",
+                    File = new ShareFile(result.FilePath)
+                });
+#else
+                await Shell.Current.DisplayAlert("Exportación completada", 
+                    $"Sesión '{result.SessionName}' exportada correctamente.\n{result.VideosExported} videos incluidos.\n\nArchivo: {result.FilePath}", "OK");
+#endif
+            }
+            else
+            {
+                await Shell.Current.DisplayAlert("Error", result.ErrorMessage ?? "Error desconocido al exportar", "OK");
+            }
+        }
+        catch (Exception ex)
+        {
+            IsImporting = false;
+            System.Diagnostics.Debug.WriteLine($"Error exportando sesión: {ex}");
+            await Shell.Current.DisplayAlert("Error", $"No se pudo exportar la sesión: {ex.Message}", "OK");
         }
     }
 

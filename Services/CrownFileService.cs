@@ -29,6 +29,287 @@ public class CrownFileService
     }
 
     /// <summary>
+    /// Exporta una sesión a un archivo .crown
+    /// </summary>
+    public async Task<ExportResult> ExportSessionAsync(int sessionId, IProgress<ImportProgress>? progress = null)
+    {
+        var result = new ExportResult();
+
+        return await Task.Run(async () =>
+        {
+            try
+            {
+                AppLog.Info("CrownFileService", $"[Export] Iniciando exportación de sesión ID={sessionId}");
+                ReportProgress(progress, "Cargando datos de sesión...", 5);
+
+                // Obtener la sesión
+                var session = await _databaseService.GetSessionByIdAsync(sessionId);
+                if (session == null)
+                {
+                    result.Success = false;
+                    result.ErrorMessage = "Sesión no encontrada";
+                    return result;
+                }
+
+                AppLog.Info("CrownFileService", $"[Export] Sesión encontrada: '{session.NombreSesion}', Fecha={session.Fecha}");
+                result.SessionName = session.NombreSesion;
+
+                ReportProgress(progress, "Obteniendo videos...", 10);
+
+                // Obtener videos de la sesión
+                var videos = await _databaseService.GetVideoClipsBySessionAsync(sessionId);
+                AppLog.Info("CrownFileService", $"[Export] Videos encontrados: {videos.Count}");
+                foreach (var v in videos)
+                {
+                    AppLog.Info("CrownFileService", $"[Export] Video ID={v.Id}, SessionId={v.SessionId}, CreationDate={v.CreationDate}, LocalClipPath={v.LocalClipPath}");
+                }
+
+                ReportProgress(progress, "Obteniendo atletas...", 15);
+
+                // Obtener atletas únicos de los videos
+                var athleteIds = videos.Select(v => v.AtletaId).Distinct().ToList();
+                var athletes = new List<Athlete>();
+                foreach (var athId in athleteIds)
+                {
+                    var athlete = await _databaseService.GetAthleteByIdAsync(athId);
+                    if (athlete != null)
+                        athletes.Add(athlete);
+                }
+
+                ReportProgress(progress, "Obteniendo categorías...", 20);
+
+                // Obtener categorías
+                var categoryIds = athletes.Select(a => a.CategoriaId).Distinct().ToList();
+                var categories = new List<Category>();
+                foreach (var catId in categoryIds)
+                {
+                    var cat = await _databaseService.GetCategoryByIdAsync(catId);
+                    if (cat != null)
+                        categories.Add(cat);
+                }
+
+                ReportProgress(progress, "Obteniendo eventos...", 25);
+
+                // Obtener Inputs de los videos para exportar como eventos
+                var allInputs = new List<(Input input, int videoId)>();
+                foreach (var video in videos)
+                {
+                    var videoInputs = await _databaseService.GetInputsForVideoAsync(video.Id);
+                    foreach (var inp in videoInputs)
+                    {
+                        allInputs.Add((inp, video.Id));
+                    }
+                }
+
+                ReportProgress(progress, "Preparando datos para exportación...", 30);
+
+                // Crear el objeto CrownFileData
+                var crownData = new CrownFileData
+                {
+                    ExportMetadata = new ExportMetadata
+                    {
+                        ExportDate = DateTime.Now,
+                        AppVersion = "1.0.0",
+                        ExportVersion = "1.0",
+                        SessionId = sessionId,
+                        SessionName = session.NombreSesion,
+                        ExportedBy = "CrownRFEP Reader",
+                        DeviceInfo = DeviceInfo.Current.Model
+                    },
+                    Session = new SessionJson
+                    {
+                        Id = session.Id,
+                        Fecha = DateTimeOffset.FromUnixTimeSeconds(session.Fecha).DateTime,
+                        Lugar = session.Lugar,
+                        TipoSesion = session.TipoSesion,
+                        NombreSesion = session.NombreSesion,
+                        PathSesion = session.PathSesion,
+                        Participantes = session.Participantes,
+                        Coach = session.Coach,
+                        IsMerged = session.IsMerged == 1,
+                        VideoCount = videos.Count
+                    },
+                    VideoClips = videos.Select(v => new VideoClipJson
+                    {
+                        Id = v.Id,
+                        SessionId = v.SessionId,
+                        AtletaId = v.AtletaId,
+                        Section = v.Section,
+                        CreationDate = v.CreationDate,
+                        // Usar LocalClipPath si ClipPath está vacío
+                        ClipPath = Path.GetFileName(!string.IsNullOrEmpty(v.ClipPath) ? v.ClipPath : v.LocalClipPath ?? ""),
+                        ThumbnailPath = Path.GetFileName(!string.IsNullOrEmpty(v.ThumbnailPath) ? v.ThumbnailPath : v.LocalThumbnailPath ?? ""),
+                        ComparisonName = v.ComparisonName,
+                        ClipDuration = v.ClipDuration,
+                        ClipSize = v.ClipSize,
+                        IsComparisonVideo = v.IsComparisonVideo,
+                        BadgeText = v.BadgeText,
+                        BadgeBackgroundColor = v.BadgeBackgroundColor
+                    }).ToList(),
+                    Athletes = athletes.Select(a => new AthleteJson
+                    {
+                        Id = a.Id,
+                        Nombre = a.Nombre,
+                        Apellido = a.Apellido,
+                        Categoria = a.Category,
+                        CategoriaId = a.CategoriaId,
+                        Favorite = a.Favorite,
+                        IsFavorite = a.Favorite == 1,
+                        CategoriaNombre = a.CategoriaNombre,
+                        NombreCompleto = a.NombreCompleto,
+                        IsSystemDefault = a.IsSystemDefault == 1
+                    }).ToList(),
+                    Categories = categories.Select(c => new CategoryJson
+                    {
+                        Id = c.Id,
+                        NombreCategoria = c.NombreCategoria,
+                        IsSystemDefault = c.IsSystemDefault == 1
+                    }).ToList(),
+                    Inputs = await ConvertInputsToInputJsonAsync(allInputs, videos)
+                };
+
+                ReportProgress(progress, "Creando archivo .crown...", 40);
+
+                // Crear nombre de archivo
+                var sanitizedName = SanitizeFolderName(session.NombreSesion ?? "Session");
+                var fileName = $"CrownSession_{sanitizedName}_{DateTime.Now:yyyyMMdd_HHmmss}.crown";
+                var exportDir = Path.Combine(FileSystem.CacheDirectory, "Exports");
+                
+                if (!Directory.Exists(exportDir))
+                    Directory.CreateDirectory(exportDir);
+                
+                var exportPath = Path.Combine(exportDir, fileName);
+
+                // Eliminar archivo existente si existe
+                if (File.Exists(exportPath))
+                    File.Delete(exportPath);
+
+                // Crear el archivo ZIP
+                using (var archive = ZipFile.Open(exportPath, ZipArchiveMode.Create))
+                {
+                    // Añadir session_data.json
+                    var jsonEntry = archive.CreateEntry("session_data.json");
+                    using (var entryStream = jsonEntry.Open())
+                    using (var writer = new StreamWriter(entryStream))
+                    {
+                        var jsonOptions = new JsonSerializerOptions { WriteIndented = true };
+                        var json = JsonSerializer.Serialize(crownData, jsonOptions);
+                        await writer.WriteAsync(json);
+                    }
+
+                    ReportProgress(progress, "Añadiendo videos...", 50);
+
+                    // Añadir archivos de video
+                    var totalVideos = videos.Count;
+                    var processedVideos = 0;
+                    var videosActuallyExported = 0;
+
+                    foreach (var video in videos)
+                    {
+                        // Video - usar LocalClipPath (ruta absoluta) primero, luego ClipPath
+                        var videoPath = video.LocalClipPath;
+                        
+                        // Si LocalClipPath está vacío, intentar con ClipPath
+                        if (string.IsNullOrEmpty(videoPath))
+                        {
+                            videoPath = video.ClipPath;
+                            // Si es una ruta relativa, construir la ruta absoluta basada en PathSesion
+                            if (!string.IsNullOrEmpty(videoPath) && !Path.IsPathRooted(videoPath) && !string.IsNullOrEmpty(session.PathSesion))
+                            {
+                                videoPath = Path.Combine(session.PathSesion, "videos", videoPath);
+                            }
+                        }
+                        
+                        AppLog.Info("CrownFileService", $"[Export] Video: LocalClipPath={video.LocalClipPath}, ClipPath={video.ClipPath}, Resolved={videoPath}");
+                        
+                        if (!string.IsNullOrEmpty(videoPath) && File.Exists(videoPath))
+                        {
+                            var videoFileName = Path.GetFileName(videoPath);
+                            archive.CreateEntryFromFile(videoPath, $"videos/{videoFileName}");
+                            videosActuallyExported++;
+                            AppLog.Info("CrownFileService", $"[Export] Video añadido: {videoPath}");
+                        }
+                        else if (!string.IsNullOrEmpty(videoPath))
+                        {
+                            AppLog.Warn("CrownFileService", $"[Export] Video no encontrado: {videoPath}");
+                        }
+
+                        // Thumbnail - usar LocalThumbnailPath primero, luego ThumbnailPath
+                        var thumbPath = video.LocalThumbnailPath;
+                        if (string.IsNullOrEmpty(thumbPath))
+                        {
+                            thumbPath = video.ThumbnailPath;
+                            if (!string.IsNullOrEmpty(thumbPath) && !Path.IsPathRooted(thumbPath) && !string.IsNullOrEmpty(session.PathSesion))
+                            {
+                                thumbPath = Path.Combine(session.PathSesion, "thumbnails", thumbPath);
+                            }
+                        }
+                        
+                        if (!string.IsNullOrEmpty(thumbPath) && File.Exists(thumbPath))
+                        {
+                            var thumbFileName = Path.GetFileName(thumbPath);
+                            archive.CreateEntryFromFile(thumbPath, $"thumbnails/{thumbFileName}");
+                        }
+
+                        processedVideos++;
+                        var videoProgress = 50 + (int)(40.0 * processedVideos / totalVideos);
+                        ReportProgress(progress, $"Añadiendo video {processedVideos}/{totalVideos}...", videoProgress);
+                    }
+
+                    result.VideosExported = videosActuallyExported;
+                    AppLog.Info("CrownFileService", $"[Export] Videos exportados: {videosActuallyExported}/{totalVideos}");
+                }
+
+                ReportProgress(progress, "Exportación completada", 100);
+
+                result.Success = true;
+                result.FilePath = exportPath;
+                return result;
+            }
+            catch (Exception ex)
+            {
+                result.Success = false;
+                result.ErrorMessage = $"Error al exportar: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine($"Error exportando sesión: {ex}");
+                return result;
+            }
+        });
+    }
+
+    private async Task<List<InputJson>> ConvertInputsToInputJsonAsync(List<(Input input, int videoId)> allInputs, List<VideoClip> videos)
+    {
+        var inputs = new List<InputJson>();
+        
+        foreach (var (input, videoId) in allInputs)
+        {
+            var eventTag = await _databaseService.GetEventTagByIdAsync(input.InputTypeId);
+            var video = videos.FirstOrDefault(v => v.Id == videoId);
+            
+            if (video != null)
+            {
+                inputs.Add(new InputJson
+                {
+                    Id = input.Id,
+                    SessionId = video.SessionId,
+                    VideoId = videoId,
+                    AthleteId = video.AtletaId,
+                    InputTypeId = input.InputTypeId,
+                    InputDateTime = input.InputDateTime,
+                    InputValue = eventTag?.PenaltySeconds > 0 ? $"+{eventTag.PenaltySeconds}" : (eventTag?.Nombre ?? input.InputValue),
+                    TimeStamp = input.TimeStamp,
+                    InputTypeObj = eventTag != null ? new InputTypeJson
+                    {
+                        Id = eventTag.Id,
+                        TipoInput = eventTag.Nombre
+                    } : null
+                });
+            }
+        }
+        
+        return inputs;
+    }
+
+    /// <summary>
     /// Importa un archivo .crown y almacena sus datos en la base de datos local
     /// </summary>
     public async Task<ImportResult> ImportCrownFileAsync(string filePath, IProgress<ImportProgress>? progress = null)
@@ -255,6 +536,8 @@ public class CrownFileService
 
                     var localClipPath = Path.Combine(videosPath, clipFileName);
                     var localThumbPath = Path.Combine(thumbnailsPath, thumbFileName);
+                    
+                    AppLog.Info("CrownFileService", $"[Import] Buscando video: clipFileName={clipFileName}, ClipPath JSON={clipJson.ClipPath}");
 
                     // Extraer video del ZIP
                     var videoEntry = FindEntry(archive, "videos", clipFileName);
@@ -263,6 +546,14 @@ public class CrownFileService
                     {
                         await ExtractEntryToFileAsync(videoEntry, localClipPath);
                         extractedClipPath = localClipPath;
+                        AppLog.Info("CrownFileService", $"[Import] Video extraído a: {localClipPath}");
+                    }
+                    else
+                    {
+                        AppLog.Warn("CrownFileService", $"[Import] Video NO encontrado en ZIP: videos/{clipFileName}");
+                        // Listar las entradas disponibles en el ZIP
+                        var availableVideos = archive.Entries.Where(e => e.FullName.StartsWith("videos/")).Select(e => e.FullName).ToList();
+                        AppLog.Info("CrownFileService", $"[Import] Entradas disponibles en ZIP/videos: {string.Join(", ", availableVideos)}");
                     }
 
                     // Extraer thumbnail del ZIP
@@ -540,6 +831,18 @@ public class ImportResult
     public int AthletesImported { get; set; }
     public int TagsImported { get; set; }
     public int TagEventsImported { get; set; }
+}
+
+/// <summary>
+/// Resultado de una exportación de archivo .crown
+/// </summary>
+public class ExportResult
+{
+    public bool Success { get; set; }
+    public string? ErrorMessage { get; set; }
+    public string? FilePath { get; set; }
+    public string? SessionName { get; set; }
+    public int VideosExported { get; set; }
 }
 
 /// <summary>

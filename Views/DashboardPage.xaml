@@ -527,6 +527,32 @@
                         <Label Text="Nueva sesión" TextColor="White" VerticalOptions="Center" />
                     </HorizontalStackLayout>
                 </Border>
+                
+                <!--  Botón Exportar sesión (solo iOS)  -->
+                <Border
+                    Padding="{StaticResource PaddingActionButton}"
+                    BackgroundColor="#FF2A2A2A"
+                    Stroke="Transparent"
+                    StrokeShape="RoundRectangle 4">
+                    <Border.IsVisible>
+                        <OnPlatform x:TypeArguments="x:Boolean">
+                            <On Platform="iOS" Value="True" />
+                            <On Platform="MacCatalyst,WinUI,Android" Value="False" />
+                        </OnPlatform>
+                    </Border.IsVisible>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding ExportSelectedSessionCommand}" />
+                    </Border.GestureRecognizers>
+                    <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
+                        <controls:SymbolIcon
+                            HeightRequest="{StaticResource IconSizeMedium}"
+                            SymbolName="square.and.arrow.up"
+                            TintColor="#FF6DDDFF"
+                            WidthRequest="{StaticResource IconSizeMedium}"
+                            VerticalOptions="Center" />
+                        <Label Text="Exportar" TextColor="#FF6DDDFF" VerticalOptions="Center" />
+                    </HorizontalStackLayout>
+                </Border>
             </VerticalStackLayout>
         </Grid>
 
