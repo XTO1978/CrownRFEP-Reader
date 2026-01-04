@@ -4981,7 +4981,7 @@
                 VerticalOptions="Center"
                 MinimumWidthRequest="1100"
                 MaximumWidthRequest="1400"
-                MaximumHeightRequest="920"
+                MaximumHeightRequest="1820"
                 Stroke="#FF3A3A3A"
                 StrokeShape="RoundRectangle 4"
                 StrokeThickness="1">
@@ -5055,8 +5055,8 @@
                                                         <Label FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="PARCIALES" TextColor="#FFB1B1B1" VerticalOptions="Center" />
                                                         <Border
                                                             Padding="12,6"
-                                                            BackgroundColor="#FF1A1A1A"
-                                                            Stroke="Transparent"
+                                                            BackgroundColor="Transparent"
+                                                            Stroke="DimGray"
                                                             StrokeShape="RoundRectangle 4"
                                                             StrokeThickness="0">
                                                             <Grid ColumnDefinitions="Auto,Auto" ColumnSpacing="8">
@@ -5064,9 +5064,9 @@
                                                                 <Border
                                                                     Padding="10,4"
                                                                     BackgroundColor="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=ShowLapTimes, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF2A2A2A,#00000000'}"
-                                                                    Stroke="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=ShowLapTimes, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF404040,#00000000'}"
+                                                                    Stroke="DimGray"
                                                                     StrokeShape="RoundRectangle 4"
-                                                                    StrokeThickness="1">
+                                                                    StrokeThickness="0.6">
                                                                     <Border.GestureRecognizers>
                                                                         <TapGestureRecognizer
                                                                             Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=SetLapTimesModeCommand}"
@@ -5086,9 +5086,9 @@
                                                                     Grid.Column="1"
                                                                     Padding="10,4"
                                                                     BackgroundColor="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=ShowCumulativeTimes, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF2A2A2A,#00000000'}"
-                                                                    Stroke="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=ShowCumulativeTimes, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF404040,#00000000'}"
+                                                                    Stroke="DimGray"
                                                                     StrokeShape="RoundRectangle 4"
-                                                                    StrokeThickness="1">
+                                                                    StrokeThickness="0.6">
                                                                     <Border.GestureRecognizers>
                                                                         <TapGestureRecognizer
                                                                             Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=SetLapTimesModeCommand}"
