@@ -1374,6 +1374,19 @@ public class DatabaseService
     }
 
     /// <summary>
+    /// Obtiene todos los eventos de cronometraje de ejecución de una sesión.
+    /// </summary>
+    public async Task<List<ExecutionTimingEvent>> GetExecutionTimingEventsBySessionAsync(int sessionId)
+    {
+        var db = await GetConnectionAsync();
+        return await db.Table<ExecutionTimingEvent>()
+            .Where(e => e.SessionId == sessionId)
+            .OrderBy(e => e.VideoId)
+            .ThenBy(e => e.ElapsedMilliseconds)
+            .ToListAsync();
+    }
+
+    /// <summary>
     /// Elimina todos los eventos de cronometraje de ejecución asociados a un vídeo.
     /// </summary>
     public async Task DeleteExecutionTimingEventsByVideoAsync(int videoId)

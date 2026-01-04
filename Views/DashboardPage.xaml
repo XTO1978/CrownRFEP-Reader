@@ -2759,6 +2759,166 @@
                     </Border>
                 </Grid>
 
+                <!--  ===== TABLA DE TIEMPOS POR SECCIÓN =====  -->
+                <VerticalStackLayout IsVisible="{Binding ShowSectionTimesTable}" Spacing="8" Margin="0,16,0,0">
+                    <!--  Cabecera con título, botón expandir y toggle  -->
+                    <Grid ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="8">
+                        <Label
+                            FontAttributes="Bold"
+                            FontSize="{StaticResource FontSizeSubtitle}"
+                            Text="⏱ Tiempos por Sección"
+                            TextColor="White"
+                            VerticalOptions="Center" />
+                        
+                        <!--  Botón para abrir tabla detallada  -->
+                        <Border
+                            Grid.Column="1"
+                            Padding="8,4"
+                            BackgroundColor="#FF2A2A2A"
+                            StrokeShape="RoundRectangle 4"
+                            StrokeThickness="0"
+                            VerticalOptions="Center">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding OpenDetailedTimesPopupCommand}" />
+                            </Border.GestureRecognizers>
+                            <HorizontalStackLayout Spacing="4">
+                                <controls:SymbolIcon
+                                    HeightRequest="14"
+                                    SymbolName="arrow.up.left.and.arrow.down.right"
+                                    TintColor="#FF6DDDFF"
+                                    WidthRequest="14"
+                                    VerticalOptions="Center" />
+                                <Label
+                                    FontSize="{StaticResource FontSizeSmall}"
+                                    Text="Expandir"
+                                    TextColor="#FF6DDDFF"
+                                    VerticalOptions="Center" />
+                            </HorizontalStackLayout>
+                        </Border>
+                        
+                        <!--  Toggle entre Tiempos y Diferencias  -->
+                        <Grid Grid.Column="3" ColumnDefinitions="Auto,Auto" ColumnSpacing="4" IsVisible="{Binding HasReferenceAthlete}">
+                            <!--  Botón Tiempos  -->
+                            <Border
+                                Padding="16,6"
+                                BackgroundColor="{Binding ShowSectionTimesAbsolute, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF2A2A2A,#FF1A1A1A'}"
+                                StrokeShape="RoundRectangle 4"
+                                StrokeThickness="0"
+                                MinimumWidthRequest="80">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding ToggleSectionTimesViewCommand}" />
+                                </Border.GestureRecognizers>
+                                <Label
+                                    FontSize="{StaticResource FontSizeSmall}"
+                                    Text="Tiempos"
+                                    HorizontalOptions="Center"
+                                    TextColor="White" />
+                            </Border>
+                            <!--  Botón Diferencias  -->
+                            <Border
+                                Grid.Column="1"
+                                Padding="16,6"
+                                BackgroundColor="{Binding ShowSectionTimesDifferences, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF2A2A2A,#FF1A1A1A'}"
+                                StrokeShape="RoundRectangle 4"
+                                StrokeThickness="0"
+                                MinimumWidthRequest="80">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding ToggleSectionTimesViewCommand}" />
+                                </Border.GestureRecognizers>
+                                <Label
+                                    FontSize="{StaticResource FontSizeSmall}"
+                                    Text="vs Tú"
+                                    HorizontalOptions="Center"
+                                    TextColor="White" />
+                            </Border>
+                        </Grid>
+                    </Grid>
+                    
+                    <!--  Iteramos por cada sección  -->
+                    <VerticalStackLayout Spacing="12">
+                        <BindableLayout.ItemsSource>
+                            <Binding Path="SectionTimes" />
+                        </BindableLayout.ItemsSource>
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate x:DataType="services:SectionWithAthleteRows">
+                                <Border
+                                    Padding="8"
+                                    BackgroundColor="#FF1A1A1A"
+                                    StrokeShape="RoundRectangle 8"
+                                    StrokeThickness="0">
+                                    <VerticalStackLayout Spacing="6">
+                                        <!--  Nombre de la sección  -->
+                                        <Label
+                                            FontAttributes="Bold"
+                                            FontSize="{StaticResource FontSizeBody}"
+                                            Text="{Binding SectionName}"
+                                            TextColor="#FF6DDDFF" />
+                                        
+                                        <!--  ===== VISTA TIEMPOS ABSOLUTOS =====  -->
+                                        <VerticalStackLayout Spacing="4" IsVisible="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=ShowSectionTimesAbsolute}">
+                                            <!--  Cabecera de tabla (absoluta)  -->
+                                            <Grid ColumnDefinitions="2*,*,*,*,*" ColumnSpacing="4" Padding="4,2" BackgroundColor="#FF252525">
+                                                <Label Grid.Column="0" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="ATLETA" TextColor="#FFB1B1B1" />
+                                                <Label Grid.Column="1" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="CAT." TextColor="#FFB1B1B1" />
+                                                <Label Grid.Column="2" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="TIEMPO" TextColor="#FFB1B1B1" HorizontalTextAlignment="End" />
+                                                <Label Grid.Column="3" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="PENAL." TextColor="#FFB1B1B1" HorizontalTextAlignment="End" />
+                                                <Label Grid.Column="4" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="TOTAL" TextColor="#FFB1B1B1" HorizontalTextAlignment="End" />
+                                            </Grid>
+                                            
+                                            <!--  Filas de atletas (tiempos absolutos)  -->
+                                            <VerticalStackLayout Spacing="2">
+                                                <BindableLayout.ItemsSource>
+                                                    <Binding Path="Athletes" />
+                                                </BindableLayout.ItemsSource>
+                                                <BindableLayout.ItemTemplate>
+                                                    <DataTemplate x:DataType="services:AthleteSectionTimeRow">
+                                                        <Grid ColumnDefinitions="2*,*,*,*,*" ColumnSpacing="4" Padding="4,3" BackgroundColor="{Binding RowBackgroundColor}">
+                                                            <Label Grid.Column="0" FontSize="{StaticResource FontSizeSmall}" Text="{Binding AthleteName}" TextColor="White" LineBreakMode="TailTruncation" VerticalOptions="Center" />
+                                                            <Label Grid.Column="1" FontSize="{StaticResource FontSizeSmall}" Text="{Binding CategoryName}" TextColor="#FF808080" LineBreakMode="TailTruncation" VerticalOptions="Center" />
+                                                            <Label Grid.Column="2" FontSize="{StaticResource FontSizeSmall}" Text="{Binding DurationFormatted}" TextColor="#FF4CAF50" HorizontalTextAlignment="End" VerticalOptions="Center" />
+                                                            <Label Grid.Column="3" FontSize="{StaticResource FontSizeSmall}" Text="{Binding PenaltyFormatted}" TextColor="#FFFF6B6B" HorizontalTextAlignment="End" VerticalOptions="Center" />
+                                                            <Label Grid.Column="4" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="{Binding TotalFormatted}" TextColor="#FFFFD700" HorizontalTextAlignment="End" VerticalOptions="Center" />
+                                                        </Grid>
+                                                    </DataTemplate>
+                                                </BindableLayout.ItemTemplate>
+                                            </VerticalStackLayout>
+                                        </VerticalStackLayout>
+                                        
+                                        <!--  ===== VISTA DIFERENCIAS =====  -->
+                                        <VerticalStackLayout Spacing="4" IsVisible="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=ShowSectionTimesDifferences}">
+                                            <!--  Cabecera de tabla (diferencias)  -->
+                                            <Grid ColumnDefinitions="2*,*,*,*" ColumnSpacing="4" Padding="4,2" BackgroundColor="#FF252525">
+                                                <Label Grid.Column="0" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="ATLETA" TextColor="#FFB1B1B1" />
+                                                <Label Grid.Column="1" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="CAT." TextColor="#FFB1B1B1" />
+                                                <Label Grid.Column="2" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="TOTAL" TextColor="#FFB1B1B1" HorizontalTextAlignment="End" />
+                                                <Label Grid.Column="3" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="vs TÚ" TextColor="#FFB1B1B1" HorizontalTextAlignment="End" />
+                                            </Grid>
+                                            
+                                            <!--  Filas de atletas (diferencias)  -->
+                                            <VerticalStackLayout Spacing="2">
+                                                <BindableLayout.ItemsSource>
+                                                    <Binding Path="Athletes" />
+                                                </BindableLayout.ItemsSource>
+                                                <BindableLayout.ItemTemplate>
+                                                    <DataTemplate x:DataType="services:AthleteSectionTimeRow">
+                                                        <Grid ColumnDefinitions="2*,*,*,*" ColumnSpacing="4" Padding="4,3" BackgroundColor="{Binding RowBackgroundColor}">
+                                                            <Label Grid.Column="0" FontSize="{StaticResource FontSizeSmall}" Text="{Binding AthleteName}" TextColor="White" LineBreakMode="TailTruncation" VerticalOptions="Center" FontAttributes="{Binding IsReferenceAthlete, Converter={StaticResource BoolToFontAttributesConverter}}" />
+                                                            <Label Grid.Column="1" FontSize="{StaticResource FontSizeSmall}" Text="{Binding CategoryName}" TextColor="#FF808080" LineBreakMode="TailTruncation" VerticalOptions="Center" />
+                                                            <Label Grid.Column="2" FontSize="{StaticResource FontSizeSmall}" Text="{Binding TotalFormatted}" TextColor="#FFFFD700" HorizontalTextAlignment="End" VerticalOptions="Center" />
+                                                            <Label Grid.Column="3" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="{Binding DifferenceFormatted}" TextColor="{Binding DifferenceColor}" HorizontalTextAlignment="End" VerticalOptions="Center" />
+                                                        </Grid>
+                                                    </DataTemplate>
+                                                </BindableLayout.ItemTemplate>
+                                            </VerticalStackLayout>
+                                        </VerticalStackLayout>
+                                        
+                                    </VerticalStackLayout>
+                                </Border>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
+                </VerticalStackLayout>
+
                 <!--  VÍDEOS ETIQUETADOS  -->
                 <Border
                     Padding="12"
@@ -2929,140 +3089,6 @@
                     ShowLegend="True"
                     TextColor="White"
                     Values="{Binding TopLabelTagValues}" />
-
-                <!--  ===== TABLA DE TIEMPOS POR SECCIÓN =====  -->
-                <VerticalStackLayout IsVisible="{Binding ShowSectionTimesTable}" Spacing="8" Margin="0,16,0,0">
-                    <!--  Cabecera con título y toggle  -->
-                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                        <Label
-                            FontAttributes="Bold"
-                            FontSize="{StaticResource FontSizeSubtitle}"
-                            Text="⏱ Tiempos por Sección"
-                            TextColor="White"
-                            VerticalOptions="Center" />
-                        
-                        <!--  Toggle entre Tiempos y Diferencias  -->
-                        <Grid Grid.Column="1" ColumnDefinitions="Auto,Auto" ColumnSpacing="4" IsVisible="{Binding HasReferenceAthlete}">
-                            <!--  Botón Tiempos  -->
-                            <Border
-                                Padding="16,6"
-                                BackgroundColor="{Binding ShowSectionTimesAbsolute, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF2A2A2A,#FF1A1A1A'}"
-                                StrokeShape="RoundRectangle 4"
-                                StrokeThickness="0"
-                                MinimumWidthRequest="80">
-                                <Border.GestureRecognizers>
-                                    <TapGestureRecognizer Command="{Binding ToggleSectionTimesViewCommand}" />
-                                </Border.GestureRecognizers>
-                                <Label
-                                    FontSize="{StaticResource FontSizeSmall}"
-                                    Text="Tiempos"
-                                    HorizontalOptions="Center"
-                                    TextColor="White" />
-                            </Border>
-                            <!--  Botón Diferencias  -->
-                            <Border
-                                Grid.Column="1"
-                                Padding="16,6"
-                                BackgroundColor="{Binding ShowSectionTimesDifferences, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF2A2A2A,#FF1A1A1A'}"
-                                StrokeShape="RoundRectangle 4"
-                                StrokeThickness="0"
-                                MinimumWidthRequest="80">
-                                <Border.GestureRecognizers>
-                                    <TapGestureRecognizer Command="{Binding ToggleSectionTimesViewCommand}" />
-                                </Border.GestureRecognizers>
-                                <Label
-                                    FontSize="{StaticResource FontSizeSmall}"
-                                    Text="vs Tú"
-                                    HorizontalOptions="Center"
-                                    TextColor="White" />
-                            </Border>
-                        </Grid>
-                    </Grid>
-                    
-                    <!--  Iteramos por cada sección  -->
-                    <VerticalStackLayout Spacing="12">
-                        <BindableLayout.ItemsSource>
-                            <Binding Path="SectionTimes" />
-                        </BindableLayout.ItemsSource>
-                        <BindableLayout.ItemTemplate>
-                            <DataTemplate x:DataType="services:SectionWithAthleteRows">
-                                <Border
-                                    Padding="8"
-                                    BackgroundColor="#FF1A1A1A"
-                                    StrokeShape="RoundRectangle 8"
-                                    StrokeThickness="0">
-                                    <VerticalStackLayout Spacing="6">
-                                        <!--  Nombre de la sección  -->
-                                        <Label
-                                            FontAttributes="Bold"
-                                            FontSize="{StaticResource FontSizeBody}"
-                                            Text="{Binding SectionName}"
-                                            TextColor="#FF6DDDFF" />
-                                        
-                                        <!--  ===== VISTA TIEMPOS ABSOLUTOS =====  -->
-                                        <VerticalStackLayout Spacing="4" IsVisible="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=ShowSectionTimesAbsolute}">
-                                            <!--  Cabecera de tabla (absoluta)  -->
-                                            <Grid ColumnDefinitions="2*,*,*,*,*" ColumnSpacing="4" Padding="4,2" BackgroundColor="#FF252525">
-                                                <Label Grid.Column="0" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="ATLETA" TextColor="#FFB1B1B1" />
-                                                <Label Grid.Column="1" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="CAT." TextColor="#FFB1B1B1" />
-                                                <Label Grid.Column="2" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="TIEMPO" TextColor="#FFB1B1B1" HorizontalTextAlignment="End" />
-                                                <Label Grid.Column="3" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="PENAL." TextColor="#FFB1B1B1" HorizontalTextAlignment="End" />
-                                                <Label Grid.Column="4" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="TOTAL" TextColor="#FFB1B1B1" HorizontalTextAlignment="End" />
-                                            </Grid>
-                                            
-                                            <!--  Filas de atletas (tiempos absolutos)  -->
-                                            <VerticalStackLayout Spacing="2">
-                                                <BindableLayout.ItemsSource>
-                                                    <Binding Path="Athletes" />
-                                                </BindableLayout.ItemsSource>
-                                                <BindableLayout.ItemTemplate>
-                                                    <DataTemplate x:DataType="services:AthleteSectionTimeRow">
-                                                        <Grid ColumnDefinitions="2*,*,*,*,*" ColumnSpacing="4" Padding="4,3" BackgroundColor="{Binding RowBackgroundColor}">
-                                                            <Label Grid.Column="0" FontSize="{StaticResource FontSizeSmall}" Text="{Binding AthleteName}" TextColor="White" LineBreakMode="TailTruncation" VerticalOptions="Center" />
-                                                            <Label Grid.Column="1" FontSize="{StaticResource FontSizeSmall}" Text="{Binding CategoryName}" TextColor="#FF808080" LineBreakMode="TailTruncation" VerticalOptions="Center" />
-                                                            <Label Grid.Column="2" FontSize="{StaticResource FontSizeSmall}" Text="{Binding DurationFormatted}" TextColor="#FF4CAF50" HorizontalTextAlignment="End" VerticalOptions="Center" />
-                                                            <Label Grid.Column="3" FontSize="{StaticResource FontSizeSmall}" Text="{Binding PenaltyFormatted}" TextColor="#FFFF6B6B" HorizontalTextAlignment="End" VerticalOptions="Center" />
-                                                            <Label Grid.Column="4" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="{Binding TotalFormatted}" TextColor="#FFFFD700" HorizontalTextAlignment="End" VerticalOptions="Center" />
-                                                        </Grid>
-                                                    </DataTemplate>
-                                                </BindableLayout.ItemTemplate>
-                                            </VerticalStackLayout>
-                                        </VerticalStackLayout>
-                                        
-                                        <!--  ===== VISTA DIFERENCIAS =====  -->
-                                        <VerticalStackLayout Spacing="4" IsVisible="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=ShowSectionTimesDifferences}">
-                                            <!--  Cabecera de tabla (diferencias)  -->
-                                            <Grid ColumnDefinitions="2*,*,*,*" ColumnSpacing="4" Padding="4,2" BackgroundColor="#FF252525">
-                                                <Label Grid.Column="0" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="ATLETA" TextColor="#FFB1B1B1" />
-                                                <Label Grid.Column="1" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="CAT." TextColor="#FFB1B1B1" />
-                                                <Label Grid.Column="2" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="TOTAL" TextColor="#FFB1B1B1" HorizontalTextAlignment="End" />
-                                                <Label Grid.Column="3" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="vs TÚ" TextColor="#FFB1B1B1" HorizontalTextAlignment="End" />
-                                            </Grid>
-                                            
-                                            <!--  Filas de atletas (diferencias)  -->
-                                            <VerticalStackLayout Spacing="2">
-                                                <BindableLayout.ItemsSource>
-                                                    <Binding Path="Athletes" />
-                                                </BindableLayout.ItemsSource>
-                                                <BindableLayout.ItemTemplate>
-                                                    <DataTemplate x:DataType="services:AthleteSectionTimeRow">
-                                                        <Grid ColumnDefinitions="2*,*,*,*" ColumnSpacing="4" Padding="4,3" BackgroundColor="{Binding RowBackgroundColor}">
-                                                            <Label Grid.Column="0" FontSize="{StaticResource FontSizeSmall}" Text="{Binding AthleteName}" TextColor="White" LineBreakMode="TailTruncation" VerticalOptions="Center" FontAttributes="{Binding IsReferenceAthlete, Converter={StaticResource BoolToFontAttributesConverter}}" />
-                                                            <Label Grid.Column="1" FontSize="{StaticResource FontSizeSmall}" Text="{Binding CategoryName}" TextColor="#FF808080" LineBreakMode="TailTruncation" VerticalOptions="Center" />
-                                                            <Label Grid.Column="2" FontSize="{StaticResource FontSizeSmall}" Text="{Binding TotalFormatted}" TextColor="#FFFFD700" HorizontalTextAlignment="End" VerticalOptions="Center" />
-                                                            <Label Grid.Column="3" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="{Binding DifferenceFormatted}" TextColor="{Binding DifferenceColor}" HorizontalTextAlignment="End" VerticalOptions="Center" />
-                                                        </Grid>
-                                                    </DataTemplate>
-                                                </BindableLayout.ItemTemplate>
-                                            </VerticalStackLayout>
-                                        </VerticalStackLayout>
-                                        
-                                    </VerticalStackLayout>
-                                </Border>
-                            </DataTemplate>
-                        </BindableLayout.ItemTemplate>
-                    </VerticalStackLayout>
-                </VerticalStackLayout>
 
                 </VerticalStackLayout>
 
@@ -4938,6 +4964,253 @@
                             TextColor="White" />
                     </Grid>
                 </VerticalStackLayout>
+            </Border>
+        </Grid>
+
+        <!--  ===== POPUP: TABLA DE TIEMPOS DETALLADA =====  -->
+        <Grid
+            Grid.Row="0"
+            Grid.RowSpan="2"
+            Grid.ColumnSpan="5"
+            BackgroundColor="#CC000000"
+            IsVisible="{Binding ShowDetailedTimesPopup}">
+            <Border
+                Padding="24"
+                BackgroundColor="#FF1E1E1E"
+                HorizontalOptions="Center"
+                VerticalOptions="Center"
+                MinimumWidthRequest="1100"
+                MaximumWidthRequest="1400"
+                MaximumHeightRequest="920"
+                Stroke="#FF3A3A3A"
+                StrokeShape="RoundRectangle 4"
+                StrokeThickness="1">
+                <Grid RowDefinitions="Auto,*,Auto" RowSpacing="16">
+                    <!--  Cabecera  -->
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                        <VerticalStackLayout Grid.Column="0" Spacing="2">
+                            <Label
+                                FontAttributes="Bold"
+                                FontSize="{StaticResource FontSizeTitle}"
+                                Text="Tiempos por Sección"
+                                TextColor="White" />
+                            <Label
+                                FontSize="{StaticResource FontSizeSmall}"
+                                LineBreakMode="TailTruncation"
+                                Text="{Binding SelectedSessionTitle}"
+                                TextColor="#FFB1B1B1" />
+                        </VerticalStackLayout>
+                        <Border
+                            Grid.Column="1"
+                            Padding="6"
+                            BackgroundColor="Transparent"
+                            Stroke="Transparent"
+                            StrokeShape="RoundRectangle 4"
+                            VerticalOptions="Start">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding CloseDetailedTimesPopupCommand}" />
+                            </Border.GestureRecognizers>
+                            <controls:SymbolIcon
+                                HeightRequest="{StaticResource IconSizeLarge}"
+                                SymbolName="xmark"
+                                TintColor="#FFB1B1B1"
+                                WidthRequest="{StaticResource IconSizeLarge}" />
+                        </Border>
+                    </Grid>
+                    
+                    <!--  Contenido con scroll  -->
+                    <ScrollView Grid.Row="1">
+                        <VerticalStackLayout Spacing="16">
+                            <!--  Indicador de carga  -->
+                            <ActivityIndicator
+                                IsRunning="{Binding IsLoadingDetailedTimes}"
+                                IsVisible="{Binding IsLoadingDetailedTimes}"
+                                Color="#FF6DDDFF"
+                                HeightRequest="48"
+                                WidthRequest="48"
+                                HorizontalOptions="Center" />
+                            
+                            <!--  Lista de secciones  -->
+                            <VerticalStackLayout Spacing="16" IsVisible="{Binding IsLoadingDetailedTimes, Converter={toolkit:InvertedBoolConverter}}">
+                                <BindableLayout.ItemsSource>
+                                    <Binding Path="DetailedSectionTimes" />
+                                </BindableLayout.ItemsSource>
+                                <BindableLayout.ItemTemplate>
+                                    <DataTemplate x:DataType="services:SectionWithDetailedAthleteRows">
+                                        <VerticalStackLayout Spacing="8">
+                                            <!--  Nombre de la sección  -->
+                                            <Label
+                                                FontAttributes="Bold"
+                                                FontSize="{StaticResource FontSizeSubtitle}"
+                                                Text="{Binding SectionName}"
+                                                TextColor="#FF6DDDFF" />
+                                                
+                                                <!--  Cabecera de tabla  -->
+                                                <Grid ColumnDefinitions="2*,*,3*,*,*,*" ColumnSpacing="8" Padding="10,8" BackgroundColor="#FF2A2A2A">
+                                                    <Label Grid.Column="0" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="ATLETA" TextColor="#FFB1B1B1" VerticalOptions="Center" />
+                                                    <Label Grid.Column="1" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="CAT." TextColor="#FFB1B1B1" VerticalOptions="Center" />
+                                                    
+                                                    <!--  Header Tiempos Parciales con toggle Laps/Splits  -->
+                                                    <HorizontalStackLayout Grid.Column="2" HorizontalOptions="Center" Spacing="10" VerticalOptions="Center">
+                                                        <Label FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="PARCIALES" TextColor="#FFB1B1B1" VerticalOptions="Center" />
+                                                        <Border
+                                                            Padding="12,6"
+                                                            BackgroundColor="#FF1A1A1A"
+                                                            Stroke="Transparent"
+                                                            StrokeShape="RoundRectangle 4"
+                                                            StrokeThickness="0">
+                                                            <Grid ColumnDefinitions="Auto,Auto" ColumnSpacing="8">
+                                                                <!--  Botón Lap  -->
+                                                                <Border
+                                                                    Padding="10,4"
+                                                                    BackgroundColor="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=ShowLapTimes, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF2A2A2A,#00000000'}"
+                                                                    Stroke="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=ShowLapTimes, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF404040,#00000000'}"
+                                                                    StrokeShape="RoundRectangle 4"
+                                                                    StrokeThickness="1">
+                                                                    <Border.GestureRecognizers>
+                                                                        <TapGestureRecognizer
+                                                                            Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=SetLapTimesModeCommand}"
+                                                                            CommandParameter="lap" />
+                                                                    </Border.GestureRecognizers>
+                                                                    <Label
+                                                                        FontSize="{StaticResource FontSizeSmall}"
+                                                                        FontAttributes="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=ShowLapTimes, Converter={StaticResource BoolToFontAttributesConverter}}"
+                                                                        Text="Lap"
+                                                                        TextColor="#FFFFFFFF"
+                                                                        VerticalOptions="Center"
+                                                                        HorizontalOptions="Center" />
+                                                                </Border>
+
+                                                                <!--  Botón Acum.  -->
+                                                                <Border
+                                                                    Grid.Column="1"
+                                                                    Padding="10,4"
+                                                                    BackgroundColor="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=ShowCumulativeTimes, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF2A2A2A,#00000000'}"
+                                                                    Stroke="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=ShowCumulativeTimes, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF404040,#00000000'}"
+                                                                    StrokeShape="RoundRectangle 4"
+                                                                    StrokeThickness="1">
+                                                                    <Border.GestureRecognizers>
+                                                                        <TapGestureRecognizer
+                                                                            Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=SetLapTimesModeCommand}"
+                                                                            CommandParameter="acum" />
+                                                                    </Border.GestureRecognizers>
+                                                                    <Label
+                                                                        FontSize="{StaticResource FontSizeSmall}"
+                                                                        FontAttributes="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=ShowCumulativeTimes, Converter={StaticResource BoolToFontAttributesConverter}}"
+                                                                        Text="Acum."
+                                                                        TextColor="#FFFFFFFF"
+                                                                        VerticalOptions="Center"
+                                                                        HorizontalOptions="Center" />
+                                                                </Border>
+                                                            </Grid>
+                                                        </Border>
+                                                    </HorizontalStackLayout>
+                                                    
+                                                    <Label Grid.Column="3" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="TIEMPO" TextColor="#FFB1B1B1" HorizontalTextAlignment="End" VerticalOptions="Center" />
+                                                    <Label Grid.Column="4" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="PENAL." TextColor="#FFB1B1B1" HorizontalTextAlignment="End" VerticalOptions="Center" />
+                                                    <Label Grid.Column="5" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="TOTAL" TextColor="#FFB1B1B1" HorizontalTextAlignment="End" VerticalOptions="Center" />
+                                                </Grid>
+                                                
+                                                <!--  Filas de atletas  -->
+                                                <VerticalStackLayout Spacing="0">
+                                                    <BindableLayout.ItemsSource>
+                                                        <Binding Path="Athletes" />
+                                                    </BindableLayout.ItemsSource>
+                                                    <BindableLayout.ItemTemplate>
+                                                        <DataTemplate x:DataType="services:AthleteDetailedTimeRow">
+                                                            <Grid ColumnDefinitions="2*,*,3*,*,*,*" ColumnSpacing="8" Padding="10,8" BackgroundColor="{Binding RowBackgroundColor}">
+                                                                <Label Grid.Column="0" FontSize="{StaticResource FontSizeBody}" Text="{Binding AthleteName}" TextColor="White" LineBreakMode="TailTruncation" VerticalOptions="Center" />
+                                                                <Label Grid.Column="1" FontSize="{StaticResource FontSizeBody}" Text="{Binding CategoryName}" TextColor="#FFB1B1B1" LineBreakMode="TailTruncation" VerticalOptions="Center" />
+                                                                    
+                                                                <!--  Parciales (Laps/Splits) - Columna 2 (scroll horizontal para no romper filas)  -->
+                                                                <Grid Grid.Column="2">
+                                                                    <ScrollView
+                                                                        Orientation="Horizontal"
+                                                                        HorizontalScrollBarVisibility="Never"
+                                                                        IsVisible="{Binding HasLaps}">
+                                                                        <HorizontalStackLayout
+                                                                            Spacing="8"
+                                                                            BindableLayout.ItemsSource="{Binding Laps}">
+                                                                            <BindableLayout.ItemTemplate>
+                                                                                <DataTemplate x:DataType="services:LapTimeData">
+                                                                                    <Border
+                                                                                        Padding="8,4"
+                                                                                        BackgroundColor="#FF2A2A2A"
+                                                                                        Stroke="Transparent"
+                                                                                        StrokeShape="RoundRectangle 4"
+                                                                                        StrokeThickness="0">
+                                                                                        <HorizontalStackLayout Spacing="6">
+                                                                                            <Label
+                                                                                                FontSize="{StaticResource FontSizeSmall}"
+                                                                                                Text="{Binding LapIndex, StringFormat='P{0}'}"
+                                                                                                TextColor="#FF808080"
+                                                                                                VerticalOptions="Center" />
+                                                                                            <!--  Tiempo parcial (Lap)  -->
+                                                                                            <Label
+                                                                                                FontSize="{StaticResource FontSizeBody}"
+                                                                                                Text="{Binding SplitFormatted}"
+                                                                                                TextColor="White"
+                                                                                                FontAttributes="Bold"
+                                                                                                FontFamily="Menlo"
+                                                                                                VerticalOptions="Center"
+                                                                                                IsVisible="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=ShowLapTimes}" />
+                                                                                            <!--  Tiempo acumulado (Acum.)  -->
+                                                                                            <Label
+                                                                                                FontSize="{StaticResource FontSizeBody}"
+                                                                                                Text="{Binding CumulativeFormatted}"
+                                                                                                TextColor="White"
+                                                                                                FontAttributes="Bold"
+                                                                                                FontFamily="Menlo"
+                                                                                                VerticalOptions="Center"
+                                                                                                IsVisible="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=ShowCumulativeTimes}" />
+                                                                                        </HorizontalStackLayout>
+                                                                                    </Border>
+                                                                                </DataTemplate>
+                                                                            </BindableLayout.ItemTemplate>
+                                                                        </HorizontalStackLayout>
+                                                                    </ScrollView>
+
+                                                                    <!--  Indicador cuando no hay laps  -->
+                                                                    <Label
+                                                                        FontSize="{StaticResource FontSizeBody}"
+                                                                        Text="—"
+                                                                        TextColor="#FF808080"
+                                                                        HorizontalOptions="Center"
+                                                                        VerticalOptions="Center"
+                                                                        IsVisible="{Binding HasLaps, Converter={toolkit:InvertedBoolConverter}}" />
+                                                                </Grid>
+                                                                    
+                                                                <Label Grid.Column="3" FontSize="{StaticResource FontSizeBody}" Text="{Binding DurationFormatted}" TextColor="White" HorizontalTextAlignment="End" VerticalOptions="Center" FontFamily="Menlo" />
+                                                                <Label Grid.Column="4" FontSize="{StaticResource FontSizeBody}" Text="{Binding PenaltyFormatted}" TextColor="White" HorizontalTextAlignment="End" VerticalOptions="Center" FontFamily="Menlo" />
+                                                                <Label Grid.Column="5" FontSize="{StaticResource FontSizeBody}" FontAttributes="Bold" Text="{Binding TotalFormatted}" TextColor="White" HorizontalTextAlignment="End" VerticalOptions="Center" FontFamily="Menlo" />
+                                                            </Grid>
+                                                        </DataTemplate>
+                                                    </BindableLayout.ItemTemplate>
+                                                </VerticalStackLayout>
+                                        </VerticalStackLayout>
+                                    </DataTemplate>
+                                </BindableLayout.ItemTemplate>
+                            </VerticalStackLayout>
+                        </VerticalStackLayout>
+                    </ScrollView>
+                    
+                    <!--  Pie  -->
+                    <Grid Grid.Row="2" ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                        <Label
+                            FontSize="{StaticResource FontSizeSmall}"
+                            Text="Lap = tiempo parcial · Acum. = tiempo acumulado"
+                            TextColor="#FFB1B1B1"
+                            VerticalOptions="Center" />
+                        <Button
+                            Grid.Column="1"
+                            BackgroundColor="#FF3A3A3A"
+                            Command="{Binding CloseDetailedTimesPopupCommand}"
+                            Text="Cerrar"
+                            TextColor="White"
+                            Padding="18,10"
+                            CornerRadius="8" />
+                    </Grid>
+                </Grid>
             </Border>
         </Grid>
 

@@ -213,6 +213,136 @@ public class StatisticsService
     }
 
     /// <summary>
+    /// Obtiene los tiempos de atletas por sección con tiempos parciales (Laps) detallados
+    /// </summary>
+    public async Task<List<SectionWithDetailedAthleteRows>> GetDetailedAthleteSectionTimesAsync(int sessionId)
+    {
+        var videos = await _databaseService.GetVideoClipsBySessionAsync(sessionId);
+        var allInputs = await _databaseService.GetInputsBySessionAsync(sessionId);
+        var allTimingEvents = await _databaseService.GetExecutionTimingEventsBySessionAsync(sessionId);
+        
+        if (videos.Count == 0)
+            return new List<SectionWithDetailedAthleteRows>();
+
+        // Crear diccionario de videos por Id
+        var videoDict = videos.ToDictionary(v => v.Id, v => v);
+        
+        // Agrupar timing events por video
+        var timingEventsByVideo = allTimingEvents.GroupBy(e => e.VideoId).ToDictionary(g => g.Key, g => g.ToList());
+        
+        // Obtener split times (InputTypeId = -1)
+        var splitInputs = allInputs.Where(i => i.InputTypeId == -1).ToList();
+        
+        // Obtener tags de sistema con penalizaciones
+        var systemEventTags = await _databaseService.GetSystemEventTagsAsync();
+        var penaltyTagIds = systemEventTags
+            .Where(t => t.PenaltySeconds > 0)
+            .ToDictionary(t => t.Id, t => t.PenaltySeconds * 1000L);
+        
+        // Obtener eventos que son penalizaciones
+        var penaltyInputs = allInputs
+            .Where(i => i.IsEvent == 1 && penaltyTagIds.ContainsKey(i.InputTypeId))
+            .GroupBy(i => i.VideoId)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        var rows = new List<AthleteDetailedTimeRow>();
+        
+        foreach (var splitInput in splitInputs)
+        {
+            if (!videoDict.TryGetValue(splitInput.VideoId, out var video))
+                continue;
+
+            long durationMs = 0;
+            if (!string.IsNullOrEmpty(splitInput.InputValue))
+            {
+                try
+                {
+                    var splitData = System.Text.Json.JsonSerializer.Deserialize<SplitTimeData>(splitInput.InputValue);
+                    if (splitData != null)
+                        durationMs = splitData.DurationMs;
+                }
+                catch { /* JSON inválido */ }
+            }
+
+            if (durationMs <= 0) continue;
+
+            // Calcular penalizaciones
+            long penaltyMs = 0;
+            if (penaltyInputs.TryGetValue(video.Id, out var penalties))
+            {
+                foreach (var penalty in penalties)
+                {
+                    if (penaltyTagIds.TryGetValue(penalty.InputTypeId, out var penaltyValue))
+                    {
+                        penaltyMs += penaltyValue;
+                    }
+                }
+            }
+
+            // Obtener tiempos parciales (Laps) del video
+            var laps = new List<LapTimeData>();
+            if (timingEventsByVideo.TryGetValue(video.Id, out var timingEvents))
+            {
+                // Filtrar solo los Laps (Kind = 1)
+                var lapEvents = timingEvents.Where(e => e.Kind == 1).OrderBy(e => e.LapIndex).ToList();
+                long cumulative = 0;
+                foreach (var lapEvent in lapEvents)
+                {
+                    cumulative += lapEvent.SplitMilliseconds;
+                    laps.Add(new LapTimeData
+                    {
+                        LapIndex = lapEvent.LapIndex,
+                        SplitMs = lapEvent.SplitMilliseconds,
+                        CumulativeMs = cumulative
+                    });
+                }
+            }
+
+            var athlete = video.Atleta;
+            var athleteName = athlete != null 
+                ? $"{athlete.Apellido?.ToUpperInvariant() ?? ""} {athlete.Nombre ?? ""}".Trim()
+                : $"Atleta {video.AtletaId}";
+
+            rows.Add(new AthleteDetailedTimeRow
+            {
+                AthleteId = video.AtletaId,
+                AthleteName = athleteName,
+                CategoryName = athlete?.CategoriaNombre ?? "",
+                Section = video.Section,
+                SectionName = GetSectionName(video.Section),
+                VideoId = video.Id,
+                VideoName = video.ComparisonName ?? video.ClipPath ?? "",
+                DurationMs = durationMs,
+                PenaltyMs = penaltyMs,
+                Laps = laps
+            });
+        }
+
+        // Agrupar por sección
+        var result = rows
+            .GroupBy(r => r.Section)
+            .OrderBy(g => g.Key)
+            .Select(sectionGroup =>
+            {
+                var athletes = sectionGroup.OrderBy(r => r.TotalMs).ToList();
+                // Alternar colores de fondo
+                    for (int i = 0; i < athletes.Count; i++)
+                    {
+                        athletes[i].RowBackgroundColor = i % 2 == 0 ? "#FF1E1E1E" : "#FF252525";
+                }
+                return new SectionWithDetailedAthleteRows
+                {
+                    Section = sectionGroup.Key,
+                    SectionName = GetSectionName(sectionGroup.Key),
+                    Athletes = athletes
+                };
+            })
+            .ToList();
+
+        return result;
+    }
+
+    /// <summary>
     /// Obtiene estadísticas absolutas de tags y etiquetas
     /// </summary>
     public async Task<AbsoluteTagStats> GetAbsoluteTagStatsAsync(int? sessionId = null)
@@ -864,8 +994,8 @@ public class AthleteSectionTimeRow : System.ComponentModel.INotifyPropertyChange
     /// <summary>Duración formateada como mm:ss.fff</summary>
     public string DurationFormatted => FormatTime(DurationMs);
     
-    /// <summary>Penalización formateada</summary>
-    public string PenaltyFormatted => PenaltyMs > 0 ? $"+{FormatTime(PenaltyMs)}" : "-";
+    /// <summary>Penalización formateada como segundos enteros</summary>
+    public string PenaltyFormatted => PenaltyMs > 0 ? $"+{PenaltyMs / 1000}" : "-";
     
     /// <summary>Total formateado</summary>
     public string TotalFormatted => FormatTime(TotalMs);
@@ -953,10 +1083,14 @@ public class AthleteSectionTimeRow : System.ComponentModel.INotifyPropertyChange
     
     public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
 
+    /// <summary>
+    /// Formatea tiempo en milisegundos a segundos,centésimas (ej: 92320ms → "92,32")
+    /// </summary>
     private static string FormatTime(long ms)
     {
-        var ts = TimeSpan.FromMilliseconds(ms);
-        return $"{(int)ts.TotalMinutes}:{ts.Seconds:D2}.{ts.Milliseconds:D3}";
+        var totalSeconds = ms / 1000.0;
+        var centiseconds = (ms % 1000) / 10; // Convertir milésimas a centésimas
+        return $"{(int)totalSeconds},{centiseconds:D2}";
     }
 }
 
@@ -1033,10 +1167,15 @@ public class UserSectionTimeWithDiff
         _ => "#FFFF6B6B"
     };
     
+    /// <summary>
+    /// Formatea tiempo en milisegundos a segundos,centésimas (ej: 92320ms → "92,32")
+    /// </summary>
     private static string FormatTime(long ms)
     {
-        var ts = TimeSpan.FromMilliseconds(Math.Abs(ms));
-        return $"{(int)ts.TotalMinutes}:{ts.Seconds:D2}.{ts.Milliseconds / 100:D1}";
+        var absMs = Math.Abs(ms);
+        var totalSeconds = absMs / 1000;
+        var centiseconds = (absMs % 1000) / 10;
+        return $"{totalSeconds},{centiseconds:D2}";
     }
 }
 
@@ -1073,4 +1212,88 @@ public class UserPersonalStats
     public bool HasValoraciones => ValoracionEvolution.HasData;
     public bool HasSectionTimes => SectionTimesWithDiff.Count > 0;
     public bool HasPenaltyEvolution => PenaltyEvolution.Count > 0;
+}
+
+// ==================== TABLA EXTENDIDA DE TIEMPOS CON PARCIALES ====================
+
+/// <summary>
+/// Tiempo parcial individual (Lap) dentro de una ejecución
+/// </summary>
+public class LapTimeData
+{
+    public int LapIndex { get; set; }
+    public long SplitMs { get; set; }
+    public long CumulativeMs { get; set; }
+    
+    public string SplitFormatted => FormatTime(SplitMs);
+    public string CumulativeFormatted => FormatTime(CumulativeMs);
+    
+    private static string FormatTime(long ms)
+    {
+        var totalSeconds = ms / 1000;
+        var centiseconds = (ms % 1000) / 10;
+        return $"{totalSeconds},{centiseconds:D2}";
+    }
+}
+
+/// <summary>
+/// Fila extendida con tiempos parciales para la tabla modal
+/// </summary>
+public class AthleteDetailedTimeRow
+{
+    public int AthleteId { get; set; }
+    public string AthleteName { get; set; } = "";
+    public string CategoryName { get; set; } = "";
+    public int Section { get; set; }
+    public string SectionName { get; set; } = "";
+    public int VideoId { get; set; }
+    public string VideoName { get; set; } = "";
+    
+    /// <summary>Duración total del split en milisegundos</summary>
+    public long DurationMs { get; set; }
+    
+    /// <summary>Penalización en milisegundos</summary>
+    public long PenaltyMs { get; set; }
+    
+    /// <summary>Tiempo total (duración + penalización) en milisegundos</summary>
+    public long TotalMs => DurationMs + PenaltyMs;
+    
+    /// <summary>Lista de tiempos parciales (Laps)</summary>
+    public List<LapTimeData> Laps { get; set; } = new();
+    
+    /// <summary>Indica si hay tiempos parciales</summary>
+    public bool HasLaps => Laps.Count > 0;
+    
+    /// <summary>Número de laps</summary>
+    public int LapCount => Laps.Count;
+    
+    public string DurationFormatted => FormatTime(DurationMs);
+    public string PenaltyFormatted => PenaltyMs > 0 ? $"+{PenaltyMs / 1000}" : "-";
+    public string TotalFormatted => FormatTime(TotalMs);
+    
+    /// <summary>Color de fondo de la fila (alternado)</summary>
+    public string RowBackgroundColor { get; set; } = "#FF1A1A1A";
+    
+    private static string FormatTime(long ms)
+    {
+        var totalSeconds = ms / 1000;
+        var centiseconds = (ms % 1000) / 10;
+        return $"{totalSeconds},{centiseconds:D2}";
+    }
+}
+
+/// <summary>
+/// Sección con filas detalladas de atletas (incluye parciales)
+/// </summary>
+public class SectionWithDetailedAthleteRows
+{
+    public int Section { get; set; }
+    public string SectionName { get; set; } = "";
+    public List<AthleteDetailedTimeRow> Athletes { get; set; } = new();
+    
+    /// <summary>Número máximo de laps en esta sección (para determinar columnas)</summary>
+    public int MaxLaps => Athletes.Count > 0 ? Athletes.Max(a => a.LapCount) : 0;
+    
+    /// <summary>Indica si hay algún atleta con laps</summary>
+    public bool HasAnyLaps => Athletes.Any(a => a.HasLaps);
 }

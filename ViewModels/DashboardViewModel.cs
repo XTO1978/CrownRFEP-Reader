@@ -1724,6 +1724,63 @@ public class DashboardViewModel : BaseViewModel
     /// <summary>Comando para alternar entre vista de tiempos y diferencias</summary>
     public ICommand ToggleSectionTimesViewCommand { get; }
 
+    // ==================== POPUP TABLA DETALLADA DE TIEMPOS ====================
+    
+    private bool _showDetailedTimesPopup;
+    /// <summary>Indica si se muestra el popup de tiempos detallados</summary>
+    public bool ShowDetailedTimesPopup
+    {
+        get => _showDetailedTimesPopup;
+        set => SetProperty(ref _showDetailedTimesPopup, value);
+    }
+    
+    /// <summary>Secciones con tiempos detallados (incluye Laps)</summary>
+    public ObservableCollection<SectionWithDetailedAthleteRows> DetailedSectionTimes { get; } = new();
+    
+    private bool _isLoadingDetailedTimes;
+    /// <summary>Indica si se están cargando los tiempos detallados</summary>
+    public bool IsLoadingDetailedTimes
+    {
+        get => _isLoadingDetailedTimes;
+        set => SetProperty(ref _isLoadingDetailedTimes, value);
+    }
+    
+    /// <summary>Indica si hay tiempos detallados con parciales</summary>
+    public bool HasDetailedTimesWithLaps => DetailedSectionTimes.Any(s => s.HasAnyLaps);
+    
+    /// <summary>Comando para abrir el popup de tiempos detallados</summary>
+    public ICommand OpenDetailedTimesPopupCommand { get; }
+    
+    /// <summary>Comando para cerrar el popup de tiempos detallados</summary>
+    public ICommand CloseDetailedTimesPopupCommand { get; }
+    
+    /// <summary>Indica si se muestran los tiempos acumulados (Splits) en lugar de parciales (Laps)</summary>
+    private bool _showCumulativeTimes;
+    public bool ShowCumulativeTimes
+    {
+        get => _showCumulativeTimes;
+        set
+        {
+            if (SetProperty(ref _showCumulativeTimes, value))
+            {
+                OnPropertyChanged(nameof(ShowLapTimes));
+                OnPropertyChanged(nameof(LapTimeModeText));
+            }
+        }
+    }
+    
+    /// <summary>Indica si se muestran los tiempos parciales (Laps)</summary>
+    public bool ShowLapTimes => !ShowCumulativeTimes;
+    
+    /// <summary>Texto del modo actual de visualización de parciales</summary>
+    public string LapTimeModeText => ShowCumulativeTimes ? "Acum." : "Parcial";
+    
+    /// <summary>Comando para alternar entre Laps y Splits</summary>
+    public ICommand ToggleLapTimesModeCommand { get; }
+
+    /// <summary>Comando para seleccionar explícitamente Lap/Acum.</summary>
+    public ICommand SetLapTimesModeCommand { get; }
+
     // ==================== ESTADÍSTICAS USUARIO ====================
     private UserAthleteStats? _userAthleteStats;
     private int? _referenceAthleteId;
@@ -1969,6 +2026,38 @@ public class DashboardViewModel : BaseViewModel
         SectionTimes.Clear();
         HasSectionTimes = false;
         OnPropertyChanged(nameof(ShowSectionTimesTable));
+    }
+
+    /// <summary>
+    /// Abre el popup con la tabla de tiempos detallados (incluye parciales)
+    /// </summary>
+    private async Task OpenDetailedTimesPopupAsync()
+    {
+        if (SelectedSession == null) return;
+        
+        IsLoadingDetailedTimes = true;
+        ShowDetailedTimesPopup = true;
+        
+        try
+        {
+            var detailedTimes = await _statisticsService.GetDetailedAthleteSectionTimesAsync(SelectedSession.Id);
+            
+            DetailedSectionTimes.Clear();
+            foreach (var section in detailedTimes)
+            {
+                DetailedSectionTimes.Add(section);
+            }
+            
+            OnPropertyChanged(nameof(HasDetailedTimesWithLaps));
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardViewModel", $"Error cargando tiempos detallados: {ex.Message}", ex);
+        }
+        finally
+        {
+            IsLoadingDetailedTimes = false;
+        }
     }
 
     /// <summary>
@@ -2361,6 +2450,16 @@ public class DashboardViewModel : BaseViewModel
         
         // Comando para alternar vista de tiempos
         ToggleSectionTimesViewCommand = new RelayCommand(() => ShowSectionTimesDifferences = !ShowSectionTimesDifferences);
+        
+        // Comandos para popup de tiempos detallados
+        OpenDetailedTimesPopupCommand = new AsyncRelayCommand(OpenDetailedTimesPopupAsync);
+        CloseDetailedTimesPopupCommand = new RelayCommand(() => ShowDetailedTimesPopup = false);
+        ToggleLapTimesModeCommand = new RelayCommand(() => ShowCumulativeTimes = !ShowCumulativeTimes);
+        SetLapTimesModeCommand = new RelayCommand<string>(mode =>
+        {
+            // mode: "lap" | "acum"
+            ShowCumulativeTimes = string.Equals(mode, "acum", StringComparison.OrdinalIgnoreCase);
+        });
         
         // Notificar cambios en VideoCountDisplayText cuando cambie la colección
         SelectedSessionVideos.CollectionChanged += (s, e) => OnPropertyChanged(nameof(VideoCountDisplayText));

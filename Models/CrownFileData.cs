@@ -25,6 +25,9 @@ public class CrownFileData
     [JsonPropertyName("Inputs")]
     public List<InputJson>? Inputs { get; set; }
 
+    [JsonPropertyName("ExecutionTimingEvents")]
+    public List<ExecutionTimingEventJson>? ExecutionTimingEvents { get; set; }
+
     [JsonPropertyName("Valoraciones")]
     public List<ValoracionJson>? Valoraciones { get; set; }
 }
@@ -246,4 +249,58 @@ public class ValoracionJson
 
     [JsonPropertyName("TimeStamp")]
     public string? TimeStamp { get; set; }
+}
+
+/// <summary>
+/// Evento de cronometraje de ejecución (Inicio/Lap/Fin) para exportación JSON
+/// </summary>
+public class ExecutionTimingEventJson
+{
+    [JsonPropertyName("Id")]
+    public int Id { get; set; }
+
+    [JsonPropertyName("VideoID")]
+    public int VideoId { get; set; }
+
+    [JsonPropertyName("SessionID")]
+    public int SessionId { get; set; }
+
+    [JsonPropertyName("AthleteID")]
+    public int AthleteId { get; set; }
+
+    [JsonPropertyName("SectionID")]
+    public int SectionId { get; set; }
+
+    /// <summary>
+    /// 0 = Inicio, 1 = Lap, 2 = Fin
+    /// </summary>
+    [JsonPropertyName("Kind")]
+    public int Kind { get; set; }
+
+    /// <summary>
+    /// Tiempo absoluto desde el inicio de la grabación (ms)
+    /// </summary>
+    [JsonPropertyName("ElapsedMs")]
+    public long ElapsedMilliseconds { get; set; }
+
+    /// <summary>
+    /// Tiempo parcial desde el último hito (inicio/lap anterior) (ms)
+    /// </summary>
+    [JsonPropertyName("SplitMs")]
+    public long SplitMilliseconds { get; set; }
+
+    /// <summary>
+    /// Índice de lap dentro de una ejecución (1..N). Para Inicio/Fin será 0.
+    /// </summary>
+    [JsonPropertyName("LapIndex")]
+    public int LapIndex { get; set; }
+
+    /// <summary>
+    /// Índice de ejecución dentro del vídeo (0..N). Permite varias ejecuciones.
+    /// </summary>
+    [JsonPropertyName("RunIndex")]
+    public int RunIndex { get; set; }
+
+    [JsonPropertyName("CreatedAt")]
+    public long CreatedAtUnixSeconds { get; set; }
 }

@@ -101,6 +101,15 @@ public class CrownFileService
                     }
                 }
 
+                // Obtener ExecutionTimingEvents (INICIO, LAP, FIN) de los videos
+                var allTimingEvents = new List<ExecutionTimingEvent>();
+                foreach (var video in videos)
+                {
+                    var timingEvents = await _databaseService.GetExecutionTimingEventsByVideoAsync(video.Id);
+                    allTimingEvents.AddRange(timingEvents);
+                }
+                AppLog.Info("CrownFileService", $"[Export] ExecutionTimingEvents encontrados: {allTimingEvents.Count}");
+
                 ReportProgress(progress, "Preparando datos para exportación...", 30);
 
                 // Crear el objeto CrownFileData
@@ -165,7 +174,21 @@ public class CrownFileService
                         NombreCategoria = c.NombreCategoria,
                         IsSystemDefault = c.IsSystemDefault == 1
                     }).ToList(),
-                    Inputs = await ConvertInputsToInputJsonAsync(allInputs, videos)
+                    Inputs = await ConvertInputsToInputJsonAsync(allInputs, videos),
+                    ExecutionTimingEvents = allTimingEvents.Select(e => new ExecutionTimingEventJson
+                    {
+                        Id = e.Id,
+                        VideoId = e.VideoId,
+                        SessionId = e.SessionId,
+                        AthleteId = e.AthleteId,
+                        SectionId = e.SectionId,
+                        Kind = e.Kind,
+                        ElapsedMilliseconds = e.ElapsedMilliseconds,
+                        SplitMilliseconds = e.SplitMilliseconds,
+                        LapIndex = e.LapIndex,
+                        RunIndex = e.RunIndex,
+                        CreatedAtUnixSeconds = e.CreatedAtUnixSeconds
+                    }).ToList()
                 };
 
                 ReportProgress(progress, "Creando archivo .crown...", 40);
@@ -654,6 +677,47 @@ public class CrownFileService
                         TimeStamp = valJson.TimeStamp
                     };
                     await _databaseService.SaveValoracionAsync(valoracion);
+                }
+            }
+
+            // Importar ExecutionTimingEvents (INICIO, LAP, FIN)
+            if (crownData.ExecutionTimingEvents != null && crownData.ExecutionTimingEvents.Count > 0)
+            {
+                ReportProgress(progress, "Importando tiempos de ejecución...", 98);
+                
+                var timingEventsToInsert = new List<ExecutionTimingEvent>();
+                
+                foreach (var evJson in crownData.ExecutionTimingEvents)
+                {
+                    // Mapear VideoId y AthleteId a los IDs locales
+                    var localVideoId = videoIdMap.TryGetValue(evJson.VideoId, out var mappedVideoId) ? mappedVideoId : 0;
+                    var localAthleteId = athleteIdMap.TryGetValue(evJson.AthleteId, out var mappedAthleteId) ? mappedAthleteId : 0;
+                    
+                    if (localVideoId == 0)
+                    {
+                        AppLog.Warn("CrownFileService", $"[Import] Skipping ExecutionTimingEvent: no local video found for JSON VideoId={evJson.VideoId}");
+                        continue;
+                    }
+                    
+                    timingEventsToInsert.Add(new ExecutionTimingEvent
+                    {
+                        VideoId = localVideoId,
+                        SessionId = sessionId,
+                        AthleteId = localAthleteId,
+                        SectionId = evJson.SectionId,
+                        Kind = evJson.Kind,
+                        ElapsedMilliseconds = evJson.ElapsedMilliseconds,
+                        SplitMilliseconds = evJson.SplitMilliseconds,
+                        LapIndex = evJson.LapIndex,
+                        RunIndex = evJson.RunIndex,
+                        CreatedAtUnixSeconds = evJson.CreatedAtUnixSeconds
+                    });
+                }
+                
+                if (timingEventsToInsert.Count > 0)
+                {
+                    await _databaseService.InsertExecutionTimingEventsAsync(timingEventsToInsert);
+                    AppLog.Info("CrownFileService", $"[Import] ExecutionTimingEvents importados: {timingEventsToInsert.Count}");
                 }
             }
 
