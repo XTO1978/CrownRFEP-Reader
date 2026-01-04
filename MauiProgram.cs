@@ -98,6 +98,7 @@ public static class MauiProgram
 		builder.Services.AddSingleton<CrownFileService>();
 		builder.Services.AddSingleton<StatisticsService>();
 		builder.Services.AddSingleton<ThumbnailService>();
+		builder.Services.AddSingleton<ITableExportService, TableExportService>();
 		
 		// Plugin.Maui.Audio para grabación de micrófono
 		builder.Services.AddSingleton(AudioManager.Current);

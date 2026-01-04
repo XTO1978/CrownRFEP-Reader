@@ -53,6 +53,44 @@ public class AthleteFilterItem : FilterItem<Athlete>
 }
 
 /// <summary>
+/// Item simple para Picker de atleta (sin IsSelected)
+/// </summary>
+public class AthletePickerItem
+{
+    public int Id { get; }
+    public string DisplayName { get; }
+    
+    /// <summary>VideoId específico (null = usar mejor intento)</summary>
+    public int? VideoId { get; }
+    
+    /// <summary>Indica si tiene múltiples intentos</summary>
+    public bool HasMultipleAttempts { get; }
+    
+    /// <summary>Número de intento (0 = todos/mejor)</summary>
+    public int AttemptNumber { get; }
+
+    public AthletePickerItem(int id, string displayName, int? videoId = null, int attemptNumber = 0, bool hasMultipleAttempts = false)
+    {
+        Id = id;
+        DisplayName = displayName;
+        VideoId = videoId;
+        AttemptNumber = attemptNumber;
+        HasMultipleAttempts = hasMultipleAttempts;
+    }
+
+    public AthletePickerItem(Athlete athlete)
+    {
+        Id = athlete.Id;
+        DisplayName = athlete.NombreCompleto ?? $"Atleta {athlete.Id}";
+        VideoId = null;
+        AttemptNumber = 0;
+        HasMultipleAttempts = false;
+    }
+
+    public override string ToString() => DisplayName;
+}
+
+/// <summary>
 /// Item de filtro para secciones
 /// </summary>
 public class SectionFilterItem : FilterItem<int>

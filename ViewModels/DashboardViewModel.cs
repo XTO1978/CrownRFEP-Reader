@@ -134,6 +134,7 @@ public class DashboardViewModel : BaseViewModel
     private readonly StatisticsService _statisticsService;
     private readonly ThumbnailService _thumbnailService;
     private readonly IHealthKitService _healthKitService;
+    private readonly ITableExportService _tableExportService;
     private readonly ImportProgressService? _importProgressService;
 
     private DashboardStats? _stats;
@@ -1733,9 +1734,71 @@ public class DashboardViewModel : BaseViewModel
         get => _showDetailedTimesPopup;
         set => SetProperty(ref _showDetailedTimesPopup, value);
     }
+
+    private string _detailedTimesHtml = string.Empty;
+    public string DetailedTimesHtml
+    {
+        get => _detailedTimesHtml;
+        set => SetProperty(ref _detailedTimesHtml, value);
+    }
     
     /// <summary>Secciones con tiempos detallados (incluye Laps)</summary>
     public ObservableCollection<SectionWithDetailedAthleteRows> DetailedSectionTimes { get; } = new();
+
+    // ---- Selector de atleta de referencia para gráficos ----
+    /// <summary>Lista de atletas disponibles para selección en el popup</summary>
+    public ObservableCollection<AthletePickerItem> DetailedTimesAthletes { get; } = new();
+
+    private AthletePickerItem? _selectedDetailedTimesAthlete;
+    /// <summary>Atleta seleccionado para marcar en los gráficos del popup</summary>
+    public AthletePickerItem? SelectedDetailedTimesAthlete
+    {
+        get => _selectedDetailedTimesAthlete;
+        set
+        {
+            if (SetProperty(ref _selectedDetailedTimesAthlete, value))
+            {
+                OnPropertyChanged(nameof(HasSelectedDetailedTimesAthlete));
+                OnPropertyChanged(nameof(SelectedDetailedTimesAthleteName));
+                RegenerateDetailedTimesHtml();
+            }
+        }
+    }
+
+    /// <summary>Indica si hay un atleta seleccionado para el gráfico</summary>
+    public bool HasSelectedDetailedTimesAthlete => SelectedDetailedTimesAthlete != null;
+
+    /// <summary>Nombre del atleta seleccionado (para mostrar en el botón)</summary>
+    public string SelectedDetailedTimesAthleteName => SelectedDetailedTimesAthlete?.DisplayName ?? "Ninguno";
+
+    private bool _isAthleteDropdownExpanded;
+    /// <summary>Indica si el dropdown de atletas está expandido</summary>
+    public bool IsAthleteDropdownExpanded
+    {
+        get => _isAthleteDropdownExpanded;
+        set => SetProperty(ref _isAthleteDropdownExpanded, value);
+    }
+
+    /// <summary>Comando para alternar el dropdown de atletas</summary>
+    public ICommand ToggleAthleteDropdownCommand { get; }
+
+    /// <summary>Comando para seleccionar un atleta del dropdown</summary>
+    public ICommand SelectDetailedTimesAthleteCommand { get; }
+
+    /// <summary>Comando para limpiar la selección de atleta en el popup</summary>
+    public ICommand ClearDetailedTimesAthleteCommand { get; }
+
+    /// <summary>Regenera el HTML con el atleta seleccionado actual</summary>
+    private void RegenerateDetailedTimesHtml()
+    {
+        if (SelectedSession == null || DetailedSectionTimes.Count == 0)
+            return;
+
+        var refId = SelectedDetailedTimesAthlete?.Id;
+        var refVideoId = SelectedDetailedTimesAthlete?.VideoId;
+        var refName = SelectedDetailedTimesAthlete?.DisplayName;
+        DetailedTimesHtml = _tableExportService.BuildDetailedSectionTimesHtml(SelectedSession, DetailedSectionTimes.ToList(), refId, refVideoId, refName);
+    }
     
     private bool _isLoadingDetailedTimes;
     /// <summary>Indica si se están cargando los tiempos detallados</summary>
@@ -1743,6 +1806,13 @@ public class DashboardViewModel : BaseViewModel
     {
         get => _isLoadingDetailedTimes;
         set => SetProperty(ref _isLoadingDetailedTimes, value);
+    }
+
+    private bool _isExportingDetailedTimes;
+    public bool IsExportingDetailedTimes
+    {
+        get => _isExportingDetailedTimes;
+        set => SetProperty(ref _isExportingDetailedTimes, value);
     }
     
     /// <summary>Indica si hay tiempos detallados con parciales</summary>
@@ -1780,6 +1850,9 @@ public class DashboardViewModel : BaseViewModel
 
     /// <summary>Comando para seleccionar explícitamente Lap/Acum.</summary>
     public ICommand SetLapTimesModeCommand { get; }
+
+    public ICommand ExportDetailedTimesHtmlCommand { get; }
+    public ICommand ExportDetailedTimesPdfCommand { get; }
 
     // ==================== ESTADÍSTICAS USUARIO ====================
     private UserAthleteStats? _userAthleteStats;
@@ -2037,6 +2110,7 @@ public class DashboardViewModel : BaseViewModel
         
         IsLoadingDetailedTimes = true;
         ShowDetailedTimesPopup = true;
+        IsAthleteDropdownExpanded = false;
         
         try
         {
@@ -2049,6 +2123,79 @@ public class DashboardViewModel : BaseViewModel
             }
             
             OnPropertyChanged(nameof(HasDetailedTimesWithLaps));
+
+            // Cargar lista de atletas para el selector (incluyendo intentos múltiples)
+            DetailedTimesAthletes.Clear();
+            
+            // Obtener atletas únicos primero
+            var allAthletes = detailedTimes
+                .SelectMany(s => s.Athletes)
+                .ToList();
+
+            // Agrupar por atleta para detectar múltiples intentos
+            var athleteGroups = allAthletes
+                .GroupBy(a => a.AthleteId)
+                .OrderBy(g => g.First().AthleteName)
+                .ToList();
+
+            foreach (var group in athleteGroups)
+            {
+                var athleteId = group.Key;
+                var athleteName = group.First().AthleteName;
+                var attempts = group.OrderBy(a => a.TotalMs).ToList();
+                var hasMultiple = attempts.Count > 1;
+
+                if (hasMultiple)
+                {
+                    // Añadir opción "Mejor" para atletas con múltiples intentos
+                    var bestAttempt = attempts.First();
+                    DetailedTimesAthletes.Add(new AthletePickerItem(
+                        athleteId, 
+                        $"{athleteName} (Mejor)", 
+                        bestAttempt.VideoId, 
+                        attemptNumber: 0, 
+                        hasMultipleAttempts: true));
+
+                    // Añadir cada intento individual
+                    for (int i = 0; i < attempts.Count; i++)
+                    {
+                        var attempt = attempts[i];
+                        DetailedTimesAthletes.Add(new AthletePickerItem(
+                            athleteId,
+                            $"{athleteName} (#{i + 1})",
+                            attempt.VideoId,
+                            attemptNumber: i + 1,
+                            hasMultipleAttempts: true));
+                    }
+                }
+                else
+                {
+                    // Atleta con un solo intento
+                    var single = attempts.First();
+                    DetailedTimesAthletes.Add(new AthletePickerItem(
+                        athleteId, 
+                        athleteName, 
+                        single.VideoId, 
+                        attemptNumber: 1, 
+                        hasMultipleAttempts: false));
+                }
+            }
+
+            // Preseleccionar el atleta de referencia global si existe en la lista
+            if (ReferenceAthleteId.HasValue)
+            {
+                // Buscar la opción "Mejor" o la única entrada del atleta
+                SelectedDetailedTimesAthlete = DetailedTimesAthletes
+                    .FirstOrDefault(a => a.Id == ReferenceAthleteId.Value && a.AttemptNumber == 0)
+                    ?? DetailedTimesAthletes.FirstOrDefault(a => a.Id == ReferenceAthleteId.Value);
+            }
+            else
+            {
+                SelectedDetailedTimesAthlete = null;
+            }
+
+            // Generar HTML inicial
+            RegenerateDetailedTimesHtml();
         }
         catch (Exception ex)
         {
@@ -2295,6 +2442,7 @@ public class DashboardViewModel : BaseViewModel
         CrownFileService crownFileService,
         StatisticsService statisticsService,
         ThumbnailService thumbnailService,
+        ITableExportService tableExportService,
         IHealthKitService healthKitService,
         VideoExportNotifier? videoExportNotifier = null,
         ImportProgressService? importProgressService = null)
@@ -2303,6 +2451,7 @@ public class DashboardViewModel : BaseViewModel
         _crownFileService = crownFileService;
         _statisticsService = statisticsService;
         _thumbnailService = thumbnailService;
+        _tableExportService = tableExportService;
         _healthKitService = healthKitService;
         _importProgressService = importProgressService;
 
@@ -2454,12 +2603,26 @@ public class DashboardViewModel : BaseViewModel
         // Comandos para popup de tiempos detallados
         OpenDetailedTimesPopupCommand = new AsyncRelayCommand(OpenDetailedTimesPopupAsync);
         CloseDetailedTimesPopupCommand = new RelayCommand(() => ShowDetailedTimesPopup = false);
+        ClearDetailedTimesAthleteCommand = new RelayCommand(() =>
+        {
+            SelectedDetailedTimesAthlete = null;
+            IsAthleteDropdownExpanded = false;
+        });
+        ToggleAthleteDropdownCommand = new RelayCommand(() => IsAthleteDropdownExpanded = !IsAthleteDropdownExpanded);
+        SelectDetailedTimesAthleteCommand = new RelayCommand<AthletePickerItem>(athlete =>
+        {
+            SelectedDetailedTimesAthlete = athlete;
+            IsAthleteDropdownExpanded = false;
+        });
         ToggleLapTimesModeCommand = new RelayCommand(() => ShowCumulativeTimes = !ShowCumulativeTimes);
         SetLapTimesModeCommand = new RelayCommand<string>(mode =>
         {
             // mode: "lap" | "acum"
             ShowCumulativeTimes = string.Equals(mode, "acum", StringComparison.OrdinalIgnoreCase);
         });
+
+        ExportDetailedTimesHtmlCommand = new AsyncRelayCommand(ExportDetailedTimesHtmlAsync);
+        ExportDetailedTimesPdfCommand = new AsyncRelayCommand(ExportDetailedTimesPdfAsync);
         
         // Notificar cambios en VideoCountDisplayText cuando cambie la colección
         SelectedSessionVideos.CollectionChanged += (s, e) => OnPropertyChanged(nameof(VideoCountDisplayText));
@@ -2473,6 +2636,73 @@ public class DashboardViewModel : BaseViewModel
             _modifiedVideoIds.Add(videoId);
             _hasStatsUpdatePending = true;
         });
+    }
+
+    private async Task ExportDetailedTimesHtmlAsync()
+    {
+        await ExportDetailedTimesAsync("html");
+    }
+
+    private async Task ExportDetailedTimesPdfAsync()
+    {
+        await ExportDetailedTimesAsync("pdf");
+    }
+
+    private async Task ExportDetailedTimesAsync(string format)
+    {
+        if (SelectedSession == null)
+        {
+            await Shell.Current.DisplayAlert("Error", "No hay ninguna sesión seleccionada", "OK");
+            return;
+        }
+
+        if (IsLoadingDetailedTimes)
+            return;
+
+        try
+        {
+            IsExportingDetailedTimes = true;
+
+            var sections = DetailedSectionTimes.ToList();
+            if (sections.Count == 0)
+            {
+                // Si el popup está abierto pero aún no se ha cargado, cargamos datos.
+                var detailedTimes = await _statisticsService.GetDetailedAthleteSectionTimesAsync(SelectedSession.Id);
+                sections = detailedTimes;
+            }
+
+            if (sections.Count == 0)
+            {
+                await Shell.Current.DisplayAlert("Exportación", "No hay datos de tiempos para exportar", "OK");
+                return;
+            }
+
+            string filePath;
+            // Usar el atleta seleccionado en el popup (si hay)
+            var refId = SelectedDetailedTimesAthlete?.Id;
+            var refVideoId = SelectedDetailedTimesAthlete?.VideoId;
+            var refName = SelectedDetailedTimesAthlete?.DisplayName;
+
+            if (string.Equals(format, "pdf", StringComparison.OrdinalIgnoreCase))
+                filePath = await _tableExportService.ExportDetailedSectionTimesToPdfAsync(SelectedSession, sections, refId, refVideoId, refName);
+            else
+                filePath = await _tableExportService.ExportDetailedSectionTimesToHtmlAsync(SelectedSession, sections, refId, refVideoId, refName);
+
+            await Share.Default.RequestAsync(new ShareFileRequest
+            {
+                Title = $"Exportar {SelectedSession.DisplayName}",
+                File = new ShareFile(filePath)
+            });
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardViewModel", $"Error exportando tabla ({format}): {ex.Message}", ex);
+            await Shell.Current.DisplayAlert("Error", $"No se pudo exportar la tabla a {format.ToUpperInvariant()}: {ex.Message}", "OK");
+        }
+        finally
+        {
+            IsExportingDetailedTimes = false;
+        }
     }
 
     /// <summary>

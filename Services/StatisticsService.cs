@@ -326,6 +326,9 @@ public class StatisticsService
             {
                 var athletes = sectionGroup.OrderBy(r => r.TotalMs).ToList();
 
+                // Calcular número de intento y marcar mejor para atletas con múltiples ejecuciones
+                AssignAttemptNumbers(athletes);
+
                 // Alternar colores de fondo
                 for (int i = 0; i < athletes.Count; i++)
                 {
@@ -344,6 +347,37 @@ public class StatisticsService
             .ToList();
 
         return result;
+    }
+
+    /// <summary>
+    /// Asigna números de intento a atletas con múltiples ejecuciones en la misma sección
+    /// </summary>
+    private static void AssignAttemptNumbers(List<AthleteDetailedTimeRow> athletes)
+    {
+        // Agrupar por atleta
+        var byAthlete = athletes.GroupBy(a => a.AthleteId).ToList();
+
+        foreach (var athleteGroup in byAthlete)
+        {
+            var attempts = athleteGroup.OrderBy(a => a.TotalMs).ToList();
+            var totalAttempts = attempts.Count;
+
+            if (totalAttempts == 1)
+            {
+                attempts[0].AttemptNumber = 1;
+                attempts[0].TotalAttempts = 1;
+                attempts[0].IsBestAttempt = true;
+                continue;
+            }
+
+            // Múltiples intentos: numerar por orden de tiempo (1 = mejor)
+            for (int i = 0; i < attempts.Count; i++)
+            {
+                attempts[i].AttemptNumber = i + 1;
+                attempts[i].TotalAttempts = totalAttempts;
+                attempts[i].IsBestAttempt = i == 0; // El primero es el mejor (ya ordenados por TotalMs)
+            }
+        }
     }
 
     private static void ApplyConditionalFormattingForSection(List<AthleteDetailedTimeRow> athletes)
@@ -1360,14 +1394,28 @@ public class AthleteDetailedTimeRow
     public int VideoId { get; set; }
     public string VideoName { get; set; } = "";
     
+    /// <summary>Número de intento del atleta en esta sección (1, 2, 3...)</summary>
+    public int AttemptNumber { get; set; } = 1;
+    
+    /// <summary>Total de intentos del atleta en esta sección</summary>
+    public int TotalAttempts { get; set; } = 1;
+    
+    /// <summary>Indica si es el mejor intento del atleta en esta sección</summary>
+    public bool IsBestAttempt { get; set; }
+    
+    /// <summary>Nombre para mostrar (incluye número de intento si hay varios)</summary>
+    public string DisplayName => TotalAttempts > 1 
+        ? $"{AthleteName} ({AttemptNumber})" 
+        : AthleteName;
+    
     /// <summary>Duración total del split en milisegundos</summary>
     public long DurationMs { get; set; }
     
-    /// <summary>Penalización en milisegundos</summary>
+    /// <summary>Penalización en milisegundos (almacenada pero no usada en cálculos)</summary>
     public long PenaltyMs { get; set; }
     
-    /// <summary>Tiempo total (duración + penalización) en milisegundos</summary>
-    public long TotalMs => DurationMs + PenaltyMs;
+    /// <summary>Tiempo total (solo duración, sin penalizaciones)</summary>
+    public long TotalMs => DurationMs;
     
     /// <summary>Lista de tiempos parciales (Laps)</summary>
     public List<LapTimeData> Laps { get; set; } = new();
