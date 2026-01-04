@@ -2650,26 +2650,42 @@ public class DashboardViewModel : BaseViewModel
 
     private async Task ExportDetailedTimesAsync(string format)
     {
+        System.Diagnostics.Debug.WriteLine($"[ExportDetailedTimes] Iniciando exportación: format={format}");
+
         if (SelectedSession == null)
         {
+            System.Diagnostics.Debug.WriteLine("[ExportDetailedTimes] Error: No hay sesión seleccionada");
             await Shell.Current.DisplayAlert("Error", "No hay ninguna sesión seleccionada", "OK");
             return;
         }
 
         if (IsLoadingDetailedTimes)
+        {
+            System.Diagnostics.Debug.WriteLine("[ExportDetailedTimes] Abortado: IsLoadingDetailedTimes=true");
             return;
+        }
+
+        if (IsExportingDetailedTimes)
+        {
+            System.Diagnostics.Debug.WriteLine("[ExportDetailedTimes] Abortado: ya hay una exportación en curso");
+            return;
+        }
 
         try
         {
             IsExportingDetailedTimes = true;
+            System.Diagnostics.Debug.WriteLine("[ExportDetailedTimes] IsExportingDetailedTimes = true");
 
             var sections = DetailedSectionTimes.ToList();
             if (sections.Count == 0)
             {
                 // Si el popup está abierto pero aún no se ha cargado, cargamos datos.
+                System.Diagnostics.Debug.WriteLine("[ExportDetailedTimes] No hay secciones cargadas, cargando...");
                 var detailedTimes = await _statisticsService.GetDetailedAthleteSectionTimesAsync(SelectedSession.Id);
                 sections = detailedTimes;
             }
+
+            System.Diagnostics.Debug.WriteLine($"[ExportDetailedTimes] Secciones: {sections.Count}");
 
             if (sections.Count == 0)
             {
@@ -2683,24 +2699,32 @@ public class DashboardViewModel : BaseViewModel
             var refVideoId = SelectedDetailedTimesAthlete?.VideoId;
             var refName = SelectedDetailedTimesAthlete?.DisplayName;
 
+            System.Diagnostics.Debug.WriteLine($"[ExportDetailedTimes] Exportando {format}...");
+
             if (string.Equals(format, "pdf", StringComparison.OrdinalIgnoreCase))
                 filePath = await _tableExportService.ExportDetailedSectionTimesToPdfAsync(SelectedSession, sections, refId, refVideoId, refName);
             else
                 filePath = await _tableExportService.ExportDetailedSectionTimesToHtmlAsync(SelectedSession, sections, refId, refVideoId, refName);
+
+            System.Diagnostics.Debug.WriteLine($"[ExportDetailedTimes] Archivo generado: {filePath}");
 
             await Share.Default.RequestAsync(new ShareFileRequest
             {
                 Title = $"Exportar {SelectedSession.DisplayName}",
                 File = new ShareFile(filePath)
             });
+
+            System.Diagnostics.Debug.WriteLine("[ExportDetailedTimes] Share completado");
         }
         catch (Exception ex)
         {
             AppLog.Error("DashboardViewModel", $"Error exportando tabla ({format}): {ex.Message}", ex);
+            System.Diagnostics.Debug.WriteLine($"[ExportDetailedTimes] Error: {ex}");
             await Shell.Current.DisplayAlert("Error", $"No se pudo exportar la tabla a {format.ToUpperInvariant()}: {ex.Message}", "OK");
         }
         finally
         {
+            System.Diagnostics.Debug.WriteLine("[ExportDetailedTimes] Finalizando (IsExportingDetailedTimes = false)");
             IsExportingDetailedTimes = false;
         }
     }
