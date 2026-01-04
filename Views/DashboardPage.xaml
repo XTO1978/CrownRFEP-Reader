@@ -5118,11 +5118,16 @@
                     
                     <!--  Contenido HTML/SVG (gráficos + tablas)  -->
                     <Grid Grid.Row="1">
-                        <WebView BackgroundColor="White">
-                            <WebView.Source>
-                                <HtmlWebViewSource Html="{Binding DetailedTimesHtml}" />
-                            </WebView.Source>
-                        </WebView>
+                        <Border
+                            BackgroundColor="White"
+                            StrokeShape="RoundRectangle 12"
+                            StrokeThickness="0">
+                            <WebView BackgroundColor="White">
+                                <WebView.Source>
+                                    <HtmlWebViewSource Html="{Binding DetailedTimesHtml}" />
+                                </WebView.Source>
+                            </WebView>
+                        </Border>
                         <ActivityIndicator
                             IsRunning="{Binding IsLoadingDetailedTimes}"
                             IsVisible="{Binding IsLoadingDetailedTimes}"
