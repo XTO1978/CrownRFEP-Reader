@@ -1459,3 +1459,280 @@ public class SectionWithDetailedAthleteRows
     /// <summary>Indica si hay algún atleta con laps</summary>
     public bool HasAnyLaps => Athletes.Any(a => a.HasLaps);
 }
+
+/// <summary>
+/// Métricas de consistencia para un grupo de tiempos
+/// </summary>
+public class ConsistencyMetrics
+{
+    /// <summary>Número total de ejecuciones</summary>
+    public int TotalCount { get; set; }
+    
+    /// <summary>Número de ejecuciones válidas (sin outliers)</summary>
+    public int ValidCount { get; set; }
+    
+    /// <summary>Número de outliers descartados</summary>
+    public int OutliersCount => TotalCount - ValidCount;
+    
+    /// <summary>Media en milisegundos (sin outliers)</summary>
+    public double MeanMs { get; set; }
+    
+    /// <summary>Mediana en milisegundos (sin outliers)</summary>
+    public double MedianMs { get; set; }
+    
+    /// <summary>Desviación estándar en milisegundos (sin outliers)</summary>
+    public double StdDevMs { get; set; }
+    
+    /// <summary>Coeficiente de variación (%) - menor = más consistente</summary>
+    public double CoefficientOfVariation => MeanMs > 0 ? (StdDevMs / MeanMs) * 100 : 0;
+    
+    /// <summary>Rango (max - min) en milisegundos (sin outliers)</summary>
+    public long RangeMs { get; set; }
+    
+    /// <summary>Tiempo mínimo en milisegundos (sin outliers)</summary>
+    public long MinMs { get; set; }
+    
+    /// <summary>Tiempo máximo en milisegundos (sin outliers)</summary>
+    public long MaxMs { get; set; }
+    
+    /// <summary>Límite inferior para outliers (Q1 - 1.5*IQR)</summary>
+    public double LowerBoundMs { get; set; }
+    
+    /// <summary>Límite superior para outliers (Q3 + 1.5*IQR)</summary>
+    public double UpperBoundMs { get; set; }
+    
+    /// <summary>Lista de outliers con información del atleta</summary>
+    public List<OutlierInfo> Outliers { get; set; } = new();
+    
+    /// <summary>Indica si hay métricas válidas</summary>
+    public bool IsValid => ValidCount >= 2;
+    
+    /// <summary>Descripción del criterio de exclusión de outliers</summary>
+    public string OutlierCriteria => "IQR×1.5: valores fuera del rango [Q1 - 1.5×IQR, Q3 + 1.5×IQR]";
+    
+    /// <summary>Formato de CV%</summary>
+    public string CvFormatted => $"{CoefficientOfVariation:0.1}%";
+    
+    /// <summary>Formato de rango</summary>
+    public string RangeFormatted => FormatTime(RangeMs);
+    
+    /// <summary>Formato de media</summary>
+    public string MeanFormatted => FormatTime((long)MeanMs);
+    
+    /// <summary>Formato de desviación estándar</summary>
+    public string StdDevFormatted => FormatTime((long)StdDevMs);
+    
+    private static string FormatTime(long ms)
+    {
+        if (ms < 0) ms = 0;
+        var totalSeconds = ms / 1000;
+        var centiseconds = (ms % 1000) / 10;
+        return $"{totalSeconds},{centiseconds:D2}";
+    }
+}
+
+/// <summary>
+/// Información de un outlier
+/// </summary>
+public class OutlierInfo
+{
+    public int VideoId { get; set; }
+    public string AthleteName { get; set; } = "";
+    public int AttemptNumber { get; set; }
+    public long TimeMs { get; set; }
+    public string Reason { get; set; } = "";
+    
+    public string TimeFormatted
+    {
+        get
+        {
+            var totalSeconds = TimeMs / 1000;
+            var centiseconds = (TimeMs % 1000) / 10;
+            return $"{totalSeconds},{centiseconds:D2}";
+        }
+    }
+}
+
+/// <summary>
+/// Métricas de consistencia individual de un atleta
+/// </summary>
+public class AthleteConsistencyMetrics
+{
+    public int AthleteId { get; set; }
+    public string AthleteName { get; set; } = "";
+    public int AttemptCount { get; set; }
+    
+    /// <summary>CV% del atleta entre sus intentos</summary>
+    public double CoefficientOfVariation { get; set; }
+    
+    /// <summary>Rango entre mejor y peor tiempo</summary>
+    public long RangeMs { get; set; }
+    
+    public string CvFormatted => $"{CoefficientOfVariation:0.1}%";
+    
+    public string RangeFormatted
+    {
+        get
+        {
+            var totalSeconds = RangeMs / 1000;
+            var centiseconds = (RangeMs % 1000) / 10;
+            return $"{totalSeconds},{centiseconds:D2}";
+        }
+    }
+}
+
+/// <summary>
+/// Calculadora de métricas de consistencia
+/// </summary>
+public static class ConsistencyCalculator
+{
+    /// <summary>
+    /// Calcula métricas de consistencia para un grupo de tiempos
+    /// </summary>
+    public static ConsistencyMetrics Calculate(IEnumerable<(int videoId, string athleteName, int attempt, long timeMs)> data)
+    {
+        var list = data.Where(d => d.timeMs > 0).ToList();
+        var metrics = new ConsistencyMetrics { TotalCount = list.Count };
+        
+        if (list.Count < 2)
+        {
+            metrics.ValidCount = list.Count;
+            if (list.Count == 1)
+            {
+                metrics.MeanMs = list[0].timeMs;
+                metrics.MedianMs = list[0].timeMs;
+                metrics.MinMs = list[0].timeMs;
+                metrics.MaxMs = list[0].timeMs;
+            }
+            return metrics;
+        }
+        
+        var times = list.Select(d => d.timeMs).OrderBy(t => t).ToList();
+        
+        // Calcular cuartiles para IQR
+        var q1 = Percentile(times, 25);
+        var q3 = Percentile(times, 75);
+        var iqr = q3 - q1;
+        
+        // Límites de outliers (método IQR × 1.5)
+        metrics.LowerBoundMs = q1 - 1.5 * iqr;
+        metrics.UpperBoundMs = q3 + 1.5 * iqr;
+        
+        // Identificar outliers
+        var validData = new List<(int videoId, string athleteName, int attempt, long timeMs)>();
+        foreach (var item in list)
+        {
+            if (item.timeMs < metrics.LowerBoundMs)
+            {
+                metrics.Outliers.Add(new OutlierInfo
+                {
+                    VideoId = item.videoId,
+                    AthleteName = item.athleteName,
+                    AttemptNumber = item.attempt,
+                    TimeMs = item.timeMs,
+                    Reason = $"Inferior al límite ({FormatTime((long)metrics.LowerBoundMs)})"
+                });
+            }
+            else if (item.timeMs > metrics.UpperBoundMs)
+            {
+                metrics.Outliers.Add(new OutlierInfo
+                {
+                    VideoId = item.videoId,
+                    AthleteName = item.athleteName,
+                    AttemptNumber = item.attempt,
+                    TimeMs = item.timeMs,
+                    Reason = $"Superior al límite ({FormatTime((long)metrics.UpperBoundMs)})"
+                });
+            }
+            else
+            {
+                validData.Add(item);
+            }
+        }
+        
+        var validTimes = validData.Select(d => d.timeMs).OrderBy(t => t).ToList();
+        metrics.ValidCount = validTimes.Count;
+        
+        if (validTimes.Count == 0)
+        {
+            // Si todos son outliers, usar los datos originales
+            validTimes = times;
+            metrics.ValidCount = times.Count;
+            metrics.Outliers.Clear();
+        }
+        
+        // Calcular estadísticas sin outliers
+        metrics.MeanMs = validTimes.Average();
+        metrics.MedianMs = Percentile(validTimes, 50);
+        metrics.MinMs = validTimes.Min();
+        metrics.MaxMs = validTimes.Max();
+        metrics.RangeMs = metrics.MaxMs - metrics.MinMs;
+        
+        // Desviación estándar
+        if (validTimes.Count >= 2)
+        {
+            var sumSqDiff = validTimes.Sum(t => Math.Pow(t - metrics.MeanMs, 2));
+            metrics.StdDevMs = Math.Sqrt(sumSqDiff / (validTimes.Count - 1));
+        }
+        
+        return metrics;
+    }
+    
+    /// <summary>
+    /// Calcula métricas de consistencia individual para atletas con múltiples intentos
+    /// </summary>
+    public static List<AthleteConsistencyMetrics> CalculateIndividual(IEnumerable<AthleteDetailedTimeRow> athletes)
+    {
+        var grouped = athletes
+            .Where(a => a.TotalMs > 0)
+            .GroupBy(a => a.AthleteId)
+            .Where(g => g.Count() >= 2)
+            .ToList();
+        
+        var result = new List<AthleteConsistencyMetrics>();
+        
+        foreach (var group in grouped)
+        {
+            var times = group.Select(a => a.TotalMs).OrderBy(t => t).ToList();
+            var mean = times.Average();
+            var sumSqDiff = times.Sum(t => Math.Pow(t - mean, 2));
+            var stdDev = Math.Sqrt(sumSqDiff / (times.Count - 1));
+            
+            result.Add(new AthleteConsistencyMetrics
+            {
+                AthleteId = group.Key,
+                AthleteName = group.First().AthleteName,
+                AttemptCount = times.Count,
+                CoefficientOfVariation = mean > 0 ? (stdDev / mean) * 100 : 0,
+                RangeMs = times.Max() - times.Min()
+            });
+        }
+        
+        return result.OrderBy(a => a.CoefficientOfVariation).ToList();
+    }
+    
+    private static double Percentile(List<long> sortedData, double percentile)
+    {
+        if (sortedData.Count == 0) return 0;
+        if (sortedData.Count == 1) return sortedData[0];
+        
+        var n = sortedData.Count;
+        var rank = (percentile / 100.0) * (n - 1);
+        var lowerIndex = (int)Math.Floor(rank);
+        var upperIndex = (int)Math.Ceiling(rank);
+        
+        if (lowerIndex == upperIndex || upperIndex >= n)
+            return sortedData[Math.Min(lowerIndex, n - 1)];
+        
+        var fraction = rank - lowerIndex;
+        return sortedData[lowerIndex] + fraction * (sortedData[upperIndex] - sortedData[lowerIndex]);
+    }
+    
+    private static string FormatTime(long ms)
+    {
+        if (ms < 0) ms = 0;
+        var totalSeconds = ms / 1000;
+        var centiseconds = (ms % 1000) / 10;
+        return $"{totalSeconds},{centiseconds:D2}";
+    }
+}

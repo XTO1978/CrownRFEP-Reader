@@ -4985,7 +4985,7 @@
                 StrokeThickness="1">
                 <Grid RowDefinitions="Auto,*,Auto" RowSpacing="16">
                     <!--  Cabecera  -->
-                    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="12">
+                    <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto" ColumnSpacing="12">
                         <VerticalStackLayout Grid.Column="0" Spacing="2">
                             <Label
                                 FontAttributes="Bold"
@@ -5098,8 +5098,26 @@
                             </Border>
                         </Grid>
                         
-                        <Border
+                        <!--  Botones Exportar  -->
+                        <Button
                             Grid.Column="2"
+                            BackgroundColor="#FF3A3A3A"
+                            Command="{Binding ExportDetailedTimesHtmlCommand}"
+                            Text="Exportar HTML"
+                            TextColor="White"
+                            VerticalOptions="Center"
+                            IsEnabled="{Binding IsExportingDetailedTimes, Converter={toolkit:InvertedBoolConverter}}" />
+                        <Button
+                            Grid.Column="3"
+                            BackgroundColor="#FF3A3A3A"
+                            Command="{Binding ExportDetailedTimesPdfCommand}"
+                            Text="Exportar PDF"
+                            TextColor="White"
+                            VerticalOptions="Center"
+                            IsEnabled="{Binding IsExportingDetailedTimes, Converter={toolkit:InvertedBoolConverter}}" />
+                        
+                        <Border
+                            Grid.Column="4"
                             Padding="6"
                             BackgroundColor="Transparent"
                             Stroke="Transparent"
@@ -5139,39 +5157,12 @@
                     </Grid>
                     
                     <!--  Pie  -->
-                    <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="12">
-                        <Label
-                            FontSize="{StaticResource FontSizeSmall}"
-                            Text="Lap = tiempo parcial · Acum. = tiempo acumulado"
-                            TextColor="#FFB1B1B1"
-                            VerticalOptions="Center" />
-                        <Button
-                            Grid.Column="1"
-                            BackgroundColor="#FF3A3A3A"
-                            Command="{Binding ExportDetailedTimesHtmlCommand}"
-                            Text="Exportar HTML"
-                            TextColor="White"
-                            Padding="18,10"
-                            CornerRadius="8"
-                            IsEnabled="{Binding IsExportingDetailedTimes, Converter={toolkit:InvertedBoolConverter}}" />
-                        <Button
-                            Grid.Column="2"
-                            BackgroundColor="#FF3A3A3A"
-                            Command="{Binding ExportDetailedTimesPdfCommand}"
-                            Text="Exportar PDF"
-                            TextColor="White"
-                            Padding="18,10"
-                            CornerRadius="8"
-                            IsEnabled="{Binding IsExportingDetailedTimes, Converter={toolkit:InvertedBoolConverter}}" />
-                        <Button
-                            Grid.Column="3"
-                            BackgroundColor="#FF3A3A3A"
-                            Command="{Binding CloseDetailedTimesPopupCommand}"
-                            Text="Cerrar"
-                            TextColor="White"
-                            Padding="18,10"
-                            CornerRadius="8" />
-                    </Grid>
+                    <Label
+                        Grid.Row="2"
+                        FontSize="{StaticResource FontSizeSmall}"
+                        Text="Lap = tiempo parcial · Acum. = tiempo acumulado · CV% = Coeficiente de Variación = (σ / x̄) × 100 (menor = más consistente)"
+                        TextColor="#FFB1B1B1"
+                        VerticalOptions="Center" />
                 </Grid>
             </Border>
         </Grid>
