@@ -5149,7 +5149,7 @@
                                                                                             <Label
                                                                                                 FontSize="{StaticResource FontSizeBody}"
                                                                                                 Text="{Binding SplitFormatted}"
-                                                                                                TextColor="White"
+                                                                                                TextColor="{Binding SplitTextColor}"
                                                                                                 FontAttributes="Bold"
                                                                                                 FontFamily="Menlo"
                                                                                                 VerticalOptions="Center"
@@ -5158,7 +5158,7 @@
                                                                                             <Label
                                                                                                 FontSize="{StaticResource FontSizeBody}"
                                                                                                 Text="{Binding CumulativeFormatted}"
-                                                                                                TextColor="White"
+                                                                                                TextColor="{Binding CumulativeTextColor}"
                                                                                                 FontAttributes="Bold"
                                                                                                 FontFamily="Menlo"
                                                                                                 VerticalOptions="Center"
@@ -5182,7 +5182,7 @@
                                                                     
                                                                 <Label Grid.Column="3" FontSize="{StaticResource FontSizeBody}" Text="{Binding DurationFormatted}" TextColor="White" HorizontalTextAlignment="End" VerticalOptions="Center" FontFamily="Menlo" />
                                                                 <Label Grid.Column="4" FontSize="{StaticResource FontSizeBody}" Text="{Binding PenaltyFormatted}" TextColor="White" HorizontalTextAlignment="End" VerticalOptions="Center" FontFamily="Menlo" />
-                                                                <Label Grid.Column="5" FontSize="{StaticResource FontSizeBody}" FontAttributes="Bold" Text="{Binding TotalFormatted}" TextColor="White" HorizontalTextAlignment="End" VerticalOptions="Center" FontFamily="Menlo" />
+                                                                <Label Grid.Column="5" FontSize="{StaticResource FontSizeBody}" FontAttributes="Bold" Text="{Binding TotalFormatted}" TextColor="{Binding TotalTextColor}" HorizontalTextAlignment="End" VerticalOptions="Center" FontFamily="Menlo" />
                                                             </Grid>
                                                         </DataTemplate>
                                                     </BindableLayout.ItemTemplate>

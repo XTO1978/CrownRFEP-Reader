@@ -325,11 +325,15 @@ public class StatisticsService
             .Select(sectionGroup =>
             {
                 var athletes = sectionGroup.OrderBy(r => r.TotalMs).ToList();
+
                 // Alternar colores de fondo
-                    for (int i = 0; i < athletes.Count; i++)
-                    {
-                        athletes[i].RowBackgroundColor = i % 2 == 0 ? "#FF1E1E1E" : "#FF252525";
+                for (int i = 0; i < athletes.Count; i++)
+                {
+                    athletes[i].RowBackgroundColor = i % 2 == 0 ? "#FF1E1E1E" : "#FF252525";
                 }
+
+                ApplyConditionalFormattingForSection(athletes);
+
                 return new SectionWithDetailedAthleteRows
                 {
                     Section = sectionGroup.Key,
@@ -340,6 +344,109 @@ public class StatisticsService
             .ToList();
 
         return result;
+    }
+
+    private static void ApplyConditionalFormattingForSection(List<AthleteDetailedTimeRow> athletes)
+    {
+        const string bestColor = "#FF4CAF50";   // verde (mejor)
+        const string goodColor = "#FF6DDDFF";   // azul/cian (top)
+        const string defaultColor = "White";
+
+        if (athletes.Count == 0)
+            return;
+
+        // TOTAL: percentiles sobre TotalMs (incluye penalización)
+        var totalValues = athletes
+            .Select(a => a.TotalMs)
+            .Where(v => v > 0)
+            .OrderBy(v => v)
+            .ToList();
+
+        var (bestTotal, goodTotal) = GetThresholds(totalValues);
+        foreach (var athlete in athletes)
+        {
+            athlete.TotalTextColor = GetTierColor(athlete.TotalMs, bestTotal, goodTotal, bestColor, goodColor, defaultColor);
+        }
+
+        // PARCIALES (Laps): percentiles por LapIndex
+        var splitByLap = athletes
+            .SelectMany(a => a.Laps.Select(l => (LapIndex: l.LapIndex, SplitMs: l.SplitMs)))
+            .Where(x => x.SplitMs > 0)
+            .GroupBy(x => x.LapIndex)
+            .ToDictionary(g => g.Key, g => g.Select(x => x.SplitMs).OrderBy(v => v).ToList());
+
+        var cumulativeByLap = athletes
+            .SelectMany(a => a.Laps.Select(l => (LapIndex: l.LapIndex, CumulativeMs: l.CumulativeMs)))
+            .Where(x => x.CumulativeMs > 0)
+            .GroupBy(x => x.LapIndex)
+            .ToDictionary(g => g.Key, g => g.Select(x => x.CumulativeMs).OrderBy(v => v).ToList());
+
+        foreach (var athlete in athletes)
+        {
+            foreach (var lap in athlete.Laps)
+            {
+                if (splitByLap.TryGetValue(lap.LapIndex, out var splitValues))
+                {
+                    var (bestSplit, goodSplit) = GetThresholds(splitValues);
+                    lap.SplitTextColor = GetTierColor(lap.SplitMs, bestSplit, goodSplit, bestColor, goodColor, defaultColor);
+                }
+                else
+                {
+                    lap.SplitTextColor = defaultColor;
+                }
+
+                if (cumulativeByLap.TryGetValue(lap.LapIndex, out var cumulativeValues))
+                {
+                    var (bestCum, goodCum) = GetThresholds(cumulativeValues);
+                    lap.CumulativeTextColor = GetTierColor(lap.CumulativeMs, bestCum, goodCum, bestColor, goodColor, defaultColor);
+                }
+                else
+                {
+                    lap.CumulativeTextColor = defaultColor;
+                }
+            }
+        }
+    }
+
+    private static (long best, long good) GetThresholds(List<long> sortedAscending)
+    {
+        if (sortedAscending.Count <= 0)
+            return (0, 0);
+
+        // Pocos datos: resaltamos 1º (best) y 2º (good) si existe
+        if (sortedAscending.Count == 1)
+            return (sortedAscending[0], sortedAscending[0]);
+        if (sortedAscending.Count <= 3)
+            return (sortedAscending[0], sortedAscending[1]);
+
+        var best = Percentile(sortedAscending, 0.10);
+        var good = Percentile(sortedAscending, 0.25);
+        if (good < best) good = best;
+        return (best, good);
+    }
+
+    private static long Percentile(List<long> sortedAscending, double percentile)
+    {
+        if (sortedAscending.Count == 0)
+            return 0;
+
+        if (percentile <= 0) return sortedAscending[0];
+        if (percentile >= 1) return sortedAscending[^1];
+
+        var idx = (int)Math.Floor(percentile * (sortedAscending.Count - 1));
+        idx = Math.Max(0, Math.Min(idx, sortedAscending.Count - 1));
+        return sortedAscending[idx];
+    }
+
+    private static string GetTierColor(long value, long bestThreshold, long goodThreshold, string bestColor, string goodColor, string defaultColor)
+    {
+        if (value <= 0)
+            return defaultColor;
+        if (bestThreshold > 0 && value <= bestThreshold)
+            return bestColor;
+        if (goodThreshold > 0 && value <= goodThreshold)
+            return goodColor;
+        return defaultColor;
     }
 
     /// <summary>
@@ -1224,6 +1331,10 @@ public class LapTimeData
     public int LapIndex { get; set; }
     public long SplitMs { get; set; }
     public long CumulativeMs { get; set; }
+
+    // Formato condicional (colores como string para bind directo en XAML)
+    public string SplitTextColor { get; set; } = "White";
+    public string CumulativeTextColor { get; set; } = "White";
     
     public string SplitFormatted => FormatTime(SplitMs);
     public string CumulativeFormatted => FormatTime(CumulativeMs);
@@ -1270,6 +1381,9 @@ public class AthleteDetailedTimeRow
     public string DurationFormatted => FormatTime(DurationMs);
     public string PenaltyFormatted => PenaltyMs > 0 ? $"+{PenaltyMs / 1000}" : "-";
     public string TotalFormatted => FormatTime(TotalMs);
+
+    // Formato condicional (TOTAL)
+    public string TotalTextColor { get; set; } = "White";
     
     /// <summary>Color de fondo de la fila (alternado)</summary>
     public string RowBackgroundColor { get; set; } = "#FF1A1A1A";
