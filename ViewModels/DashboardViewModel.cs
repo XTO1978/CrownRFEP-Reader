@@ -1744,6 +1744,63 @@ public class DashboardViewModel : BaseViewModel
     
     /// <summary>Secciones con tiempos detallados (incluye Laps)</summary>
     public ObservableCollection<SectionWithDetailedAthleteRows> DetailedSectionTimes { get; } = new();
+    
+    // ---- Opciones de visibilidad del informe ----
+    private ReportOptions _reportOptions = ReportOptions.FullAnalysis();
+    /// <summary>Opciones de visibilidad para el informe de sesión</summary>
+    public ReportOptions ReportOptions
+    {
+        get => _reportOptions;
+        set
+        {
+            if (SetProperty(ref _reportOptions, value))
+            {
+                RegenerateDetailedTimesHtml();
+            }
+        }
+    }
+    
+    private bool _showReportOptionsPanel;
+    /// <summary>Indica si se muestra el panel de opciones del informe</summary>
+    public bool ShowReportOptionsPanel
+    {
+        get => _showReportOptionsPanel;
+        set => SetProperty(ref _showReportOptionsPanel, value);
+    }
+    
+    /// <summary>Comando para alternar el panel de opciones</summary>
+    public ICommand ToggleReportOptionsPanelCommand => new RelayCommand(() => ShowReportOptionsPanel = !ShowReportOptionsPanel);
+    
+    /// <summary>Comando para aplicar preset de análisis completo</summary>
+    public ICommand ApplyFullAnalysisPresetCommand => new RelayCommand(() =>
+    {
+        ReportOptions = ReportOptions.FullAnalysis();
+        OnPropertyChanged(nameof(ReportOptions));
+        RegenerateDetailedTimesHtml();
+    });
+    
+    /// <summary>Comando para aplicar preset de resumen rápido</summary>
+    public ICommand ApplyQuickSummaryPresetCommand => new RelayCommand(() =>
+    {
+        ReportOptions = ReportOptions.QuickSummary();
+        OnPropertyChanged(nameof(ReportOptions));
+        RegenerateDetailedTimesHtml();
+    });
+    
+    /// <summary>Comando para aplicar preset de informe de atleta</summary>
+    public ICommand ApplyAthleteReportPresetCommand => new RelayCommand(() =>
+    {
+        ReportOptions = ReportOptions.AthleteReport();
+        OnPropertyChanged(nameof(ReportOptions));
+        RegenerateDetailedTimesHtml();
+    });
+    
+    /// <summary>Actualiza el informe cuando cambia una opción</summary>
+    public ICommand UpdateReportOptionCommand => new RelayCommand<string>(optionName =>
+    {
+        // Las propiedades ya se actualizan por binding, solo regeneramos
+        RegenerateDetailedTimesHtml();
+    });
 
     // ---- Selector de atleta de referencia para gráficos ----
     /// <summary>Lista de atletas disponibles para selección en el popup</summary>
@@ -1769,7 +1826,7 @@ public class DashboardViewModel : BaseViewModel
     public bool HasSelectedDetailedTimesAthlete => SelectedDetailedTimesAthlete != null;
 
     /// <summary>Nombre del atleta seleccionado (para mostrar en el botón)</summary>
-    public string SelectedDetailedTimesAthleteName => SelectedDetailedTimesAthlete?.DisplayName ?? "Ninguno";
+    public string SelectedDetailedTimesAthleteName => SelectedDetailedTimesAthlete?.DisplayName ?? "Selecciona atleta";
 
     private bool _isAthleteDropdownExpanded;
     /// <summary>Indica si el dropdown de atletas está expandido</summary>
@@ -1797,7 +1854,21 @@ public class DashboardViewModel : BaseViewModel
         var refId = SelectedDetailedTimesAthlete?.Id;
         var refVideoId = SelectedDetailedTimesAthlete?.VideoId;
         var refName = SelectedDetailedTimesAthlete?.DisplayName;
-        DetailedTimesHtml = _tableExportService.BuildDetailedSectionTimesHtml(SelectedSession, DetailedSectionTimes.ToList(), refId, refVideoId, refName);
+        
+        // Generar datos del informe completo
+        var reportData = SessionReportService.GenerateReportData(
+            SelectedSession, 
+            DetailedSectionTimes.ToList(), 
+            refId, 
+            refVideoId);
+        
+        // Generar HTML con las opciones seleccionadas
+        DetailedTimesHtml = _tableExportService.BuildSessionReportHtml(
+            reportData, 
+            ReportOptions, 
+            refId, 
+            refVideoId,
+            refName);
     }
     
     private bool _isLoadingDetailedTimes;
@@ -2124,61 +2195,31 @@ public class DashboardViewModel : BaseViewModel
             
             OnPropertyChanged(nameof(HasDetailedTimesWithLaps));
 
-            // Cargar lista de atletas para el selector (incluyendo intentos múltiples)
+            // Cargar lista de atletas para el selector (atletas únicos de la sesión)
             DetailedTimesAthletes.Clear();
             
-            // Obtener atletas únicos primero
-            var allAthletes = detailedTimes
+            // Obtener atletas únicos de todas las secciones
+            var uniqueAthletes = detailedTimes
                 .SelectMany(s => s.Athletes)
-                .ToList();
-
-            // Agrupar por atleta para detectar múltiples intentos
-            var athleteGroups = allAthletes
                 .GroupBy(a => a.AthleteId)
-                .OrderBy(g => g.First().AthleteName)
+                .Select(g => new {
+                    AthleteId = g.Key,
+                    AthleteName = g.First().AthleteName,
+                    TotalRuns = g.Count()
+                })
+                .OrderBy(a => a.AthleteName)
                 .ToList();
 
-            foreach (var group in athleteGroups)
+            // Añadir cada atleta único al selector
+            foreach (var athlete in uniqueAthletes)
             {
-                var athleteId = group.Key;
-                var athleteName = group.First().AthleteName;
-                var attempts = group.OrderBy(a => a.TotalMs).ToList();
-                var hasMultiple = attempts.Count > 1;
-
-                if (hasMultiple)
-                {
-                    // Añadir opción "Mejor" para atletas con múltiples intentos
-                    var bestAttempt = attempts.First();
-                    DetailedTimesAthletes.Add(new AthletePickerItem(
-                        athleteId, 
-                        $"{athleteName} (Mejor)", 
-                        bestAttempt.VideoId, 
-                        attemptNumber: 0, 
-                        hasMultipleAttempts: true));
-
-                    // Añadir cada intento individual
-                    for (int i = 0; i < attempts.Count; i++)
-                    {
-                        var attempt = attempts[i];
-                        DetailedTimesAthletes.Add(new AthletePickerItem(
-                            athleteId,
-                            $"{athleteName} (#{i + 1})",
-                            attempt.VideoId,
-                            attemptNumber: i + 1,
-                            hasMultipleAttempts: true));
-                    }
-                }
-                else
-                {
-                    // Atleta con un solo intento
-                    var single = attempts.First();
-                    DetailedTimesAthletes.Add(new AthletePickerItem(
-                        athleteId, 
-                        athleteName, 
-                        single.VideoId, 
-                        attemptNumber: 1, 
-                        hasMultipleAttempts: false));
-                }
+                var suffix = athlete.TotalRuns > 1 ? $" ({athlete.TotalRuns} mangas)" : "";
+                DetailedTimesAthletes.Add(new AthletePickerItem(
+                    athlete.AthleteId, 
+                    athlete.AthleteName + suffix, 
+                    videoId: null, // Sin video específico, usamos el atleta
+                    attemptNumber: 0, 
+                    hasMultipleAttempts: athlete.TotalRuns > 1));
             }
 
             // Preseleccionar el atleta de referencia global si existe en la lista

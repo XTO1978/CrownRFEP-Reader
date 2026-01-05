@@ -55,8 +55,8 @@ public class TableExportService : ITableExportService
         sb.AppendLine("    .section h2 { color:#0B5D74; margin:0 0 10px 0; font-size:16px; }");
         sb.AppendLine("    .table-title { margin:10px 0 8px 0; color:#333; font-weight:700; }");
         sb.AppendLine("    .chart-title { margin:14px 0 8px 0; color:#333; font-weight:700; }");
-        sb.AppendLine("    .chart { width:100%; border:1px solid #D0D0D0; background:#fff; padding:10px; box-sizing:border-box; }");
-        sb.AppendLine("    .chart svg { width:100%; height:220px; display:block; }");
+        sb.AppendLine("    .chart { max-width:70%; border:1px solid #D0D0D0; background:#fff; padding:10px; box-sizing:border-box; }");
+        sb.AppendLine("    .chart svg { width:100%; height:180px; display:block; }");
         sb.AppendLine("    table { width:100%; border-collapse:collapse; background:#fff; border:1px solid #D0D0D0; }");
         sb.AppendLine("    thead th { background:#F2F2F2; color:#333; text-align:left; font-size:12px; padding:10px; border-bottom:1px solid #D0D0D0; }");
         sb.AppendLine("    tbody tr:nth-child(even) { background:#FAFAFA; }");
@@ -144,8 +144,8 @@ public class TableExportService : ITableExportService
         sb.AppendLine("    .section h2 { color:#0B5D74; margin:0 0 10px 0; font-size:16px; }");
         sb.AppendLine("    .table-title { margin:10px 0 8px 0; color:#333; font-weight:700; }");
         sb.AppendLine("    .chart-title { margin:14px 0 8px 0; color:#333; font-weight:700; }");
-        sb.AppendLine("    .chart { width:100%; border:1px solid #D0D0D0; background:#fff; padding:10px; box-sizing:border-box; }");
-        sb.AppendLine("    .chart svg { width:100%; height:220px; display:block; }");
+        sb.AppendLine("    .chart { max-width:70%; border:1px solid #D0D0D0; background:#fff; padding:10px; box-sizing:border-box; }");
+        sb.AppendLine("    .chart svg { width:100%; height:180px; display:block; }");
         sb.AppendLine("    table { width:100%; border-collapse:collapse; background:#fff; border:1px solid #D0D0D0; }");
         sb.AppendLine("    thead th { background:#F2F2F2; color:#333; text-align:left; font-size:12px; padding:10px; border-bottom:1px solid #D0D0D0; }");
         sb.AppendLine("    tbody tr:nth-child(even) { background:#FAFAFA; }");
@@ -345,70 +345,82 @@ public class TableExportService : ITableExportService
 
     function populateSelector() {
       const select = document.getElementById('athleteSelect');
+      
+      // Obtener atletas únicos
+      const uniqueAthletes = new Map();
       athleteData.athletes.forEach(a => {
-        const opt = document.createElement('option');
-        opt.value = a.id + '_' + a.videoId;
-        opt.textContent = a.displayName;
-        if (a.totalAttempts > 1 && a.isBest) {
-          opt.textContent += ' (Mejor)';
+        if (!uniqueAthletes.has(a.id)) {
+          uniqueAthletes.set(a.id, {
+            id: a.id,
+            name: a.name,
+            attempts: []
+          });
         }
+        uniqueAthletes.get(a.id).attempts.push(a);
+      });
+
+      // Añadir opciones al selector
+      uniqueAthletes.forEach(athlete => {
+        const opt = document.createElement('option');
+        opt.value = athlete.id;
+        const suffix = athlete.attempts.length > 1 ? ` (${athlete.attempts.length} mangas)` : '';
+        opt.textContent = athlete.name + suffix;
         select.appendChild(opt);
       });
 
       // Seleccionar el atleta inicial si existe
-      if (initialAthleteId && initialVideoId) {
-        select.value = initialAthleteId + '_' + initialVideoId;
+      if (initialAthleteId) {
+        select.value = initialAthleteId;
         updateSelectedAthlete();
-      } else if (initialAthleteId) {
-        // Buscar el mejor intento
-        const best = athleteData.athletes.find(a => a.id === initialAthleteId && a.isBest);
-        if (best) {
-          select.value = best.id + '_' + best.videoId;
-          updateSelectedAthlete();
-        }
       }
     }
 
     function updateSelectedAthlete() {
       const select = document.getElementById('athleteSelect');
-      const val = select.value;
+      const athleteId = select.value ? Number(select.value) : null;
       const label = document.getElementById('referenceLabel');
       
       // Ocultar todos los puntos seleccionados
       document.querySelectorAll('.selected-point').forEach(el => el.classList.remove('active'));
       document.querySelectorAll('tbody tr.selected').forEach(el => el.classList.remove('selected'));
 
-      if (!val) {
+      if (!athleteId) {
         label.textContent = '';
         return;
       }
 
-      const [athleteId, videoId] = val.split('_').map(Number);
-      const athlete = athleteData.athletes.find(a => a.id === athleteId && a.videoId === videoId);
-      
+      const athlete = athleteData.athletes.find(a => a.id === athleteId);
       if (athlete) {
-        label.textContent = 'Informe para: ' + athlete.displayName;
+        label.textContent = 'Informe para: ' + athlete.name;
       }
 
-      // Activar los puntos correspondientes en los gráficos
-      document.querySelectorAll(`[data-athlete-id='${athleteId}'][data-video-id='${videoId}']`).forEach(el => {
+      // Activar TODOS los puntos de este atleta en los gráficos (todas las mangas)
+      document.querySelectorAll(`[data-athlete-id='${athleteId}']`).forEach(el => {
         el.classList.add('active');
       });
 
-      // Marcar fila en tablas
-      document.querySelectorAll(`tr[data-athlete-id='${athleteId}'][data-video-id='${videoId}']`).forEach(el => {
+      // Marcar TODAS las filas de este atleta en tablas
+      document.querySelectorAll(`tr[data-athlete-id='${athleteId}']`).forEach(el => {
         el.classList.add('selected');
       });
 
-      // Actualizar etiquetas de diferencia en los gráficos
+      // Actualizar etiquetas de diferencia en los gráficos (usar mejor tiempo por sección)
       athleteData.sections.forEach(section => {
-        const athleteRow = section.athletes.find(a => a.athleteId === athleteId && a.videoId === videoId);
-        if (!athleteRow) return;
+        // Obtener todos los intentos del atleta en esta sección
+        const athleteRows = section.athletes.filter(a => a.athleteId === athleteId);
+        if (athleteRows.length === 0) return;
+
+        // Usar el mejor tiempo de este atleta en esta sección
+        const bestRow = athleteRows.reduce((best, current) => 
+          (current.totalMs > 0 && (!best || current.totalMs < best.totalMs)) ? current : best
+        , null);
+        
+        if (!bestRow) return;
 
         // Actualizar gráficos parciales
-        updateChartLabels(section.section, 'partial', athleteRow, section.minMaxPartial);
+        updateChartLabels(section.section, 'partial', bestRow, section.minMaxPartial);
         // Actualizar gráficos acumulados
-        updateChartLabels(section.section, 'cumulative', athleteRow, section.minMaxCumulative);
+        updateChartLabels(section.section, 'cumulative', bestRow, section.minMaxCumulative);
       });
     }
 
@@ -469,10 +481,10 @@ public class TableExportService : ITableExportService
         var chartType = isCumulative ? "cumulative" : "partial";
 
         const float viewW = 1000f;
-        const float viewH = 260f;
-        const float padT = 32f;
+        const float viewH = 180f;
+        const float padT = 24f;
         const float padR = 10f;
-        const float padB = 28f;
+        const float padB = 22f;
         const float padL = 20f;
         var plotW = viewW - padL - padR;
         var plotH = viewH - padT - padB;
@@ -506,7 +518,6 @@ public class TableExportService : ITableExportService
             var xLine = padL + (colW * i);
             sb.AppendLine($"        <line x1=\"{F(xLine)}\" y1=\"{F(padT)}\" x2=\"{F(xLine)}\" y2=\"{F(padT + plotH)}\" stroke=\"#E8E8E8\" stroke-width=\"1\" />");
         }
-        sb.AppendLine($"        <line x1=\"{F(padL)}\" y1=\"{F(padT + plotH)}\" x2=\"{F(padL + plotW)}\" y2=\"{F(padT + plotH)}\" stroke=\"#D0D0D0\" stroke-width=\"1\" />");
 
         for (var i = 0; i < points.Count; i++)
         {
@@ -524,8 +535,8 @@ public class TableExportService : ITableExportService
             sb.AppendLine($"        <circle cx=\"{F(x)}\" cy=\"{F(yMinPx)}\" r=\"5\" fill=\"#fff\" stroke=\"#0B5D74\" stroke-width=\"2\" />");
 
             // Etiquetas de tiempo
-            sb.AppendLine($"        <text x=\"{F(x)}\" y=\"{F(yMaxPx - 10)}\" font-size=\"12\" text-anchor=\"middle\" fill=\"#0B5D74\">{HtmlEscape(FormatTimeMs(p.MaxMs.Value))}</text>");
-            sb.AppendLine($"        <text x=\"{F(x)}\" y=\"{F(yMinPx + 14)}\" font-size=\"12\" text-anchor=\"middle\" fill=\"#0B5D74\">{HtmlEscape(FormatTimeMs(p.MinMs.Value))}</text>");
+            sb.AppendLine($"        <text x=\"{F(x)}\" y=\"{F(yMaxPx - 10)}\" font-size=\"10\" font-family=\"ui-monospace,Menlo,Consolas,monospace\" text-anchor=\"middle\" fill=\"#0B5D74\">{HtmlEscape(FormatTimeMs(p.MaxMs.Value))}</text>");
+            sb.AppendLine($"        <text x=\"{F(x)}\" y=\"{F(yMinPx + 20)}\" font-size=\"10\" font-family=\"ui-monospace,Menlo,Consolas,monospace\" text-anchor=\"middle\" fill=\"#0B5D74\">{HtmlEscape(FormatTimeMs(p.MinMs.Value))}</text>");
 
             // Media
             if (p.MeanMs is not null)
@@ -553,13 +564,13 @@ public class TableExportService : ITableExportService
                     var ys = YNorm(p, athleteMs.Value);
                     sb.AppendLine($"        <g class=\"selected-point\" data-athlete-id=\"{athlete.AthleteId}\" data-video-id=\"{athlete.VideoId}\">");
                     sb.AppendLine($"          <circle cx=\"{F(x)}\" cy=\"{F(ys)}\" r=\"7\" fill=\"#1B5E20\" stroke=\"#111\" stroke-width=\"1\" />");
-                    sb.AppendLine($"          <text id=\"label-{section.Section}-{chartType}-{i}\" x=\"{F(x + 12)}\" y=\"{F(ys + 4)}\" font-size=\"11\" text-anchor=\"start\" fill=\"#1B5E20\" font-weight=\"bold\"></text>");
+                    sb.AppendLine($"          <text id=\"label-{section.Section}-{chartType}-{i}\" x=\"{F(x + 12)}\" y=\"{F(ys + 4)}\" font-size=\"9\" font-family=\"ui-monospace,Menlo,Consolas,monospace\" text-anchor=\"start\" fill=\"#1B5E20\" font-weight=\"bold\"></text>");
                     sb.AppendLine($"        </g>");
                 }
             }
 
             // Etiqueta de columna
-            sb.AppendLine($"        <text x=\"{F(x)}\" y=\"{F(padT + plotH + 18)}\" font-size=\"13\" text-anchor=\"middle\" fill=\"#333\" font-weight=\"bold\">{HtmlEscape(p.Label)}</text>");
+            sb.AppendLine($"        <text x=\"{F(x)}\" y=\"{F(padT + plotH + 18)}\" font-size=\"11\" font-family=\"-apple-system,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif\" text-anchor=\"middle\" fill=\"#333\" font-weight=\"bold\">{HtmlEscape(p.Label)}</text>");
         }
 
         sb.AppendLine("      </svg>");
@@ -672,7 +683,7 @@ public class TableExportService : ITableExportService
         if (groupMetrics.Outliers.Count > 0)
         {
             sb.AppendLine("      <div class=\"outliers-note\">");
-            sb.AppendLine($"        <strong>⚠️ {groupMetrics.Outliers.Count} ejecución(es) descartada(s)</strong> ({groupMetrics.OutlierCriteria}):<br>");
+            sb.AppendLine($"        <strong>{groupMetrics.Outliers.Count} ejecución(es) descartada(s)</strong> ({groupMetrics.OutlierCriteria}):<br>");
             foreach (var outlier in groupMetrics.Outliers)
             {
                 sb.AppendLine($"        • {HtmlEscape(outlier.AthleteName)}: {outlier.TimeFormatted} — {HtmlEscape(outlier.Reason)}<br>");
@@ -738,10 +749,10 @@ public class TableExportService : ITableExportService
             return;
 
         const float viewW = 1000f;
-        const float viewH = 260f;  // Más alto para etiquetas
-        const float padT = 32f;    // Espacio para etiquetas superiores
+        const float viewH = 200f;  // Más compacto para vista global
+        const float padT = 24f;    // Espacio para etiquetas superiores
         const float padR = 10f;
-        const float padB = 28f;
+        const float padB = 36f;
         const float padL = 20f;    // Reducido (ya no hay eje Y global)
         var plotW = viewW - padL - padR;
         var plotH = viewH - padT - padB;
@@ -781,8 +792,6 @@ public class TableExportService : ITableExportService
             var xLine = padL + (colW * i);
             sb.AppendLine($"        <line x1=\"{F(xLine)}\" y1=\"{F(padT)}\" x2=\"{F(xLine)}\" y2=\"{F(padT + plotH)}\" stroke=\"#E8E8E8\" stroke-width=\"1\" />");
         }
-        // Línea base
-        sb.AppendLine($"        <line x1=\"{F(padL)}\" y1=\"{F(padT + plotH)}\" x2=\"{F(padL + plotW)}\" y2=\"{F(padT + plotH)}\" stroke=\"#D0D0D0\" stroke-width=\"1\" />");
 
         for (var i = 0; i < points.Count; i++)
         {
@@ -800,8 +809,8 @@ public class TableExportService : ITableExportService
             sb.AppendLine($"        <circle cx=\"{F(x)}\" cy=\"{F(yMinPx)}\" r=\"5\" fill=\"#fff\" stroke=\"#0B5D74\" stroke-width=\"2\" />");
 
             // Etiquetas de tiempo real (max arriba, min abajo)
-            sb.AppendLine($"        <text x=\"{F(x)}\" y=\"{F(yMaxPx - 10)}\" font-size=\"12\" text-anchor=\"middle\" fill=\"#0B5D74\">{HtmlEscape(FormatTimeMs(p.MaxMs.Value))}</text>");
-            sb.AppendLine($"        <text x=\"{F(x)}\" y=\"{F(yMinPx + 14)}\" font-size=\"12\" text-anchor=\"middle\" fill=\"#0B5D74\">{HtmlEscape(FormatTimeMs(p.MinMs.Value))}</text>");
+            sb.AppendLine($"        <text x=\"{F(x)}\" y=\"{F(yMaxPx - 10)}\" font-size=\"10\" font-family=\"ui-monospace,Menlo,Consolas,monospace\" text-anchor=\"middle\" fill=\"#0B5D74\">{HtmlEscape(FormatTimeMs(p.MaxMs.Value))}</text>");
+            sb.AppendLine($"        <text x=\"{F(x)}\" y=\"{F(yMinPx + 20)}\" font-size=\"10\" font-family=\"ui-monospace,Menlo,Consolas,monospace\" text-anchor=\"middle\" fill=\"#0B5D74\">{HtmlEscape(FormatTimeMs(p.MinMs.Value))}</text>");
 
             // Media (rombo gris)
             if (p.MeanMs is not null)
@@ -823,11 +832,11 @@ public class TableExportService : ITableExportService
                     var diffPct = (diffMs * 100.0) / p.MinMs.Value;
                     diffText = $" (+{FormatTimeMs(diffMs)} / +{diffPct:0.0}%)";
                 }
-                sb.AppendLine($"        <text x=\"{F(x + 12)}\" y=\"{F(ys + 4)}\" font-size=\"11\" text-anchor=\"start\" fill=\"#1B5E20\" font-weight=\"bold\">{HtmlEscape(FormatTimeMs(p.SelectedMs.Value) + diffText)}</text>");
+                sb.AppendLine($"        <text x=\"{F(x + 12)}\" y=\"{F(ys + 4)}\" font-size=\"9\" font-family=\"ui-monospace,Menlo,Consolas,monospace\" text-anchor=\"start\" fill=\"#1B5E20\" font-weight=\"bold\">{HtmlEscape(FormatTimeMs(p.SelectedMs.Value) + diffText)}</text>");
             }
 
             // Etiqueta de la columna (P1, P2, ..., TOTAL)
-            sb.AppendLine($"        <text x=\"{F(x)}\" y=\"{F(padT + plotH + 18)}\" font-size=\"13\" text-anchor=\"middle\" fill=\"#333\" font-weight=\"bold\">{HtmlEscape(p.Label)}</text>");
+            sb.AppendLine($"        <text x=\"{F(x)}\" y=\"{F(padT + plotH + 18)}\" font-size=\"11\" font-family=\"-apple-system,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif\" text-anchor=\"middle\" fill=\"#333\" font-weight=\"bold\">{HtmlEscape(p.Label)}</text>");
         }
 
         sb.AppendLine("      </svg>");
@@ -1279,11 +1288,9 @@ public class TableExportService : ITableExportService
                 .Where(ms => ms > 0)
                 .ToList();
 
+            // Solo añadir punto si hay valores (no crear columnas vacías)
             if (values.Count == 0)
-            {
-                points.Add(new MinMaxPoint($"P{i}", null, null, null, null));
                 continue;
-            }
 
             var selLap = selected?.Laps.FirstOrDefault(l => l.LapIndex == i);
             var selMs = selLap == null ? (long?)null : (isCumulative ? selLap.CumulativeMs : selLap.SplitMs);
@@ -1457,4 +1464,605 @@ public class TableExportService : ITableExportService
         var b = (byte)(argb & 0xFF);
         return new SKColor(r, g, b, a);
     }
+    
+    // ==================== NUEVOS MÉTODOS CON ReportOptions ====================
+    
+    /// <inheritdoc />
+    public string BuildSessionReportHtml(
+        SessionReportData reportData,
+        ReportOptions options,
+        int? referenceAthleteId = null,
+        int? referenceVideoId = null,
+        string? referenceAthleteName = null)
+    {
+        return BuildSessionReportHtmlInternal(reportData, options, referenceAthleteId, referenceVideoId, referenceAthleteName, isInteractive: false);
+    }
+    
+    /// <inheritdoc />
+    public Task<string> ExportSessionReportToHtmlAsync(
+        SessionReportData reportData,
+        ReportOptions options,
+        int? referenceAthleteId = null,
+        int? referenceVideoId = null,
+        string? referenceAthleteName = null)
+    {
+        var fileName = $"informe_sesion_{reportData.Summary.SessionDate:yyyyMMdd_HHmmss}.html";
+        var filePath = Path.Combine(FileSystem.CacheDirectory, fileName);
+
+        var html = BuildSessionReportHtmlInternal(reportData, options, referenceAthleteId, referenceVideoId, referenceAthleteName, isInteractive: true);
+        File.WriteAllText(filePath, html, Encoding.UTF8);
+
+        return Task.FromResult(filePath);
+    }
+    
+    /// <inheritdoc />
+    public Task<string> ExportSessionReportToPdfAsync(
+        SessionReportData reportData,
+        ReportOptions options,
+        int? referenceAthleteId = null,
+        int? referenceVideoId = null,
+        string? referenceAthleteName = null)
+    {
+        // Por ahora delegamos al método existente, se puede extender después
+        var sections = reportData.Sections
+            .Select(s => new SectionWithDetailedAthleteRows
+            {
+                Section = s.SectionId,
+                SectionName = s.SectionName,
+                Athletes = s.Athletes
+            })
+            .ToList();
+        
+        var session = new Session
+        {
+            Id = reportData.SessionId,
+            NombreSesion = reportData.Summary.SessionName,
+            Fecha = new DateTimeOffset(reportData.Summary.SessionDate).ToUnixTimeSeconds(),
+            Lugar = reportData.Summary.Location,
+            Coach = reportData.Summary.Coach
+        };
+        
+        return ExportDetailedSectionTimesToPdfAsync(session, sections, referenceAthleteId, referenceVideoId, referenceAthleteName);
+    }
+    
+    /// <summary>
+    /// Genera HTML del informe de sesión con secciones condicionales
+    /// </summary>
+    private static string BuildSessionReportHtmlInternal(
+        SessionReportData reportData,
+        ReportOptions options,
+        int? referenceAthleteId,
+        int? referenceVideoId,
+        string? referenceAthleteName,
+        bool isInteractive)
+    {
+        var sb = new StringBuilder();
+
+        sb.AppendLine("<!doctype html>");
+        sb.AppendLine("<html lang=\"es\">");
+        sb.AppendLine("<head>");
+        sb.AppendLine("  <meta charset=\"utf-8\" />");
+        sb.AppendLine("  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />");
+        sb.AppendLine($"  <title>{HtmlEscape($"Informe de Sesión - {reportData.Summary.SessionName}")}</title>");
+        sb.AppendLine("  <style>");
+        AppendReportStyles(sb);
+        sb.AppendLine("  </style>");
+        sb.AppendLine("</head>");
+        sb.AppendLine("<body>");
+        
+        // SECCIÓN 1: ENCABEZADO DE SESIÓN
+        if (options.ShowSessionHeader)
+        {
+            AppendSessionHeader(sb, reportData.Summary, referenceAthleteName);
+        }
+        
+        // SECCIÓN 2: RESUMEN DEL ENTRENAMIENTO
+        if (options.ShowTrainingSummary)
+        {
+            AppendTrainingSummary(sb, reportData.Summary);
+        }
+        
+        // Iterar por secciones/tramos
+        foreach (var section in reportData.Sections)
+        {
+            sb.AppendLine($"  <div class=\"section\">");
+            sb.AppendLine($"    <h2>{HtmlEscape(section.SectionName)}</h2>");
+            
+            // SECCIÓN 3: MÉTRICAS DE CONSISTENCIA DEL GRUPO
+            if (options.ShowGroupConsistency && section.GroupConsistency != null)
+            {
+                AppendGroupConsistencyMetrics(sb, section.GroupConsistency);
+            }
+            
+            // SECCIÓN 4: GRÁFICOS MIN-MAX
+            if (options.ShowMinMaxCharts)
+            {
+                var sectionData = new SectionWithDetailedAthleteRows
+                {
+                    Section = section.SectionId,
+                    SectionName = section.SectionName,
+                    Athletes = section.Athletes
+                };
+                var maxLapIndex = section.MaxLaps;
+                
+                // Calcular outliers
+                var groupData = section.Athletes
+                    .Select(a => (a.VideoId, a.DisplayName, a.AttemptNumber, a.TotalMs))
+                    .ToList();
+                var groupMetrics = ConsistencyCalculator.Calculate(groupData);
+                var excludedVideoIds = new HashSet<int>(groupMetrics.Outliers.Select(o => o.VideoId));
+                
+                // Parciales
+                var pointsPartial = BuildMinMaxPoints(sectionData, maxLapIndex, isCumulative: false, referenceAthleteId, referenceVideoId, excludedVideoIds);
+                if (pointsPartial.Any(p => p.MinMs.HasValue && p.MaxMs.HasValue))
+                {
+                    AppendMinMaxChartSvg(sb, pointsPartial, "Min–Max Parciales (normalizado)", sectionData, maxLapIndex, isCumulative: false, referenceAthleteId, referenceVideoId);
+                }
+                
+                // Acumulados
+                var pointsCumulative = BuildMinMaxPoints(sectionData, maxLapIndex, isCumulative: true, referenceAthleteId, referenceVideoId, excludedVideoIds);
+                if (pointsCumulative.Any(p => p.MinMs.HasValue && p.MaxMs.HasValue))
+                {
+                    AppendMinMaxChartSvg(sb, pointsCumulative, "Min–Max Acumulados (normalizado)", sectionData, maxLapIndex, isCumulative: true, referenceAthleteId, referenceVideoId);
+                }
+            }
+            
+            // SECCIÓN 5: TABLAS DE TIEMPOS
+            if (options.ShowTimeTables)
+            {
+                var sectionData = new SectionWithDetailedAthleteRows
+                {
+                    Section = section.SectionId,
+                    SectionName = section.SectionName,
+                    Athletes = section.Athletes
+                };
+                var maxLapIndex = section.MaxLaps;
+                
+                AppendHtmlLapTable(sb, sectionData, maxLapIndex, isCumulative: false);
+                AppendHtmlLapTable(sb, sectionData, maxLapIndex, isCumulative: true);
+            }
+            
+            // SECCIÓN 6: CONSISTENCIA INDIVIDUAL
+            if (options.ShowIndividualConsistency && section.IndividualConsistency.Count > 0)
+            {
+                AppendIndividualConsistencyTable(sb, section.IndividualConsistency);
+            }
+            
+            // SECCIÓN 7: ANÁLISIS DE PARCIALES
+            if (options.ShowLapAnalysis && section.LapProfiles.Count > 0)
+            {
+                AppendLapAnalysis(sb, section.LapProfiles, referenceAthleteId);
+            }
+            
+            // SECCIÓN 8: RANKING
+            if (options.ShowRanking && section.Ranking.Count > 0)
+            {
+                AppendRankingTable(sb, section.Ranking, referenceAthleteId, referenceVideoId);
+            }
+            
+            sb.AppendLine("  </div>");
+        }
+        
+        // SECCIÓN 9: PENALIZACIONES (global)
+        if (options.ShowPenalties && reportData.PenaltyAnalysis.Any(p => p.RunsWithPenalty > 0))
+        {
+            AppendPenaltyAnalysis(sb, reportData.PenaltyAnalysis);
+        }
+        
+        // SECCIÓN 10: PERFIL DEL ATLETA
+        if (options.ShowAthleteProfile && referenceAthleteId.HasValue)
+        {
+            var athleteProfile = reportData.AthleteProfiles.FirstOrDefault(p => p.AthleteId == referenceAthleteId.Value);
+            if (athleteProfile != null)
+            {
+                AppendAthleteProfile(sb, athleteProfile);
+            }
+        }
+        
+        // Footer
+        sb.AppendLine("  <div class=\"foot\">Lap = tiempo parcial · Acum. = tiempo acumulado · CV% = Coeficiente de Variación = (σ / x̄) × 100 (menor = más consistente)</div>");
+        sb.AppendLine("</body>");
+        sb.AppendLine("</html>");
+
+        return sb.ToString();
+    }
+    
+    /// <summary>
+    /// Añade estilos CSS para el informe
+    /// </summary>
+    private static void AppendReportStyles(StringBuilder sb)
+    {
+        sb.AppendLine("    :root { color-scheme: light; }");
+        sb.AppendLine("    body { font-family: -apple-system, system-ui, Segoe UI, Roboto, Helvetica, Arial, sans-serif; background:#fff; color:#111; margin:24px; }");
+        sb.AppendLine("    h1 { margin:0 0 6px 0; font-size:22px; }");
+        sb.AppendLine("    .session-header { background:#F8F9FA; border-radius:8px; padding:16px 20px; margin-bottom:20px; border-left:4px solid #0B5D74; }");
+        sb.AppendLine("    .session-header h1 { color:#0B5D74; }");
+        sb.AppendLine("    .session-meta { color:#666; font-size:14px; margin-top:8px; }");
+        sb.AppendLine("    .reference { color:#1B5E20; font-weight:600; margin-top:8px; }");
+        sb.AppendLine("    .report-date { color:#888; font-size:12px; margin-top:6px; font-style:italic; }");
+        sb.AppendLine("    .summary-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:16px; margin:16px 0; }");
+        sb.AppendLine("    .summary-card { background:#fff; border:1px solid #E0E0E0; border-radius:8px; padding:16px; text-align:center; }");
+        sb.AppendLine("    .summary-value { font-size:24px; font-weight:700; color:#0B5D74; font-family:ui-monospace,Menlo,monospace; }");
+        sb.AppendLine("    .summary-label { font-size:12px; color:#666; margin-top:4px; }");
+        sb.AppendLine("    .section { margin:24px 0; padding:16px; background:#FAFAFA; border-radius:8px; }");
+        sb.AppendLine("    .section h2 { color:#0B5D74; margin:0 0 16px 0; font-size:18px; border-bottom:2px solid #0B5D74; padding-bottom:8px; }");
+        sb.AppendLine("    table { width:100%; border-collapse:collapse; margin:12px 0; background:#fff; }");
+        sb.AppendLine("    thead th { background:#F2F2F2; color:#333; text-align:left; font-size:12px; padding:10px; border-bottom:1px solid #D0D0D0; }");
+        sb.AppendLine("    tbody tr:nth-child(even) { background:#FAFAFA; }");
+        sb.AppendLine("    tbody tr.highlight { background:#E8F5E9 !important; }");
+        sb.AppendLine("    tbody td { padding:10px; border-top:1px solid #E2E2E2; vertical-align:top; }");
+        sb.AppendLine("    .mono { font-family: ui-monospace, Menlo, Consolas, monospace; }");
+        sb.AppendLine("    .num { text-align:right; white-space:nowrap; }");
+        sb.AppendLine("    .foot { margin-top:24px; color:#555; font-size:14px; padding:12px; background:#F5F5F5; border-radius:4px; }");
+        sb.AppendLine("    .chart { max-width:70%; margin:12px 0; }");
+        sb.AppendLine("    .chart-title { font-weight:600; color:#333; margin:12px 0 8px 0; }");
+        sb.AppendLine("    .table-title { font-weight:600; color:#0B5D74; margin:16px 0 8px 0; font-size:14px; }");
+        sb.AppendLine("    .metrics-box { background:#F0F7FA; border:1px solid #B3D4E0; border-radius:6px; padding:12px 16px; margin:12px 0; }");
+        sb.AppendLine("    .metrics-title { font-weight:700; color:#0B5D74; margin:0 0 12px 0; font-size:14px; }");
+        sb.AppendLine("    .metrics-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(120px, 1fr)); gap:12px; }");
+        sb.AppendLine("    .metric { text-align:center; background:#fff; padding:8px; border-radius:4px; }");
+        sb.AppendLine("    .metric-value { font-size:18px; font-weight:700; color:#111; font-family:ui-monospace,Menlo,monospace; }");
+        sb.AppendLine("    .metric-label { font-size:11px; color:#666; margin-top:2px; }");
+        sb.AppendLine("    .outliers-note { font-size:12px; color:#B71C1C; margin-top:12px; padding:8px 12px; background:#FFEBEE; border-radius:4px; }");
+        sb.AppendLine("    .cv-excellent { color:#1B5E20; }");
+        sb.AppendLine("    .cv-good { color:#388E3C; }");
+        sb.AppendLine("    .cv-moderate { color:#F57C00; }");
+        sb.AppendLine("    .cv-high { color:#D32F2F; }");
+        sb.AppendLine("    .ranking-pos { font-weight:700; width:40px; }");
+        sb.AppendLine("    .pos-1 { color:#FFD700; }");
+        sb.AppendLine("    .pos-2 { color:#C0C0C0; }");
+        sb.AppendLine("    .pos-3 { color:#CD7F32; }");
+        sb.AppendLine("    .diff-positive { color:#D32F2F; }");
+        sb.AppendLine("    .diff-negative { color:#1B5E20; }");
+        sb.AppendLine("    .athlete-profile { background:#E3F2FD; border:1px solid #90CAF9; border-radius:8px; padding:16px; margin:20px 0; }");
+        sb.AppendLine("    .athlete-profile h3 { color:#1565C0; margin:0 0 12px 0; }");
+        sb.AppendLine("    .lap-bar { height:8px; border-radius:4px; margin:2px 0; }");
+        sb.AppendLine("    .lap-bar-positive { background:#FFCDD2; }");
+        sb.AppendLine("    .lap-bar-negative { background:#C8E6C9; }");
+    }
+    
+    /// <summary>
+    /// Añade el encabezado de la sesión
+    /// </summary>
+    private static void AppendSessionHeader(StringBuilder sb, TrainingSummary summary, string? referenceAthleteName = null)
+    {
+        sb.AppendLine("  <div class=\"session-header\">");
+        sb.AppendLine($"    <h1>{HtmlEscape(summary.SessionName)}</h1>");
+        sb.AppendLine("    <div class=\"session-meta\">");
+        sb.AppendLine($"      {HtmlEscape(summary.SessionDateFormatted)}");
+        if (!string.IsNullOrEmpty(summary.Location))
+            sb.AppendLine($"      &nbsp;·&nbsp; {HtmlEscape(summary.Location)}");
+        if (!string.IsNullOrEmpty(summary.Coach))
+            sb.AppendLine($"      &nbsp;·&nbsp; {HtmlEscape(summary.Coach)}");
+        if (!string.IsNullOrEmpty(summary.SessionType))
+            sb.AppendLine($"      &nbsp;·&nbsp; {HtmlEscape(summary.SessionType)}");
+        sb.AppendLine("    </div>");
+        if (!string.IsNullOrWhiteSpace(referenceAthleteName))
+        {
+            sb.AppendLine($"    <div class=\"reference\">Informe para: {HtmlEscape(referenceAthleteName)}</div>");
+        }
+        sb.AppendLine($"    <div class=\"report-date\">Generado: {DateTime.Now:dd/MM/yyyy HH:mm}</div>");
+        sb.AppendLine("  </div>");
+    }
+    
+    /// <summary>
+    /// Añade el resumen del entrenamiento
+    /// </summary>
+    private static void AppendTrainingSummary(StringBuilder sb, TrainingSummary summary)
+    {
+        sb.AppendLine("  <div class=\"metrics-box\">");
+        sb.AppendLine("    <div class=\"metrics-title\">Resumen del Entrenamiento</div>");
+        sb.AppendLine("    <div class=\"summary-grid\">");
+        
+        sb.AppendLine("      <div class=\"summary-card\">");
+        sb.AppendLine($"        <div class=\"summary-value\">{summary.TotalRuns}</div>");
+        sb.AppendLine("        <div class=\"summary-label\">Mangas grabadas</div>");
+        sb.AppendLine("      </div>");
+        
+        sb.AppendLine("      <div class=\"summary-card\">");
+        sb.AppendLine($"        <div class=\"summary-value\">{summary.TotalAthletes}</div>");
+        sb.AppendLine("        <div class=\"summary-label\">Atletas</div>");
+        sb.AppendLine("      </div>");
+        
+        sb.AppendLine("      <div class=\"summary-card\">");
+        sb.AppendLine($"        <div class=\"summary-value\">{summary.TotalSections}</div>");
+        sb.AppendLine("        <div class=\"summary-label\">Tramos</div>");
+        sb.AppendLine("      </div>");
+        
+        sb.AppendLine("      <div class=\"summary-card\">");
+        sb.AppendLine($"        <div class=\"summary-value\">{HtmlEscape(summary.PenaltyRatio)}</div>");
+        sb.AppendLine("        <div class=\"summary-label\">Mangas con penalización</div>");
+        sb.AppendLine("      </div>");
+        
+        sb.AppendLine("    </div>");
+        sb.AppendLine("  </div>");
+    }
+    
+    /// <summary>
+    /// Añade métricas de consistencia del grupo
+    /// </summary>
+    private static void AppendGroupConsistencyMetrics(StringBuilder sb, ConsistencyMetrics metrics)
+    {
+        sb.AppendLine("    <div class=\"metrics-box\">");
+        sb.AppendLine("      <div class=\"metrics-title\">Consistencia del Grupo</div>");
+        sb.AppendLine("      <div class=\"metrics-grid\">");
+        
+        var cvClass = GetCvColorClass(metrics.CoefficientOfVariation);
+        sb.AppendLine($"        <div class=\"metric\"><div class=\"metric-value {cvClass}\">{metrics.CvFormatted}</div><div class=\"metric-label\">CV%</div></div>");
+        sb.AppendLine($"        <div class=\"metric\"><div class=\"metric-value\">{metrics.RangeFormatted}</div><div class=\"metric-label\">Rango</div></div>");
+        sb.AppendLine($"        <div class=\"metric\"><div class=\"metric-value\">{metrics.MeanFormatted}</div><div class=\"metric-label\">Media</div></div>");
+        sb.AppendLine($"        <div class=\"metric\"><div class=\"metric-value\">{metrics.StdDevFormatted}</div><div class=\"metric-label\">Desv. Estándar</div></div>");
+        sb.AppendLine($"        <div class=\"metric\"><div class=\"metric-value\">{metrics.ValidCount}/{metrics.TotalCount}</div><div class=\"metric-label\">Ejecuciones válidas</div></div>");
+        
+        sb.AppendLine("      </div>");
+        
+        if (metrics.Outliers.Count > 0)
+        {
+            sb.AppendLine("      <div class=\"outliers-note\">");
+            sb.AppendLine($"        <strong>{metrics.Outliers.Count} ejecución(es) descartada(s)</strong> ({metrics.OutlierCriteria}):<br>");
+            foreach (var outlier in metrics.Outliers)
+            {
+                sb.AppendLine($"        • {HtmlEscape(outlier.AthleteName)}: {outlier.TimeFormatted} — {HtmlEscape(outlier.Reason)}<br>");
+            }
+            sb.AppendLine("      </div>");
+        }
+        
+        sb.AppendLine("    </div>");
+    }
+    
+    /// <summary>
+    /// Añade gráfico Min-Max como SVG
+    /// </summary>
+    private static void AppendMinMaxChartSvg(
+        StringBuilder sb,
+        List<MinMaxPoint> points,
+        string title,
+        SectionWithDetailedAthleteRows section,
+        int maxLapIndex,
+        bool isCumulative,
+        int? referenceAthleteId,
+        int? referenceVideoId)
+    {
+        const float viewW = 1000f;
+        const float viewH = 180f;
+        const float padT = 24f;
+        const float padR = 10f;
+        const float padB = 22f;
+        const float padL = 20f;
+        var plotW = viewW - padL - padR;
+        var plotH = viewH - padT - padB;
+
+        var colCount = points.Count;
+        var colW = plotW / Math.Max(1, colCount);
+
+        string F(float v) => v.ToString("0.##", CultureInfo.InvariantCulture);
+        float X(int i) => padL + (colW * i) + (colW / 2f);
+
+        float YNorm(MinMaxPoint p, long ms)
+        {
+            if (p.MinMs is null || p.MaxMs is null || p.MaxMs == p.MinMs)
+                return padT + plotH / 2f;
+            var range = p.MaxMs.Value - p.MinMs.Value;
+            var t = Math.Clamp((ms - p.MinMs.Value) / (double)range, 0, 1);
+            var usableH = plotH * 0.7f;
+            var topMargin = plotH * 0.15f;
+            return padT + topMargin + usableH * (float)(1 - t);
+        }
+
+        sb.AppendLine($"    <div class=\"chart-title\">{HtmlEscape(title)}</div>");
+        sb.AppendLine("    <div class=\"chart\">");
+        sb.AppendLine($"      <svg viewBox=\"0 0 {F(viewW)} {F(viewH)}\" xmlns=\"http://www.w3.org/2000/svg\">");
+        sb.AppendLine($"        <rect x=\"0\" y=\"0\" width=\"{F(viewW)}\" height=\"{F(viewH)}\" fill=\"#fff\" />");
+
+        for (var i = 0; i <= colCount; i++)
+        {
+            var xLine = padL + (colW * i);
+            sb.AppendLine($"        <line x1=\"{F(xLine)}\" y1=\"{F(padT)}\" x2=\"{F(xLine)}\" y2=\"{F(padT + plotH)}\" stroke=\"#E8E8E8\" stroke-width=\"1\" />");
+        }
+
+        for (var i = 0; i < points.Count; i++)
+        {
+            var p = points[i];
+            if (p.MinMs is null || p.MaxMs is null) continue;
+
+            var x = X(i);
+            var yMinPx = YNorm(p, p.MinMs.Value);
+            var yMaxPx = YNorm(p, p.MaxMs.Value);
+
+            sb.AppendLine($"        <line x1=\"{F(x)}\" y1=\"{F(yMaxPx)}\" x2=\"{F(x)}\" y2=\"{F(yMinPx)}\" stroke=\"#0B5D74\" stroke-width=\"3\" />");
+            sb.AppendLine($"        <circle cx=\"{F(x)}\" cy=\"{F(yMaxPx)}\" r=\"5\" fill=\"#fff\" stroke=\"#0B5D74\" stroke-width=\"2\" />");
+            sb.AppendLine($"        <circle cx=\"{F(x)}\" cy=\"{F(yMinPx)}\" r=\"5\" fill=\"#fff\" stroke=\"#0B5D74\" stroke-width=\"2\" />");
+            sb.AppendLine($"        <text x=\"{F(x)}\" y=\"{F(yMaxPx - 10)}\" font-size=\"10\" font-family=\"ui-monospace,Menlo,Consolas,monospace\" text-anchor=\"middle\" fill=\"#0B5D74\">{HtmlEscape(FormatTimeMs(p.MaxMs.Value))}</text>");
+            sb.AppendLine($"        <text x=\"{F(x)}\" y=\"{F(yMinPx + 20)}\" font-size=\"10\" font-family=\"ui-monospace,Menlo,Consolas,monospace\" text-anchor=\"middle\" fill=\"#0B5D74\">{HtmlEscape(FormatTimeMs(p.MinMs.Value))}</text>");
+
+            if (p.MeanMs is not null)
+            {
+                var ym = YNorm(p, p.MeanMs.Value);
+                sb.AppendLine($"        <rect x=\"{F(x - 4)}\" y=\"{F(ym - 4)}\" width=\"8\" height=\"8\" fill=\"#616161\" transform=\"rotate(45 {F(x)} {F(ym)})\" />");
+            }
+
+            if (p.SelectedMs is not null)
+            {
+                var ys = YNorm(p, p.SelectedMs.Value);
+                sb.AppendLine($"        <circle cx=\"{F(x)}\" cy=\"{F(ys)}\" r=\"7\" fill=\"#1B5E20\" stroke=\"#111\" stroke-width=\"1\" />");
+                var diffText = "";
+                if (p.MinMs.HasValue && p.MinMs.Value > 0 && p.SelectedMs.Value > p.MinMs.Value)
+                {
+                    var diffMs = p.SelectedMs.Value - p.MinMs.Value;
+                    var diffPct = (diffMs * 100.0) / p.MinMs.Value;
+                    diffText = $" (+{FormatTimeMs(diffMs)} / +{diffPct:0.0}%)";
+                }
+                sb.AppendLine($"        <text x=\"{F(x + 12)}\" y=\"{F(ys + 4)}\" font-size=\"9\" font-family=\"ui-monospace,Menlo,Consolas,monospace\" text-anchor=\"start\" fill=\"#1B5E20\" font-weight=\"bold\">{HtmlEscape(FormatTimeMs(p.SelectedMs.Value) + diffText)}</text>");
+            }
+
+            sb.AppendLine($"        <text x=\"{F(x)}\" y=\"{F(padT + plotH + 18)}\" font-size=\"11\" font-family=\"-apple-system,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif\" text-anchor=\"middle\" fill=\"#333\" font-weight=\"bold\">{HtmlEscape(p.Label)}</text>");
+        }
+
+        sb.AppendLine("      </svg>");
+        sb.AppendLine("    </div>");
+    }
+    
+    /// <summary>
+    /// Añade tabla de consistencia individual
+    /// </summary>
+    private static void AppendIndividualConsistencyTable(StringBuilder sb, List<AthleteConsistencyMetrics> metrics)
+    {
+        sb.AppendLine("    <div class=\"table-title\">Consistencia Individual (atletas con múltiples intentos)</div>");
+        sb.AppendLine("    <table>");
+        sb.AppendLine("      <thead><tr><th>Atleta</th><th class=\"num\">Intentos</th><th class=\"num\">CV%</th><th class=\"num\">Rango</th></tr></thead>");
+        sb.AppendLine("      <tbody>");
+        foreach (var m in metrics)
+        {
+            var cvClass = GetCvColorClass(m.CoefficientOfVariation);
+            sb.AppendLine($"        <tr>");
+            sb.AppendLine($"          <td>{HtmlEscape(m.AthleteName)}</td>");
+            sb.AppendLine($"          <td class=\"num\">{m.AttemptCount}</td>");
+            sb.AppendLine($"          <td class=\"num {cvClass}\" style=\"font-weight:700;\">{m.CvFormatted}</td>");
+            sb.AppendLine($"          <td class=\"num mono\">{m.RangeFormatted}</td>");
+            sb.AppendLine($"        </tr>");
+        }
+        sb.AppendLine("      </tbody>");
+        sb.AppendLine("    </table>");
+    }
+    
+    /// <summary>
+    /// Añade análisis de parciales
+    /// </summary>
+    private static void AppendLapAnalysis(StringBuilder sb, List<AthleteLapProfile> profiles, int? referenceAthleteId)
+    {
+        // Mostrar solo el atleta de referencia o el primero
+        var profile = referenceAthleteId.HasValue 
+            ? profiles.FirstOrDefault(p => p.AthleteId == referenceAthleteId.Value) ?? profiles.FirstOrDefault()
+            : profiles.FirstOrDefault();
+        
+        if (profile == null || profile.LapAnalysis.Count == 0)
+            return;
+        
+        sb.AppendLine($"    <div class=\"table-title\">Análisis de Parciales: {HtmlEscape(profile.AthleteName)}</div>");
+        sb.AppendLine("    <table>");
+        sb.AppendLine("      <thead><tr><th>Parcial</th><th class=\"num\">Tiempo</th><th class=\"num\">vs Mejor</th><th class=\"num\">vs Media</th><th style=\"width:200px\">Diferencia</th></tr></thead>");
+        sb.AppendLine("      <tbody>");
+        
+        foreach (var lap in profile.LapAnalysis)
+        {
+            var diffClass = lap.DiffToAverageMs > 0 ? "diff-positive" : (lap.DiffToAverageMs < 0 ? "diff-negative" : "");
+            var barWidth = Math.Min(100, Math.Abs(lap.DiffToAveragePercent) * 10);
+            var barClass = lap.DiffToAverageMs > 0 ? "lap-bar-positive" : "lap-bar-negative";
+            
+            sb.AppendLine($"        <tr>");
+            sb.AppendLine($"          <td><strong>{lap.LapLabel}</strong></td>");
+            sb.AppendLine($"          <td class=\"num mono\">{lap.AthleteTimeFormatted}</td>");
+            sb.AppendLine($"          <td class=\"num mono {(lap.IsBestInLap ? "diff-negative" : "diff-positive")}\">{lap.DiffToBestFormatted}</td>");
+            sb.AppendLine($"          <td class=\"num mono {diffClass}\">{lap.DiffToAverageFormatted}</td>");
+            sb.AppendLine($"          <td><div class=\"lap-bar {barClass}\" style=\"width:{barWidth:0}%;\"></div></td>");
+            sb.AppendLine($"        </tr>");
+        }
+        
+        sb.AppendLine("      </tbody>");
+        sb.AppendLine($"      <tfoot><tr><td colspan=\"5\" style=\"font-size:12px;color:#666;\">Tiempo total perdido vs mejores: <strong>{profile.TotalTimeLostFormatted}</strong> | Peor parcial: <strong>P{profile.WorstLapIndex}</strong> | Mejor parcial: <strong>P{profile.BestLapIndex}</strong></td></tr></tfoot>");
+        sb.AppendLine("    </table>");
+    }
+    
+    /// <summary>
+    /// Añade tabla de ranking
+    /// </summary>
+    private static void AppendRankingTable(StringBuilder sb, List<RankingEntry> ranking, int? referenceAthleteId, int? referenceVideoId)
+    {
+        sb.AppendLine("    <div class=\"table-title\">Ranking</div>");
+        sb.AppendLine("    <table>");
+        sb.AppendLine("      <thead><tr><th class=\"ranking-pos\">#</th><th>Atleta</th><th>Categoría</th><th class=\"num\">Tiempo</th><th class=\"num\">vs 1º</th><th class=\"num\">%</th></tr></thead>");
+        sb.AppendLine("      <tbody>");
+        
+        foreach (var entry in ranking)
+        {
+            var isHighlight = (referenceVideoId.HasValue && entry.VideoId == referenceVideoId.Value) ||
+                              (!referenceVideoId.HasValue && referenceAthleteId.HasValue && entry.AthleteId == referenceAthleteId.Value && entry.IsBestAttempt);
+            var rowClass = isHighlight ? " class=\"highlight\"" : "";
+            var posClass = entry.Position <= 3 ? $" pos-{entry.Position}" : "";
+            
+            sb.AppendLine($"        <tr{rowClass}>");
+            sb.AppendLine($"          <td class=\"ranking-pos{posClass}\">{entry.PositionFormatted}</td>");
+            sb.AppendLine($"          <td>{HtmlEscape(entry.DisplayName)}</td>");
+            sb.AppendLine($"          <td style=\"color:#888;\">{HtmlEscape(entry.CategoryName)}</td>");
+            sb.AppendLine($"          <td class=\"num mono\" style=\"font-weight:700;\">{entry.TotalTimeFormatted}</td>");
+            sb.AppendLine($"          <td class=\"num mono diff-positive\">{entry.DiffToFirstFormatted}</td>");
+            sb.AppendLine($"          <td class=\"num mono diff-positive\">{entry.DiffToFirstPercentFormatted}</td>");
+            sb.AppendLine($"        </tr>");
+        }
+        
+        sb.AppendLine("      </tbody>");
+        sb.AppendLine("    </table>");
+    }
+    
+    /// <summary>
+    /// Añade análisis de penalizaciones
+    /// </summary>
+    private static void AppendPenaltyAnalysis(StringBuilder sb, List<PenaltyAnalysis> penalties)
+    {
+        var withPenalties = penalties.Where(p => p.RunsWithPenalty > 0).ToList();
+        if (withPenalties.Count == 0) return;
+        
+        sb.AppendLine("  <div class=\"section\">");
+        sb.AppendLine("    <h2>Análisis de Penalizaciones</h2>");
+        sb.AppendLine("    <table>");
+        sb.AppendLine("      <thead><tr><th>Atleta</th><th class=\"num\">Mangas</th><th class=\"num\">Con +2</th><th class=\"num\">Ratio</th><th class=\"num\">Tiempo perdido</th></tr></thead>");
+        sb.AppendLine("      <tbody>");
+        
+        foreach (var p in withPenalties)
+        {
+            sb.AppendLine($"        <tr>");
+            sb.AppendLine($"          <td>{HtmlEscape(p.AthleteName)}</td>");
+            sb.AppendLine($"          <td class=\"num\">{p.TotalRuns}</td>");
+            sb.AppendLine($"          <td class=\"num\">{p.RunsWithPenalty}</td>");
+            sb.AppendLine($"          <td class=\"num diff-positive\">{p.PenaltyRatioFormatted}</td>");
+            sb.AppendLine($"          <td class=\"num mono diff-positive\">{p.TotalPenaltyFormatted}</td>");
+            sb.AppendLine($"        </tr>");
+        }
+        
+        sb.AppendLine("      </tbody>");
+        sb.AppendLine("    </table>");
+        sb.AppendLine("  </div>");
+    }
+    
+    /// <summary>
+    /// Añade perfil del atleta
+    /// </summary>
+    private static void AppendAthleteProfile(StringBuilder sb, AthleteReportProfile profile)
+    {
+        sb.AppendLine("  <div class=\"athlete-profile\">");
+        sb.AppendLine($"    <h3>Perfil: {HtmlEscape(profile.AthleteName)}</h3>");
+        sb.AppendLine("    <div class=\"summary-grid\">");
+        
+        sb.AppendLine("      <div class=\"summary-card\">");
+        sb.AppendLine($"        <div class=\"summary-value\">{profile.TotalRuns}</div>");
+        sb.AppendLine("        <div class=\"summary-label\">Mangas</div>");
+        sb.AppendLine("      </div>");
+        
+        sb.AppendLine("      <div class=\"summary-card\">");
+        sb.AppendLine($"        <div class=\"summary-value\">{profile.PersonalBestFormatted}</div>");
+        sb.AppendLine("        <div class=\"summary-label\">Mejor tiempo</div>");
+        sb.AppendLine("      </div>");
+        
+        sb.AppendLine("      <div class=\"summary-card\">");
+        sb.AppendLine($"        <div class=\"summary-value\">{profile.AverageTimeFormatted}</div>");
+        sb.AppendLine("        <div class=\"summary-label\">Tiempo medio</div>");
+        sb.AppendLine("      </div>");
+        
+        sb.AppendLine("      <div class=\"summary-card\">");
+        sb.AppendLine($"        <div class=\"summary-value\">{profile.BestPositionFormatted}</div>");
+        sb.AppendLine("        <div class=\"summary-label\">Mejor posición</div>");
+        sb.AppendLine("      </div>");
+        
+        if (!string.IsNullOrEmpty(profile.CategoryName))
+        {
+            sb.AppendLine("      <div class=\"summary-card\">");
+            sb.AppendLine($"        <div class=\"summary-value\" style=\"font-size:16px;\">{HtmlEscape(profile.CategoryName)}</div>");
+            sb.AppendLine("        <div class=\"summary-label\">Categoría</div>");
+            sb.AppendLine("      </div>");
+        }
+        
+        sb.AppendLine("    </div>");
+        sb.AppendLine("  </div>");
+    }
 }
+
