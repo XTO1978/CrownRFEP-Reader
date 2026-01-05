@@ -20,8 +20,9 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
     private VideoClip? _video2;
     private bool _isHorizontalOrientation;
     private bool _isSimultaneousMode = false; // Por defecto modo individual
-    private bool _isMuted = true; // Silenciado por defecto
     private double _playbackSpeed = 1.0;
+
+    private bool _isLapSyncEnabled;
 
     // Flags para evitar actualizar Progress mientras el usuario arrastra los sliders
     private bool _isDraggingSlider;
@@ -84,7 +85,6 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
         SetSpeedCommand = new Command<string>(SetSpeed);
         ToggleOrientationCommand = new Command(ToggleOrientation);
         ToggleModeCommand = new Command(ToggleMode);
-        ToggleMuteCommand = new Command(() => IsMuted = !IsMuted);
         CloseCommand = new Command(async () => await CloseAsync());
 
         // Comandos de selección de reproductor
@@ -95,7 +95,55 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
         ExportCommand = new Command(async () => await ExportParallelVideosAsync(), () => CanExport);
     }
 
+    public bool IsLapSyncEnabled
+    {
+        get => _isLapSyncEnabled;
+        set
+        {
+            if (_isLapSyncEnabled == value) return;
+            _isLapSyncEnabled = value;
+            OnPropertyChanged();
+        }
+    }
+
     #region Export Methods
+
+    private static TimeSpan GetFallbackDuration(VideoClip clip, TimeSpan durationProperty)
+    {
+        if (durationProperty > TimeSpan.Zero)
+            return durationProperty;
+
+        if (clip.ClipDuration > 0)
+            return TimeSpan.FromSeconds(clip.ClipDuration);
+
+        return TimeSpan.Zero;
+    }
+
+    private static List<TimeSpan>? BuildLapBoundaries(
+        List<ExecutionTimingEvent> timingEvents,
+        TimeSpan exportStart,
+        TimeSpan exportEnd)
+    {
+        if (exportEnd <= exportStart)
+            return null;
+
+        var lapMarkers = timingEvents
+            .Where(e => e.Kind == 1)
+            .Select(e => TimeSpan.FromMilliseconds(e.ElapsedMilliseconds))
+            .Where(t => t > exportStart && t < exportEnd)
+            .Distinct()
+            .OrderBy(t => t)
+            .ToList();
+
+        var boundaries = new List<TimeSpan>(capacity: 2 + lapMarkers.Count)
+        {
+            exportStart
+        };
+        boundaries.AddRange(lapMarkers);
+        boundaries.Add(exportEnd);
+
+        return boundaries.Count >= 2 ? boundaries : null;
+    }
 
     private async Task ExportParallelVideosAsync()
     {
@@ -188,6 +236,37 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
                 Video2Section = Video2.Section,
                 OutputPath = outputPath
             };
+
+            if (IsLapSyncEnabled)
+            {
+                ExportStatus = "Leyendo parciales...";
+
+                var timing1 = await databaseService.GetExecutionTimingEventsByVideoAsync(Video1.Id);
+                var timing2 = await databaseService.GetExecutionTimingEventsByVideoAsync(Video2.Id);
+
+                var end1FromEventsMs = timing1.LastOrDefault(e => e.Kind == 2)?.ElapsedMilliseconds;
+                var end2FromEventsMs = timing2.LastOrDefault(e => e.Kind == 2)?.ElapsedMilliseconds;
+
+                var end1 = end1FromEventsMs.HasValue
+                    ? TimeSpan.FromMilliseconds(end1FromEventsMs.Value)
+                    : GetFallbackDuration(Video1, Duration1);
+                var end2 = end2FromEventsMs.HasValue
+                    ? TimeSpan.FromMilliseconds(end2FromEventsMs.Value)
+                    : GetFallbackDuration(Video2, Duration2);
+
+                var boundaries1 = BuildLapBoundaries(timing1, CurrentPosition1, end1);
+                var boundaries2 = BuildLapBoundaries(timing2, CurrentPosition2, end2);
+
+                if (boundaries1 == null || boundaries2 == null || boundaries1.Count < 2 || boundaries2.Count < 2)
+                {
+                    ExportStatus = "No hay parciales suficientes para sincronizar";
+                    return;
+                }
+
+                exportParams.SyncByLaps = true;
+                exportParams.Video1LapBoundaries = boundaries1;
+                exportParams.Video2LapBoundaries = boundaries2;
+            }
 
             ExportStatus = "Componiendo vídeos...";
 
@@ -375,22 +454,6 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
     public bool IsIndividualMode => !_isSimultaneousMode;
     public string ModeIcon => IsSimultaneousMode ? "link.badge.plus" : "link";
     public string ModeText => IsSimultaneousMode ? "Desincronizar" : "Sincronizar";
-
-    public bool IsMuted
-    {
-        get => _isMuted;
-        set
-        {
-            if (_isMuted != value)
-            {
-                _isMuted = value;
-                OnPropertyChanged();
-                OnPropertyChanged(nameof(MuteIcon));
-            }
-        }
-    }
-
-    public string MuteIcon => IsMuted ? "speaker.slash.fill" : "speaker.wave.2.fill";
 
     /// <summary>
     /// Reproductor seleccionado en modo individual (1 o 2).
@@ -639,7 +702,6 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
     public ICommand SetSpeedCommand { get; }
     public ICommand ToggleOrientationCommand { get; }
     public ICommand ToggleModeCommand { get; }
-    public ICommand ToggleMuteCommand { get; }
     public ICommand CloseCommand { get; }
     public ICommand SelectPlayer1Command { get; }
     public ICommand SelectPlayer2Command { get; }

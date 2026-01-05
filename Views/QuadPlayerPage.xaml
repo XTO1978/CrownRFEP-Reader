@@ -669,6 +669,24 @@
                     <!--  Separador  -->
                     <BoxView WidthRequest="1" HeightRequest="24" BackgroundColor="#FF3A3A3A" />
 
+                    <!--  Sincronizar por laps  -->
+                    <Border
+                        Padding="8,4"
+                        BackgroundColor="#FF2A2A2A"
+                        StrokeShape="RoundRectangle 6"
+                        StrokeThickness="0">
+                        <HorizontalStackLayout Spacing="10" VerticalOptions="Center">
+                            <Label
+                                Text="Sincronizar laps"
+                                TextColor="White"
+                                FontSize="{StaticResource FontSizeSmall}"
+                                VerticalOptions="Center" />
+                            <Switch
+                                IsToggled="{Binding IsLapSyncEnabled, Mode=TwoWay}"
+                                VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                    </Border>
+
                     <!--  Botón de exportación  -->
                     <Border
                         Padding="8,4"

@@ -15,6 +15,40 @@ public class MacVideoCompositionService : Services.IVideoCompositionService
 {
     public bool IsAvailable => true;
 
+    private static CMTime ToCMTime(TimeSpan timeSpan) => CMTime.FromSeconds(timeSpan.TotalSeconds, 600);
+
+    private static CMTime GetFrameDuration(AVAssetTrack videoTrack)
+    {
+        var fps = videoTrack.NominalFrameRate;
+        if (fps <= 1)
+            fps = 30;
+        return CMTime.FromSeconds(1.0 / fps, 600);
+    }
+
+    private static void InsertFreezePadding(
+        AVMutableCompositionTrack compositionVideoTrack,
+        AVAssetTrack sourceVideoTrack,
+        CMTime sourceSegmentEnd,
+        CMTime paddingStartInComposition,
+        CMTime paddingDuration,
+        CMTime frameDuration,
+        out NSError? error)
+    {
+        error = null;
+        if (CMTime.Compare(paddingDuration, CMTime.Zero) <= 0)
+            return;
+
+        var lastFrameStart = sourceSegmentEnd - frameDuration;
+        if (CMTime.Compare(lastFrameStart, CMTime.Zero) < 0)
+            lastFrameStart = CMTime.Zero;
+
+        var oneFrame = new CMTimeRange { Start = lastFrameStart, Duration = frameDuration };
+        compositionVideoTrack.InsertTimeRange(oneFrame, sourceVideoTrack, paddingStartInComposition, out error);
+
+        var insertedRange = new CMTimeRange { Start = paddingStartInComposition, Duration = frameDuration };
+        compositionVideoTrack.ScaleTimeRange(insertedRange, paddingDuration);
+    }
+
     public async Task<Services.VideoExportResult> ExportParallelVideosAsync(
         Services.ParallelVideoExportParams parameters,
         IProgress<double>? progress = null,
@@ -129,15 +163,18 @@ public class MacVideoCompositionService : Services.IVideoCompositionService
                 var size1 = ApplyTransformToSize(videoTrack1.NaturalSize, videoTrack1.PreferredTransform);
                 var size2 = ApplyTransformToSize(videoTrack2.NaturalSize, videoTrack2.PreferredTransform);
 
-                var duration1 = asset1.Duration - CMTime.FromSeconds(parameters.Video1StartPosition.TotalSeconds, 600);
-                var duration2 = asset2.Duration - CMTime.FromSeconds(parameters.Video2StartPosition.TotalSeconds, 600);
-                
-                // Usar la duración más corta
+                var startTime1 = ToCMTime(parameters.Video1StartPosition);
+                var startTime2 = ToCMTime(parameters.Video2StartPosition);
+
+                var duration1 = asset1.Duration - startTime1;
+                var duration2 = asset2.Duration - startTime2;
+
+                // Por defecto: usar la duración más corta
                 var exportDuration = CMTime.Compare(duration1, duration2) < 0 ? duration1 : duration2;
-                
+
                 if (parameters.MaxDuration.HasValue)
                 {
-                    var maxDur = CMTime.FromSeconds(parameters.MaxDuration.Value.TotalSeconds, 600);
+                    var maxDur = ToCMTime(parameters.MaxDuration.Value);
                     if (CMTime.Compare(maxDur, exportDuration) < 0)
                         exportDuration = maxDur;
                 }
@@ -188,25 +225,79 @@ public class MacVideoCompositionService : Services.IVideoCompositionService
                 var compositionVideoTrack1 = composition.AddMutableTrack(AVMediaTypes.Video.GetConstant()!, 0);
                 var compositionVideoTrack2 = composition.AddMutableTrack(AVMediaTypes.Video.GetConstant()!, 0);
 
-                var startTime1 = CMTime.FromSeconds(parameters.Video1StartPosition.TotalSeconds, 600);
-                var startTime2 = CMTime.FromSeconds(parameters.Video2StartPosition.TotalSeconds, 600);
-                var timeRange1 = new CMTimeRange { Start = startTime1, Duration = exportDuration };
-                var timeRange2 = new CMTimeRange { Start = startTime2, Duration = exportDuration };
+                AVMutableCompositionTrack? audioCompositionTrack1 = null;
+                AVMutableCompositionTrack? audioCompositionTrack2 = null;
+                if (audioTrack1 != null)
+                    audioCompositionTrack1 = composition.AddMutableTrack(AVMediaTypes.Audio.GetConstant()!, 0);
+                if (audioTrack2 != null)
+                    audioCompositionTrack2 = composition.AddMutableTrack(AVMediaTypes.Audio.GetConstant()!, 0);
 
                 NSError? error;
-                compositionVideoTrack1?.InsertTimeRange(timeRange1, videoTrack1, CMTime.Zero, out error);
-                compositionVideoTrack2?.InsertTimeRange(timeRange2, videoTrack2, CMTime.Zero, out error);
 
-                // Audio
-                if (audioTrack1 != null)
+                if (parameters.SyncByLaps &&
+                    parameters.Video1LapBoundaries?.Count >= 2 &&
+                    parameters.Video2LapBoundaries?.Count >= 2)
                 {
-                    var audioCompositionTrack1 = composition.AddMutableTrack(AVMediaTypes.Audio.GetConstant()!, 0);
-                    audioCompositionTrack1?.InsertTimeRange(timeRange1, audioTrack1, CMTime.Zero, out error);
+                    var boundaries1 = parameters.Video1LapBoundaries;
+                    var boundaries2 = parameters.Video2LapBoundaries;
+                    var segmentCount = Math.Min(boundaries1.Count, boundaries2.Count) - 1;
+
+                    var frameDuration1 = GetFrameDuration(videoTrack1);
+                    var frameDuration2 = GetFrameDuration(videoTrack2);
+
+                    var cursor = CMTime.Zero;
+                    var maxTotal = parameters.MaxDuration.HasValue ? ToCMTime(parameters.MaxDuration.Value) : (CMTime?)null;
+
+                    for (int i = 0; i < segmentCount; i++)
+                    {
+                        var segStart1 = ToCMTime(boundaries1[i]);
+                        var segEnd1 = ToCMTime(boundaries1[i + 1]);
+                        var segStart2 = ToCMTime(boundaries2[i]);
+                        var segEnd2 = ToCMTime(boundaries2[i + 1]);
+
+                        var segDur1 = segEnd1 - segStart1;
+                        var segDur2 = segEnd2 - segStart2;
+                        var segDuration = CMTime.Compare(segDur1, segDur2) >= 0 ? segDur1 : segDur2;
+
+                        if (maxTotal.HasValue && CMTime.Compare(cursor + segDuration, maxTotal.Value) > 0)
+                            break;
+
+                        var range1 = new CMTimeRange { Start = segStart1, Duration = segDur1 };
+                        var range2 = new CMTimeRange { Start = segStart2, Duration = segDur2 };
+                        compositionVideoTrack1?.InsertTimeRange(range1, videoTrack1, cursor, out error);
+                        compositionVideoTrack2?.InsertTimeRange(range2, videoTrack2, cursor, out error);
+
+                        if (audioTrack1 != null)
+                            audioCompositionTrack1?.InsertTimeRange(range1, audioTrack1, cursor, out error);
+                        if (audioTrack2 != null)
+                            audioCompositionTrack2?.InsertTimeRange(range2, audioTrack2, cursor, out error);
+
+                        var pad1 = segDuration - segDur1;
+                        var pad2 = segDuration - segDur2;
+
+                        if (compositionVideoTrack1 != null)
+                            InsertFreezePadding(compositionVideoTrack1, videoTrack1, segEnd1, cursor + segDur1, pad1, frameDuration1, out error);
+                        if (compositionVideoTrack2 != null)
+                            InsertFreezePadding(compositionVideoTrack2, videoTrack2, segEnd2, cursor + segDur2, pad2, frameDuration2, out error);
+
+                        cursor += segDuration;
+                    }
+
+                    exportDuration = cursor;
                 }
-                if (audioTrack2 != null)
+                else
                 {
-                    var audioCompositionTrack2 = composition.AddMutableTrack(AVMediaTypes.Audio.GetConstant()!, 0);
-                    audioCompositionTrack2?.InsertTimeRange(timeRange2, audioTrack2, CMTime.Zero, out error);
+                    var timeRange1 = new CMTimeRange { Start = startTime1, Duration = exportDuration };
+                    var timeRange2 = new CMTimeRange { Start = startTime2, Duration = exportDuration };
+
+                    compositionVideoTrack1?.InsertTimeRange(timeRange1, videoTrack1, CMTime.Zero, out error);
+                    compositionVideoTrack2?.InsertTimeRange(timeRange2, videoTrack2, CMTime.Zero, out error);
+
+                    // Audio
+                    if (audioTrack1 != null)
+                        audioCompositionTrack1?.InsertTimeRange(timeRange1, audioTrack1, CMTime.Zero, out error);
+                    if (audioTrack2 != null)
+                        audioCompositionTrack2?.InsertTimeRange(timeRange2, audioTrack2, CMTime.Zero, out error);
                 }
 
                 // Video composition instructions
@@ -628,37 +719,103 @@ public class MacVideoCompositionService : Services.IVideoCompositionService
                 var compositionVideoTrack3 = composition.AddMutableTrack(AVMediaTypes.Video.GetConstant()!, 0);
                 var compositionVideoTrack4 = composition.AddMutableTrack(AVMediaTypes.Video.GetConstant()!, 0);
 
-                var timeRange1 = new CMTimeRange { Start = startTimes[0], Duration = exportDuration };
-                var timeRange2 = new CMTimeRange { Start = startTimes[1], Duration = exportDuration };
-                var timeRange3 = new CMTimeRange { Start = startTimes[2], Duration = exportDuration };
-                var timeRange4 = new CMTimeRange { Start = startTimes[3], Duration = exportDuration };
+                AVMutableCompositionTrack? audioCompositionTrack1 = null;
+                AVMutableCompositionTrack? audioCompositionTrack2 = null;
+                AVMutableCompositionTrack? audioCompositionTrack3 = null;
+                AVMutableCompositionTrack? audioCompositionTrack4 = null;
+                if (audioTrack1 != null) audioCompositionTrack1 = composition.AddMutableTrack(AVMediaTypes.Audio.GetConstant()!, 0);
+                if (audioTrack2 != null) audioCompositionTrack2 = composition.AddMutableTrack(AVMediaTypes.Audio.GetConstant()!, 0);
+                if (audioTrack3 != null) audioCompositionTrack3 = composition.AddMutableTrack(AVMediaTypes.Audio.GetConstant()!, 0);
+                if (audioTrack4 != null) audioCompositionTrack4 = composition.AddMutableTrack(AVMediaTypes.Audio.GetConstant()!, 0);
 
                 NSError? error;
-                compositionVideoTrack1?.InsertTimeRange(timeRange1, videoTrack1, CMTime.Zero, out error);
-                compositionVideoTrack2?.InsertTimeRange(timeRange2, videoTrack2, CMTime.Zero, out error);
-                compositionVideoTrack3?.InsertTimeRange(timeRange3, videoTrack3, CMTime.Zero, out error);
-                compositionVideoTrack4?.InsertTimeRange(timeRange4, videoTrack4, CMTime.Zero, out error);
 
-                // Audio (mezclamos los 4)
-                if (audioTrack1 != null)
+                if (parameters.SyncByLaps &&
+                    parameters.Video1LapBoundaries?.Count >= 2 &&
+                    parameters.Video2LapBoundaries?.Count >= 2 &&
+                    parameters.Video3LapBoundaries?.Count >= 2 &&
+                    parameters.Video4LapBoundaries?.Count >= 2)
                 {
-                    var audioCompositionTrack1 = composition.AddMutableTrack(AVMediaTypes.Audio.GetConstant()!, 0);
-                    audioCompositionTrack1?.InsertTimeRange(timeRange1, audioTrack1, CMTime.Zero, out error);
+                    var b1 = parameters.Video1LapBoundaries;
+                    var b2 = parameters.Video2LapBoundaries;
+                    var b3 = parameters.Video3LapBoundaries;
+                    var b4 = parameters.Video4LapBoundaries;
+                    var segmentCount = new[] { b1.Count, b2.Count, b3.Count, b4.Count }.Min() - 1;
+
+                    var fd1 = GetFrameDuration(videoTrack1);
+                    var fd2 = GetFrameDuration(videoTrack2);
+                    var fd3 = GetFrameDuration(videoTrack3);
+                    var fd4 = GetFrameDuration(videoTrack4);
+
+                    var cursor = CMTime.Zero;
+                    var maxTotal = parameters.MaxDuration.HasValue ? ToCMTime(parameters.MaxDuration.Value) : (CMTime?)null;
+
+                    for (int i = 0; i < segmentCount; i++)
+                    {
+                        var s1 = ToCMTime(b1[i]);
+                        var e1 = ToCMTime(b1[i + 1]);
+                        var s2 = ToCMTime(b2[i]);
+                        var e2 = ToCMTime(b2[i + 1]);
+                        var s3 = ToCMTime(b3[i]);
+                        var e3 = ToCMTime(b3[i + 1]);
+                        var s4 = ToCMTime(b4[i]);
+                        var e4 = ToCMTime(b4[i + 1]);
+
+                        var d1 = e1 - s1;
+                        var d2 = e2 - s2;
+                        var d3 = e3 - s3;
+                        var d4 = e4 - s4;
+
+                        var segDuration = d1;
+                        if (CMTime.Compare(d2, segDuration) > 0) segDuration = d2;
+                        if (CMTime.Compare(d3, segDuration) > 0) segDuration = d3;
+                        if (CMTime.Compare(d4, segDuration) > 0) segDuration = d4;
+
+                        if (maxTotal.HasValue && CMTime.Compare(cursor + segDuration, maxTotal.Value) > 0)
+                            break;
+
+                        var r1 = new CMTimeRange { Start = s1, Duration = d1 };
+                        var r2 = new CMTimeRange { Start = s2, Duration = d2 };
+                        var r3 = new CMTimeRange { Start = s3, Duration = d3 };
+                        var r4 = new CMTimeRange { Start = s4, Duration = d4 };
+
+                        compositionVideoTrack1?.InsertTimeRange(r1, videoTrack1, cursor, out error);
+                        compositionVideoTrack2?.InsertTimeRange(r2, videoTrack2, cursor, out error);
+                        compositionVideoTrack3?.InsertTimeRange(r3, videoTrack3, cursor, out error);
+                        compositionVideoTrack4?.InsertTimeRange(r4, videoTrack4, cursor, out error);
+
+                        if (audioTrack1 != null) audioCompositionTrack1?.InsertTimeRange(r1, audioTrack1, cursor, out error);
+                        if (audioTrack2 != null) audioCompositionTrack2?.InsertTimeRange(r2, audioTrack2, cursor, out error);
+                        if (audioTrack3 != null) audioCompositionTrack3?.InsertTimeRange(r3, audioTrack3, cursor, out error);
+                        if (audioTrack4 != null) audioCompositionTrack4?.InsertTimeRange(r4, audioTrack4, cursor, out error);
+
+                        if (compositionVideoTrack1 != null) InsertFreezePadding(compositionVideoTrack1, videoTrack1, e1, cursor + d1, segDuration - d1, fd1, out error);
+                        if (compositionVideoTrack2 != null) InsertFreezePadding(compositionVideoTrack2, videoTrack2, e2, cursor + d2, segDuration - d2, fd2, out error);
+                        if (compositionVideoTrack3 != null) InsertFreezePadding(compositionVideoTrack3, videoTrack3, e3, cursor + d3, segDuration - d3, fd3, out error);
+                        if (compositionVideoTrack4 != null) InsertFreezePadding(compositionVideoTrack4, videoTrack4, e4, cursor + d4, segDuration - d4, fd4, out error);
+
+                        cursor += segDuration;
+                    }
+
+                    exportDuration = cursor;
                 }
-                if (audioTrack2 != null)
+                else
                 {
-                    var audioCompositionTrack2 = composition.AddMutableTrack(AVMediaTypes.Audio.GetConstant()!, 0);
-                    audioCompositionTrack2?.InsertTimeRange(timeRange2, audioTrack2, CMTime.Zero, out error);
-                }
-                if (audioTrack3 != null)
-                {
-                    var audioCompositionTrack3 = composition.AddMutableTrack(AVMediaTypes.Audio.GetConstant()!, 0);
-                    audioCompositionTrack3?.InsertTimeRange(timeRange3, audioTrack3, CMTime.Zero, out error);
-                }
-                if (audioTrack4 != null)
-                {
-                    var audioCompositionTrack4 = composition.AddMutableTrack(AVMediaTypes.Audio.GetConstant()!, 0);
-                    audioCompositionTrack4?.InsertTimeRange(timeRange4, audioTrack4, CMTime.Zero, out error);
+                    var timeRange1 = new CMTimeRange { Start = startTimes[0], Duration = exportDuration };
+                    var timeRange2 = new CMTimeRange { Start = startTimes[1], Duration = exportDuration };
+                    var timeRange3 = new CMTimeRange { Start = startTimes[2], Duration = exportDuration };
+                    var timeRange4 = new CMTimeRange { Start = startTimes[3], Duration = exportDuration };
+
+                    compositionVideoTrack1?.InsertTimeRange(timeRange1, videoTrack1, CMTime.Zero, out error);
+                    compositionVideoTrack2?.InsertTimeRange(timeRange2, videoTrack2, CMTime.Zero, out error);
+                    compositionVideoTrack3?.InsertTimeRange(timeRange3, videoTrack3, CMTime.Zero, out error);
+                    compositionVideoTrack4?.InsertTimeRange(timeRange4, videoTrack4, CMTime.Zero, out error);
+
+                    // Audio (mezclamos los 4)
+                    if (audioTrack1 != null) audioCompositionTrack1?.InsertTimeRange(timeRange1, audioTrack1, CMTime.Zero, out error);
+                    if (audioTrack2 != null) audioCompositionTrack2?.InsertTimeRange(timeRange2, audioTrack2, CMTime.Zero, out error);
+                    if (audioTrack3 != null) audioCompositionTrack3?.InsertTimeRange(timeRange3, audioTrack3, CMTime.Zero, out error);
+                    if (audioTrack4 != null) audioCompositionTrack4?.InsertTimeRange(timeRange4, audioTrack4, CMTime.Zero, out error);
                 }
 
                 // Video composition instructions

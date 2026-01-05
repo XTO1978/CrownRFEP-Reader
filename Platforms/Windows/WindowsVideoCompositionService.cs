@@ -6,6 +6,7 @@ using Windows.Storage;
 using Windows.Graphics.Imaging;
 using Windows.Media.Core;
 using System.Runtime.InteropServices.WindowsRuntime;
+using Windows.Storage.Streams;
 using WinFoundation = Windows.Foundation;
 
 namespace CrownRFEP_Reader.Platforms.Windows;
@@ -16,6 +17,47 @@ namespace CrownRFEP_Reader.Platforms.Windows;
 public class WindowsVideoCompositionService : IVideoCompositionService
 {
     public bool IsAvailable => true;
+
+    private static TimeSpan Clamp(TimeSpan value, TimeSpan min, TimeSpan max)
+    {
+        if (value < min) return min;
+        if (value > max) return max;
+        return value;
+    }
+
+    private static async Task<StorageFile> CreateStillImageAsync(
+        MediaClip sourceClip,
+        TimeSpan sourceTime,
+        string prefix,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        // Evitar pedir un thumbnail exactamente en el final
+        var safeTime = sourceTime;
+        if (safeTime < TimeSpan.Zero) safeTime = TimeSpan.Zero;
+        if (safeTime > sourceClip.OriginalDuration)
+            safeTime = sourceClip.OriginalDuration;
+        if (safeTime == sourceClip.OriginalDuration && safeTime > TimeSpan.FromMilliseconds(5))
+            safeTime -= TimeSpan.FromMilliseconds(5);
+
+        var tempFolder = ApplicationData.Current.TemporaryFolder;
+        var file = await tempFolder.CreateFileAsync(
+            $"{prefix}_{Guid.NewGuid():N}.png",
+            CreationCollisionOption.ReplaceExisting);
+
+        using var thumbStream = await sourceClip.GetThumbnailAsync(
+            safeTime,
+            640,
+            360,
+            VideoFramePrecision.NearestFrame);
+
+        using var output = await file.OpenAsync(FileAccessMode.ReadWrite);
+        await RandomAccessStream.CopyAsync(thumbStream, output);
+        await output.FlushAsync();
+
+        return file;
+    }
 
     public async Task<VideoExportResult> ExportParallelVideosAsync(
         ParallelVideoExportParams parameters,
@@ -31,6 +73,134 @@ public class WindowsVideoCompositionService : IVideoCompositionService
             // Crear clips de media
             var clip1 = await MediaClip.CreateFromFileAsync(video1File);
             var clip2 = await MediaClip.CreateFromFileAsync(video2File);
+
+            if (parameters.SyncByLaps &&
+                parameters.Video1LapBoundaries?.Count >= 2 &&
+                parameters.Video2LapBoundaries?.Count >= 2)
+            {
+                var boundaries1 = parameters.Video1LapBoundaries;
+                var boundaries2 = parameters.Video2LapBoundaries;
+                var segmentCount = Math.Min(boundaries1.Count, boundaries2.Count) - 1;
+
+                var composition = new MediaComposition();
+                var overlayLayer = new MediaOverlayLayer();
+
+                var cursor = TimeSpan.Zero;
+                var maxTotal = parameters.MaxDuration;
+
+                for (int i = 0; i < segmentCount; i++)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    var start1 = Clamp(boundaries1[i], TimeSpan.Zero, clip1.OriginalDuration);
+                    var end1 = Clamp(boundaries1[i + 1], TimeSpan.Zero, clip1.OriginalDuration);
+                    var start2 = Clamp(boundaries2[i], TimeSpan.Zero, clip2.OriginalDuration);
+                    var end2 = Clamp(boundaries2[i + 1], TimeSpan.Zero, clip2.OriginalDuration);
+
+                    if (end1 <= start1 || end2 <= start2)
+                        break;
+
+                    var dur1 = end1 - start1;
+                    var dur2 = end2 - start2;
+                    var segDuration = dur1 > dur2 ? dur1 : dur2;
+
+                    if (maxTotal.HasValue && cursor + segDuration > maxTotal.Value)
+                        break;
+
+                    // Base (video 1)
+                    var segClip1 = await MediaClip.CreateFromFileAsync(video1File);
+                    segClip1.TrimTimeFromStart = start1;
+                    segClip1.TrimTimeFromEnd = segClip1.OriginalDuration - end1;
+                    composition.Clips.Add(segClip1);
+
+                    // Overlay (video 2)
+                    var segClip2 = await MediaClip.CreateFromFileAsync(video2File);
+                    segClip2.TrimTimeFromStart = start2;
+                    segClip2.TrimTimeFromEnd = segClip2.OriginalDuration - end2;
+
+                    var overlayPos = new WinFoundation.Rect(
+                        parameters.IsHorizontalLayout ? 0.5 : 0,
+                        parameters.IsHorizontalLayout ? 0 : 0.5,
+                        parameters.IsHorizontalLayout ? 0.5 : 1.0,
+                        parameters.IsHorizontalLayout ? 1.0 : 0.5);
+
+                    overlayLayer.Overlays.Add(new MediaOverlay(segClip2)
+                    {
+                        Position = overlayPos,
+                        Delay = cursor
+                    });
+
+                    // Padding freeze (video 1)
+                    if (segDuration > dur1)
+                    {
+                        var pad = segDuration - dur1;
+                        var stillFile = await CreateStillImageAsync(clip1, end1, "lap1", cancellationToken);
+                        var stillClip = await MediaClip.CreateFromImageFileAsync(stillFile, pad);
+                        composition.Clips.Add(stillClip);
+                    }
+
+                    // Padding freeze (video 2)
+                    if (segDuration > dur2)
+                    {
+                        var pad = segDuration - dur2;
+                        var stillFile = await CreateStillImageAsync(clip2, end2, "lap2", cancellationToken);
+                        var stillClip = await MediaClip.CreateFromImageFileAsync(stillFile, pad);
+                        overlayLayer.Overlays.Add(new MediaOverlay(stillClip)
+                        {
+                            Position = overlayPos,
+                            Delay = cursor + dur2
+                        });
+                    }
+
+                    cursor += segDuration;
+                }
+
+                composition.OverlayLayers.Add(overlayLayer);
+
+                // Configurar encoding
+                var encodingProfile = MediaEncodingProfile.CreateMp4(VideoEncodingQuality.HD1080p);
+                if (parameters.IsHorizontalLayout)
+                {
+                    encodingProfile.Video!.Width = 3840;
+                    encodingProfile.Video.Height = 1080;
+                }
+                else
+                {
+                    encodingProfile.Video!.Width = 1920;
+                    encodingProfile.Video.Height = 2160;
+                }
+
+                // Crear archivo de salida
+                var outputFolder = await StorageFolder.GetFolderFromPathAsync(
+                    System.IO.Path.GetDirectoryName(parameters.OutputPath)!);
+                var outputFile = await outputFolder.CreateFileAsync(
+                    System.IO.Path.GetFileName(parameters.OutputPath),
+                    CreationCollisionOption.ReplaceExisting);
+
+                // Renderizar
+                var renderOperation = composition.RenderToFileAsync(outputFile, MediaTrimmingPreference.Precise, encodingProfile);
+                renderOperation.Progress = (info, progressValue) => progress?.Report(progressValue / 100.0);
+                cancellationToken.Register(() => renderOperation.Cancel());
+
+                var result = await renderOperation;
+                if (result != TranscodeFailureReason.None)
+                {
+                    return new VideoExportResult
+                    {
+                        Success = false,
+                        ErrorMessage = $"Transcoding failed: {result}"
+                    };
+                }
+
+                var props = await outputFile.GetBasicPropertiesAsync();
+                return new VideoExportResult
+                {
+                    Success = true,
+                    OutputPath = parameters.OutputPath,
+                    FileSizeBytes = (long)props.Size,
+                    Duration = cursor
+                };
+            }
 
             // Aplicar offset de inicio si es necesario
             if (parameters.Video1StartPosition > TimeSpan.Zero)
@@ -159,6 +329,149 @@ public class WindowsVideoCompositionService : IVideoCompositionService
             var clip2 = await MediaClip.CreateFromFileAsync(video2File);
             var clip3 = await MediaClip.CreateFromFileAsync(video3File);
             var clip4 = await MediaClip.CreateFromFileAsync(video4File);
+
+            if (parameters.SyncByLaps &&
+                parameters.Video1LapBoundaries?.Count >= 2 &&
+                parameters.Video2LapBoundaries?.Count >= 2 &&
+                parameters.Video3LapBoundaries?.Count >= 2 &&
+                parameters.Video4LapBoundaries?.Count >= 2)
+            {
+                var b1 = parameters.Video1LapBoundaries;
+                var b2 = parameters.Video2LapBoundaries;
+                var b3 = parameters.Video3LapBoundaries;
+                var b4 = parameters.Video4LapBoundaries;
+                var segmentCount = new[] { b1.Count, b2.Count, b3.Count, b4.Count }.Min() - 1;
+
+                var composition = new MediaComposition();
+                var overlayLayer = new MediaOverlayLayer();
+
+                var pos2 = new WinFoundation.Rect(0.5, 0, 0.5, 0.5);
+                var pos3 = new WinFoundation.Rect(0, 0.5, 0.5, 0.5);
+                var pos4 = new WinFoundation.Rect(0.5, 0.5, 0.5, 0.5);
+
+                var cursor = TimeSpan.Zero;
+                var maxTotal = parameters.MaxDuration;
+
+                for (int i = 0; i < segmentCount; i++)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    var s1 = Clamp(b1[i], TimeSpan.Zero, clip1.OriginalDuration);
+                    var e1 = Clamp(b1[i + 1], TimeSpan.Zero, clip1.OriginalDuration);
+                    var s2 = Clamp(b2[i], TimeSpan.Zero, clip2.OriginalDuration);
+                    var e2 = Clamp(b2[i + 1], TimeSpan.Zero, clip2.OriginalDuration);
+                    var s3 = Clamp(b3[i], TimeSpan.Zero, clip3.OriginalDuration);
+                    var e3 = Clamp(b3[i + 1], TimeSpan.Zero, clip3.OriginalDuration);
+                    var s4 = Clamp(b4[i], TimeSpan.Zero, clip4.OriginalDuration);
+                    var e4 = Clamp(b4[i + 1], TimeSpan.Zero, clip4.OriginalDuration);
+
+                    if (e1 <= s1 || e2 <= s2 || e3 <= s3 || e4 <= s4)
+                        break;
+
+                    var d1 = e1 - s1;
+                    var d2 = e2 - s2;
+                    var d3 = e3 - s3;
+                    var d4 = e4 - s4;
+                    var segDuration = new[] { d1, d2, d3, d4 }.Max();
+
+                    if (maxTotal.HasValue && cursor + segDuration > maxTotal.Value)
+                        break;
+
+                    // Base (video 1)
+                    var segClip1 = await MediaClip.CreateFromFileAsync(video1File);
+                    segClip1.TrimTimeFromStart = s1;
+                    segClip1.TrimTimeFromEnd = segClip1.OriginalDuration - e1;
+                    composition.Clips.Add(segClip1);
+
+                    // Overlays 2-4
+                    var segClip2 = await MediaClip.CreateFromFileAsync(video2File);
+                    segClip2.TrimTimeFromStart = s2;
+                    segClip2.TrimTimeFromEnd = segClip2.OriginalDuration - e2;
+                    overlayLayer.Overlays.Add(new MediaOverlay(segClip2) { Position = pos2, Delay = cursor });
+
+                    var segClip3 = await MediaClip.CreateFromFileAsync(video3File);
+                    segClip3.TrimTimeFromStart = s3;
+                    segClip3.TrimTimeFromEnd = segClip3.OriginalDuration - e3;
+                    overlayLayer.Overlays.Add(new MediaOverlay(segClip3) { Position = pos3, Delay = cursor });
+
+                    var segClip4 = await MediaClip.CreateFromFileAsync(video4File);
+                    segClip4.TrimTimeFromStart = s4;
+                    segClip4.TrimTimeFromEnd = segClip4.OriginalDuration - e4;
+                    overlayLayer.Overlays.Add(new MediaOverlay(segClip4) { Position = pos4, Delay = cursor });
+
+                    // Padding base (video 1)
+                    if (segDuration > d1)
+                    {
+                        var pad = segDuration - d1;
+                        var stillFile = await CreateStillImageAsync(clip1, e1, "lapq1", cancellationToken);
+                        var stillClip = await MediaClip.CreateFromImageFileAsync(stillFile, pad);
+                        composition.Clips.Add(stillClip);
+                    }
+
+                    // Padding overlays 2-4
+                    if (segDuration > d2)
+                    {
+                        var pad = segDuration - d2;
+                        var stillFile = await CreateStillImageAsync(clip2, e2, "lapq2", cancellationToken);
+                        var stillClip = await MediaClip.CreateFromImageFileAsync(stillFile, pad);
+                        overlayLayer.Overlays.Add(new MediaOverlay(stillClip) { Position = pos2, Delay = cursor + d2 });
+                    }
+                    if (segDuration > d3)
+                    {
+                        var pad = segDuration - d3;
+                        var stillFile = await CreateStillImageAsync(clip3, e3, "lapq3", cancellationToken);
+                        var stillClip = await MediaClip.CreateFromImageFileAsync(stillFile, pad);
+                        overlayLayer.Overlays.Add(new MediaOverlay(stillClip) { Position = pos3, Delay = cursor + d3 });
+                    }
+                    if (segDuration > d4)
+                    {
+                        var pad = segDuration - d4;
+                        var stillFile = await CreateStillImageAsync(clip4, e4, "lapq4", cancellationToken);
+                        var stillClip = await MediaClip.CreateFromImageFileAsync(stillFile, pad);
+                        overlayLayer.Overlays.Add(new MediaOverlay(stillClip) { Position = pos4, Delay = cursor + d4 });
+                    }
+
+                    cursor += segDuration;
+                }
+
+                composition.OverlayLayers.Add(overlayLayer);
+
+                // Configurar encoding - 2x2 grid a 1920x1080 total
+                var encodingProfile = MediaEncodingProfile.CreateMp4(VideoEncodingQuality.HD1080p);
+                encodingProfile.Video!.Width = 1920;
+                encodingProfile.Video.Height = 1080;
+
+                // Crear archivo de salida
+                var outputFolder = await StorageFolder.GetFolderFromPathAsync(
+                    System.IO.Path.GetDirectoryName(parameters.OutputPath)!);
+                var outputFile = await outputFolder.CreateFileAsync(
+                    System.IO.Path.GetFileName(parameters.OutputPath),
+                    CreationCollisionOption.ReplaceExisting);
+
+                // Renderizar
+                var renderOperation = composition.RenderToFileAsync(outputFile, MediaTrimmingPreference.Precise, encodingProfile);
+                renderOperation.Progress = (info, progressValue) => progress?.Report(progressValue / 100.0);
+                cancellationToken.Register(() => renderOperation.Cancel());
+
+                var result = await renderOperation;
+                if (result != TranscodeFailureReason.None)
+                {
+                    return new VideoExportResult
+                    {
+                        Success = false,
+                        ErrorMessage = $"Transcoding failed: {result}"
+                    };
+                }
+
+                var props = await outputFile.GetBasicPropertiesAsync();
+                return new VideoExportResult
+                {
+                    Success = true,
+                    OutputPath = parameters.OutputPath,
+                    FileSizeBytes = (long)props.Size,
+                    Duration = cursor
+                };
+            }
 
             // Aplicar offset de inicio si es necesario
             if (parameters.Video1StartPosition > TimeSpan.Zero)

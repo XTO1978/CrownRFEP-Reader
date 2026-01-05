@@ -19,6 +19,8 @@ public class QuadPlayerViewModel : INotifyPropertyChanged
     private VideoClip? _video3;
     private VideoClip? _video4;
     private double _playbackSpeed = 1.0;
+
+    private bool _isLapSyncEnabled;
     private bool _isSimultaneousMode = false;
     private bool _isMuted = true; // Silenciado por defecto
 
@@ -109,6 +111,17 @@ public class QuadPlayerViewModel : INotifyPropertyChanged
         
         // Comando de exportación
         ExportCommand = new Command(async () => await ExportQuadVideosAsync(), () => CanExport);
+    }
+
+    public bool IsLapSyncEnabled
+    {
+        get => _isLapSyncEnabled;
+        set
+        {
+            if (_isLapSyncEnabled == value) return;
+            _isLapSyncEnabled = value;
+            OnPropertyChanged();
+        }
     }
 
     #region Propiedades de Videos
@@ -494,6 +507,43 @@ public class QuadPlayerViewModel : INotifyPropertyChanged
 
     #region Export Methods
 
+    private static TimeSpan GetFallbackDuration(VideoClip clip, TimeSpan durationProperty)
+    {
+        if (durationProperty > TimeSpan.Zero)
+            return durationProperty;
+
+        if (clip.ClipDuration > 0)
+            return TimeSpan.FromSeconds(clip.ClipDuration);
+
+        return TimeSpan.Zero;
+    }
+
+    private static List<TimeSpan>? BuildLapBoundaries(
+        List<ExecutionTimingEvent> timingEvents,
+        TimeSpan exportStart,
+        TimeSpan exportEnd)
+    {
+        if (exportEnd <= exportStart)
+            return null;
+
+        var lapMarkers = timingEvents
+            .Where(e => e.Kind == 1)
+            .Select(e => TimeSpan.FromMilliseconds(e.ElapsedMilliseconds))
+            .Where(t => t > exportStart && t < exportEnd)
+            .Distinct()
+            .OrderBy(t => t)
+            .ToList();
+
+        var boundaries = new List<TimeSpan>(capacity: 2 + lapMarkers.Count)
+        {
+            exportStart
+        };
+        boundaries.AddRange(lapMarkers);
+        boundaries.Add(exportEnd);
+
+        return boundaries.Count >= 2 ? boundaries : null;
+    }
+
     private async Task ExportQuadVideosAsync()
     {
         if (Video1 == null || Video2 == null || Video3 == null || Video4 == null || IsExporting)
@@ -600,6 +650,51 @@ public class QuadPlayerViewModel : INotifyPropertyChanged
                 Video4Section = Video4.Section,
                 OutputPath = outputPath
             };
+
+            if (IsLapSyncEnabled)
+            {
+                ExportStatus = "Leyendo parciales...";
+
+                var timing1 = await databaseService.GetExecutionTimingEventsByVideoAsync(Video1.Id);
+                var timing2 = await databaseService.GetExecutionTimingEventsByVideoAsync(Video2.Id);
+                var timing3 = await databaseService.GetExecutionTimingEventsByVideoAsync(Video3.Id);
+                var timing4 = await databaseService.GetExecutionTimingEventsByVideoAsync(Video4.Id);
+
+                var end1FromEventsMs = timing1.LastOrDefault(e => e.Kind == 2)?.ElapsedMilliseconds;
+                var end2FromEventsMs = timing2.LastOrDefault(e => e.Kind == 2)?.ElapsedMilliseconds;
+                var end3FromEventsMs = timing3.LastOrDefault(e => e.Kind == 2)?.ElapsedMilliseconds;
+                var end4FromEventsMs = timing4.LastOrDefault(e => e.Kind == 2)?.ElapsedMilliseconds;
+
+                var end1 = end1FromEventsMs.HasValue
+                    ? TimeSpan.FromMilliseconds(end1FromEventsMs.Value)
+                    : GetFallbackDuration(Video1, Duration1);
+                var end2 = end2FromEventsMs.HasValue
+                    ? TimeSpan.FromMilliseconds(end2FromEventsMs.Value)
+                    : GetFallbackDuration(Video2, Duration2);
+                var end3 = end3FromEventsMs.HasValue
+                    ? TimeSpan.FromMilliseconds(end3FromEventsMs.Value)
+                    : GetFallbackDuration(Video3, Duration3);
+                var end4 = end4FromEventsMs.HasValue
+                    ? TimeSpan.FromMilliseconds(end4FromEventsMs.Value)
+                    : GetFallbackDuration(Video4, Duration4);
+
+                var boundaries1 = BuildLapBoundaries(timing1, CurrentPosition1, end1);
+                var boundaries2 = BuildLapBoundaries(timing2, CurrentPosition2, end2);
+                var boundaries3 = BuildLapBoundaries(timing3, CurrentPosition3, end3);
+                var boundaries4 = BuildLapBoundaries(timing4, CurrentPosition4, end4);
+
+                if (boundaries1 == null || boundaries2 == null || boundaries3 == null || boundaries4 == null)
+                {
+                    ExportStatus = "No hay parciales suficientes para sincronizar";
+                    return;
+                }
+
+                exportParams.SyncByLaps = true;
+                exportParams.Video1LapBoundaries = boundaries1;
+                exportParams.Video2LapBoundaries = boundaries2;
+                exportParams.Video3LapBoundaries = boundaries3;
+                exportParams.Video4LapBoundaries = boundaries4;
+            }
 
             ExportStatus = "Componiendo vídeos...";
 

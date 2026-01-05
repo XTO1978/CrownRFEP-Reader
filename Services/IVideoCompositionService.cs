@@ -40,6 +40,23 @@ public class ParallelVideoExportParams
     /// </summary>
     public TimeSpan? MaxDuration { get; set; }
 
+    /// <summary>
+    /// Si está activo, la exportación se sincroniza por laps: cada lap comienza a la vez
+    /// y el que termina antes “espera” (freeze) hasta el siguiente lap.
+    /// </summary>
+    public bool SyncByLaps { get; set; }
+
+    /// <summary>
+    /// Límites de laps en tiempo del vídeo fuente (incluye inicio y fin), ya filtrados por el start position.
+    /// Ejemplo: [start, lap1, lap2, ..., end].
+    /// </summary>
+    public List<TimeSpan>? Video1LapBoundaries { get; set; }
+
+    /// <summary>
+    /// Límites de laps en tiempo del vídeo fuente (incluye inicio y fin), ya filtrados por el start position.
+    /// </summary>
+    public List<TimeSpan>? Video2LapBoundaries { get; set; }
+
     // Datos para overlay Video 1
     public string? Video1AthleteName { get; set; }
     public string? Video1Category { get; set; }
@@ -85,6 +102,19 @@ public class QuadVideoExportParams
     /// Duración máxima de la exportación (null = hasta que termine el más corto)
     /// </summary>
     public TimeSpan? MaxDuration { get; set; }
+
+    /// <summary>
+    /// Si está activo, la exportación se sincroniza por laps (freeze en los que acaban antes).
+    /// </summary>
+    public bool SyncByLaps { get; set; }
+
+    /// <summary>
+    /// Límites de laps en tiempo del vídeo fuente (incluye inicio y fin), ya filtrados por el start position.
+    /// </summary>
+    public List<TimeSpan>? Video1LapBoundaries { get; set; }
+    public List<TimeSpan>? Video2LapBoundaries { get; set; }
+    public List<TimeSpan>? Video3LapBoundaries { get; set; }
+    public List<TimeSpan>? Video4LapBoundaries { get; set; }
 
     // Datos para overlay Video 1
     public string? Video1AthleteName { get; set; }
