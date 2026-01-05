@@ -87,6 +87,16 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     private readonly ObservableCollection<ExecutionTimingRow> _splitLapRows = new();
     private readonly List<long> _splitLapMarksMs = new();
     private bool _hasSplitLaps;
+    
+    // Modo de toma de parciales asistido
+    private bool _isAssistedModeEnabled;
+    private AssistedLapState _assistedLapState = AssistedLapState.Configuring;
+    private readonly ObservableCollection<AssistedLapDefinition> _assistedLaps = new();
+    private int _assistedLapCount = 3;
+    private int _currentAssistedLapIndex = 0;
+    
+    // Historial de configuraciones de parciales
+    private readonly ObservableCollection<LapConfigHistory> _recentLapConfigs = new();
 
     public SinglePlayerViewModel(DatabaseService databaseService)
     {
@@ -166,6 +176,18 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         AddSplitLapCommand = new Command(AddSplitLap);
         ClearSplitCommand = new Command(ClearSplit);
         SaveSplitCommand = new Command(async () => await SaveSplitAsync(), () => CanSaveSplit);
+        
+        // Comandos del modo asistido
+        ToggleAssistedModeCommand = new Command(ToggleAssistedMode);
+        IncrementAssistedLapCountCommand = new Command(() => AssistedLapCount = Math.Min(10, AssistedLapCount + 1));
+        DecrementAssistedLapCountCommand = new Command(() => AssistedLapCount = Math.Max(1, AssistedLapCount - 1));
+        StartAssistedCaptureCommand = new Command(StartAssistedCapture, () => IsAssistedModeEnabled && AssistedLapState == AssistedLapState.Configuring);
+        MarkAssistedPointCommand = new Command(MarkAssistedPoint, () => IsAssistedModeEnabled && AssistedLapState != AssistedLapState.Configuring && AssistedLapState != AssistedLapState.Completed);
+        ResetAssistedCaptureCommand = new Command(ResetAssistedCapture);
+        ApplyLapConfigCommand = new Command<LapConfigHistory>(ApplyLapConfig);
+        
+        // Cargar historial de configuraciones
+        _ = LoadRecentLapConfigsAsync();
     }
 
     #region Propiedades
@@ -705,6 +727,140 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             }
         }
     }
+    
+    // ==================== MODO ASISTIDO ====================
+    
+    /// <summary>Indica si el modo de toma asistida está activado</summary>
+    public bool IsAssistedModeEnabled
+    {
+        get => _isAssistedModeEnabled;
+        set
+        {
+            if (_isAssistedModeEnabled != value)
+            {
+                _isAssistedModeEnabled = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(IsManualModeEnabled));
+                
+                // Actualizar estado de los comandos
+                ((Command)StartAssistedCaptureCommand).ChangeCanExecute();
+                ((Command)MarkAssistedPointCommand).ChangeCanExecute();
+                
+                if (value)
+                {
+                    // Al activar modo asistido, asegurarse de que haya parciales
+                    if (_assistedLaps.Count == 0 || _assistedLaps.Count != AssistedLapCount)
+                    {
+                        InitializeAssistedLaps();
+                    }
+                }
+                else
+                {
+                    // Al desactivar, reiniciar el estado de captura
+                    ResetAssistedCapture();
+                }
+                
+                System.Diagnostics.Debug.WriteLine($"IsAssistedModeEnabled cambiado a: {value}");
+            }
+        }
+    }
+    
+    /// <summary>Indica si el modo manual está activo (inverso del asistido)</summary>
+    public bool IsManualModeEnabled => !_isAssistedModeEnabled;
+    
+    /// <summary>Estado actual del flujo de toma asistida</summary>
+    public AssistedLapState AssistedLapState
+    {
+        get => _assistedLapState;
+        set
+        {
+            if (_assistedLapState != value)
+            {
+                _assistedLapState = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(AssistedStateDescription));
+                OnPropertyChanged(nameof(AssistedActionButtonText));
+                OnPropertyChanged(nameof(CanMarkAssistedPoint));
+                OnPropertyChanged(nameof(IsAssistedConfiguring));
+                OnPropertyChanged(nameof(IsAssistedCapturing));
+                ((Command)StartAssistedCaptureCommand).ChangeCanExecute();
+                ((Command)MarkAssistedPointCommand).ChangeCanExecute();
+            }
+        }
+    }
+    
+    /// <summary>Número de parciales a configurar (1-10)</summary>
+    public int AssistedLapCount
+    {
+        get => _assistedLapCount;
+        set
+        {
+            var clamped = Math.Max(1, Math.Min(10, value));
+            if (_assistedLapCount != clamped)
+            {
+                _assistedLapCount = clamped;
+                OnPropertyChanged();
+                InitializeAssistedLaps();
+            }
+        }
+    }
+    
+    /// <summary>Lista de parciales predefinidos</summary>
+    public ObservableCollection<AssistedLapDefinition> AssistedLaps => _assistedLaps;
+    
+    /// <summary>Índice del parcial actual a marcar (0-based)</summary>
+    public int CurrentAssistedLapIndex
+    {
+        get => _currentAssistedLapIndex;
+        private set
+        {
+            _currentAssistedLapIndex = value;
+            OnPropertyChanged();
+            UpdateCurrentLapHighlight();
+        }
+    }
+    
+    /// <summary>Descripción del estado actual para guiar al usuario</summary>
+    public string AssistedStateDescription => AssistedLapState switch
+    {
+        AssistedLapState.Configuring => "Configura los parciales y pulsa 'Iniciar toma'",
+        AssistedLapState.WaitingForStart => "▶ Pulsa el botón para marcar el INICIO",
+        AssistedLapState.MarkingLaps => CurrentAssistedLapIndex < _assistedLaps.Count 
+            ? $"▶ Marca el parcial: {_assistedLaps[CurrentAssistedLapIndex].DisplayName}" 
+            : "▶ Pulsa para marcar el FIN",
+        AssistedLapState.WaitingForEnd => "▶ Pulsa el botón para marcar el FIN",
+        AssistedLapState.Completed => "✓ Toma completada. Guarda o reinicia.",
+        _ => ""
+    };
+    
+    /// <summary>Texto del botón de acción según el estado</summary>
+    public string AssistedActionButtonText => AssistedLapState switch
+    {
+        AssistedLapState.WaitingForStart => "INICIO",
+        AssistedLapState.MarkingLaps => CurrentAssistedLapIndex < _assistedLaps.Count 
+            ? _assistedLaps[CurrentAssistedLapIndex].DisplayName 
+            : "FIN",
+        AssistedLapState.WaitingForEnd => "FIN",
+        _ => "MARCAR"
+    };
+    
+    /// <summary>Indica si se puede marcar un punto en el estado actual</summary>
+    public bool CanMarkAssistedPoint => IsAssistedModeEnabled && 
+        AssistedLapState != AssistedLapState.Configuring && 
+        AssistedLapState != AssistedLapState.Completed;
+    
+    /// <summary>Indica si está en modo configuración</summary>
+    public bool IsAssistedConfiguring => AssistedLapState == AssistedLapState.Configuring;
+    
+    /// <summary>Indica si está capturando (no configurando ni completado)</summary>
+    public bool IsAssistedCapturing => AssistedLapState != AssistedLapState.Configuring && 
+        AssistedLapState != AssistedLapState.Completed;
+    
+    /// <summary>Historial de configuraciones de parciales recientes</summary>
+    public ObservableCollection<LapConfigHistory> RecentLapConfigs => _recentLapConfigs;
+    
+    /// <summary>Indica si hay configuraciones recientes disponibles</summary>
+    public bool HasRecentLapConfigs => _recentLapConfigs.Count > 0;
 
     #endregion
 
@@ -764,6 +920,15 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     public ICommand AddSplitLapCommand { get; }
     public ICommand ClearSplitCommand { get; }
     public ICommand SaveSplitCommand { get; }
+    
+    // Comandos del modo asistido
+    public ICommand ToggleAssistedModeCommand { get; }
+    public ICommand IncrementAssistedLapCountCommand { get; }
+    public ICommand DecrementAssistedLapCountCommand { get; }
+    public ICommand StartAssistedCaptureCommand { get; }
+    public ICommand MarkAssistedPointCommand { get; }
+    public ICommand ResetAssistedCaptureCommand { get; }
+    public ICommand ApplyLapConfigCommand { get; }
 
     #endregion
 
@@ -1000,6 +1165,9 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
                 if (video.Tags == null)
                     video.Tags = await _databaseService.GetTagsForVideoAsync(video.Id);
             }
+            
+            // Cargar la configuración de parciales guardada para esta sesión
+            await LoadSessionLapConfigAsync(sessionId);
             
             // Extraer opciones únicas para los filtros
             PopulateFilterOptions(categories);
@@ -2033,6 +2201,12 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         if (ShowSplitTimePanel && _videoClip != null)
         {
             _ = LoadExistingSplitAsync();
+            
+            // Inicializar los parciales si están vacíos
+            if (_assistedLaps.Count == 0)
+            {
+                InitializeAssistedLaps();
+            }
         }
     }
 
@@ -2145,6 +2319,285 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         if (ms < 0) ms = 0;
         var ts = TimeSpan.FromMilliseconds(ms);
         return $"{(int)ts.TotalMinutes:00}:{ts.Seconds:00}.{ts.Milliseconds:000}";
+    }
+    
+    // ==================== MÉTODOS DEL MODO ASISTIDO ====================
+    
+    private void ToggleAssistedMode()
+    {
+        IsAssistedModeEnabled = !IsAssistedModeEnabled;
+    }
+    
+    private void InitializeAssistedLaps()
+    {
+        _assistedLaps.Clear();
+        for (int i = 1; i <= AssistedLapCount; i++)
+        {
+            _assistedLaps.Add(new AssistedLapDefinition
+            {
+                Index = i,
+                Name = $"P{i}",
+                IsCurrent = false
+            });
+        }
+        AssistedLapState = AssistedLapState.Configuring;
+        CurrentAssistedLapIndex = 0;
+    }
+    
+    private async void StartAssistedCapture()
+    {
+        if (!IsAssistedModeEnabled) return;
+        
+        // Guardar la configuración de parciales para esta sesión
+        await SaveSessionLapConfigAsync();
+        
+        // Limpiar cualquier marcado previo
+        ClearSplit();
+        foreach (var lap in _assistedLaps)
+        {
+            lap.MarkedMs = null;
+            lap.IsCurrent = false;
+        }
+        
+        // Iniciar el flujo: primero esperamos el INICIO
+        AssistedLapState = AssistedLapState.WaitingForStart;
+        CurrentAssistedLapIndex = 0;
+        
+        if (_assistedLaps.Count > 0)
+        {
+            _assistedLaps[0].IsCurrent = true;
+        }
+    }
+    
+    private void MarkAssistedPoint()
+    {
+        if (!IsAssistedModeEnabled || _videoClip == null) return;
+        
+        var nowMs = (long)CurrentPosition.TotalMilliseconds;
+        
+        switch (AssistedLapState)
+        {
+            case AssistedLapState.WaitingForStart:
+                // Marcar inicio
+                SplitStartTime = CurrentPosition;
+                _splitLapMarksMs.Clear();
+                
+                if (_assistedLaps.Count > 0)
+                {
+                    // Pasar a marcar el primer parcial
+                    AssistedLapState = AssistedLapState.MarkingLaps;
+                    CurrentAssistedLapIndex = 0;
+                }
+                else
+                {
+                    // Si no hay parciales, ir directamente a fin
+                    AssistedLapState = AssistedLapState.WaitingForEnd;
+                }
+                break;
+                
+            case AssistedLapState.MarkingLaps:
+                if (CurrentAssistedLapIndex < _assistedLaps.Count)
+                {
+                    // Marcar el parcial actual
+                    var lap = _assistedLaps[CurrentAssistedLapIndex];
+                    lap.MarkedMs = nowMs;
+                    lap.IsCurrent = false;
+                    
+                    // Añadir a la lista de laps
+                    _splitLapMarksMs.Add(nowMs);
+                    RebuildSplitLapRows();
+                    
+                    // Avanzar al siguiente
+                    CurrentAssistedLapIndex++;
+                    
+                    if (CurrentAssistedLapIndex >= _assistedLaps.Count)
+                    {
+                        // Ya marcamos todos los parciales, ir a fin
+                        AssistedLapState = AssistedLapState.WaitingForEnd;
+                    }
+                }
+                break;
+                
+            case AssistedLapState.WaitingForEnd:
+                // Marcar fin
+                SplitEndTime = CurrentPosition;
+                AssistedLapState = AssistedLapState.Completed;
+                
+                // Actualizar filas con los nombres de los parciales asistidos
+                RebuildSplitLapRowsWithNames();
+                break;
+        }
+        
+        OnPropertyChanged(nameof(AssistedStateDescription));
+        OnPropertyChanged(nameof(AssistedActionButtonText));
+    }
+    
+    private void UpdateCurrentLapHighlight()
+    {
+        for (int i = 0; i < _assistedLaps.Count; i++)
+        {
+            _assistedLaps[i].IsCurrent = (i == CurrentAssistedLapIndex) && 
+                AssistedLapState == AssistedLapState.MarkingLaps;
+        }
+    }
+    
+    private void ResetAssistedCapture()
+    {
+        ClearSplit();
+        foreach (var lap in _assistedLaps)
+        {
+            lap.MarkedMs = null;
+            lap.IsCurrent = false;
+        }
+        AssistedLapState = AssistedLapState.Configuring;
+        CurrentAssistedLapIndex = 0;
+    }
+    
+    /// <summary>
+    /// Carga la configuración de parciales guardada para una sesión
+    /// </summary>
+    private async Task LoadSessionLapConfigAsync(int sessionId)
+    {
+        try
+        {
+            var config = await _databaseService.GetSessionLapConfigAsync(sessionId);
+            if (config != null)
+            {
+                // Aplicar la configuración guardada
+                _assistedLapCount = config.LapCount;
+                OnPropertyChanged(nameof(AssistedLapCount));
+                
+                // Recrear la lista de parciales con los nombres guardados
+                _assistedLaps.Clear();
+                var names = config.LapNamesList;
+                for (int i = 0; i < config.LapCount; i++)
+                {
+                    _assistedLaps.Add(new AssistedLapDefinition
+                    {
+                        Index = i + 1,
+                        Name = i < names.Count ? names[i] : $"P{i + 1}",
+                        IsCurrent = false
+                    });
+                }
+                
+                System.Diagnostics.Debug.WriteLine($"Configuración de parciales cargada: {config.LapCount} parciales");
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error cargando configuración de parciales: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// Guarda la configuración actual de parciales para la sesión
+    /// </summary>
+    private async Task SaveSessionLapConfigAsync()
+    {
+        if (_videoClip == null || _videoClip.SessionId <= 0) return;
+        
+        try
+        {
+            var lapNames = _assistedLaps.Select(l => l.Name).ToList();
+            await _databaseService.SaveSessionLapConfigAsync(_videoClip.SessionId, AssistedLapCount, lapNames);
+            System.Diagnostics.Debug.WriteLine($"Configuración de parciales guardada: {AssistedLapCount} parciales");
+            
+            // Añadir al historial global
+            await _databaseService.AddToLapConfigHistoryAsync(AssistedLapCount, lapNames);
+            
+            // Recargar el historial
+            await LoadRecentLapConfigsAsync();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error guardando configuración de parciales: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// Carga las configuraciones de parciales recientes
+    /// </summary>
+    private async Task LoadRecentLapConfigsAsync()
+    {
+        try
+        {
+            var configs = await _databaseService.GetRecentLapConfigsAsync(3);
+            _recentLapConfigs.Clear();
+            foreach (var config in configs)
+            {
+                _recentLapConfigs.Add(config);
+            }
+            OnPropertyChanged(nameof(HasRecentLapConfigs));
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error cargando historial de parciales: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// Aplica una configuración del historial
+    /// </summary>
+    private void ApplyLapConfig(LapConfigHistory? config)
+    {
+        if (config == null) return;
+        
+        // Aplicar la configuración
+        _assistedLapCount = config.LapCount;
+        OnPropertyChanged(nameof(AssistedLapCount));
+        
+        // Recrear la lista de parciales con los nombres guardados
+        _assistedLaps.Clear();
+        var names = config.LapNamesList;
+        for (int i = 0; i < config.LapCount; i++)
+        {
+            _assistedLaps.Add(new AssistedLapDefinition
+            {
+                Index = i + 1,
+                Name = i < names.Count ? names[i] : $"P{i + 1}",
+                IsCurrent = false
+            });
+        }
+        
+        // Asegurarse de estar en modo configuración
+        AssistedLapState = AssistedLapState.Configuring;
+        CurrentAssistedLapIndex = 0;
+    }
+    
+    /// <summary>
+    /// Reconstruye las filas de laps usando los nombres definidos en modo asistido
+    /// </summary>
+    private void RebuildSplitLapRowsWithNames()
+    {
+        _splitLapMarksMs.Sort();
+        _splitLapRows.Clear();
+
+        if (!_splitStartTime.HasValue)
+        {
+            HasSplitLaps = false;
+            return;
+        }
+
+        var prev = (long)_splitStartTime.Value.TotalMilliseconds;
+        for (int i = 0; i < _splitLapMarksMs.Count; i++)
+        {
+            var mark = _splitLapMarksMs[i];
+            var splitMs = mark - prev;
+            if (splitMs < 0) splitMs = 0;
+            prev = mark;
+
+            // Usar el nombre del parcial asistido si existe
+            var lapName = (i < _assistedLaps.Count) ? _assistedLaps[i].DisplayName : $"Lap {i + 1}";
+
+            _splitLapRows.Add(new ExecutionTimingRow
+            {
+                Title = lapName,
+                Value = FormatMs(splitMs),
+                IsTotal = false
+            });
+        }
+
+        HasSplitLaps = _splitLapRows.Count > 0;
     }
 
     private void CalculateSplitDuration()

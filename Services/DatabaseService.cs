@@ -118,6 +118,8 @@ public class DatabaseService
         await _database.CreateTableAsync<VideoLesson>();
         await _database.CreateTableAsync<SessionDiary>();
         await _database.CreateTableAsync<DailyWellness>();
+        await _database.CreateTableAsync<SessionLapConfig>();
+        await _database.CreateTableAsync<LapConfigHistory>();
 
         // Migraciones ligeras: columnas nuevas en videoClip
         await EnsureColumnExistsAsync(_database, "videoClip", "localClipPath", "TEXT");
@@ -2315,6 +2317,123 @@ public class DatabaseService
 
         _eventTagCache = null;
         return merged;
+    }
+
+    #endregion
+
+    #region Session Lap Config
+
+    /// <summary>
+    /// Obtiene la configuración de parciales para una sesión.
+    /// Si no existe, devuelve null.
+    /// </summary>
+    public async Task<SessionLapConfig?> GetSessionLapConfigAsync(int sessionId)
+    {
+        var db = await GetConnectionAsync();
+        return await db.Table<SessionLapConfig>()
+            .Where(c => c.SessionId == sessionId)
+            .FirstOrDefaultAsync();
+    }
+
+    /// <summary>
+    /// Guarda o actualiza la configuración de parciales para una sesión.
+    /// </summary>
+    public async Task SaveSessionLapConfigAsync(SessionLapConfig config)
+    {
+        var db = await GetConnectionAsync();
+        config.LastModified = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        
+        var existing = await db.Table<SessionLapConfig>()
+            .Where(c => c.SessionId == config.SessionId)
+            .FirstOrDefaultAsync();
+        
+        if (existing != null)
+        {
+            await db.UpdateAsync(config);
+        }
+        else
+        {
+            await db.InsertAsync(config);
+        }
+    }
+
+    /// <summary>
+    /// Guarda la configuración de parciales con los nombres proporcionados.
+    /// </summary>
+    public async Task SaveSessionLapConfigAsync(int sessionId, int lapCount, List<string> lapNames)
+    {
+        var config = new SessionLapConfig
+        {
+            SessionId = sessionId,
+            LapCount = lapCount,
+            LapNames = string.Join("|", lapNames)
+        };
+        await SaveSessionLapConfigAsync(config);
+    }
+
+    #endregion
+
+    #region Lap Config History
+
+    /// <summary>
+    /// Obtiene las últimas N configuraciones de parciales utilizadas.
+    /// </summary>
+    public async Task<List<LapConfigHistory>> GetRecentLapConfigsAsync(int count = 3)
+    {
+        var db = await GetConnectionAsync();
+        return await db.Table<LapConfigHistory>()
+            .OrderByDescending(c => c.LastUsed)
+            .Take(count)
+            .ToListAsync();
+    }
+
+    /// <summary>
+    /// Guarda una configuración en el historial.
+    /// Si ya existe una configuración idéntica, actualiza su fecha de último uso.
+    /// </summary>
+    public async Task AddToLapConfigHistoryAsync(int lapCount, List<string> lapNames)
+    {
+        var db = await GetConnectionAsync();
+        var lapNamesStr = string.Join("|", lapNames);
+        var uniqueKey = $"{lapCount}|{lapNamesStr}";
+        
+        // Buscar si ya existe una configuración idéntica
+        var all = await db.Table<LapConfigHistory>().ToListAsync();
+        var existing = all.FirstOrDefault(c => c.UniqueKey == uniqueKey);
+        
+        if (existing != null)
+        {
+            // Actualizar fecha y contador de uso
+            existing.LastUsed = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            existing.UseCount++;
+            await db.UpdateAsync(existing);
+        }
+        else
+        {
+            // Insertar nueva configuración
+            var newConfig = new LapConfigHistory
+            {
+                LapCount = lapCount,
+                LapNames = lapNamesStr,
+                LastUsed = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                UseCount = 1
+            };
+            await db.InsertAsync(newConfig);
+            
+            // Mantener solo las últimas 10 configuraciones
+            var allConfigs = await db.Table<LapConfigHistory>()
+                .OrderByDescending(c => c.LastUsed)
+                .ToListAsync();
+            
+            if (allConfigs.Count > 10)
+            {
+                var toDelete = allConfigs.Skip(10).ToList();
+                foreach (var config in toDelete)
+                {
+                    await db.DeleteAsync(config);
+                }
+            }
+        }
     }
 
     #endregion
