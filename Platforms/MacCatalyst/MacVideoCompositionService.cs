@@ -25,6 +25,106 @@ public class MacVideoCompositionService : Services.IVideoCompositionService
         return CMTime.FromSeconds(1.0 / fps, 600);
     }
 
+    private static string FormatLapTime(TimeSpan duration)
+    {
+        var timeSpan = duration < TimeSpan.Zero ? TimeSpan.Zero : duration;
+
+        if (timeSpan.TotalMinutes >= 1)
+            return $"{(int)timeSpan.TotalMinutes}:{timeSpan.Seconds:00}.{timeSpan.Milliseconds / 10:00}";
+
+        return $"{timeSpan.Seconds}.{timeSpan.Milliseconds / 10:00}";
+    }
+
+    private static CALayer CreateTimedBadge(
+        CGRect frame,
+        string text,
+        UIColor textColor,
+        double beginSeconds,
+        double durationSeconds)
+    {
+        // En AVVideoCompositionCoreAnimationTool, algunos bindings se comportan mejor evitando beginTime == 0.
+        var safeBeginSeconds = beginSeconds <= 0 ? 0.001 : beginSeconds;
+
+        var container = new CALayer
+        {
+            Frame = frame,
+            // Fondo mate (100% opaco)
+            BackgroundColor = UIColor.FromRGBA(0, 0, 0, 255).CGColor,
+            CornerRadius = 8,
+            Opacity = 0
+        };
+
+        var label = new CATextLayer();
+        label.SetValueForKey(new NSString(text), new NSString("string"));
+        label.FontSize = 18;
+        label.ForegroundColor = textColor.CGColor;
+        label.SetValueForKey(new NSString("center"), new NSString("alignmentMode"));
+        label.Frame = new CGRect(10, 6, frame.Width - 20, frame.Height - 12);
+        label.ContentsScale = UIScreen.MainScreen.Scale;
+
+        container.AddSublayer(label);
+
+        // Opacity keyframes durante el segmento
+        var opacity = new CAKeyFrameAnimation
+        {
+            KeyPath = "opacity",
+            Values = new NSObject[] { NSNumber.FromFloat(0), NSNumber.FromFloat(1), NSNumber.FromFloat(1), NSNumber.FromFloat(0) },
+            KeyTimes = new NSNumber[] { NSNumber.FromDouble(0), NSNumber.FromDouble(0.02), NSNumber.FromDouble(0.98), NSNumber.FromDouble(1) },
+            BeginTime = safeBeginSeconds,
+            Duration = Math.Max(0.05, durationSeconds),
+            RemovedOnCompletion = false,
+            FillMode = CAFillMode.Both
+        };
+        container.AddAnimation(opacity, "opacity");
+
+        return container;
+    }
+
+    private sealed record LapOverlaySegment(int LapIndex, TimeSpan Start, TimeSpan Duration, TimeSpan LapTime1, TimeSpan LapTime2);
+
+    private static void AddLapTimingOverlays(
+        CALayer parentLayer,
+        CGRect frame1,
+        CGRect frame2,
+        CGSize outputSize,
+        IReadOnlyList<LapOverlaySegment> segments)
+    {
+        var green = UIColor.FromRGB(52, 199, 89);
+        var red = UIColor.FromRGB(255, 59, 48);
+        var white = UIColor.White;
+
+        var badgeWidth = Math.Min(220, frame1.Width * 0.45);
+        var badgeHeight = 44;
+
+        var badge1Frame = new CGRect(frame1.X + 12, frame1.Y + 12, badgeWidth, badgeHeight);
+        // El label del vídeo derecho va pegado a la derecha para no solapar con el delta centrado
+        var badge2Frame = new CGRect(frame2.Right - 12 - badgeWidth, frame2.Y + 12, badgeWidth, badgeHeight);
+        var centerFrame = new CGRect((outputSize.Width - 220) / 2.0, 12, 220, badgeHeight);
+
+        foreach (var seg in segments)
+        {
+            var t1 = seg.LapTime1;
+            var t2 = seg.LapTime2;
+            var betterIs1 = t1 <= t2;
+
+            var color1 = betterIs1 ? green : red;
+            var color2 = betterIs1 ? red : green;
+
+            var lapLabel = $"L{seg.LapIndex}";
+            var text1 = $"{lapLabel} {FormatLapTime(t1)}";
+            var text2 = $"{lapLabel} {FormatLapTime(t2)}";
+            var diff = (t1 - t2).Duration();
+            var diffText = $"Δ {FormatLapTime(diff)}";
+
+            var begin = seg.Start.TotalSeconds;
+            var dur = Math.Max(0.05, seg.Duration.TotalSeconds);
+
+            parentLayer.AddSublayer(CreateTimedBadge(badge1Frame, text1, color1, begin, dur));
+            parentLayer.AddSublayer(CreateTimedBadge(badge2Frame, text2, color2, begin, dur));
+            parentLayer.AddSublayer(CreateTimedBadge(centerFrame, diffText, white, begin, dur));
+        }
+    }
+
     private static void InsertFreezePadding(
         AVMutableCompositionTrack compositionVideoTrack,
         AVAssetTrack sourceVideoTrack,
@@ -234,10 +334,14 @@ public class MacVideoCompositionService : Services.IVideoCompositionService
 
                 NSError? error;
 
+                List<LapOverlaySegment>? lapSegments = null;
+
                 if (parameters.SyncByLaps &&
                     parameters.Video1LapBoundaries?.Count >= 2 &&
                     parameters.Video2LapBoundaries?.Count >= 2)
                 {
+                    lapSegments = new List<LapOverlaySegment>();
+
                     var boundaries1 = parameters.Video1LapBoundaries;
                     var boundaries2 = parameters.Video2LapBoundaries;
                     var segmentCount = Math.Min(boundaries1.Count, boundaries2.Count) - 1;
@@ -250,6 +354,8 @@ public class MacVideoCompositionService : Services.IVideoCompositionService
 
                     for (int i = 0; i < segmentCount; i++)
                     {
+                        var cursorStart = cursor;
+
                         var segStart1 = ToCMTime(boundaries1[i]);
                         var segEnd1 = ToCMTime(boundaries1[i + 1]);
                         var segStart2 = ToCMTime(boundaries2[i]);
@@ -279,6 +385,13 @@ public class MacVideoCompositionService : Services.IVideoCompositionService
                             InsertFreezePadding(compositionVideoTrack1, videoTrack1, segEnd1, cursor + segDur1, pad1, frameDuration1, out error);
                         if (compositionVideoTrack2 != null)
                             InsertFreezePadding(compositionVideoTrack2, videoTrack2, segEnd2, cursor + segDur2, pad2, frameDuration2, out error);
+
+                        lapSegments.Add(new LapOverlaySegment(
+                            LapIndex: i + 1,
+                            Start: TimeSpan.FromSeconds(cursorStart.Seconds),
+                            Duration: TimeSpan.FromSeconds(segDuration.Seconds),
+                            LapTime1: TimeSpan.FromSeconds(segDur1.Seconds),
+                            LapTime2: TimeSpan.FromSeconds(segDur2.Seconds)));
 
                         cursor += segDuration;
                     }
@@ -325,7 +438,7 @@ public class MacVideoCompositionService : Services.IVideoCompositionService
                 };
 
                 // Overlays
-                AddTextOverlays(videoComposition, parameters, frame1, frame2, outputSize);
+                AddTextOverlays(videoComposition, parameters, frame1, frame2, outputSize, lapSegments);
 
                 // Exportar
                 if (File.Exists(parameters.OutputPath))
@@ -465,7 +578,8 @@ public class MacVideoCompositionService : Services.IVideoCompositionService
 
     private void AddTextOverlays(AVMutableVideoComposition videoComposition, 
         Services.ParallelVideoExportParams parameters,
-        CGRect frame1, CGRect frame2, CGSize outputSize)
+        CGRect frame1, CGRect frame2, CGSize outputSize,
+        IReadOnlyList<LapOverlaySegment>? lapSegments)
     {
         var parentLayer = new CALayer();
         var videoLayer = new CALayer();
@@ -492,6 +606,11 @@ public class MacVideoCompositionService : Services.IVideoCompositionService
                 parameters.Video2Section,
                 parameters.Video2Time,
                 parameters.Video2Penalties);
+        }
+
+        if (parameters.SyncByLaps && lapSegments != null && lapSegments.Count > 0)
+        {
+            AddLapTimingOverlays(parentLayer, frame1, frame2, outputSize, lapSegments);
         }
 
         videoComposition.AnimationTool = AVVideoCompositionCoreAnimationTool.FromLayer(videoLayer, parentLayer);
@@ -526,7 +645,8 @@ public class MacVideoCompositionService : Services.IVideoCompositionService
         
         var overlayContainer = new CALayer();
         overlayContainer.Frame = new CGRect(frame.X + 10, frame.Y + frame.Height - 80, containerWidth, 70);
-        overlayContainer.BackgroundColor = UIColor.FromRGBA(0, 0, 0, 150).CGColor;
+        // Fondo mate (100% opaco)
+        overlayContainer.BackgroundColor = UIColor.FromRGBA(0, 0, 0, 255).CGColor;
         overlayContainer.CornerRadius = 8;
 
         var alignmentLeft = new NSString("left");

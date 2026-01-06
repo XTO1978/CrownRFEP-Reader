@@ -1,5 +1,6 @@
 using CrownRFEP_Reader.Models;
 using CrownRFEP_Reader.Services;
+using Microsoft.Maui.Graphics;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
@@ -16,6 +17,11 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
 {
     public event PropertyChangedEventHandler? PropertyChanged;
 
+    private sealed record LapSegment(int LapNumber, TimeSpan Start, TimeSpan End)
+    {
+        public TimeSpan Duration => End - Start;
+    }
+
     private VideoClip? _video1;
     private VideoClip? _video2;
     private bool _isHorizontalOrientation;
@@ -23,6 +29,16 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
     private double _playbackSpeed = 1.0;
 
     private bool _isLapSyncEnabled;
+
+    private List<LapSegment>? _lapSegments1;
+    private List<LapSegment>? _lapSegments2;
+
+    private bool _hasLapTiming;
+    private string _currentLapText1 = string.Empty;
+    private string _currentLapText2 = string.Empty;
+    private string _currentLapDiffText = string.Empty;
+    private Color _currentLapColor1 = Colors.White;
+    private Color _currentLapColor2 = Colors.White;
 
     // Flags para evitar actualizar Progress mientras el usuario arrastra los sliders
     private bool _isDraggingSlider;
@@ -93,6 +109,239 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
         
         // Comando de exportación
         ExportCommand = new Command(async () => await ExportParallelVideosAsync(), () => CanExport);
+    }
+
+    public bool HasLapTiming
+    {
+        get => _hasLapTiming;
+        private set
+        {
+            if (_hasLapTiming == value) return;
+            _hasLapTiming = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public string CurrentLapText1
+    {
+        get => _currentLapText1;
+        private set
+        {
+            if (_currentLapText1 == value) return;
+            _currentLapText1 = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public string CurrentLapText2
+    {
+        get => _currentLapText2;
+        private set
+        {
+            if (_currentLapText2 == value) return;
+            _currentLapText2 = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public string CurrentLapDiffText
+    {
+        get => _currentLapDiffText;
+        private set
+        {
+            if (_currentLapDiffText == value) return;
+            _currentLapDiffText = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public Color CurrentLapColor1
+    {
+        get => _currentLapColor1;
+        private set
+        {
+            if (_currentLapColor1 == value) return;
+            _currentLapColor1 = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public Color CurrentLapColor2
+    {
+        get => _currentLapColor2;
+        private set
+        {
+            if (_currentLapColor2 == value) return;
+            _currentLapColor2 = value;
+            OnPropertyChanged();
+        }
+    }
+
+    private static string FormatLapTime(TimeSpan time)
+    {
+        // mm:ss.ff (centésimas) para encajar en overlay
+        return $"{time:mm\\:ss\\.ff}";
+    }
+
+    private static List<LapSegment>? BuildLapSegments(
+        List<ExecutionTimingEvent> events,
+        TimeSpan fallbackEnd)
+    {
+        if (events.Count == 0)
+            return null;
+
+        // Elegir el run con más laps (y si empata, el de mayor tiempo)
+        var bestRun = events
+            .GroupBy(e => e.RunIndex)
+            .Select(g => new
+            {
+                RunIndex = g.Key,
+                LapCount = g.Count(e => e.Kind == 1),
+                EndMs = g.Where(e => e.Kind == 2).Select(e => e.ElapsedMilliseconds).DefaultIfEmpty(0).Max()
+            })
+            .OrderByDescending(x => x.LapCount)
+            .ThenByDescending(x => x.EndMs)
+            .FirstOrDefault();
+
+        var runIndex = bestRun?.RunIndex ?? 0;
+        var runEvents = events
+            .Where(e => e.RunIndex == runIndex)
+            .OrderBy(e => e.ElapsedMilliseconds)
+            .ToList();
+
+        var startMs = runEvents.FirstOrDefault(e => e.Kind == 0)?.ElapsedMilliseconds ?? 0;
+        var endMs = runEvents.LastOrDefault(e => e.Kind == 2)?.ElapsedMilliseconds;
+
+        var start = TimeSpan.FromMilliseconds(startMs);
+        var end = endMs.HasValue ? TimeSpan.FromMilliseconds(endMs.Value) : fallbackEnd;
+        if (end <= start)
+            return null;
+
+        var lapMarkers = runEvents
+            .Where(e => e.Kind == 1)
+            .Select(e => TimeSpan.FromMilliseconds(e.ElapsedMilliseconds))
+            .Where(t => t > start && t < end)
+            .Distinct()
+            .OrderBy(t => t)
+            .ToList();
+
+        var boundaries = new List<TimeSpan>(capacity: 2 + lapMarkers.Count) { start };
+        boundaries.AddRange(lapMarkers);
+        boundaries.Add(end);
+
+        if (boundaries.Count < 2)
+            return null;
+
+        var segments = new List<LapSegment>(capacity: boundaries.Count - 1);
+        for (int i = 0; i < boundaries.Count - 1; i++)
+        {
+            var segStart = boundaries[i];
+            var segEnd = boundaries[i + 1];
+            if (segEnd <= segStart) continue;
+            segments.Add(new LapSegment(i + 1, segStart, segEnd));
+        }
+
+        return segments.Count > 0 ? segments : null;
+    }
+
+    private static LapSegment? FindLapAtPosition(List<LapSegment> segments, TimeSpan position)
+    {
+        // Último segmento si está fuera
+        if (position <= segments[0].Start)
+            return segments[0];
+        if (position >= segments[^1].End)
+            return segments[^1];
+
+        for (int i = 0; i < segments.Count; i++)
+        {
+            var seg = segments[i];
+            if (position >= seg.Start && position < seg.End)
+                return seg;
+        }
+
+        return null;
+    }
+
+    private void UpdateLapOverlay()
+    {
+        if (_lapSegments1 == null || _lapSegments2 == null || _lapSegments1.Count == 0 || _lapSegments2.Count == 0)
+        {
+            HasLapTiming = false;
+            CurrentLapText1 = string.Empty;
+            CurrentLapText2 = string.Empty;
+            CurrentLapDiffText = string.Empty;
+            CurrentLapColor1 = Colors.White;
+            CurrentLapColor2 = Colors.White;
+            return;
+        }
+
+        var time1 = IsSimultaneousMode ? SyncPoint1 + CurrentPosition : CurrentPosition1;
+        var time2 = IsSimultaneousMode ? SyncPoint2 + CurrentPosition : CurrentPosition2;
+
+        var seg1 = FindLapAtPosition(_lapSegments1, time1);
+        var seg2 = FindLapAtPosition(_lapSegments2, time2);
+        if (seg1 == null || seg2 == null)
+        {
+            HasLapTiming = false;
+            return;
+        }
+
+        HasLapTiming = true;
+
+        var lapTime1 = seg1.Duration;
+        var lapTime2 = seg2.Duration;
+
+        CurrentLapText1 = $"Lap {seg1.LapNumber}: {FormatLapTime(lapTime1)}";
+        CurrentLapText2 = $"Lap {seg2.LapNumber}: {FormatLapTime(lapTime2)}";
+
+        var diff = lapTime1 - lapTime2;
+        var sign = diff.TotalMilliseconds >= 0 ? "+" : "-";
+        CurrentLapDiffText = $"Δ {sign}{FormatLapTime(TimeSpan.FromMilliseconds(Math.Abs(diff.TotalMilliseconds)))}";
+
+        if (lapTime1 < lapTime2)
+        {
+            CurrentLapColor1 = Color.FromArgb("#FF34C759");
+            CurrentLapColor2 = Color.FromArgb("#FFFF3B30");
+        }
+        else if (lapTime2 < lapTime1)
+        {
+            CurrentLapColor1 = Color.FromArgb("#FFFF3B30");
+            CurrentLapColor2 = Color.FromArgb("#FF34C759");
+        }
+        else
+        {
+            CurrentLapColor1 = Colors.White;
+            CurrentLapColor2 = Colors.White;
+        }
+    }
+
+    private async Task LoadLapTimingAsync()
+    {
+        try
+        {
+            if (Video1 == null || Video2 == null)
+                return;
+
+            var services = Application.Current?.Handler?.MauiContext?.Services;
+            var databaseService = services?.GetService<DatabaseService>();
+            if (databaseService == null)
+                return;
+
+            var events1 = await databaseService.GetExecutionTimingEventsByVideoAsync(Video1.Id);
+            var events2 = await databaseService.GetExecutionTimingEventsByVideoAsync(Video2.Id);
+
+            var fallbackEnd1 = GetFallbackDuration(Video1, Duration1);
+            var fallbackEnd2 = GetFallbackDuration(Video2, Duration2);
+
+            _lapSegments1 = BuildLapSegments(events1, fallbackEnd1);
+            _lapSegments2 = BuildLapSegments(events2, fallbackEnd2);
+
+            UpdateLapOverlay();
+        }
+        catch
+        {
+            // No bloquear el reproductor si falla la lectura de parciales
+        }
     }
 
     public bool IsLapSyncEnabled
@@ -254,8 +503,18 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
                     ? TimeSpan.FromMilliseconds(end2FromEventsMs.Value)
                     : GetFallbackDuration(Video2, Duration2);
 
-                var boundaries1 = BuildLapBoundaries(timing1, CurrentPosition1, end1);
-                var boundaries2 = BuildLapBoundaries(timing2, CurrentPosition2, end2);
+                var start1FromEventsMs = timing1.FirstOrDefault(e => e.Kind == 0)?.ElapsedMilliseconds;
+                var start2FromEventsMs = timing2.FirstOrDefault(e => e.Kind == 0)?.ElapsedMilliseconds;
+
+                var exportStart1 = start1FromEventsMs.HasValue
+                    ? TimeSpan.FromMilliseconds(start1FromEventsMs.Value)
+                    : CurrentPosition1;
+                var exportStart2 = start2FromEventsMs.HasValue
+                    ? TimeSpan.FromMilliseconds(start2FromEventsMs.Value)
+                    : CurrentPosition2;
+
+                var boundaries1 = BuildLapBoundaries(timing1, exportStart1, end1);
+                var boundaries2 = BuildLapBoundaries(timing2, exportStart2, end2);
 
                 if (boundaries1 == null || boundaries2 == null || boundaries1.Count < 2 || boundaries2.Count < 2)
                 {
@@ -266,6 +525,8 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
                 exportParams.SyncByLaps = true;
                 exportParams.Video1LapBoundaries = boundaries1;
                 exportParams.Video2LapBoundaries = boundaries2;
+                exportParams.Video1StartPosition = exportStart1;
+                exportParams.Video2StartPosition = exportStart2;
             }
 
             ExportStatus = "Componiendo vídeos...";
@@ -446,6 +707,7 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
                 OnPropertyChanged(nameof(ShowPlayer2Selected));
                 // Notificar cambio en CanExport (solo se puede exportar en modo sincronizado)
                 OnPropertyChanged(nameof(CanExport));
+                UpdateLapOverlay();
                 ModeChanged?.Invoke(this, value);
             }
         }
@@ -514,6 +776,7 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
             OnPropertyChanged();
             OnPropertyChanged(nameof(CurrentPositionText));
             UpdateProgress();
+            UpdateLapOverlay();
         }
     }
 
@@ -581,6 +844,7 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
             OnPropertyChanged();
             OnPropertyChanged(nameof(CurrentPositionText1));
             UpdateProgress1();
+            UpdateLapOverlay();
         }
     }
 
@@ -626,6 +890,7 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
             OnPropertyChanged();
             OnPropertyChanged(nameof(CurrentPositionText2));
             UpdateProgress2();
+            UpdateLapOverlay();
         }
     }
 
@@ -786,7 +1051,7 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
     public TimeSpan SyncPoint1
     {
         get => _syncPoint1;
-        private set { _syncPoint1 = value; OnPropertyChanged(); }
+        private set { _syncPoint1 = value; OnPropertyChanged(); UpdateLapOverlay(); }
     }
 
     /// <summary>
@@ -795,7 +1060,7 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
     public TimeSpan SyncPoint2
     {
         get => _syncPoint2;
-        private set { _syncPoint2 = value; OnPropertyChanged(); }
+        private set { _syncPoint2 = value; OnPropertyChanged(); UpdateLapOverlay(); }
     }
 
     /// <summary>
@@ -818,6 +1083,8 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
         IsHorizontalOrientation = isHorizontal;
         IsSimultaneousMode = false; // Iniciar en modo individual
         ResetAllStates();
+
+        _ = LoadLapTimingAsync();
     }
 
     public void SeekToPosition(double position)

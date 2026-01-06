@@ -678,10 +678,20 @@ public class QuadPlayerViewModel : INotifyPropertyChanged
                     ? TimeSpan.FromMilliseconds(end4FromEventsMs.Value)
                     : GetFallbackDuration(Video4, Duration4);
 
-                var boundaries1 = BuildLapBoundaries(timing1, CurrentPosition1, end1);
-                var boundaries2 = BuildLapBoundaries(timing2, CurrentPosition2, end2);
-                var boundaries3 = BuildLapBoundaries(timing3, CurrentPosition3, end3);
-                var boundaries4 = BuildLapBoundaries(timing4, CurrentPosition4, end4);
+                var start1FromEventsMs = timing1.FirstOrDefault(e => e.Kind == 0)?.ElapsedMilliseconds;
+                var start2FromEventsMs = timing2.FirstOrDefault(e => e.Kind == 0)?.ElapsedMilliseconds;
+                var start3FromEventsMs = timing3.FirstOrDefault(e => e.Kind == 0)?.ElapsedMilliseconds;
+                var start4FromEventsMs = timing4.FirstOrDefault(e => e.Kind == 0)?.ElapsedMilliseconds;
+
+                var exportStart1 = start1FromEventsMs.HasValue ? TimeSpan.FromMilliseconds(start1FromEventsMs.Value) : CurrentPosition1;
+                var exportStart2 = start2FromEventsMs.HasValue ? TimeSpan.FromMilliseconds(start2FromEventsMs.Value) : CurrentPosition2;
+                var exportStart3 = start3FromEventsMs.HasValue ? TimeSpan.FromMilliseconds(start3FromEventsMs.Value) : CurrentPosition3;
+                var exportStart4 = start4FromEventsMs.HasValue ? TimeSpan.FromMilliseconds(start4FromEventsMs.Value) : CurrentPosition4;
+
+                var boundaries1 = BuildLapBoundaries(timing1, exportStart1, end1);
+                var boundaries2 = BuildLapBoundaries(timing2, exportStart2, end2);
+                var boundaries3 = BuildLapBoundaries(timing3, exportStart3, end3);
+                var boundaries4 = BuildLapBoundaries(timing4, exportStart4, end4);
 
                 if (boundaries1 == null || boundaries2 == null || boundaries3 == null || boundaries4 == null)
                 {
@@ -694,6 +704,10 @@ public class QuadPlayerViewModel : INotifyPropertyChanged
                 exportParams.Video2LapBoundaries = boundaries2;
                 exportParams.Video3LapBoundaries = boundaries3;
                 exportParams.Video4LapBoundaries = boundaries4;
+                exportParams.Video1StartPosition = exportStart1;
+                exportParams.Video2StartPosition = exportStart2;
+                exportParams.Video3StartPosition = exportStart3;
+                exportParams.Video4StartPosition = exportStart4;
             }
 
             ExportStatus = "Componiendo vídeos...";

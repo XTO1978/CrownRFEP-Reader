@@ -21,6 +21,16 @@
         </OnPlatform>
     </Shell.NavBarIsVisible>
 
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <!-- Fallback local: evita crash si el recurso global no está disponible en runtime -->
+            <OnPlatform x:TypeArguments="x:Double" x:Key="FontSizeMedium">
+                <On Platform="WinUI" Value="12" />
+                <On Platform="Default" Value="14" />
+            </OnPlatform>
+        </ResourceDictionary>
+    </ContentPage.Resources>
+
     <Grid RowDefinitions="*,Auto">
         <!--  Contenedor de vídeos  -->
         <Grid Grid.Row="0" Margin="20,20,20,0">
@@ -72,6 +82,23 @@
                                     FontAttributes="Bold"
                                     Text="ACTIVO"
                                     TextColor="Black" />
+                            </Border>
+                            <!--  Lap actual (overlay)  -->
+                            <Border
+                                Margin="12"
+                                Padding="8,4"
+                                BackgroundColor="#CC000000"
+                                HorizontalOptions="Start"
+                                InputTransparent="True"
+                                IsVisible="{Binding HasLapTiming}"
+                                StrokeShape="RoundRectangle 4"
+                                StrokeThickness="0"
+                                VerticalOptions="Start">
+                                <Label
+                                    FontAttributes="Bold"
+                                    FontSize="{StaticResource FontSizeSmall}"
+                                    Text="{Binding CurrentLapText1}"
+                                    TextColor="{Binding CurrentLapColor1}" />
                             </Border>
                             <!--  Nombre del atleta  -->
                             <Border
@@ -204,6 +231,23 @@
                                     Text="ACTIVO"
                                     TextColor="Black" />
                             </Border>
+                            <!--  Lap actual (overlay)  -->
+                            <Border
+                                Margin="12"
+                                Padding="8,4"
+                                BackgroundColor="#CC000000"
+                                HorizontalOptions="Start"
+                                InputTransparent="True"
+                                IsVisible="{Binding HasLapTiming}"
+                                StrokeShape="RoundRectangle 4"
+                                StrokeThickness="0"
+                                VerticalOptions="Start">
+                                <Label
+                                    FontAttributes="Bold"
+                                    FontSize="{StaticResource FontSizeSmall}"
+                                    Text="{Binding CurrentLapText2}"
+                                    TextColor="{Binding CurrentLapColor2}" />
+                            </Border>
                             <!--  Nombre del atleta  -->
                             <Border
                                 Margin="12"
@@ -292,6 +336,24 @@
                         </Grid>
                     </Border>
                 </Grid>
+
+                <!--  Diferencia (Δ) centrada entre ambos vídeos  -->
+                <Border
+                    Grid.ColumnSpan="2"
+                    Padding="10,6"
+                    BackgroundColor="#CC000000"
+                    HorizontalOptions="Center"
+                    InputTransparent="True"
+                    IsVisible="{Binding HasLapTiming}"
+                    StrokeShape="RoundRectangle 8"
+                    StrokeThickness="0"
+                    VerticalOptions="Center">
+                    <Label
+                        FontAttributes="Bold"
+                        FontSize="{StaticResource FontSizeSubtitle}"
+                        Text="{Binding CurrentLapDiffText}"
+                        TextColor="White" />
+                </Border>
             </Grid>
             </Grid>
 
@@ -310,6 +372,23 @@
                 RowDefinitions="*,*"
                 RowSpacing="0"
                 VerticalOptions="Fill">
+                <!--  Diferencia (Δ) centrada entre ambos vídeos  -->
+                <Border
+                    Grid.RowSpan="2"
+                    Padding="10,6"
+                    BackgroundColor="#CC000000"
+                    HorizontalOptions="Center"
+                    InputTransparent="True"
+                    IsVisible="{Binding HasLapTiming}"
+                    StrokeShape="RoundRectangle 8"
+                    StrokeThickness="0"
+                    VerticalOptions="Center">
+                    <Label
+                        FontAttributes="Bold"
+                        FontSize="{StaticResource FontSizeSubtitle}"
+                        Text="{Binding CurrentLapDiffText}"
+                        TextColor="White" />
+                </Border>
                 <!--  Vídeo 1  -->
                 <Border
                     BackgroundColor="#FF0D0D0D"
@@ -352,6 +431,23 @@
                                     FontAttributes="Bold"
                                     Text="ACTIVO"
                                     TextColor="Black" />
+                            </Border>
+                            <!--  Lap actual (overlay)  -->
+                            <Border
+                                Margin="12"
+                                Padding="8,4"
+                                BackgroundColor="#CC000000"
+                                HorizontalOptions="Start"
+                                InputTransparent="True"
+                                IsVisible="{Binding HasLapTiming}"
+                                StrokeShape="RoundRectangle 4"
+                                StrokeThickness="0"
+                                VerticalOptions="Start">
+                                <Label
+                                    FontAttributes="Bold"
+                                    FontSize="{StaticResource FontSizeSmall}"
+                                    Text="{Binding CurrentLapText1}"
+                                    TextColor="{Binding CurrentLapColor1}" />
                             </Border>
                             <!--  Nombre del atleta (overlay)  -->
                             <Border
@@ -466,6 +562,23 @@
                                     FontAttributes="Bold"
                                     Text="ACTIVO"
                                     TextColor="Black" />
+                            </Border>
+                            <!--  Lap actual (overlay)  -->
+                            <Border
+                                Margin="12"
+                                Padding="8,4"
+                                BackgroundColor="#CC000000"
+                                HorizontalOptions="Start"
+                                InputTransparent="True"
+                                IsVisible="{Binding HasLapTiming}"
+                                StrokeShape="RoundRectangle 4"
+                                StrokeThickness="0"
+                                VerticalOptions="Start">
+                                <Label
+                                    FontAttributes="Bold"
+                                    FontSize="{StaticResource FontSizeSmall}"
+                                    Text="{Binding CurrentLapText2}"
+                                    TextColor="{Binding CurrentLapColor2}" />
                             </Border>
                             <!--  Nombre del atleta (overlay)  -->
                             <Border

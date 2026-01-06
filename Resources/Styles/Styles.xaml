@@ -56,6 +56,12 @@
         <On Platform="Default" Value="14" />
     </OnPlatform>
 
+    <!-- Alias de compatibilidad: algunas vistas antiguas usan FontSizeMedium -->
+    <OnPlatform x:TypeArguments="x:Double" x:Key="FontSizeMedium">
+        <On Platform="WinUI" Value="12" />
+        <On Platform="Default" Value="14" />
+    </OnPlatform>
+
     <OnPlatform x:TypeArguments="x:Double" x:Key="FontSizeSubtitle">
         <On Platform="WinUI" Value="12" />
         <On Platform="Default" Value="16" />

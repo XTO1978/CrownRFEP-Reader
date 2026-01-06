@@ -7,6 +7,7 @@ using Windows.Graphics.Imaging;
 using Windows.Media.Core;
 using System.Runtime.InteropServices.WindowsRuntime;
 using Windows.Storage.Streams;
+using SkiaSharp;
 using WinFoundation = Windows.Foundation;
 
 namespace CrownRFEP_Reader.Platforms.Windows;
@@ -17,6 +18,13 @@ namespace CrownRFEP_Reader.Platforms.Windows;
 public class WindowsVideoCompositionService : IVideoCompositionService
 {
     public bool IsAvailable => true;
+
+    private static string FormatLap(TimeSpan lap)
+    {
+        if (lap < TimeSpan.Zero) lap = TimeSpan.Zero;
+        var totalMinutes = (int)Math.Floor(lap.TotalMinutes);
+        return $"{totalMinutes:00}:{lap.Seconds:00}.{lap.Milliseconds:000}";
+    }
 
     private static TimeSpan Clamp(TimeSpan value, TimeSpan min, TimeSpan max)
     {
@@ -55,6 +63,52 @@ public class WindowsVideoCompositionService : IVideoCompositionService
         using var output = await file.OpenAsync(FileAccessMode.ReadWrite);
         await RandomAccessStream.CopyAsync(thumbStream, output);
         await output.FlushAsync();
+
+        return file;
+    }
+
+    private static async Task<StorageFile> CreateTextOverlayImageAsync(
+        string text,
+        SKColor textColor,
+        int width,
+        int height,
+        string prefix,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        using var bitmap = new SKBitmap(width, height, true);
+        using var canvas = new SKCanvas(bitmap);
+        // Fondo mate (100% opaco)
+        canvas.Clear(new SKColor(0, 0, 0, 255));
+
+        using var paint = new SKPaint
+        {
+            Color = textColor,
+            IsAntialias = true,
+            TextSize = height * 0.55f,
+            Typeface = SKTypeface.FromFamilyName("Arial")
+        };
+
+        var bounds = new SKRect();
+        paint.MeasureText(text, ref bounds);
+        var x = (width - bounds.Width) / 2f - bounds.Left;
+        var y = (height - bounds.Height) / 2f - bounds.Top;
+        canvas.DrawText(text, x, y, paint);
+        canvas.Flush();
+
+        using var image = SKImage.FromBitmap(bitmap);
+        using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+
+        var tempFolder = ApplicationData.Current.TemporaryFolder;
+        var file = await tempFolder.CreateFileAsync(
+            $"{prefix}_{Guid.NewGuid():N}.png",
+            CreationCollisionOption.ReplaceExisting);
+
+        using var ras = await file.OpenAsync(FileAccessMode.ReadWrite);
+        using var stream = ras.AsStreamForWrite();
+        data.SaveTo(stream);
+        await stream.FlushAsync(cancellationToken);
 
         return file;
     }
@@ -127,6 +181,69 @@ public class WindowsVideoCompositionService : IVideoCompositionService
                     overlayLayer.Overlays.Add(new MediaOverlay(segClip2)
                     {
                         Position = overlayPos,
+                        Delay = cursor
+                    });
+
+                    // ===== Overlays de parciales por lap + diferencia =====
+                    var green = new SKColor(52, 199, 89);
+                    var red = new SKColor(255, 59, 48);
+                    var white = SKColors.White;
+
+                    var is1Better = dur1 < dur2;
+                    var is2Better = dur2 < dur1;
+                    var lapColor1 = is1Better ? green : (is2Better ? red : white);
+                    var lapColor2 = is2Better ? green : (is1Better ? red : white);
+
+                    var diff = dur1 - dur2;
+                    if (diff < TimeSpan.Zero) diff = diff.Negate();
+
+                    var lapText1 = FormatLap(dur1);
+                    var lapText2 = FormatLap(dur2);
+                    var diffText = $"Δ {FormatLap(diff)}";
+
+                    // Tamaños de overlay (en px) y posiciones (normalizadas)
+                    var overlayImgW = 520;
+                    var overlayImgH = 120;
+
+                    WinFoundation.Rect lapRect1;
+                    WinFoundation.Rect lapRect2;
+                    WinFoundation.Rect diffRect;
+
+                    if (parameters.IsHorizontalLayout)
+                    {
+                        lapRect1 = new WinFoundation.Rect(0.02, 0.02, 0.22, 0.08);
+                        // Pegado a la derecha para no solapar con el delta centrado
+                        lapRect2 = new WinFoundation.Rect(0.76, 0.02, 0.22, 0.08);
+                        diffRect = new WinFoundation.Rect(0.39, 0.46, 0.22, 0.08);
+                    }
+                    else
+                    {
+                        lapRect1 = new WinFoundation.Rect(0.02, 0.02, 0.30, 0.05);
+                        lapRect2 = new WinFoundation.Rect(0.02, 0.52, 0.30, 0.05);
+                        diffRect = new WinFoundation.Rect(0.35, 0.46, 0.30, 0.05);
+                    }
+
+                    var lapImg1 = await CreateTextOverlayImageAsync(lapText1, lapColor1, overlayImgW, overlayImgH, "lap_t1", cancellationToken);
+                    var lapClip1 = await MediaClip.CreateFromImageFileAsync(lapImg1, segDuration);
+                    overlayLayer.Overlays.Add(new MediaOverlay(lapClip1)
+                    {
+                        Position = lapRect1,
+                        Delay = cursor
+                    });
+
+                    var lapImg2 = await CreateTextOverlayImageAsync(lapText2, lapColor2, overlayImgW, overlayImgH, "lap_t2", cancellationToken);
+                    var lapClip2 = await MediaClip.CreateFromImageFileAsync(lapImg2, segDuration);
+                    overlayLayer.Overlays.Add(new MediaOverlay(lapClip2)
+                    {
+                        Position = lapRect2,
+                        Delay = cursor
+                    });
+
+                    var diffImg = await CreateTextOverlayImageAsync(diffText, white, overlayImgW, overlayImgH, "lap_diff", cancellationToken);
+                    var diffClip = await MediaClip.CreateFromImageFileAsync(diffImg, segDuration);
+                    overlayLayer.Overlays.Add(new MediaOverlay(diffClip)
+                    {
+                        Position = diffRect,
                         Delay = cursor
                     });
 
