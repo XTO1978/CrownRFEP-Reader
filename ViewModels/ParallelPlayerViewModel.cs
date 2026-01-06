@@ -275,8 +275,14 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
             return;
         }
 
-        var time1 = IsSimultaneousMode ? SyncPoint1 + CurrentPosition : CurrentPosition1;
-        var time2 = IsSimultaneousMode ? SyncPoint2 + CurrentPosition : CurrentPosition2;
+        // En modo lap-sync, las posiciones de cada vídeo pueden divergir (uno puede estar esperando).
+        // Para que el overlay sea correcto, usar las posiciones reales de cada reproductor.
+        var time1 = IsSimultaneousMode
+            ? (IsLapSyncEnabled ? CurrentPosition1 : SyncPoint1 + CurrentPosition)
+            : CurrentPosition1;
+        var time2 = IsSimultaneousMode
+            ? (IsLapSyncEnabled ? CurrentPosition2 : SyncPoint2 + CurrentPosition)
+            : CurrentPosition2;
 
         var seg1 = FindLapAtPosition(_lapSegments1, time1);
         var seg2 = FindLapAtPosition(_lapSegments2, time2);
@@ -352,7 +358,62 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
             if (_isLapSyncEnabled == value) return;
             _isLapSyncEnabled = value;
             OnPropertyChanged();
+
+            // Si cambiamos el modo de sincronización, refrescar el overlay
+            // (en lap-sync usa posiciones reales por vídeo).
+            UpdateLapOverlay();
         }
+    }
+
+    public bool TryGetLapSyncSegmentEnds(out IReadOnlyList<TimeSpan> ends1, out IReadOnlyList<TimeSpan> ends2)
+    {
+        ends1 = Array.Empty<TimeSpan>();
+        ends2 = Array.Empty<TimeSpan>();
+
+        if (_lapSegments1 == null || _lapSegments2 == null || _lapSegments1.Count == 0 || _lapSegments2.Count == 0)
+            return false;
+
+        // Para playback: sincronizar en el inicio de cada lap (marcadores Kind=1).
+        // Excluir el último "End" (fin de vídeo/run) para no bloquear en el final.
+        var list1 = _lapSegments1.Select(s => s.End).ToList();
+        var list2 = _lapSegments2.Select(s => s.End).ToList();
+
+        if (list1.Count > 0) list1.RemoveAt(list1.Count - 1);
+        if (list2.Count > 0) list2.RemoveAt(list2.Count - 1);
+
+        if (list1.Count == 0 || list2.Count == 0)
+            return false;
+
+        ends1 = list1;
+        ends2 = list2;
+        return true;
+    }
+
+    public bool TryApplyLapSyncStartPoints()
+    {
+        if (_lapSegments1 == null || _lapSegments2 == null || _lapSegments1.Count == 0 || _lapSegments2.Count == 0)
+            return false;
+
+        // Anclar a Inicio (Kind=0) si existe (BuildLapSegments lo usa), y si no, a 0.
+        SyncPoint1 = _lapSegments1[0].Start;
+        SyncPoint2 = _lapSegments2[0].Start;
+
+        // Mantener las posiciones individuales coherentes con el anclaje.
+        CurrentPosition1 = SyncPoint1;
+        CurrentPosition2 = SyncPoint2;
+
+        // Duración global: el mínimo de lo reproducible desde cada inicio.
+        var end1 = _lapSegments1[^1].End;
+        var end2 = _lapSegments2[^1].End;
+        var remaining1 = end1 - SyncPoint1;
+        var remaining2 = end2 - SyncPoint2;
+        SyncDuration = remaining1 < remaining2 ? remaining1 : remaining2;
+
+        Duration = SyncDuration;
+        CurrentPosition = TimeSpan.Zero;
+        Progress = 0;
+
+        return true;
     }
 
     #region Export Methods
@@ -1298,14 +1359,31 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
                 IsPlaying2 = false;
             }
             
-            // Guardar las posiciones actuales como puntos de sincronización
-            SyncPoint1 = CurrentPosition1;
-            SyncPoint2 = CurrentPosition2;
+            // Guardar las posiciones como puntos de sincronización.
+            // Si está activado el modo lap-sync y tenemos parciales, anclar al Inicio.
+            if (IsLapSyncEnabled && _lapSegments1 != null && _lapSegments2 != null && _lapSegments1.Count > 0 && _lapSegments2.Count > 0)
+            {
+                SyncPoint1 = _lapSegments1[0].Start;
+                SyncPoint2 = _lapSegments2[0].Start;
+                CurrentPosition1 = SyncPoint1;
+                CurrentPosition2 = SyncPoint2;
+            }
+            else
+            {
+                SyncPoint1 = CurrentPosition1;
+                SyncPoint2 = CurrentPosition2;
+            }
             
             // Calcular la duración efectiva sincronizada
             // Es el mínimo entre lo que queda de cada vídeo desde su punto de sync
             var remaining1 = Duration1 - SyncPoint1;
             var remaining2 = Duration2 - SyncPoint2;
+
+            // En lap-sync, si tenemos segmentos, usar el final real (Kind=2 o fallback) en vez de DurationX.
+            if (IsLapSyncEnabled && _lapSegments1 != null && _lapSegments1.Count > 0)
+                remaining1 = _lapSegments1[^1].End - SyncPoint1;
+            if (IsLapSyncEnabled && _lapSegments2 != null && _lapSegments2.Count > 0)
+                remaining2 = _lapSegments2[^1].End - SyncPoint2;
             SyncDuration = remaining1 < remaining2 ? remaining1 : remaining2;
             
             // Inicializar la posición global a 0 (inicio de la sincronización)

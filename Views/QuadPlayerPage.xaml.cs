@@ -1,6 +1,9 @@
 using CrownRFEP_Reader.Behaviors;
 using CrownRFEP_Reader.Controls;
+using CrownRFEP_Reader.Models;
+using CrownRFEP_Reader.Services;
 using CrownRFEP_Reader.ViewModels;
+using System.ComponentModel;
 
 #if MACCATALYST
 using CrownRFEP_Reader.Platforms.MacCatalyst;
@@ -13,6 +16,31 @@ namespace CrownRFEP_Reader.Views;
 public partial class QuadPlayerPage : ContentPage
 {
     private readonly QuadPlayerViewModel _viewModel;
+
+    // Lap-sync playback ("espera" en cada lap)
+    private List<TimeSpan>? _lapSyncEnds1;
+    private List<TimeSpan>? _lapSyncEnds2;
+    private List<TimeSpan>? _lapSyncEnds3;
+    private List<TimeSpan>? _lapSyncEnds4;
+    private int _lapSyncSegmentIndex;
+    private bool _lapSyncPaused1;
+    private bool _lapSyncPaused2;
+    private bool _lapSyncPaused3;
+    private bool _lapSyncPaused4;
+    private TimeSpan _lapSyncHoldPos1;
+    private TimeSpan _lapSyncHoldPos2;
+    private TimeSpan _lapSyncHoldPos3;
+    private TimeSpan _lapSyncHoldPos4;
+    private bool _lapSyncSeekInProgress;
+    private bool _lapSyncLoading;
+    private DateTime _lapSyncResumedAt;
+    private TimeSpan _lapSyncResumePos1;
+    private TimeSpan _lapSyncResumePos2;
+    private TimeSpan _lapSyncResumePos3;
+    private TimeSpan _lapSyncResumePos4;
+    private static readonly TimeSpan LapSyncEpsilon = TimeSpan.FromMilliseconds(40);
+    private static readonly TimeSpan LapSyncResumeGrace = TimeSpan.FromMilliseconds(200);
+    private static readonly TimeSpan LapSyncMinAdvance = TimeSpan.FromMilliseconds(100);
     
     // Posiciones actuales para scrubbing
     private double _currentScrubPosition1;
@@ -41,6 +69,9 @@ public partial class QuadPlayerPage : ContentPage
     {
         InitializeComponent();
         BindingContext = _viewModel = viewModel;
+
+        _viewModel.PropertyChanged += OnViewModelPropertyChanged;
+        _viewModel.ModeChanged += OnModeChanged;
 
         // Suscribirse a eventos globales del ViewModel
         _viewModel.PlayRequested += OnPlayRequested;
@@ -122,6 +153,8 @@ public partial class QuadPlayerPage : ContentPage
 
     private void CleanupResources()
     {
+        _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
+        _viewModel.ModeChanged -= OnModeChanged;
         // Desuscribirse de eventos globales del ViewModel
         _viewModel.PlayRequested -= OnPlayRequested;
         _viewModel.PauseRequested -= OnPauseRequested;
@@ -154,6 +187,386 @@ public partial class QuadPlayerPage : ContentPage
 
         // Detener todos los reproductores
         StopAllPlayers();
+
+        ResetLapSyncState();
+    }
+
+    private void ResetLapSyncState()
+    {
+        _lapSyncEnds1 = null;
+        _lapSyncEnds2 = null;
+        _lapSyncEnds3 = null;
+        _lapSyncEnds4 = null;
+        _lapSyncSegmentIndex = -1;
+        _lapSyncPaused1 = false;
+        _lapSyncPaused2 = false;
+        _lapSyncPaused3 = false;
+        _lapSyncPaused4 = false;
+        _lapSyncHoldPos1 = TimeSpan.Zero;
+        _lapSyncHoldPos2 = TimeSpan.Zero;
+        _lapSyncHoldPos3 = TimeSpan.Zero;
+        _lapSyncHoldPos4 = TimeSpan.Zero;
+        _lapSyncSeekInProgress = false;
+        _lapSyncLoading = false;
+        _lapSyncResumedAt = DateTime.MinValue;
+        _lapSyncResumePos1 = TimeSpan.Zero;
+        _lapSyncResumePos2 = TimeSpan.Zero;
+        _lapSyncResumePos3 = TimeSpan.Zero;
+        _lapSyncResumePos4 = TimeSpan.Zero;
+    }
+
+    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(QuadPlayerViewModel.IsLapSyncEnabled))
+        {
+            _ = MainThread.InvokeOnMainThreadAsync(async () =>
+            {
+                ResetLapSyncState();
+                if (_viewModel.IsLapSyncEnabled && _viewModel.IsSimultaneousMode)
+                {
+                    await EnsureLapSyncDataAsync();
+                    SeekAllToPosition(0);
+                }
+            });
+        }
+    }
+
+    private void OnModeChanged(object? sender, bool isSimultaneous)
+    {
+        if (!isSimultaneous)
+        {
+            ResetLapSyncState();
+            return;
+        }
+
+        if (_viewModel.IsLapSyncEnabled)
+        {
+            _ = MainThread.InvokeOnMainThreadAsync(async () =>
+            {
+                ResetLapSyncState();
+                await EnsureLapSyncDataAsync();
+                SeekAllToPosition(0);
+            });
+        }
+    }
+
+    private sealed record LapSegment(TimeSpan Start, TimeSpan End);
+
+    private static List<LapSegment>? BuildLapSegments(List<ExecutionTimingEvent> events, TimeSpan fallbackEnd)
+    {
+        if (events.Count == 0)
+            return null;
+
+        // Elegir el run con más laps (y si empata, el de mayor tiempo)
+        var bestRun = events
+            .GroupBy(e => e.RunIndex)
+            .Select(g => new
+            {
+                RunIndex = g.Key,
+                LapCount = g.Count(e => e.Kind == 1),
+                EndMs = g.Where(e => e.Kind == 2).Select(e => e.ElapsedMilliseconds).DefaultIfEmpty(0).Max()
+            })
+            .OrderByDescending(x => x.LapCount)
+            .ThenByDescending(x => x.EndMs)
+            .FirstOrDefault();
+
+        var runIndex = bestRun?.RunIndex ?? 0;
+        var runEvents = events
+            .Where(e => e.RunIndex == runIndex)
+            .OrderBy(e => e.ElapsedMilliseconds)
+            .ToList();
+
+        var startMs = runEvents.FirstOrDefault(e => e.Kind == 0)?.ElapsedMilliseconds ?? 0;
+        var endMs = runEvents.LastOrDefault(e => e.Kind == 2)?.ElapsedMilliseconds;
+
+        var start = TimeSpan.FromMilliseconds(startMs);
+        var end = endMs.HasValue ? TimeSpan.FromMilliseconds(endMs.Value) : fallbackEnd;
+        if (end <= start)
+            return null;
+
+        var lapMarkers = runEvents
+            .Where(e => e.Kind == 1)
+            .Select(e => TimeSpan.FromMilliseconds(e.ElapsedMilliseconds))
+            .Where(t => t > start && t < end)
+            .Distinct()
+            .OrderBy(t => t)
+            .ToList();
+
+        var boundaries = new List<TimeSpan>(capacity: 2 + lapMarkers.Count) { start };
+        boundaries.AddRange(lapMarkers);
+        boundaries.Add(end);
+
+        if (boundaries.Count < 2)
+            return null;
+
+        var segments = new List<LapSegment>(capacity: boundaries.Count - 1);
+        for (int i = 0; i < boundaries.Count - 1; i++)
+        {
+            var segStart = boundaries[i];
+            var segEnd = boundaries[i + 1];
+            if (segEnd <= segStart) continue;
+            segments.Add(new LapSegment(segStart, segEnd));
+        }
+
+        return segments.Count > 0 ? segments : null;
+    }
+
+    private static TimeSpan GetFallbackDuration(VideoClip? clip, TimeSpan durationProperty)
+    {
+        if (durationProperty > TimeSpan.Zero)
+            return durationProperty;
+        if (clip != null && clip.ClipDuration > 0)
+            return TimeSpan.FromSeconds(clip.ClipDuration);
+        return TimeSpan.Zero;
+    }
+
+    private async Task EnsureLapSyncDataAsync()
+    {
+        if (_lapSyncLoading)
+            return;
+        if (_lapSyncEnds1 != null || _lapSyncEnds2 != null || _lapSyncEnds3 != null || _lapSyncEnds4 != null)
+            return;
+
+        _lapSyncLoading = true;
+        try
+        {
+            var services = Application.Current?.Handler?.MauiContext?.Services;
+            var databaseService = services?.GetService<DatabaseService>();
+            if (databaseService == null)
+                return;
+
+            async Task<(List<TimeSpan>? Ends, TimeSpan? Start, TimeSpan? End)> LoadEndsAsync(VideoClip? clip, TimeSpan durationProp)
+            {
+                if (clip == null)
+                    return (null, null, null);
+
+                var events = await databaseService.GetExecutionTimingEventsByVideoAsync(clip.Id);
+                var fallbackEnd = GetFallbackDuration(clip, durationProp);
+                var segs = BuildLapSegments(events, fallbackEnd);
+                if (segs == null || segs.Count == 0)
+                    return (null, null, null);
+
+                var ends = segs.Select(s => s.End).ToList();
+                if (ends.Count > 0)
+                    ends.RemoveAt(ends.Count - 1);
+
+                return (ends.Count > 0 ? ends : null, segs[0].Start, segs[^1].End);
+            }
+
+            var r1 = await LoadEndsAsync(_viewModel.Video1, _viewModel.Duration1);
+            var r2 = await LoadEndsAsync(_viewModel.Video2, _viewModel.Duration2);
+            var r3 = await LoadEndsAsync(_viewModel.Video3, _viewModel.Duration3);
+            var r4 = await LoadEndsAsync(_viewModel.Video4, _viewModel.Duration4);
+
+            _lapSyncEnds1 = r1.Ends;
+            _lapSyncEnds2 = r2.Ends;
+            _lapSyncEnds3 = r3.Ends;
+            _lapSyncEnds4 = r4.Ends;
+
+            // Anclar SyncPoints a Inicio si hay datos
+            if (r1.Start.HasValue) _viewModel.SyncPoint1 = r1.Start.Value;
+            if (r2.Start.HasValue) _viewModel.SyncPoint2 = r2.Start.Value;
+            if (r3.Start.HasValue) _viewModel.SyncPoint3 = r3.Start.Value;
+            if (r4.Start.HasValue) _viewModel.SyncPoint4 = r4.Start.Value;
+
+            // Duración global: mínimo de lo reproducible desde cada inicio
+            var remaining = new List<TimeSpan>();
+            if (r1.End.HasValue && r1.Start.HasValue) remaining.Add(r1.End.Value - r1.Start.Value);
+            if (r2.End.HasValue && r2.Start.HasValue) remaining.Add(r2.End.Value - r2.Start.Value);
+            if (r3.End.HasValue && r3.Start.HasValue) remaining.Add(r3.End.Value - r3.Start.Value);
+            if (r4.End.HasValue && r4.Start.HasValue) remaining.Add(r4.End.Value - r4.Start.Value);
+            if (remaining.Count > 0)
+            {
+                _viewModel.SyncDuration = remaining.Min();
+                _viewModel.Duration = _viewModel.SyncDuration;
+            }
+        }
+        catch
+        {
+            // No bloquear el reproductor
+        }
+        finally
+        {
+            _lapSyncLoading = false;
+        }
+    }
+
+    private static int FindSegmentIndexByEnds(List<TimeSpan> ends, TimeSpan position)
+    {
+        for (int i = 0; i < ends.Count; i++)
+        {
+            if (position < ends[i] - LapSyncEpsilon)
+                return i;
+        }
+        return Math.Max(0, ends.Count - 1);
+    }
+
+    private void RecalculateLapSyncSegmentIndex()
+    {
+        var indices = new List<int>();
+
+        if (_viewModel.HasVideo1 && _lapSyncEnds1 != null && _lapSyncEnds1.Count > 0)
+            indices.Add(FindSegmentIndexByEnds(_lapSyncEnds1, MediaPlayer1.Position));
+        if (_viewModel.HasVideo2 && _lapSyncEnds2 != null && _lapSyncEnds2.Count > 0)
+            indices.Add(FindSegmentIndexByEnds(_lapSyncEnds2, MediaPlayer2.Position));
+        if (_viewModel.HasVideo3 && _lapSyncEnds3 != null && _lapSyncEnds3.Count > 0)
+            indices.Add(FindSegmentIndexByEnds(_lapSyncEnds3, MediaPlayer3.Position));
+        if (_viewModel.HasVideo4 && _lapSyncEnds4 != null && _lapSyncEnds4.Count > 0)
+            indices.Add(FindSegmentIndexByEnds(_lapSyncEnds4, MediaPlayer4.Position));
+
+        _lapSyncSegmentIndex = indices.Count > 0 ? indices.Min() : 0;
+    }
+
+    private static TimeSpan GetTargetEnd(List<TimeSpan>? ends, int index)
+    {
+        if (ends == null || ends.Count == 0)
+            return TimeSpan.Zero;
+        return ends[Math.Min(index, ends.Count - 1)];
+    }
+
+    private void HandleLapSyncTick()
+    {
+        if (!_viewModel.IsSimultaneousMode || !_viewModel.IsLapSyncEnabled || !_viewModel.IsPlaying)
+            return;
+        if (_lapSyncSeekInProgress || _isDraggingGlobal || _isDragging1 || _isDragging2 || _isDragging3 || _isDragging4)
+            return;
+
+        if (_lapSyncEnds1 == null && _lapSyncEnds2 == null && _lapSyncEnds3 == null && _lapSyncEnds4 == null)
+            return;
+
+        // Tras reanudar, dar un pequeño margen de tiempo para que la posición avance.
+        if (_lapSyncResumedAt != DateTime.MinValue && (DateTime.UtcNow - _lapSyncResumedAt) < LapSyncResumeGrace)
+            return;
+
+        // Además, exigir que todos hayan avanzado un mínimo desde la posición de resume.
+        if (_lapSyncResumePos1 != TimeSpan.Zero || _lapSyncResumePos2 != TimeSpan.Zero ||
+            _lapSyncResumePos3 != TimeSpan.Zero || _lapSyncResumePos4 != TimeSpan.Zero)
+        {
+            var pos1 = MediaPlayer1.Position;
+            var pos2 = MediaPlayer2.Position;
+            var pos3 = MediaPlayer3.Position;
+            var pos4 = MediaPlayer4.Position;
+
+            var adv1 = !_viewModel.HasVideo1 || (pos1 - _lapSyncResumePos1) >= LapSyncMinAdvance;
+            var adv2 = !_viewModel.HasVideo2 || (pos2 - _lapSyncResumePos2) >= LapSyncMinAdvance;
+            var adv3 = !_viewModel.HasVideo3 || (pos3 - _lapSyncResumePos3) >= LapSyncMinAdvance;
+            var adv4 = !_viewModel.HasVideo4 || (pos4 - _lapSyncResumePos4) >= LapSyncMinAdvance;
+
+            if (!(adv1 && adv2 && adv3 && adv4))
+                return;
+
+            // Una vez avanzados, limpiar.
+            _lapSyncResumePos1 = TimeSpan.Zero;
+            _lapSyncResumePos2 = TimeSpan.Zero;
+            _lapSyncResumePos3 = TimeSpan.Zero;
+            _lapSyncResumePos4 = TimeSpan.Zero;
+        }
+
+        // Ajustar el segmento actual si venimos de un seek/salto (índice no inicializado).
+        if (_lapSyncSegmentIndex < 0)
+            RecalculateLapSyncSegmentIndex();
+
+        // Laps comunes (mínimo número de marcadores entre los vídeos activos)
+        var counts = new List<int>();
+        if (_viewModel.HasVideo1 && _lapSyncEnds1 != null) counts.Add(_lapSyncEnds1.Count);
+        if (_viewModel.HasVideo2 && _lapSyncEnds2 != null) counts.Add(_lapSyncEnds2.Count);
+        if (_viewModel.HasVideo3 && _lapSyncEnds3 != null) counts.Add(_lapSyncEnds3.Count);
+        if (_viewModel.HasVideo4 && _lapSyncEnds4 != null) counts.Add(_lapSyncEnds4.Count);
+
+        var maxIdx = (counts.Count > 0 ? counts.Min() : 0) - 1;
+        if (maxIdx < 0)
+            return;
+        if (_lapSyncSegmentIndex > maxIdx)
+            return;
+
+        var idx = Math.Max(0, Math.Min(_lapSyncSegmentIndex, maxIdx));
+
+        var target1 = GetTargetEnd(_lapSyncEnds1, idx);
+        var target2 = GetTargetEnd(_lapSyncEnds2, idx);
+        var target3 = GetTargetEnd(_lapSyncEnds3, idx);
+        var target4 = GetTargetEnd(_lapSyncEnds4, idx);
+
+        // Si ya hemos pausado un player por lap-sync, usamos la posición objetivo guardada,
+        // para evitar deadlocks cuando Position tarda en reflejar el Seek.
+        var effective1 = _lapSyncPaused1 ? _lapSyncHoldPos1 : MediaPlayer1.Position;
+        var effective2 = _lapSyncPaused2 ? _lapSyncHoldPos2 : MediaPlayer2.Position;
+        var effective3 = _lapSyncPaused3 ? _lapSyncHoldPos3 : MediaPlayer3.Position;
+        var effective4 = _lapSyncPaused4 ? _lapSyncHoldPos4 : MediaPlayer4.Position;
+
+        var reached1 = !_viewModel.HasVideo1 || _lapSyncPaused1 || effective1 >= target1 - LapSyncEpsilon;
+        var reached2 = !_viewModel.HasVideo2 || _lapSyncPaused2 || effective2 >= target2 - LapSyncEpsilon;
+        var reached3 = !_viewModel.HasVideo3 || _lapSyncPaused3 || effective3 >= target3 - LapSyncEpsilon;
+        var reached4 = !_viewModel.HasVideo4 || _lapSyncPaused4 || effective4 >= target4 - LapSyncEpsilon;
+
+        var allReached = reached1 && reached2 && reached3 && reached4;
+
+        if (!allReached)
+        {
+            if (_viewModel.HasVideo1 && reached1 && !_lapSyncPaused1)
+            {
+                _lapSyncPaused1 = true;
+                _lapSyncHoldPos1 = target1;
+                MediaPlayer1.Pause();
+                MediaPlayer1.SeekTo(target1);
+            }
+            if (_viewModel.HasVideo2 && reached2 && !_lapSyncPaused2)
+            {
+                _lapSyncPaused2 = true;
+                _lapSyncHoldPos2 = target2;
+                MediaPlayer2.Pause();
+                MediaPlayer2.SeekTo(target2);
+            }
+            if (_viewModel.HasVideo3 && reached3 && !_lapSyncPaused3)
+            {
+                _lapSyncPaused3 = true;
+                _lapSyncHoldPos3 = target3;
+                MediaPlayer3.Pause();
+                MediaPlayer3.SeekTo(target3);
+            }
+            if (_viewModel.HasVideo4 && reached4 && !_lapSyncPaused4)
+            {
+                _lapSyncPaused4 = true;
+                _lapSyncHoldPos4 = target4;
+                MediaPlayer4.Pause();
+                MediaPlayer4.SeekTo(target4);
+            }
+
+            return;
+        }
+
+        _lapSyncSeekInProgress = true;
+        try
+        {
+            if (_viewModel.HasVideo1) MediaPlayer1.SeekTo(target1);
+            if (_viewModel.HasVideo2) MediaPlayer2.SeekTo(target2);
+            if (_viewModel.HasVideo3) MediaPlayer3.SeekTo(target3);
+            if (_viewModel.HasVideo4) MediaPlayer4.SeekTo(target4);
+
+            _lapSyncPaused1 = false;
+            _lapSyncPaused2 = false;
+            _lapSyncPaused3 = false;
+            _lapSyncPaused4 = false;
+
+            _lapSyncHoldPos1 = TimeSpan.Zero;
+            _lapSyncHoldPos2 = TimeSpan.Zero;
+            _lapSyncHoldPos3 = TimeSpan.Zero;
+            _lapSyncHoldPos4 = TimeSpan.Zero;
+
+            _lapSyncSegmentIndex = idx + 1;
+
+            // Registrar cuándo reanudamos y desde qué posición, para ignorar detecciones inmediatas.
+            _lapSyncResumedAt = DateTime.UtcNow;
+            _lapSyncResumePos1 = target1;
+            _lapSyncResumePos2 = target2;
+            _lapSyncResumePos3 = target3;
+            _lapSyncResumePos4 = target4;
+
+            PlayAllPlayers();
+        }
+        finally
+        {
+            _lapSyncSeekInProgress = false;
+        }
     }
 
     private void SetupMediaOpenedHandlers()
@@ -226,25 +639,42 @@ public partial class QuadPlayerPage : ContentPage
                     ProgressSlider4.Value = MediaPlayer4.Position.TotalSeconds / _viewModel.Duration4.TotalSeconds;
             }
 
-            // Actualizar posición global solo si está en modo simultáneo y reproduciendo
+            // Actualizar posición global solo si está reproduciendo
             if (!_viewModel.IsPlaying || _isDraggingGlobal) return;
-            
-            // Usar la posición del primer video disponible
-            var position = TimeSpan.Zero;
-            if (_viewModel.HasVideo1 && MediaPlayer1.Position > TimeSpan.Zero)
-                position = MediaPlayer1.Position;
-            else if (_viewModel.HasVideo2 && MediaPlayer2.Position > TimeSpan.Zero)
-                position = MediaPlayer2.Position;
-            else if (_viewModel.HasVideo3 && MediaPlayer3.Position > TimeSpan.Zero)
-                position = MediaPlayer3.Position;
-            else if (_viewModel.HasVideo4 && MediaPlayer4.Position > TimeSpan.Zero)
-                position = MediaPlayer4.Position;
-            
-            _viewModel.UpdatePositionFromPage(position);
-            
-            // Actualizar slider global directamente
+
+            // En modo simultáneo, usar posición relativa a SyncPoint (si aplica)
+            var globalRelative = TimeSpan.Zero;
+            if (_viewModel.IsSimultaneousMode)
+            {
+                if (_viewModel.HasVideo1)
+                    globalRelative = TimeSpan.FromMilliseconds(Math.Max(0, (MediaPlayer1.Position - _viewModel.SyncPoint1).TotalMilliseconds));
+                if (_viewModel.HasVideo2)
+                    globalRelative = TimeSpan.FromMilliseconds(Math.Max(globalRelative.TotalMilliseconds, Math.Max(0, (MediaPlayer2.Position - _viewModel.SyncPoint2).TotalMilliseconds)));
+                if (_viewModel.HasVideo3)
+                    globalRelative = TimeSpan.FromMilliseconds(Math.Max(globalRelative.TotalMilliseconds, Math.Max(0, (MediaPlayer3.Position - _viewModel.SyncPoint3).TotalMilliseconds)));
+                if (_viewModel.HasVideo4)
+                    globalRelative = TimeSpan.FromMilliseconds(Math.Max(globalRelative.TotalMilliseconds, Math.Max(0, (MediaPlayer4.Position - _viewModel.SyncPoint4).TotalMilliseconds)));
+            }
+            else
+            {
+                // Modo individual: posición del primer video disponible
+                if (_viewModel.HasVideo1 && MediaPlayer1.Position > TimeSpan.Zero)
+                    globalRelative = MediaPlayer1.Position;
+                else if (_viewModel.HasVideo2 && MediaPlayer2.Position > TimeSpan.Zero)
+                    globalRelative = MediaPlayer2.Position;
+                else if (_viewModel.HasVideo3 && MediaPlayer3.Position > TimeSpan.Zero)
+                    globalRelative = MediaPlayer3.Position;
+                else if (_viewModel.HasVideo4 && MediaPlayer4.Position > TimeSpan.Zero)
+                    globalRelative = MediaPlayer4.Position;
+            }
+
+            _viewModel.UpdatePositionFromPage(globalRelative);
+
             if (_viewModel.Duration.TotalSeconds > 0)
-                ProgressSlider.Value = position.TotalSeconds / _viewModel.Duration.TotalSeconds;
+                ProgressSlider.Value = globalRelative.TotalSeconds / _viewModel.Duration.TotalSeconds;
+
+            // Aplicar "espera" por laps si procede
+            HandleLapSyncTick();
         });
     }
 
@@ -408,12 +838,29 @@ public partial class QuadPlayerPage : ContentPage
 
     private void OnPlayRequested(object? sender, EventArgs e)
     {
-        MainThread.BeginInvokeOnMainThread(PlayAllPlayers);
+        MainThread.BeginInvokeOnMainThread(async () =>
+        {
+            if (_viewModel.IsLapSyncEnabled && _viewModel.IsSimultaneousMode)
+            {
+                await EnsureLapSyncDataAsync();
+                if (_lapSyncEnds1 != null || _lapSyncEnds2 != null || _lapSyncEnds3 != null || _lapSyncEnds4 != null)
+                    RecalculateLapSyncSegmentIndex();
+            }
+
+            PlayAllPlayers();
+        });
     }
 
     private void OnPauseRequested(object? sender, EventArgs e)
     {
-        MainThread.BeginInvokeOnMainThread(PauseAllPlayers);
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            PauseAllPlayers();
+            _lapSyncPaused1 = false;
+            _lapSyncPaused2 = false;
+            _lapSyncPaused3 = false;
+            _lapSyncPaused4 = false;
+        });
     }
 
     private void OnStopRequested(object? sender, EventArgs e)
@@ -422,6 +869,7 @@ public partial class QuadPlayerPage : ContentPage
         {
             StopAllPlayers();
             SeekAllToPosition(0);
+            ResetLapSyncState();
         });
     }
 
@@ -508,11 +956,26 @@ public partial class QuadPlayerPage : ContentPage
 
     private void SeekAllToPosition(double seconds)
     {
-        var position = TimeSpan.FromSeconds(seconds);
-        if (_viewModel.HasVideo1) MediaPlayer1.SeekTo(position);
-        if (_viewModel.HasVideo2) MediaPlayer2.SeekTo(position);
-        if (_viewModel.HasVideo3) MediaPlayer3.SeekTo(position);
-        if (_viewModel.HasVideo4) MediaPlayer4.SeekTo(position);
+        // Un seek rompe el estado de "espera"; se recalculará en el siguiente tick.
+        _lapSyncSegmentIndex = 0;
+        _lapSyncPaused1 = _lapSyncPaused2 = _lapSyncPaused3 = _lapSyncPaused4 = false;
+
+        var relative = TimeSpan.FromSeconds(seconds);
+
+        if (_viewModel.IsSimultaneousMode)
+        {
+            if (_viewModel.HasVideo1) MediaPlayer1.SeekTo(_viewModel.SyncPoint1 + relative);
+            if (_viewModel.HasVideo2) MediaPlayer2.SeekTo(_viewModel.SyncPoint2 + relative);
+            if (_viewModel.HasVideo3) MediaPlayer3.SeekTo(_viewModel.SyncPoint3 + relative);
+            if (_viewModel.HasVideo4) MediaPlayer4.SeekTo(_viewModel.SyncPoint4 + relative);
+        }
+        else
+        {
+            if (_viewModel.HasVideo1) MediaPlayer1.SeekTo(relative);
+            if (_viewModel.HasVideo2) MediaPlayer2.SeekTo(relative);
+            if (_viewModel.HasVideo3) MediaPlayer3.SeekTo(relative);
+            if (_viewModel.HasVideo4) MediaPlayer4.SeekTo(relative);
+        }
     }
 
     private void StepAllForward()

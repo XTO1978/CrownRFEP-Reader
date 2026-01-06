@@ -15,6 +15,22 @@ public partial class ParallelPlayerPage : ContentPage
     private readonly ParallelPlayerViewModel _viewModel;
     private PrecisionVideoPlayer? _activePlayer1;
     private PrecisionVideoPlayer? _activePlayer2;
+
+    // Lap-sync playback ("espera" en cada lap)
+    private List<TimeSpan>? _lapSyncEnds1;
+    private List<TimeSpan>? _lapSyncEnds2;
+    private int _lapSyncSegmentIndex;
+    private bool _lapSyncPaused1;
+    private bool _lapSyncPaused2;
+    private TimeSpan _lapSyncHoldPos1;
+    private TimeSpan _lapSyncHoldPos2;
+    private bool _lapSyncSeekInProgress;
+    private DateTime _lapSyncResumedAt;
+    private TimeSpan _lapSyncResumePos1;
+    private TimeSpan _lapSyncResumePos2;
+    private static readonly TimeSpan LapSyncEpsilon = TimeSpan.FromMilliseconds(40);
+    private static readonly TimeSpan LapSyncResumeGrace = TimeSpan.FromMilliseconds(200);
+    private static readonly TimeSpan LapSyncMinAdvance = TimeSpan.FromMilliseconds(100);
     
     // Flags para controlar el scrubbing del slider
     private bool _isDraggingSlider;
@@ -109,6 +125,8 @@ public partial class ParallelPlayerPage : ContentPage
         _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
         _viewModel.ModeChanged -= OnModeChanged;
         _viewModel.CloseRequested -= OnCloseRequested;
+
+        ResetLapSyncState();
 
         // Limpiar handlers de MediaOpened
         if (_activePlayer1 != null)
@@ -256,6 +274,21 @@ public partial class ParallelPlayerPage : ContentPage
                 }
             });
         }
+
+        if (e.PropertyName == nameof(ParallelPlayerViewModel.IsLapSyncEnabled))
+        {
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                ResetLapSyncState();
+
+                // Si está en modo simultáneo y se activa lap-sync, anclar a Inicio y llevar ambos al 0 relativo.
+                if (_viewModel.IsSimultaneousMode && _viewModel.IsLapSyncEnabled)
+                {
+                    if (_viewModel.TryApplyLapSyncStartPoints())
+                        SeekBothToPosition(0);
+                }
+            });
+        }
     }
 
     private void OnModeChanged(object? sender, bool isSimultaneous)
@@ -263,6 +296,8 @@ public partial class ParallelPlayerPage : ContentPage
         MainThread.BeginInvokeOnMainThread(() =>
         {
             StopAllPlayers();
+
+            ResetLapSyncState();
             
             if (isSimultaneous)
             {
@@ -273,6 +308,16 @@ public partial class ParallelPlayerPage : ContentPage
                 // Asegurar que cada reproductor está en su sync point
                 _activePlayer1?.SeekTo(_viewModel.SyncPoint1);
                 _activePlayer2?.SeekTo(_viewModel.SyncPoint2);
+
+                if (_viewModel.IsLapSyncEnabled)
+                {
+                    // Asegurar anclaje a Inicio si ya tenemos parciales cargados.
+                    if (_viewModel.TryApplyLapSyncStartPoints())
+                    {
+                        _activePlayer1?.SeekTo(_viewModel.SyncPoint1);
+                        _activePlayer2?.SeekTo(_viewModel.SyncPoint2);
+                    }
+                }
             }
             else
             {
@@ -288,6 +333,180 @@ public partial class ParallelPlayerPage : ContentPage
                 _activePlayer2?.SeekTo(absolutePos2);
             }
         });
+    }
+
+    private void ResetLapSyncState()
+    {
+        _lapSyncEnds1 = null;
+        _lapSyncEnds2 = null;
+        _lapSyncSegmentIndex = -1;
+        _lapSyncPaused1 = false;
+        _lapSyncPaused2 = false;
+        _lapSyncHoldPos1 = TimeSpan.Zero;
+        _lapSyncHoldPos2 = TimeSpan.Zero;
+        _lapSyncSeekInProgress = false;
+        _lapSyncResumedAt = DateTime.MinValue;
+        _lapSyncResumePos1 = TimeSpan.Zero;
+        _lapSyncResumePos2 = TimeSpan.Zero;
+    }
+
+    private bool EnsureLapSyncData()
+    {
+        if (_lapSyncEnds1 != null && _lapSyncEnds2 != null)
+            return true;
+
+        if (!_viewModel.TryGetLapSyncSegmentEnds(out var ends1, out var ends2))
+            return false;
+
+        _lapSyncEnds1 = ends1.ToList();
+        _lapSyncEnds2 = ends2.ToList();
+        return _lapSyncEnds1.Count > 0 && _lapSyncEnds2.Count > 0;
+    }
+
+    private static int FindSegmentIndexByEnds(List<TimeSpan> ends, TimeSpan position)
+    {
+        for (int i = 0; i < ends.Count; i++)
+        {
+            if (position < ends[i] - LapSyncEpsilon)
+                return i;
+        }
+        return Math.Max(0, ends.Count - 1);
+    }
+
+    private void RecalculateLapSyncSegmentIndex(TimeSpan pos1, TimeSpan pos2)
+    {
+        if (_lapSyncEnds1 == null || _lapSyncEnds2 == null)
+            return;
+
+        var idx1 = FindSegmentIndexByEnds(_lapSyncEnds1, pos1);
+        var idx2 = FindSegmentIndexByEnds(_lapSyncEnds2, pos2);
+        _lapSyncSegmentIndex = Math.Min(idx1, idx2);
+    }
+
+    private void HandleLapSyncTick(TimeSpan pos1, TimeSpan pos2)
+    {
+        if (!_viewModel.IsSimultaneousMode || !_viewModel.IsLapSyncEnabled)
+            return;
+
+        if (_lapSyncSeekInProgress)
+            return;
+
+        if (_isDraggingSlider || _isDraggingSlider1 || _isDraggingSlider2 || _isScrubbing1 || _isScrubbing2)
+            return;
+
+        if (_activePlayer1 == null || _activePlayer2 == null)
+            return;
+
+        if (!EnsureLapSyncData())
+            return;
+
+        // Tras reanudar, dar un pequeño margen de tiempo para que la posición avance.
+        if (_lapSyncResumedAt != DateTime.MinValue && (DateTime.UtcNow - _lapSyncResumedAt) < LapSyncResumeGrace)
+            return;
+
+        // Además, exigir que ambos hayan avanzado un mínimo desde la posición de resume.
+        // Esto evita que detectemos "reached" inmediatamente tras reanudar.
+        if (_lapSyncResumePos1 != TimeSpan.Zero || _lapSyncResumePos2 != TimeSpan.Zero)
+        {
+            var advanced1 = pos1 - _lapSyncResumePos1;
+            var advanced2 = pos2 - _lapSyncResumePos2;
+            if (advanced1 < LapSyncMinAdvance || advanced2 < LapSyncMinAdvance)
+                return;
+
+            // Una vez avanzados, limpiar para no seguir comparando.
+            _lapSyncResumePos1 = TimeSpan.Zero;
+            _lapSyncResumePos2 = TimeSpan.Zero;
+        }
+
+        // Mantener posiciones individuales siempre actualizadas para overlays/cálculos.
+        _viewModel.CurrentPosition1 = pos1;
+        _viewModel.CurrentPosition2 = pos2;
+
+        // Ajustar el segmento actual si venimos de un seek/salto (índice no inicializado).
+        if (_lapSyncSegmentIndex < 0)
+            RecalculateLapSyncSegmentIndex(pos1, pos2);
+
+        var ends1 = _lapSyncEnds1!;
+        var ends2 = _lapSyncEnds2!;
+
+        var maxIdx = Math.Min(ends1.Count, ends2.Count) - 1;
+        if (maxIdx < 0)
+            return;
+
+        // Si ya hemos procesado todos los laps comunes, no aplicar más control.
+        if (_lapSyncSegmentIndex > maxIdx)
+            return;
+
+        var idx = Math.Max(0, Math.Min(_lapSyncSegmentIndex, maxIdx));
+        var targetEnd1 = ends1[Math.Min(idx, ends1.Count - 1)];
+        var targetEnd2 = ends2[Math.Min(idx, ends2.Count - 1)];
+
+        // Si hemos pausado un player por lap-sync, usamos la posición objetivo de espera,
+        // para evitar deadlocks cuando Position tarda en reflejar el Seek.
+        var effectivePos1 = _lapSyncPaused1 ? _lapSyncHoldPos1 : pos1;
+        var effectivePos2 = _lapSyncPaused2 ? _lapSyncHoldPos2 : pos2;
+
+        var reached1 = _lapSyncPaused1 || effectivePos1 >= targetEnd1 - LapSyncEpsilon;
+        var reached2 = _lapSyncPaused2 || effectivePos2 >= targetEnd2 - LapSyncEpsilon;
+
+        // Si uno llega antes, que espere.
+        if (_viewModel.IsPlaying)
+        {
+            if (reached1 && !reached2 && !_lapSyncPaused1)
+            {
+                _lapSyncPaused1 = true;
+                _lapSyncHoldPos1 = targetEnd1;
+                _activePlayer1.Pause();
+                _activePlayer1.SeekTo(targetEnd1);
+                _viewModel.CurrentPosition1 = targetEnd1;
+            }
+
+            if (reached2 && !reached1 && !_lapSyncPaused2)
+            {
+                _lapSyncPaused2 = true;
+                _lapSyncHoldPos2 = targetEnd2;
+                _activePlayer2.Pause();
+                _activePlayer2.SeekTo(targetEnd2);
+                _viewModel.CurrentPosition2 = targetEnd2;
+            }
+        }
+
+        // Cuando ambos alcanzan su fin de segmento, avanzar y reanudar.
+        if (reached1 && reached2)
+        {
+            _lapSyncSeekInProgress = true;
+            try
+            {
+                _activePlayer1.SeekTo(targetEnd1);
+                _activePlayer2.SeekTo(targetEnd2);
+
+                _viewModel.CurrentPosition1 = targetEnd1;
+                _viewModel.CurrentPosition2 = targetEnd2;
+
+                _lapSyncPaused1 = false;
+                _lapSyncPaused2 = false;
+                _lapSyncHoldPos1 = TimeSpan.Zero;
+                _lapSyncHoldPos2 = TimeSpan.Zero;
+
+                // Avanzar al siguiente lap marker; si ya no quedan, desactivar control.
+                _lapSyncSegmentIndex++;
+
+                // Registrar cuándo reanudamos y desde qué posición, para ignorar detecciones inmediatas.
+                _lapSyncResumedAt = DateTime.UtcNow;
+                _lapSyncResumePos1 = targetEnd1;
+                _lapSyncResumePos2 = targetEnd2;
+
+                if (_viewModel.IsPlaying)
+                {
+                    _activePlayer1.Play();
+                    _activePlayer2.Play();
+                }
+            }
+            finally
+            {
+                _lapSyncSeekInProgress = false;
+            }
+        }
     }
 
     private void UpdateActiveMediaElements()
@@ -357,6 +576,9 @@ public partial class ParallelPlayerPage : ContentPage
         {
             if (_isDraggingSlider || _isDraggingSlider1) return;
             
+            // Mantener posición individual 1 siempre actualizada (también en simultáneo)
+            _viewModel.CurrentPosition1 = position;
+
             if (_viewModel.IsSimultaneousMode)
             {
                 // En modo sincronizado, la posición global es relativa al sync point
@@ -373,8 +595,6 @@ public partial class ParallelPlayerPage : ContentPage
             }
             else
             {
-                _viewModel.CurrentPosition1 = position;
-                
                 // Actualizar sliders de video 1 directamente
                 if (_viewModel.Duration1.TotalSeconds > 0)
                 {
@@ -383,21 +603,28 @@ public partial class ParallelPlayerPage : ContentPage
                     ProgressSlider1V.Value = progress;
                 }
             }
+
+            if (_viewModel.IsSimultaneousMode && _viewModel.IsLapSyncEnabled)
+            {
+                var pos2 = _activePlayer2?.Position ?? _viewModel.CurrentPosition2;
+                HandleLapSyncTick(position, pos2);
+            }
         });
     }
 
     private void OnPlayer2PositionChanged(object? sender, TimeSpan position)
     {
         if (_isDraggingSlider || _isDraggingSlider2) return;
-        
-        if (!_viewModel.IsSimultaneousMode)
+
+        MainThread.BeginInvokeOnMainThread(() =>
         {
-            MainThread.BeginInvokeOnMainThread(() =>
+            if (_isDraggingSlider || _isDraggingSlider2) return;
+
+            // Mantener posición individual 2 siempre actualizada (también en simultáneo)
+            _viewModel.CurrentPosition2 = position;
+
+            if (!_viewModel.IsSimultaneousMode)
             {
-                if (_isDraggingSlider || _isDraggingSlider2) return;
-                
-                _viewModel.CurrentPosition2 = position;
-                
                 // Actualizar sliders de video 2 directamente
                 if (_viewModel.Duration2.TotalSeconds > 0)
                 {
@@ -405,8 +632,13 @@ public partial class ParallelPlayerPage : ContentPage
                     ProgressSlider2H.Value = progress;
                     ProgressSlider2V.Value = progress;
                 }
-            });
-        }
+            }
+            else if (_viewModel.IsLapSyncEnabled)
+            {
+                var pos1 = _activePlayer1?.Position ?? _viewModel.CurrentPosition1;
+                HandleLapSyncTick(pos1, position);
+            }
+        });
     }
 
     private void UpdateGlobalDuration()
@@ -433,13 +665,30 @@ public partial class ParallelPlayerPage : ContentPage
     private void OnPlayRequested(object? sender, EventArgs e)
     {
         PlayBoth();
-        SyncPlayers();
+
+        // En lap-sync no buscamos igualar tiempos entre vídeos.
+        if (!_viewModel.IsLapSyncEnabled)
+            SyncPlayers();
+
+        if (_viewModel.IsLapSyncEnabled)
+        {
+            // Preparar estado del controlador.
+            ResetLapSyncState();
+            EnsureLapSyncData();
+            var p1 = _activePlayer1?.Position ?? TimeSpan.Zero;
+            var p2 = _activePlayer2?.Position ?? TimeSpan.Zero;
+            RecalculateLapSyncSegmentIndex(p1, p2);
+        }
     }
 
     private void OnPauseRequested(object? sender, EventArgs e)
     {
         _activePlayer1?.Pause();
         _activePlayer2?.Pause();
+
+        // Resetear esperas para no quedar en un estado "semi-pausado".
+        _lapSyncPaused1 = false;
+        _lapSyncPaused2 = false;
     }
 
     private void OnStopRequested(object? sender, EventArgs e)
@@ -447,6 +696,8 @@ public partial class ParallelPlayerPage : ContentPage
         StopAllPlayers();
         // Volver al inicio de la sincronización (posición relativa 0 = sync points)
         SeekBothToPosition(0);
+
+        ResetLapSyncState();
     }
 
     private void OnSeekRequested(object? sender, double seconds)
@@ -565,6 +816,7 @@ public partial class ParallelPlayerPage : ContentPage
 
     private void SeekBothToPosition(double seconds)
     {
+        ResetLapSyncState();
         var relativePosition = TimeSpan.FromSeconds(seconds);
         
         // En modo sincronizado, aplicar los sync points como offset
