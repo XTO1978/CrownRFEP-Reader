@@ -54,7 +54,7 @@
                             <precision:PrecisionVideoPlayer
                                 x:Name="MediaPlayer1H"
                                 Aspect="AspectFit"
-                                IsMuted="False" BackgroundColor="#FF0D0D0D"
+                                IsMuted="{Binding IsMuted}" BackgroundColor="#FF0D0D0D"
                                 Source="{Binding Video1.LocalClipPath}" />
                             <!--  Overlay para scrubbing con trackpad/mouse wheel  -->
                             <BoxView
@@ -202,7 +202,7 @@
                             <precision:PrecisionVideoPlayer
                                 x:Name="MediaPlayer2H" BackgroundColor="#FF0D0D0D"
                                 Aspect="AspectFit"
-                                IsMuted="False"
+                                IsMuted="{Binding IsMuted}"
                                 Source="{Binding Video2.LocalClipPath}" />
                             <!--  Overlay para scrubbing con trackpad/mouse wheel  -->
                             <BoxView
@@ -404,7 +404,7 @@
                             <precision:PrecisionVideoPlayer
                                 x:Name="MediaPlayer1V"
                                 Aspect="AspectFill" BackgroundColor="#FF0D0D0D"
-                                IsMuted="False"
+                                IsMuted="{Binding IsMuted}"
                                 Source="{Binding Video1.LocalClipPath}" />
                             <!--  Overlay para scrubbing con trackpad/mouse wheel  -->
                             <BoxView
@@ -535,7 +535,7 @@
                             <precision:PrecisionVideoPlayer
                                 x:Name="MediaPlayer2V"
                                 Aspect="AspectFill" BackgroundColor="#FF0D0D0D"
-                                IsMuted="False"
+                                IsMuted="{Binding IsMuted}"
                                 Source="{Binding Video2.LocalClipPath}" />
                             <!--  Overlay para scrubbing con trackpad/mouse wheel  -->
                             <BoxView
@@ -778,6 +778,22 @@
                             TintColor="White"
                             WidthRequest="{StaticResource IconSizeLarge}" />
                     </Border>
+
+                    <!--  Mute  -->
+                    <Border
+                        Padding="16,6"
+                        BackgroundColor="#FF2A2A2A"
+                        StrokeShape="RoundRectangle 4"
+                        StrokeThickness="0">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding ToggleMuteCommand}" />
+                        </Border.GestureRecognizers>
+                        <controls:SymbolIcon
+                            HeightRequest="{StaticResource IconSizeLarge}"
+                            SymbolName="{Binding MuteIcon}"
+                            TintColor="White"
+                            WidthRequest="{StaticResource IconSizeLarge}" />
+                    </Border>
                 </HorizontalStackLayout>
 
                 <!--  Controles secundarios  -->
@@ -1012,6 +1028,22 @@
                         VerticalOptions="Center"
                         FontSize="{StaticResource FontSizeSubtitle}"
                         FontAttributes="Bold" />
+                        <Border WidthRequest="1" HeightRequest="30" BackgroundColor="#FF3A3A3A" Margin="12,0" Stroke="#FF5E5E5E"/>
+                    <!--  Mute  -->
+                    <Border
+                        Padding="16,6"
+                        BackgroundColor="#FF2A2A2A"
+                        StrokeShape="RoundRectangle 4"
+                        StrokeThickness="0">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding ToggleMuteCommand}" />
+                        </Border.GestureRecognizers>
+                        <controls:SymbolIcon
+                            HeightRequest="{StaticResource IconSizeLarge}"
+                            SymbolName="{Binding MuteIcon}"
+                            TintColor="White"
+                            WidthRequest="{StaticResource IconSizeLarge}" />
+                    </Border>
                         <Border WidthRequest="1" HeightRequest="30" BackgroundColor="#FF3A3A3A" Margin="12,0" Stroke="#FF5E5E5E"/>
                     <Border
                         Padding="16,6"

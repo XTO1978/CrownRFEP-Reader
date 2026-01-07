@@ -27,6 +27,7 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
     private bool _isHorizontalOrientation;
     private bool _isSimultaneousMode = false; // Por defecto modo individual
     private double _playbackSpeed = 1.0;
+    private bool _isMuted = true; // Silenciado por defecto
 
     private bool _isLapSyncEnabled;
 
@@ -111,6 +112,9 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
         
         // Comando de exportación
         ExportCommand = new Command(async () => await ExportParallelVideosAsync(), () => CanExport);
+        
+        // Comando de mute
+        ToggleMuteCommand = new Command(() => IsMuted = !IsMuted);
     }
 
     public bool HasLapTiming
@@ -1064,6 +1068,27 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
     public ICommand SelectPlayer1Command { get; }
     public ICommand SelectPlayer2Command { get; }
     public ICommand ExportCommand { get; }
+    public ICommand ToggleMuteCommand { get; }
+
+    #endregion
+
+    #region Mute
+
+    public bool IsMuted
+    {
+        get => _isMuted;
+        set
+        {
+            if (_isMuted != value)
+            {
+                _isMuted = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(MuteIcon));
+            }
+        }
+    }
+
+    public string MuteIcon => IsMuted ? "speaker.slash.fill" : "speaker.wave.2.fill";
 
     #endregion
 

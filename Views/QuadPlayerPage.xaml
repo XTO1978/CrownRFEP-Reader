@@ -42,7 +42,7 @@
                     <precision:PrecisionVideoPlayer
                         x:Name="MediaPlayer1"
                         Aspect="AspectFill"
-                        IsMuted="{Binding IsMuted}ing IsMuted}"
+                        IsMuted="{Binding IsMuted}"
                         BackgroundColor="#FF0D0D0D"
                         Source="{Binding Video1.LocalClipPath}" />
                     <!--  Overlay para scrubbing  -->
@@ -166,7 +166,7 @@
                     <precision:PrecisionVideoPlayer
                         x:Name="MediaPlayer2"
                         Aspect="AspectFill"
-                        IsMuted="{Binding IsMuted}ding IsMuted}"
+                        IsMuted="{Binding IsMuted}"
                         BackgroundColor="#FF0D0D0D"
                         Source="{Binding Video2.LocalClipPath}" />
                     <!--  Overlay para scrubbing  -->
@@ -290,7 +290,7 @@
                     <precision:PrecisionVideoPlayer
                         x:Name="MediaPlayer3"
                         Aspect="AspectFill"
-                        IsMuted="{Binding IsMuted}ding IsMuted}"
+                        IsMuted="{Binding IsMuted}"
                         BackgroundColor="#FF0D0D0D"
                         Source="{Binding Video3.LocalClipPath}" />
                     <!--  Overlay para scrubbing  -->
@@ -414,7 +414,7 @@
                     <precision:PrecisionVideoPlayer
                         x:Name="MediaPlayer4"
                         Aspect="AspectFill"
-                        IsMuted="{Binding IsMuted}ding IsMuted}"
+                        IsMuted="{Binding IsMuted}"
                         BackgroundColor="#FF0D0D0D"
                         Source="{Binding Video4.LocalClipPath}" />
                     <!--  Overlay para scrubbing  -->
