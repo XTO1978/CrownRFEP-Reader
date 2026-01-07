@@ -36,10 +36,18 @@ public class AnalysisDrawingView : GraphicsView
 
     private bool _isDraggingSelection;
     private PointF _lastDragPoint;
+    private PointF _selectionDragStartPosition; // Posición inicial al empezar a arrastrar una selección
+
+    // Stacks para undo/redo
+    private readonly Stack<UndoAction> _undoStack = new();
+    private readonly Stack<UndoAction> _redoStack = new();
+    private const int MaxUndoStackSize = 50;
 
     public event EventHandler<TextRequestedEventArgs>? TextRequested;
 
     public bool HasSelection => _selectedElement != null;
+    public bool CanUndo => _undoStack.Count > 0;
+    public bool CanRedo => _redoStack.Count > 0;
 
     public AnalysisDrawingTool Tool
     {
@@ -110,12 +118,22 @@ public class AnalysisDrawingView : GraphicsView
         if (string.IsNullOrWhiteSpace(text))
             return;
 
-        _drawable.Elements.Add(new TextElement
+        var textElement = new TextElement
         {
             Position = position,
             Text = text.Trim(),
             Color = InkColor,
             FontSize = TextSize
+        };
+        
+        _drawable.Elements.Add(textElement);
+        
+        // Registrar para undo
+        PushUndo(new UndoAction
+        {
+            Type = UndoActionType.Add,
+            Element = textElement,
+            Index = _drawable.Elements.Count - 1
         });
 
         Invalidate();
@@ -124,6 +142,8 @@ public class AnalysisDrawingView : GraphicsView
     public void ClearAll()
     {
         _drawable.Elements.Clear();
+        _undoStack.Clear();
+        _redoStack.Clear();
         _activeStroke = null;
         _activeShape = null;
         _selectedElement = null;
@@ -147,11 +167,122 @@ public class AnalysisDrawingView : GraphicsView
         if (_selectedElement == null)
             return false;
 
+        // Registrar para undo
+        var index = _drawable.Elements.IndexOf(_selectedElement);
+        PushUndo(new UndoAction
+        {
+            Type = UndoActionType.Delete,
+            Element = _selectedElement,
+            Index = index
+        });
+
         var removed = _drawable.Elements.Remove(_selectedElement);
         _selectedElement = null;
         _drawable.SelectedElement = null;
         Invalidate();
         return removed;
+    }
+
+    /// <summary>
+    /// Deshace la última acción
+    /// </summary>
+    public bool Undo()
+    {
+        if (_undoStack.Count == 0)
+            return false;
+
+        var action = _undoStack.Pop();
+
+        switch (action.Type)
+        {
+            case UndoActionType.Add:
+                // Deshacer un Add = eliminar el elemento
+                _drawable.Elements.Remove(action.Element);
+                _redoStack.Push(action);
+                break;
+
+            case UndoActionType.Delete:
+                // Deshacer un Delete = volver a añadir el elemento
+                var insertIndex = Math.Min(action.Index, _drawable.Elements.Count);
+                _drawable.Elements.Insert(insertIndex, action.Element);
+                _redoStack.Push(action);
+                break;
+
+            case UndoActionType.Move:
+                // Deshacer un Move = mover a la posición anterior
+                if (action.OldPosition.HasValue && action.NewPosition.HasValue)
+                {
+                    var dx = action.OldPosition.Value.X - action.NewPosition.Value.X;
+                    var dy = action.OldPosition.Value.Y - action.NewPosition.Value.Y;
+                    action.Element.Translate(dx, dy);
+                    _redoStack.Push(action);
+                }
+                break;
+        }
+
+        ClearSelection();
+        Invalidate();
+        return true;
+    }
+
+    /// <summary>
+    /// Rehace la última acción deshecha
+    /// </summary>
+    public bool Redo()
+    {
+        if (_redoStack.Count == 0)
+            return false;
+
+        var action = _redoStack.Pop();
+
+        switch (action.Type)
+        {
+            case UndoActionType.Add:
+                // Rehacer un Add = volver a añadir el elemento
+                var insertIndex = Math.Min(action.Index, _drawable.Elements.Count);
+                _drawable.Elements.Insert(insertIndex, action.Element);
+                _undoStack.Push(action);
+                break;
+
+            case UndoActionType.Delete:
+                // Rehacer un Delete = volver a eliminar el elemento
+                _drawable.Elements.Remove(action.Element);
+                _undoStack.Push(action);
+                break;
+
+            case UndoActionType.Move:
+                // Rehacer un Move = mover a la nueva posición
+                if (action.OldPosition.HasValue && action.NewPosition.HasValue)
+                {
+                    var dx = action.NewPosition.Value.X - action.OldPosition.Value.X;
+                    var dy = action.NewPosition.Value.Y - action.OldPosition.Value.Y;
+                    action.Element.Translate(dx, dy);
+                    _undoStack.Push(action);
+                }
+                break;
+        }
+
+        ClearSelection();
+        Invalidate();
+        return true;
+    }
+
+    private void PushUndo(UndoAction action)
+    {
+        _undoStack.Push(action);
+        _redoStack.Clear(); // Limpiar redo al hacer una nueva acción
+
+        // Limitar el tamaño del stack
+        while (_undoStack.Count > MaxUndoStackSize)
+        {
+            // Eliminar las acciones más antiguas (al fondo del stack)
+            var temp = new Stack<UndoAction>();
+            while (_undoStack.Count > MaxUndoStackSize / 2)
+                temp.Push(_undoStack.Pop());
+            _undoStack.Clear();
+            while (temp.Count > 0)
+                _undoStack.Push(temp.Pop());
+        }
     }
 
     private void OnPointerPressed(object? sender, PointerEventArgs e)
@@ -174,6 +305,7 @@ public class AnalysisDrawingView : GraphicsView
             _drawable.SelectedElement = hit;
             _isDraggingSelection = true;
             _lastDragPoint = point;
+            _selectionDragStartPosition = point; // Guardar posición inicial para undo
             _isDrawing = false;
             _activeStroke = null;
             _activeShape = null;
@@ -309,6 +441,50 @@ public class AnalysisDrawingView : GraphicsView
     {
         if (InputTransparent)
             return;
+
+        var p = e.GetPosition(this);
+        var endPoint = p != null ? new PointF((float)p.Value.X, (float)p.Value.Y) : _lastDragPoint;
+
+        // Registrar movimiento de selección para undo
+        if (_isDraggingSelection && _selectedElement != null)
+        {
+            // Solo registrar si hubo movimiento significativo
+            var dx = endPoint.X - _selectionDragStartPosition.X;
+            var dy = endPoint.Y - _selectionDragStartPosition.Y;
+            if (Math.Abs(dx) > 1f || Math.Abs(dy) > 1f)
+            {
+                PushUndo(new UndoAction
+                {
+                    Type = UndoActionType.Move,
+                    Element = _selectedElement,
+                    OldPosition = _selectionDragStartPosition,
+                    NewPosition = endPoint
+                });
+            }
+        }
+
+        // Registrar adición de stroke o shape para undo
+        if (_isDrawing)
+        {
+            if (_activeStroke != null)
+            {
+                PushUndo(new UndoAction
+                {
+                    Type = UndoActionType.Add,
+                    Element = _activeStroke,
+                    Index = _drawable.Elements.IndexOf(_activeStroke)
+                });
+            }
+            else if (_activeShape != null)
+            {
+                PushUndo(new UndoAction
+                {
+                    Type = UndoActionType.Add,
+                    Element = _activeShape,
+                    Index = _drawable.Elements.IndexOf(_activeShape)
+                });
+            }
+        }
 
         _isDraggingSelection = false;
         _isDrawing = false;
@@ -725,6 +901,25 @@ public class AnalysisDrawingView : GraphicsView
         {
             Position = new PointF(Position.X + dx, Position.Y + dy);
         }
+    }
+
+    /// <summary>
+    /// Representa una acción que se puede deshacer/rehacer
+    /// </summary>
+    private enum UndoActionType
+    {
+        Add,
+        Delete,
+        Move
+    }
+
+    private sealed class UndoAction
+    {
+        public UndoActionType Type { get; init; }
+        public IDrawingElement Element { get; init; } = null!;
+        public int Index { get; init; }
+        public PointF? OldPosition { get; init; }
+        public PointF? NewPosition { get; init; }
     }
 }
 

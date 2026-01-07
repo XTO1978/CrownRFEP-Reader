@@ -1136,6 +1136,22 @@ public partial class SinglePlayerPage : ContentPage
         AnalysisCanvas.AddText(e.Position, text);
     }
 
+    private void OnUndoDrawingTapped(object? sender, TappedEventArgs e)
+    {
+        if (!_isDrawingMode)
+            return;
+
+        AnalysisCanvas?.Undo();
+    }
+
+    private void OnRedoDrawingTapped(object? sender, TappedEventArgs e)
+    {
+        if (!_isDrawingMode)
+            return;
+
+        AnalysisCanvas?.Redo();
+    }
+
     private void OnClearDrawingTapped(object? sender, TappedEventArgs e)
     {
         if (!_isDrawingMode)

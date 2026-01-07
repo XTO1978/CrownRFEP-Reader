@@ -119,105 +119,125 @@
                     IsVisible="{Binding ShowOverlay}"
                     StrokeShape="RoundRectangle 8"
                     StrokeThickness="0"
-                    VerticalOptions="Start">
+                    VerticalOptions="Start"
+                    MaximumWidthRequest="320"
+                    MaximumHeightRequest="400">
                     <Border.GestureRecognizers>
                         <TapGestureRecognizer Command="{Binding ToggleOverlayCommand}" />
                     </Border.GestureRecognizers>
-                    <VerticalStackLayout Spacing="4">
-                        <!--  Nombre del atleta  -->
-                        <Label
-                            FontAttributes="Bold"
-                            FontSize="{StaticResource FontSizeSubtitle}"
-                            Text="{Binding AthleteName}"
-                            TextColor="White" />
+                    <Grid RowDefinitions="Auto,*">
+                        <!--  Información fija (no scroll)  -->
+                        <VerticalStackLayout Grid.Row="0" Spacing="4">
+                            <!--  Nombre del atleta  -->
+                            <Label
+                                FontAttributes="Bold"
+                                FontSize="{StaticResource FontSizeSubtitle}"
+                                Text="{Binding AthleteName}"
+                                TextColor="White"
+                                LineBreakMode="TailTruncation" />
+                            
+                            <!--  Sesión  -->
+                            <HorizontalStackLayout Spacing="8">
+                                <Label
+                                    FontSize="{StaticResource FontSizeSmall}"
+                                    Text="{Binding SessionName}"
+                                    TextColor="#FFAAAAAA"
+                                    LineBreakMode="TailTruncation"
+                                    MaximumWidthRequest="120" />
+                                <Label
+                                    FontSize="{StaticResource FontSizeSmall}"
+                                    Text="•"
+                                    TextColor="#FF666666" />
+                                <Label
+                                    FontSize="{StaticResource FontSizeSmall}"
+                                    Text="{Binding SessionPlace}"
+                                    TextColor="#FFAAAAAA"
+                                    LineBreakMode="TailTruncation"
+                                    MaximumWidthRequest="120" />
+                            </HorizontalStackLayout>
+                            
+                            <!--  Fecha y sección  -->
+                            <HorizontalStackLayout Spacing="8">
+                                <Label
+                                    FontSize="{StaticResource FontSizeSmall}"
+                                    Text="{Binding SessionDate}"
+                                    TextColor="#FF888888" />
+                                <Label
+                                    FontSize="{StaticResource FontSizeSmall}"
+                                    Text="•"
+                                    TextColor="#FF666666" />
+                                <Label
+                                    FontSize="{StaticResource FontSizeSmall}"
+                                    Text="{Binding SectionText}"
+                                    TextColor="#FF888888"
+                                    LineBreakMode="TailTruncation"
+                                    MaximumWidthRequest="100" />
+                            </HorizontalStackLayout>
+                            
+                            <!--  Duración y tamaño  -->
+                            <HorizontalStackLayout Spacing="8">
+                                <Label
+                                    FontSize="{StaticResource FontSizeCaption}"
+                                    Text="{Binding VideoDurationText, StringFormat='Duración: {0}'}"
+                                    TextColor="#FF666666" />
+                                <Label
+                                    FontSize="{StaticResource FontSizeCaption}"
+                                    Text="{Binding VideoSizeText, StringFormat='({0})'}"
+                                    TextColor="#FF666666" />
+                            </HorizontalStackLayout>
+                            
+                            <!--  Separador antes del scroll  -->
+                            <BoxView HeightRequest="1" BackgroundColor="#FF444444" Margin="0,4,0,0" />
+                        </VerticalStackLayout>
                         
-                        <!--  Sesión  -->
-                        <HorizontalStackLayout Spacing="8">
-                            <Label
-                                FontSize="{StaticResource FontSizeSmall}"
-                                Text="{Binding SessionName}"
-                                TextColor="#FFAAAAAA" />
-                            <Label
-                                FontSize="{StaticResource FontSizeSmall}"
-                                Text="•"
-                                TextColor="#FF666666" />
-                            <Label
-                                FontSize="{StaticResource FontSizeSmall}"
-                                Text="{Binding SessionPlace}"
-                                TextColor="#FFAAAAAA" />
-                        </HorizontalStackLayout>
-                        
-                        <!--  Fecha y sección  -->
-                        <HorizontalStackLayout Spacing="8">
-                            <Label
-                                FontSize="{StaticResource FontSizeSmall}"
-                                Text="{Binding SessionDate}"
-                                TextColor="#FF888888" />
-                            <Label
-                                FontSize="{StaticResource FontSizeSmall}"
-                                Text="•"
-                                TextColor="#FF666666" />
-                            <Label
-                                FontSize="{StaticResource FontSizeSmall}"
-                                Text="{Binding SectionText}"
-                                TextColor="#FF888888" />
-                        </HorizontalStackLayout>
-                        
-                        <!--  Duración y tamaño  -->
-                        <HorizontalStackLayout Spacing="8">
-                            <Label
-                                FontSize="{StaticResource FontSizeCaption}"
-                                Text="{Binding VideoDurationText, StringFormat='Duración: {0}'}"
-                                TextColor="#FF666666" />
-                            <Label
-                                FontSize="{StaticResource FontSizeCaption}"
-                                Text="{Binding VideoSizeText, StringFormat='({0})'}"
-                                TextColor="#FF666666" />
-                        </HorizontalStackLayout>
-                        
-                        <!--  Etiquetas asignadas (chips verdes con X)  -->
-                        <VerticalStackLayout IsVisible="{Binding HasTags}" Spacing="2">
-                            <Label
-                                FontSize="{StaticResource FontSizeCaption}"
-                                Text="ETIQUETAS"
-                                TextColor="#FF666666" />
-                            <FlexLayout
-                                BindableLayout.ItemsSource="{Binding VideoClipTags}"
-                                Wrap="Wrap"
-                                Direction="Row"
-                                JustifyContent="Start"
-                                AlignItems="Start">
-                                <BindableLayout.ItemTemplate>
-                                    <DataTemplate x:DataType="models:Tag">
-                                        <Border
-                                            Margin="0,2,6,2"
-                                            Padding="6,3,4,3"
-                                            BackgroundColor="#FF66BB6A"
-                                            StrokeShape="RoundRectangle 10"
-                                            StrokeThickness="0">
-                                            <HorizontalStackLayout Spacing="4">
-                                                <controls:SymbolIcon
-                                                    HeightRequest="{StaticResource IconSizeXSmall}"
-                                                    SymbolName="tag.fill"
-                                                    TintColor="White"
-                                                    VerticalOptions="Center"
-                                                    WidthRequest="{StaticResource IconSizeXSmall}" />
-                                                <Label
-                                                    FontSize="{StaticResource FontSizeCaption}"
-                                                    Text="{Binding NombreTag}"
-                                                    TextColor="White"
-                                                    VerticalOptions="Center" />
+                        <!--  Contenido scrollable (etiquetas y eventos)  -->
+                        <ScrollView Grid.Row="1" Margin="0,6,0,0">
+                            <VerticalStackLayout Spacing="6">
+                                <!--  Etiquetas asignadas (chips verdes con X)  -->
+                                <VerticalStackLayout IsVisible="{Binding HasTags}" Spacing="2">
+                                    <Label
+                                        FontSize="{StaticResource FontSizeCaption}"
+                                        Text="ETIQUETAS"
+                                        TextColor="#FF666666" />
+                                    <FlexLayout
+                                        BindableLayout.ItemsSource="{Binding VideoClipTags}"
+                                        Wrap="Wrap"
+                                        Direction="Row"
+                                        JustifyContent="Start"
+                                        AlignItems="Start">
+                                        <BindableLayout.ItemTemplate>
+                                            <DataTemplate x:DataType="models:Tag">
                                                 <Border
-                                                    Padding="3"
-                                                    BackgroundColor="#33000000"
-                                                    StrokeShape="RoundRectangle 8"
-                                                    StrokeThickness="0"
-                                                    VerticalOptions="Center">
-                                                    <Border.GestureRecognizers>
-                                                        <TapGestureRecognizer 
-                                                            Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.RemoveAssignedTagCommand}"
-                                                            CommandParameter="{Binding .}" />
-                                                    </Border.GestureRecognizers>
+                                                    Margin="0,2,6,2"
+                                                    Padding="6,3,4,3"
+                                                    BackgroundColor="#FF66BB6A"
+                                                    StrokeShape="RoundRectangle 10"
+                                                    StrokeThickness="0">
+                                                    <HorizontalStackLayout Spacing="4">
+                                                        <controls:SymbolIcon
+                                                            HeightRequest="{StaticResource IconSizeXSmall}"
+                                                            SymbolName="tag.fill"
+                                                            TintColor="White"
+                                                            VerticalOptions="Center"
+                                                            WidthRequest="{StaticResource IconSizeXSmall}" />
+                                                        <Label
+                                                            FontSize="{StaticResource FontSizeCaption}"
+                                                            Text="{Binding NombreTag}"
+                                                            TextColor="White"
+                                                            VerticalOptions="Center"
+                                                            MaximumWidthRequest="150"
+                                                            LineBreakMode="TailTruncation" />
+                                                        <Border
+                                                            Padding="3"
+                                                            BackgroundColor="#33000000"
+                                                            StrokeShape="RoundRectangle 8"
+                                                            StrokeThickness="0"
+                                                            VerticalOptions="Center">
+                                                            <Border.GestureRecognizers>
+                                                                <TapGestureRecognizer 
+                                                                    Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.RemoveAssignedTagCommand}"
+                                                                    CommandParameter="{Binding .}" />
+                                                            </Border.GestureRecognizers>
                                                     <controls:SymbolIcon
                                                         HeightRequest="{StaticResource IconSizeXSmall}"
                                                         SymbolName="xmark"
@@ -262,7 +282,9 @@
                                                     FontSize="{StaticResource FontSizeCaption}"
                                                     Text="{Binding NombreTag}"
                                                     TextColor="White"
-                                                    VerticalOptions="Center" />
+                                                    VerticalOptions="Center"
+                                                    MaximumWidthRequest="150"
+                                                    LineBreakMode="TailTruncation" />
                                                 <Border
                                                     Padding="3"
                                                     BackgroundColor="#33000000"
@@ -355,7 +377,9 @@
                                                     <Label
                                                         Text="{Binding TagName}"
                                                         FontSize="{StaticResource FontSizeCaption}"
-                                                        TextColor="White" />
+                                                        TextColor="White"
+                                                        MaximumWidthRequest="100"
+                                                        LineBreakMode="TailTruncation" />
                                                 </Border>
                                                 
                                                 <!--  Botón eliminar  -->
@@ -383,6 +407,8 @@
                             </VerticalStackLayout>
                         </VerticalStackLayout>
                     </VerticalStackLayout>
+                    </ScrollView>
+                    </Grid>
                 </Border>
                 
                 <!--  Barra de botones de edición (esquina superior derecha)  -->
@@ -1026,6 +1052,49 @@
                                     WidthRequest="{StaticResource IconSizeMedium}"
                                     SymbolName="arrow.right"
                                     TintColor="White" />
+                            </Border>
+                        </HorizontalStackLayout>
+
+                        <!-- Botones Deshacer/Rehacer/Borrar -->
+                        <HorizontalStackLayout Spacing="6" HorizontalOptions="Fill">
+                            <Border
+                                x:Name="ToolUndoButton"
+                                Padding="10,6"
+                                BackgroundColor="#FF2A2A2A"
+                                StrokeShape="RoundRectangle 6"
+                                StrokeThickness="0"
+                                HorizontalOptions="FillAndExpand">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Tapped="OnUndoDrawingTapped" />
+                                </Border.GestureRecognizers>
+                                <HorizontalStackLayout Spacing="6" HorizontalOptions="Center">
+                                    <controls:SymbolIcon
+                                        HeightRequest="{StaticResource IconSizeMedium}"
+                                        WidthRequest="{StaticResource IconSizeMedium}"
+                                        SymbolName="arrow.uturn.backward"
+                                        TintColor="White" />
+                                    <Label Text="Deshacer" FontSize="{StaticResource FontSizeSmall}" TextColor="White" VerticalOptions="Center" />
+                                </HorizontalStackLayout>
+                            </Border>
+                            
+                            <Border
+                                x:Name="ToolRedoButton"
+                                Padding="10,6"
+                                BackgroundColor="#FF2A2A2A"
+                                StrokeShape="RoundRectangle 6"
+                                StrokeThickness="0"
+                                HorizontalOptions="FillAndExpand">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Tapped="OnRedoDrawingTapped" />
+                                </Border.GestureRecognizers>
+                                <HorizontalStackLayout Spacing="6" HorizontalOptions="Center">
+                                    <controls:SymbolIcon
+                                        HeightRequest="{StaticResource IconSizeMedium}"
+                                        WidthRequest="{StaticResource IconSizeMedium}"
+                                        SymbolName="arrow.uturn.forward"
+                                        TintColor="White" />
+                                    <Label Text="Rehacer" FontSize="{StaticResource FontSizeSmall}" TextColor="White" VerticalOptions="Center" />
+                                </HorizontalStackLayout>
                             </Border>
                         </HorizontalStackLayout>
 

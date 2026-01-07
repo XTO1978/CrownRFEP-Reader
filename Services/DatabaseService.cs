@@ -1087,54 +1087,70 @@ public class DatabaseService
     // ==================== TAGS ====================
 
     /// <summary>
-    /// Sincroniza la tabla tags con los InputTypeId únicos usados en inputs
+    /// Sincroniza la tabla tags limpiando datos huérfanos.
+    /// Ya NO crea tags genéricos automáticamente - los tags deben crearse explícitamente.
     /// </summary>
     private async Task SyncTagsFromInputsAsync()
     {
         var db = await GetConnectionAsync();
         
-        // Obtener todos los InputTypeId únicos de inputs
-        var inputs = await db.Table<Input>().ToListAsync();
-        var uniqueTagIds = inputs
-            .Where(i => i.InputTypeId > 0)
-            .Select(i => i.InputTypeId)
-            .Distinct()
-            .ToList();
-
-        // Obtener tags existentes
+        // Obtener todos los tags existentes
         var existingTags = await db.Table<Tag>().ToListAsync();
         var existingIds = existingTags.Select(t => t.Id).ToHashSet();
         
-        // También crear un set de nombres existentes para evitar duplicados por nombre
-        var existingNames = existingTags
-            .Where(t => !string.IsNullOrWhiteSpace(t.NombreTag))
-            .Select(t => t.NombreTag!.Trim())
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-        // Insertar tags que no existen (ni por ID ni por nombre)
-        foreach (var tagId in uniqueTagIds)
+        // Obtener InputTypeIds que están siendo usados en inputs
+        var inputs = await db.Table<Input>().ToListAsync();
+        var usedTagIds = inputs
+            .Where(i => i.InputTypeId > 0)
+            .Select(i => i.InputTypeId)
+            .Distinct()
+            .ToHashSet();
+        
+        // Limpiar inputs que referencian tags que no existen (datos huérfanos)
+        foreach (var input in inputs.Where(i => i.InputTypeId > 0 && !existingIds.Contains(i.InputTypeId)))
         {
-            var genericName = $"Tag {tagId}";
-            // Solo insertar si no existe el ID Y no existe ya un tag con ese nombre genérico
-            if (!existingIds.Contains(tagId) && !existingNames.Contains(genericName))
-            {
-                // Usar ExecuteAsync para insertar con ID específico
-                await db.ExecuteAsync(
-                    "INSERT OR IGNORE INTO tags (id, nombreTag, IsSelected) VALUES (?, ?, 0)",
-                    tagId, genericName);
-            }
+            await db.DeleteAsync(input);
+            System.Diagnostics.Debug.WriteLine($"[SyncTagsFromInputs] Eliminado input huérfano con InputTypeId={input.InputTypeId}");
         }
     }
 
     /// <summary>
-    /// Elimina tags duplicados por nombre, manteniendo el de menor ID
+    /// Elimina tags duplicados por nombre y tags genéricos huérfanos (Tag 1, Tag 2, etc.)
     /// </summary>
     private async Task CleanDuplicateTagsAsync()
     {
         var db = await GetConnectionAsync();
         var allTags = await db.Table<Tag>().ToListAsync();
         
-        // Agrupar por nombre (case insensitive)
+        // 1. Eliminar tags genéricos huérfanos (Tag 1, Tag 2, etc.) que no tienen ninguna referencia real
+        var genericTagPattern = new System.Text.RegularExpressions.Regex(@"^Tag \d+$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        var genericTags = allTags.Where(t => !string.IsNullOrEmpty(t.NombreTag) && genericTagPattern.IsMatch(t.NombreTag)).ToList();
+        
+        foreach (var genericTag in genericTags)
+        {
+            // Verificar si este tag tiene referencias en input
+            var hasReferences = await db.ExecuteScalarAsync<int>(
+                "SELECT COUNT(*) FROM input WHERE InputTypeID = ?", genericTag.Id);
+            
+            if (hasReferences == 0)
+            {
+                // No tiene referencias, eliminar
+                await db.DeleteAsync(genericTag);
+                System.Diagnostics.Debug.WriteLine($"[CleanDuplicateTags] Eliminado tag genérico sin referencias: ID={genericTag.Id}, Nombre='{genericTag.NombreTag}'");
+            }
+            else
+            {
+                // Tiene referencias pero es un tag genérico, eliminar las referencias y el tag
+                await db.ExecuteAsync("DELETE FROM input WHERE InputTypeID = ?", genericTag.Id);
+                await db.DeleteAsync(genericTag);
+                System.Diagnostics.Debug.WriteLine($"[CleanDuplicateTags] Eliminado tag genérico con referencias huérfanas: ID={genericTag.Id}, Nombre='{genericTag.NombreTag}'");
+            }
+        }
+        
+        // Recargar tags después de limpiar genéricos
+        allTags = await db.Table<Tag>().ToListAsync();
+        
+        // 2. Agrupar por nombre (case insensitive) y eliminar duplicados
         var duplicateGroups = allTags
             .Where(t => !string.IsNullOrWhiteSpace(t.NombreTag))
             .GroupBy(t => t.NombreTag!.Trim(), StringComparer.OrdinalIgnoreCase)
