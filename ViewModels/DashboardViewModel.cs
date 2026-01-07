@@ -235,6 +235,13 @@ public class DashboardViewModel : BaseViewModel
     private VideoClip? _parallelVideo4;
     private bool _isPreviewMode;
 
+    // Preview readiness: usamos esto para mantener la miniatura visible
+    // hasta que el PrecisionVideoPlayer haya abierto el medio.
+    private bool _isPreviewPlayer1Ready;
+    private bool _isPreviewPlayer2Ready;
+    private bool _isPreviewPlayer3Ready;
+    private bool _isPreviewPlayer4Ready;
+
     // Flag para indicar si hay actualizaciones de estadísticas pendientes
     private bool _hasStatsUpdatePending;
     private readonly HashSet<int> _modifiedVideoIds = new();
@@ -1128,11 +1135,15 @@ public class DashboardViewModel : BaseViewModel
         {
             if (SetProperty(ref _parallelVideo1, value))
             {
+                IsPreviewPlayer1Ready = false;
                 OnPropertyChanged(nameof(HasParallelVideo1));
-                // Activar preview automáticamente al soltar un video
+                OnPropertyChanged(nameof(ParallelVideo1ClipPath));
+                OnPropertyChanged(nameof(ParallelVideo1ThumbnailPath));
+                OnPropertyChanged(nameof(ShowParallelVideo1Thumbnail));
+                // Forzar refresh del modo preview con delay para que el UI se actualice
                 if (value != null)
                 {
-                    IsPreviewMode = true;
+                    _ = RefreshPreviewModeAsync();
                 }
             }
         }
@@ -1145,11 +1156,15 @@ public class DashboardViewModel : BaseViewModel
         {
             if (SetProperty(ref _parallelVideo2, value))
             {
+                IsPreviewPlayer2Ready = false;
                 OnPropertyChanged(nameof(HasParallelVideo2));
-                // Activar preview automáticamente al soltar un video
+                OnPropertyChanged(nameof(ParallelVideo2ClipPath));
+                OnPropertyChanged(nameof(ParallelVideo2ThumbnailPath));
+                OnPropertyChanged(nameof(ShowParallelVideo2Thumbnail));
+                // Forzar refresh del modo preview con delay para que el UI se actualice
                 if (value != null)
                 {
-                    IsPreviewMode = true;
+                    _ = RefreshPreviewModeAsync();
                 }
             }
         }
@@ -1160,6 +1175,15 @@ public class DashboardViewModel : BaseViewModel
     public bool HasParallelVideo3 => _parallelVideo3 != null;
     public bool HasParallelVideo4 => _parallelVideo4 != null;
 
+    public string? ParallelVideo1ClipPath => _parallelVideo1?.LocalClipPath;
+    public string? ParallelVideo1ThumbnailPath => _parallelVideo1?.LocalThumbnailPath;
+    public string? ParallelVideo2ClipPath => _parallelVideo2?.LocalClipPath;
+    public string? ParallelVideo2ThumbnailPath => _parallelVideo2?.LocalThumbnailPath;
+    public string? ParallelVideo3ClipPath => _parallelVideo3?.LocalClipPath;
+    public string? ParallelVideo3ThumbnailPath => _parallelVideo3?.LocalThumbnailPath;
+    public string? ParallelVideo4ClipPath => _parallelVideo4?.LocalClipPath;
+    public string? ParallelVideo4ThumbnailPath => _parallelVideo4?.LocalThumbnailPath;
+
     public VideoClip? ParallelVideo3
     {
         get => _parallelVideo3;
@@ -1167,10 +1191,15 @@ public class DashboardViewModel : BaseViewModel
         {
             if (SetProperty(ref _parallelVideo3, value))
             {
+                IsPreviewPlayer3Ready = false;
                 OnPropertyChanged(nameof(HasParallelVideo3));
+                OnPropertyChanged(nameof(ParallelVideo3ClipPath));
+                OnPropertyChanged(nameof(ParallelVideo3ThumbnailPath));
+                OnPropertyChanged(nameof(ShowParallelVideo3Thumbnail));
+                // Forzar refresh del modo preview con delay para que el UI se actualice
                 if (value != null)
                 {
-                    IsPreviewMode = true;
+                    _ = RefreshPreviewModeAsync();
                 }
             }
         }
@@ -1183,13 +1212,25 @@ public class DashboardViewModel : BaseViewModel
         {
             if (SetProperty(ref _parallelVideo4, value))
             {
+                IsPreviewPlayer4Ready = false;
                 OnPropertyChanged(nameof(HasParallelVideo4));
+                OnPropertyChanged(nameof(ParallelVideo4ClipPath));
+                OnPropertyChanged(nameof(ParallelVideo4ThumbnailPath));
+                OnPropertyChanged(nameof(ShowParallelVideo4Thumbnail));
+                // Forzar refresh del modo preview con delay para que el UI se actualice
                 if (value != null)
                 {
-                    IsPreviewMode = true;
+                    _ = RefreshPreviewModeAsync();
                 }
             }
         }
+    }
+
+    private async Task RefreshPreviewModeAsync()
+    {
+        IsPreviewMode = false;
+        await Task.Delay(50); // Pequeño delay para que el binding se procese
+        IsPreviewMode = true;
     }
 
     /// <summary>
@@ -1202,13 +1243,80 @@ public class DashboardViewModel : BaseViewModel
         ParallelVideo3 = null;
         ParallelVideo4 = null;
         IsPreviewMode = false;
+
+        IsPreviewPlayer1Ready = false;
+        IsPreviewPlayer2Ready = false;
+        IsPreviewPlayer3Ready = false;
+        IsPreviewPlayer4Ready = false;
     }
 
     public bool IsPreviewMode
     {
         get => _isPreviewMode;
-        set => SetProperty(ref _isPreviewMode, value);
+        set
+        {
+            if (SetProperty(ref _isPreviewMode, value))
+            {
+                OnPropertyChanged(nameof(ShowParallelVideo1Thumbnail));
+                OnPropertyChanged(nameof(ShowParallelVideo2Thumbnail));
+                OnPropertyChanged(nameof(ShowParallelVideo3Thumbnail));
+                OnPropertyChanged(nameof(ShowParallelVideo4Thumbnail));
+            }
+        }
     }
+
+    public bool IsPreviewPlayer1Ready
+    {
+        get => _isPreviewPlayer1Ready;
+        set
+        {
+            if (SetProperty(ref _isPreviewPlayer1Ready, value))
+            {
+                OnPropertyChanged(nameof(ShowParallelVideo1Thumbnail));
+            }
+        }
+    }
+
+    public bool IsPreviewPlayer2Ready
+    {
+        get => _isPreviewPlayer2Ready;
+        set
+        {
+            if (SetProperty(ref _isPreviewPlayer2Ready, value))
+            {
+                OnPropertyChanged(nameof(ShowParallelVideo2Thumbnail));
+            }
+        }
+    }
+
+    public bool IsPreviewPlayer3Ready
+    {
+        get => _isPreviewPlayer3Ready;
+        set
+        {
+            if (SetProperty(ref _isPreviewPlayer3Ready, value))
+            {
+                OnPropertyChanged(nameof(ShowParallelVideo3Thumbnail));
+            }
+        }
+    }
+
+    public bool IsPreviewPlayer4Ready
+    {
+        get => _isPreviewPlayer4Ready;
+        set
+        {
+            if (SetProperty(ref _isPreviewPlayer4Ready, value))
+            {
+                OnPropertyChanged(nameof(ShowParallelVideo4Thumbnail));
+            }
+        }
+    }
+
+    public bool ShowParallelVideo1Thumbnail => HasParallelVideo1 && (!IsPreviewMode || !IsPreviewPlayer1Ready);
+    public bool ShowParallelVideo2Thumbnail => HasParallelVideo2 && (!IsPreviewMode || !IsPreviewPlayer2Ready);
+    public bool ShowParallelVideo3Thumbnail => HasParallelVideo3 && (!IsPreviewMode || !IsPreviewPlayer3Ready);
+    public bool ShowParallelVideo4Thumbnail => HasParallelVideo4 && (!IsPreviewMode || !IsPreviewPlayer4Ready);
 
     // Video en hover para preview
     private VideoClip? _hoverVideo;

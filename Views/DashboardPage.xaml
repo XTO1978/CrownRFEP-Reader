@@ -1613,31 +1613,12 @@
                                 <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen1" />
                             </Border.GestureRecognizers>
                             <Grid>
-                                <!--  Placeholder cuando no hay vídeo  -->
-                                <Label
-                                    HorizontalOptions="Center"
-                                    VerticalOptions="Center"
-                                    Text="Arrastra un clip aquí"
-                                    TextColor="#FF666666"
-                                    FontSize="{StaticResource FontSizeBody}"
-                                    IsVisible="{Binding HasParallelVideo1, Converter={StaticResource InvertedBoolConverter}}" />
-                                <!--  Miniatura del vídeo (cuando no está en preview)  -->
-                                <Image
-                                    Aspect="AspectFill"
-                                    Source="{Binding ParallelVideo1.LocalThumbnailPath}"
-                                    IsVisible="{Binding HasParallelVideo1}">
-                                    <Image.Triggers>
-                                        <DataTrigger TargetType="Image" Binding="{Binding IsPreviewMode}" Value="True">
-                                            <Setter Property="IsVisible" Value="False" />
-                                        </DataTrigger>
-                                    </Image.Triggers>
-                                </Image>
-                                <!--  PrecisionVideoPlayer para scrubbing preciso  -->
+                                <!--  PrecisionVideoPlayer para scrubbing preciso (capa inferior)  -->
                                 <appcontrols:PrecisionVideoPlayer
                                     x:Name="PreviewPlayerSingle"
                                     Aspect="AspectFill"
                                     IsMuted="True"
-                                    Source="{Binding ParallelVideo1.LocalClipPath}"
+                                    Source="{Binding ParallelVideo1ClipPath}"
                                     IsVisible="False">
                                     <appcontrols:PrecisionVideoPlayer.Triggers>
                                         <MultiTrigger TargetType="appcontrols:PrecisionVideoPlayer">
@@ -1650,6 +1631,19 @@
                                         </MultiTrigger>
                                     </appcontrols:PrecisionVideoPlayer.Triggers>
                                 </appcontrols:PrecisionVideoPlayer>
+                                <!--  Miniatura del vídeo (cuando no está en preview)  -->
+                                <Image
+                                    Aspect="AspectFill"
+                                    Source="{Binding ParallelVideo1ThumbnailPath}"
+                                    IsVisible="{Binding ShowParallelVideo1Thumbnail}" />
+                                <!--  Placeholder cuando no hay vídeo  -->
+                                <Label
+                                    HorizontalOptions="Center"
+                                    VerticalOptions="Center"
+                                    Text="Arrastra un clip aquí"
+                                    TextColor="#FF666666"
+                                    FontSize="{StaticResource FontSizeBody}"
+                                    IsVisible="{Binding HasParallelVideo1, Converter={StaticResource InvertedBoolConverter}}" />
                                 <!--  Overlay transparente para capturar gestos de scrubbing  -->
                                 <BoxView
                                     x:Name="ScrubOverlaySingle"
@@ -1688,32 +1682,12 @@
                                     <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen1" />
                                 </Border.GestureRecognizers>
                                 <Grid>
-                                    <!--  Placeholder cuando no hay vídeo  -->
-                                    <Label
-                                        HorizontalOptions="Center"
-                                        VerticalOptions="Center"
-                                        Text="1"
-                                        TextColor="#FF666666"
-                                        FontSize="{StaticResource FontSizeHeader}"
-                                        FontAttributes="Bold"
-                                        IsVisible="{Binding HasParallelVideo1, Converter={StaticResource InvertedBoolConverter}}" />
-                                    <!--  Miniatura del vídeo (cuando no está en preview)  -->
-                                    <Image
-                                        Aspect="AspectFill"
-                                        Source="{Binding ParallelVideo1.LocalThumbnailPath}"
-                                        IsVisible="{Binding HasParallelVideo1}">
-                                        <Image.Triggers>
-                                            <DataTrigger TargetType="Image" Binding="{Binding IsPreviewMode}" Value="True">
-                                                <Setter Property="IsVisible" Value="False" />
-                                            </DataTrigger>
-                                        </Image.Triggers>
-                                    </Image>
-                                    <!--  PrecisionVideoPlayer para scrubbing preciso  -->
+                                    <!--  PrecisionVideoPlayer para scrubbing preciso (capa inferior)  -->
                                     <appcontrols:PrecisionVideoPlayer
                                         x:Name="PreviewPlayer1H"
                                         Aspect="AspectFill"
                                         IsMuted="True"
-                                        Source="{Binding ParallelVideo1.LocalClipPath}"
+                                        Source="{Binding ParallelVideo1ClipPath}"
                                         IsVisible="False">
                                         <appcontrols:PrecisionVideoPlayer.Triggers>
                                             <MultiTrigger TargetType="appcontrols:PrecisionVideoPlayer">
@@ -1725,6 +1699,20 @@
                                             </MultiTrigger>
                                         </appcontrols:PrecisionVideoPlayer.Triggers>
                                     </appcontrols:PrecisionVideoPlayer>
+                                    <!--  Miniatura del vídeo (cuando no está en preview)  -->
+                                    <Image
+                                        Aspect="AspectFill"
+                                        Source="{Binding ParallelVideo1ThumbnailPath}"
+                                        IsVisible="{Binding ShowParallelVideo1Thumbnail}" />
+                                    <!--  Placeholder cuando no hay vídeo  -->
+                                    <Label
+                                        HorizontalOptions="Center"
+                                        VerticalOptions="Center"
+                                        Text="1"
+                                        TextColor="#FF666666"
+                                        FontSize="{StaticResource FontSizeHeader}"
+                                        FontAttributes="Bold"
+                                        IsVisible="{Binding HasParallelVideo1, Converter={StaticResource InvertedBoolConverter}}" />
                                     <!--  Overlay para scrubbing  -->
                                     <BoxView
                                         BackgroundColor="Transparent"
@@ -1745,32 +1733,12 @@
                                     <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen2" />
                                 </Border.GestureRecognizers>
                                 <Grid>
-                                    <!--  Placeholder cuando no hay vídeo  -->
-                                    <Label
-                                        HorizontalOptions="Center"
-                                        VerticalOptions="Center"
-                                        Text="2"
-                                        TextColor="#FF666666"
-                                        FontSize="{StaticResource FontSizeHeader}"
-                                        FontAttributes="Bold"
-                                        IsVisible="{Binding HasParallelVideo2, Converter={StaticResource InvertedBoolConverter}}" />
-                                    <!--  Miniatura del vídeo (cuando no está en preview)  -->
-                                    <Image
-                                        Aspect="AspectFill"
-                                        Source="{Binding ParallelVideo2.LocalThumbnailPath}"
-                                        IsVisible="{Binding HasParallelVideo2}">
-                                        <Image.Triggers>
-                                            <DataTrigger TargetType="Image" Binding="{Binding IsPreviewMode}" Value="True">
-                                                <Setter Property="IsVisible" Value="False" />
-                                            </DataTrigger>
-                                        </Image.Triggers>
-                                    </Image>
-                                    <!--  PrecisionVideoPlayer para scrubbing preciso  -->
+                                    <!--  PrecisionVideoPlayer para scrubbing preciso (capa inferior)  -->
                                     <appcontrols:PrecisionVideoPlayer
                                         x:Name="PreviewPlayer2H"
                                         Aspect="AspectFill"
                                         IsMuted="True"
-                                        Source="{Binding ParallelVideo2.LocalClipPath}"
+                                        Source="{Binding ParallelVideo2ClipPath}"
                                         IsVisible="False">
                                         <appcontrols:PrecisionVideoPlayer.Triggers>
                                             <MultiTrigger TargetType="appcontrols:PrecisionVideoPlayer">
@@ -1782,6 +1750,20 @@
                                             </MultiTrigger>
                                         </appcontrols:PrecisionVideoPlayer.Triggers>
                                     </appcontrols:PrecisionVideoPlayer>
+                                    <!--  Miniatura del vídeo (cuando no está en preview)  -->
+                                    <Image
+                                        Aspect="AspectFill"
+                                        Source="{Binding ParallelVideo2ThumbnailPath}"
+                                        IsVisible="{Binding ShowParallelVideo2Thumbnail}" />
+                                    <!--  Placeholder cuando no hay vídeo  -->
+                                    <Label
+                                        HorizontalOptions="Center"
+                                        VerticalOptions="Center"
+                                        Text="2"
+                                        TextColor="#FF666666"
+                                        FontSize="{StaticResource FontSizeHeader}"
+                                        FontAttributes="Bold"
+                                        IsVisible="{Binding HasParallelVideo2, Converter={StaticResource InvertedBoolConverter}}" />
                                     <!--  Overlay para scrubbing  -->
                                     <BoxView
                                         BackgroundColor="Transparent"
@@ -1820,32 +1802,12 @@
                                     <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen1" />
                                 </Border.GestureRecognizers>
                                 <Grid>
-                                    <!--  Placeholder cuando no hay vídeo  -->
-                                    <Label
-                                        HorizontalOptions="Center"
-                                        VerticalOptions="Center"
-                                        Text="1"
-                                        TextColor="#FF666666"
-                                        FontSize="{StaticResource FontSizeHeader}"
-                                        FontAttributes="Bold"
-                                        IsVisible="{Binding HasParallelVideo1, Converter={StaticResource InvertedBoolConverter}}" />
-                                    <!--  Miniatura del vídeo (cuando no está en preview)  -->
-                                    <Image
-                                        Aspect="AspectFill"
-                                        Source="{Binding ParallelVideo1.LocalThumbnailPath}"
-                                        IsVisible="{Binding HasParallelVideo1}">
-                                        <Image.Triggers>
-                                            <DataTrigger TargetType="Image" Binding="{Binding IsPreviewMode}" Value="True">
-                                                <Setter Property="IsVisible" Value="False" />
-                                            </DataTrigger>
-                                        </Image.Triggers>
-                                    </Image>
-                                    <!--  PrecisionVideoPlayer para scrubbing preciso  -->
+                                    <!--  PrecisionVideoPlayer para scrubbing preciso (capa inferior)  -->
                                     <appcontrols:PrecisionVideoPlayer
                                         x:Name="PreviewPlayer1V"
                                         Aspect="AspectFill"
                                         IsMuted="True"
-                                        Source="{Binding ParallelVideo1.LocalClipPath}"
+                                        Source="{Binding ParallelVideo1ClipPath}"
                                         IsVisible="False">
                                         <appcontrols:PrecisionVideoPlayer.Triggers>
                                             <MultiTrigger TargetType="appcontrols:PrecisionVideoPlayer">
@@ -1857,6 +1819,20 @@
                                             </MultiTrigger>
                                         </appcontrols:PrecisionVideoPlayer.Triggers>
                                     </appcontrols:PrecisionVideoPlayer>
+                                    <!--  Miniatura del vídeo (cuando no está en preview)  -->
+                                    <Image
+                                        Aspect="AspectFill"
+                                        Source="{Binding ParallelVideo1ThumbnailPath}"
+                                        IsVisible="{Binding ShowParallelVideo1Thumbnail}" />
+                                    <!--  Placeholder cuando no hay vídeo  -->
+                                    <Label
+                                        HorizontalOptions="Center"
+                                        VerticalOptions="Center"
+                                        Text="1"
+                                        TextColor="#FF666666"
+                                        FontSize="{StaticResource FontSizeHeader}"
+                                        FontAttributes="Bold"
+                                        IsVisible="{Binding HasParallelVideo1, Converter={StaticResource InvertedBoolConverter}}" />
                                     <!--  Overlay para scrubbing  -->
                                     <BoxView
                                         BackgroundColor="Transparent"
@@ -1877,32 +1853,12 @@
                                     <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen2" />
                                 </Border.GestureRecognizers>
                                 <Grid>
-                                    <!--  Placeholder cuando no hay vídeo  -->
-                                    <Label
-                                        HorizontalOptions="Center"
-                                        VerticalOptions="Center"
-                                        Text="2"
-                                        TextColor="#FF666666"
-                                        FontSize="{StaticResource FontSizeHeader}"
-                                        FontAttributes="Bold"
-                                        IsVisible="{Binding HasParallelVideo2, Converter={StaticResource InvertedBoolConverter}}" />
-                                    <!--  Miniatura del vídeo (cuando no está en preview)  -->
-                                    <Image
-                                        Aspect="AspectFill"
-                                        Source="{Binding ParallelVideo2.LocalThumbnailPath}"
-                                        IsVisible="{Binding HasParallelVideo2}">
-                                        <Image.Triggers>
-                                            <DataTrigger TargetType="Image" Binding="{Binding IsPreviewMode}" Value="True">
-                                                <Setter Property="IsVisible" Value="False" />
-                                            </DataTrigger>
-                                        </Image.Triggers>
-                                    </Image>
-                                    <!--  PrecisionVideoPlayer para scrubbing preciso  -->
+                                    <!--  PrecisionVideoPlayer para scrubbing preciso (capa inferior)  -->
                                     <appcontrols:PrecisionVideoPlayer
                                         x:Name="PreviewPlayer2V"
                                         Aspect="AspectFill"
                                         IsMuted="True"
-                                        Source="{Binding ParallelVideo2.LocalClipPath}"
+                                        Source="{Binding ParallelVideo2ClipPath}"
                                         IsVisible="False">
                                         <appcontrols:PrecisionVideoPlayer.Triggers>
                                             <MultiTrigger TargetType="appcontrols:PrecisionVideoPlayer">
@@ -1914,6 +1870,20 @@
                                             </MultiTrigger>
                                         </appcontrols:PrecisionVideoPlayer.Triggers>
                                     </appcontrols:PrecisionVideoPlayer>
+                                    <!--  Miniatura del vídeo (cuando no está en preview)  -->
+                                    <Image
+                                        Aspect="AspectFill"
+                                        Source="{Binding ParallelVideo2ThumbnailPath}"
+                                        IsVisible="{Binding ShowParallelVideo2Thumbnail}" />
+                                    <!--  Placeholder cuando no hay vídeo  -->
+                                    <Label
+                                        HorizontalOptions="Center"
+                                        VerticalOptions="Center"
+                                        Text="2"
+                                        TextColor="#FF666666"
+                                        FontSize="{StaticResource FontSizeHeader}"
+                                        FontAttributes="Bold"
+                                        IsVisible="{Binding HasParallelVideo2, Converter={StaticResource InvertedBoolConverter}}" />
                                     <!--  Overlay para scrubbing  -->
                                     <BoxView
                                         BackgroundColor="Transparent"
@@ -1944,29 +1914,12 @@
                                     <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen1" />
                                 </Border.GestureRecognizers>
                                 <Grid>
-                                    <Label
-                                        HorizontalOptions="Center"
-                                        VerticalOptions="Center"
-                                        Text="1"
-                                        TextColor="#FF666666"
-                                        FontSize="{StaticResource FontSizeHeader}"
-                                        FontAttributes="Bold"
-                                        IsVisible="{Binding HasParallelVideo1, Converter={StaticResource InvertedBoolConverter}}" />
-                                    <Image
-                                        Aspect="AspectFill"
-                                        Source="{Binding ParallelVideo1.LocalThumbnailPath}"
-                                        IsVisible="{Binding HasParallelVideo1}">
-                                        <Image.Triggers>
-                                            <DataTrigger TargetType="Image" Binding="{Binding IsPreviewMode}" Value="True">
-                                                <Setter Property="IsVisible" Value="False" />
-                                            </DataTrigger>
-                                        </Image.Triggers>
-                                    </Image>
+                                    <!--  PrecisionVideoPlayer para scrubbing preciso (capa inferior)  -->
                                     <appcontrols:PrecisionVideoPlayer
                                         x:Name="PreviewPlayer1Q"
                                         Aspect="AspectFill"
                                         IsMuted="True"
-                                        Source="{Binding ParallelVideo1.LocalClipPath}"
+                                        Source="{Binding ParallelVideo1ClipPath}"
                                         IsVisible="False">
                                         <appcontrols:PrecisionVideoPlayer.Triggers>
                                             <MultiTrigger TargetType="appcontrols:PrecisionVideoPlayer">
@@ -1979,6 +1932,21 @@
                                             </MultiTrigger>
                                         </appcontrols:PrecisionVideoPlayer.Triggers>
                                     </appcontrols:PrecisionVideoPlayer>
+                                    <!--  Miniatura del vídeo (cuando no está en preview)  -->
+                                    <Image
+                                        Aspect="AspectFill"
+                                        Source="{Binding ParallelVideo1ThumbnailPath}"
+                                        IsVisible="{Binding ShowParallelVideo1Thumbnail}" />
+                                    <!--  Placeholder cuando no hay vídeo  -->
+                                    <Label
+                                        HorizontalOptions="Center"
+                                        VerticalOptions="Center"
+                                        Text="1"
+                                        TextColor="#FF666666"
+                                        FontSize="{StaticResource FontSizeHeader}"
+                                        FontAttributes="Bold"
+                                        IsVisible="{Binding HasParallelVideo1, Converter={StaticResource InvertedBoolConverter}}" />
+                                    <!--  Overlay para scrubbing  -->
                                     <BoxView
                                         BackgroundColor="Transparent"
                                         IsVisible="{Binding HasParallelVideo1}">
@@ -1999,29 +1967,12 @@
                                     <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen2" />
                                 </Border.GestureRecognizers>
                                 <Grid>
-                                    <Label
-                                        HorizontalOptions="Center"
-                                        VerticalOptions="Center"
-                                        Text="2"
-                                        TextColor="#FF666666"
-                                        FontSize="{StaticResource FontSizeHeader}"
-                                        FontAttributes="Bold"
-                                        IsVisible="{Binding HasParallelVideo2, Converter={StaticResource InvertedBoolConverter}}" />
-                                    <Image
-                                        Aspect="AspectFill"
-                                        Source="{Binding ParallelVideo2.LocalThumbnailPath}"
-                                        IsVisible="{Binding HasParallelVideo2}">
-                                        <Image.Triggers>
-                                            <DataTrigger TargetType="Image" Binding="{Binding IsPreviewMode}" Value="True">
-                                                <Setter Property="IsVisible" Value="False" />
-                                            </DataTrigger>
-                                        </Image.Triggers>
-                                    </Image>
+                                    <!--  PrecisionVideoPlayer para scrubbing preciso (capa inferior)  -->
                                     <appcontrols:PrecisionVideoPlayer
                                         x:Name="PreviewPlayer2Q"
                                         Aspect="AspectFill"
                                         IsMuted="True"
-                                        Source="{Binding ParallelVideo2.LocalClipPath}"
+                                        Source="{Binding ParallelVideo2ClipPath}"
                                         IsVisible="False">
                                         <appcontrols:PrecisionVideoPlayer.Triggers>
                                             <MultiTrigger TargetType="appcontrols:PrecisionVideoPlayer">
@@ -2034,6 +1985,21 @@
                                             </MultiTrigger>
                                         </appcontrols:PrecisionVideoPlayer.Triggers>
                                     </appcontrols:PrecisionVideoPlayer>
+                                    <!--  Miniatura del vídeo (cuando no está en preview)  -->
+                                    <Image
+                                        Aspect="AspectFill"
+                                        Source="{Binding ParallelVideo2ThumbnailPath}"
+                                        IsVisible="{Binding ShowParallelVideo2Thumbnail}" />
+                                    <!--  Placeholder cuando no hay vídeo  -->
+                                    <Label
+                                        HorizontalOptions="Center"
+                                        VerticalOptions="Center"
+                                        Text="2"
+                                        TextColor="#FF666666"
+                                        FontSize="{StaticResource FontSizeHeader}"
+                                        FontAttributes="Bold"
+                                        IsVisible="{Binding HasParallelVideo2, Converter={StaticResource InvertedBoolConverter}}" />
+                                    <!--  Overlay para scrubbing  -->
                                     <BoxView
                                         BackgroundColor="Transparent"
                                         IsVisible="{Binding HasParallelVideo2}">
@@ -2054,29 +2020,12 @@
                                     <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen3" />
                                 </Border.GestureRecognizers>
                                 <Grid>
-                                    <Label
-                                        HorizontalOptions="Center"
-                                        VerticalOptions="Center"
-                                        Text="3"
-                                        TextColor="#FF666666"
-                                        FontSize="{StaticResource FontSizeHeader}"
-                                        FontAttributes="Bold"
-                                        IsVisible="{Binding HasParallelVideo3, Converter={StaticResource InvertedBoolConverter}}" />
-                                    <Image
-                                        Aspect="AspectFill"
-                                        Source="{Binding ParallelVideo3.LocalThumbnailPath}"
-                                        IsVisible="{Binding HasParallelVideo3}">
-                                        <Image.Triggers>
-                                            <DataTrigger TargetType="Image" Binding="{Binding IsPreviewMode}" Value="True">
-                                                <Setter Property="IsVisible" Value="False" />
-                                            </DataTrigger>
-                                        </Image.Triggers>
-                                    </Image>
+                                    <!--  PrecisionVideoPlayer para scrubbing preciso (capa inferior)  -->
                                     <appcontrols:PrecisionVideoPlayer
                                         x:Name="PreviewPlayer3Q"
                                         Aspect="AspectFill"
                                         IsMuted="True"
-                                        Source="{Binding ParallelVideo3.LocalClipPath}"
+                                        Source="{Binding ParallelVideo3ClipPath}"
                                         IsVisible="False">
                                         <appcontrols:PrecisionVideoPlayer.Triggers>
                                             <MultiTrigger TargetType="appcontrols:PrecisionVideoPlayer">
@@ -2089,6 +2038,21 @@
                                             </MultiTrigger>
                                         </appcontrols:PrecisionVideoPlayer.Triggers>
                                     </appcontrols:PrecisionVideoPlayer>
+                                    <!--  Miniatura del vídeo (cuando no está en preview)  -->
+                                    <Image
+                                        Aspect="AspectFill"
+                                        Source="{Binding ParallelVideo3ThumbnailPath}"
+                                        IsVisible="{Binding ShowParallelVideo3Thumbnail}" />
+                                    <!--  Placeholder cuando no hay vídeo  -->
+                                    <Label
+                                        HorizontalOptions="Center"
+                                        VerticalOptions="Center"
+                                        Text="3"
+                                        TextColor="#FF666666"
+                                        FontSize="{StaticResource FontSizeHeader}"
+                                        FontAttributes="Bold"
+                                        IsVisible="{Binding HasParallelVideo3, Converter={StaticResource InvertedBoolConverter}}" />
+                                    <!--  Overlay para scrubbing  -->
                                     <BoxView
                                         BackgroundColor="Transparent"
                                         IsVisible="{Binding HasParallelVideo3}">
@@ -2109,29 +2073,12 @@
                                     <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen4" />
                                 </Border.GestureRecognizers>
                                 <Grid>
-                                    <Label
-                                        HorizontalOptions="Center"
-                                        VerticalOptions="Center"
-                                        Text="4"
-                                        TextColor="#FF666666"
-                                        FontSize="{StaticResource FontSizeHeader}"
-                                        FontAttributes="Bold"
-                                        IsVisible="{Binding HasParallelVideo4, Converter={StaticResource InvertedBoolConverter}}" />
-                                    <Image
-                                        Aspect="AspectFill"
-                                        Source="{Binding ParallelVideo4.LocalThumbnailPath}"
-                                        IsVisible="{Binding HasParallelVideo4}">
-                                        <Image.Triggers>
-                                            <DataTrigger TargetType="Image" Binding="{Binding IsPreviewMode}" Value="True">
-                                                <Setter Property="IsVisible" Value="False" />
-                                            </DataTrigger>
-                                        </Image.Triggers>
-                                    </Image>
+                                    <!--  PrecisionVideoPlayer para scrubbing preciso (capa inferior)  -->
                                     <appcontrols:PrecisionVideoPlayer
                                         x:Name="PreviewPlayer4Q"
                                         Aspect="AspectFill"
                                         IsMuted="True"
-                                        Source="{Binding ParallelVideo4.LocalClipPath}"
+                                        Source="{Binding ParallelVideo4ClipPath}"
                                         IsVisible="False">
                                         <appcontrols:PrecisionVideoPlayer.Triggers>
                                             <MultiTrigger TargetType="appcontrols:PrecisionVideoPlayer">
@@ -2144,6 +2091,21 @@
                                             </MultiTrigger>
                                         </appcontrols:PrecisionVideoPlayer.Triggers>
                                     </appcontrols:PrecisionVideoPlayer>
+                                    <!--  Miniatura del vídeo (cuando no está en preview)  -->
+                                    <Image
+                                        Aspect="AspectFill"
+                                        Source="{Binding ParallelVideo4ThumbnailPath}"
+                                        IsVisible="{Binding ShowParallelVideo4Thumbnail}" />
+                                    <!--  Placeholder cuando no hay vídeo  -->
+                                    <Label
+                                        HorizontalOptions="Center"
+                                        VerticalOptions="Center"
+                                        Text="4"
+                                        TextColor="#FF666666"
+                                        FontSize="{StaticResource FontSizeHeader}"
+                                        FontAttributes="Bold"
+                                        IsVisible="{Binding HasParallelVideo4, Converter={StaticResource InvertedBoolConverter}}" />
+                                    <!--  Overlay para scrubbing  -->
                                     <BoxView
                                         BackgroundColor="Transparent"
                                         IsVisible="{Binding HasParallelVideo4}">

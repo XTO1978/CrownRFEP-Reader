@@ -53,6 +53,28 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 		// Hover preview: usamos PrecisionVideoPlayer (AVPlayerLayer). Autoplay+loop aquí.
 		HoverPreviewPlayer.MediaOpened += OnHoverPreviewOpened;
 		HoverPreviewPlayer.MediaEnded += OnHoverPreviewEnded;
+
+                // Preview players (drop zones): cuando abren media, ocultamos miniatura.
+                PreviewPlayerSingle.MediaOpened += OnPreviewPlayerMediaOpened;
+                PreviewPlayer1H.MediaOpened += OnPreviewPlayerMediaOpened;
+                PreviewPlayer2H.MediaOpened += OnPreviewPlayerMediaOpened;
+                PreviewPlayer1V.MediaOpened += OnPreviewPlayerMediaOpened;
+                PreviewPlayer2V.MediaOpened += OnPreviewPlayerMediaOpened;
+                PreviewPlayer1Q.MediaOpened += OnPreviewPlayerMediaOpened;
+                PreviewPlayer2Q.MediaOpened += OnPreviewPlayerMediaOpened;
+                PreviewPlayer3Q.MediaOpened += OnPreviewPlayerMediaOpened;
+                PreviewPlayer4Q.MediaOpened += OnPreviewPlayerMediaOpened;
+
+        // Marcar "ready" solo cuando hay avance real de tiempo (evita quedarse gris).
+        PreviewPlayerSingle.PositionChanged += OnPreviewPlayerPositionChanged;
+        PreviewPlayer1H.PositionChanged += OnPreviewPlayerPositionChanged;
+        PreviewPlayer2H.PositionChanged += OnPreviewPlayerPositionChanged;
+        PreviewPlayer1V.PositionChanged += OnPreviewPlayerPositionChanged;
+        PreviewPlayer2V.PositionChanged += OnPreviewPlayerPositionChanged;
+        PreviewPlayer1Q.PositionChanged += OnPreviewPlayerPositionChanged;
+        PreviewPlayer2Q.PositionChanged += OnPreviewPlayerPositionChanged;
+        PreviewPlayer3Q.PositionChanged += OnPreviewPlayerPositionChanged;
+        PreviewPlayer4Q.PositionChanged += OnPreviewPlayerPositionChanged;
     }
 
     ~DashboardPage()
@@ -73,6 +95,66 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 
 		try { HoverPreviewPlayer.MediaOpened -= OnHoverPreviewOpened; } catch { }
 		try { HoverPreviewPlayer.MediaEnded -= OnHoverPreviewEnded; } catch { }
+
+        try { PreviewPlayerSingle.MediaOpened -= OnPreviewPlayerMediaOpened; } catch { }
+        try { PreviewPlayer1H.MediaOpened -= OnPreviewPlayerMediaOpened; } catch { }
+        try { PreviewPlayer2H.MediaOpened -= OnPreviewPlayerMediaOpened; } catch { }
+        try { PreviewPlayer1V.MediaOpened -= OnPreviewPlayerMediaOpened; } catch { }
+        try { PreviewPlayer2V.MediaOpened -= OnPreviewPlayerMediaOpened; } catch { }
+        try { PreviewPlayer1Q.MediaOpened -= OnPreviewPlayerMediaOpened; } catch { }
+        try { PreviewPlayer2Q.MediaOpened -= OnPreviewPlayerMediaOpened; } catch { }
+        try { PreviewPlayer3Q.MediaOpened -= OnPreviewPlayerMediaOpened; } catch { }
+        try { PreviewPlayer4Q.MediaOpened -= OnPreviewPlayerMediaOpened; } catch { }
+
+        try { PreviewPlayerSingle.PositionChanged -= OnPreviewPlayerPositionChanged; } catch { }
+        try { PreviewPlayer1H.PositionChanged -= OnPreviewPlayerPositionChanged; } catch { }
+        try { PreviewPlayer2H.PositionChanged -= OnPreviewPlayerPositionChanged; } catch { }
+        try { PreviewPlayer1V.PositionChanged -= OnPreviewPlayerPositionChanged; } catch { }
+        try { PreviewPlayer2V.PositionChanged -= OnPreviewPlayerPositionChanged; } catch { }
+        try { PreviewPlayer1Q.PositionChanged -= OnPreviewPlayerPositionChanged; } catch { }
+        try { PreviewPlayer2Q.PositionChanged -= OnPreviewPlayerPositionChanged; } catch { }
+        try { PreviewPlayer3Q.PositionChanged -= OnPreviewPlayerPositionChanged; } catch { }
+        try { PreviewPlayer4Q.PositionChanged -= OnPreviewPlayerPositionChanged; } catch { }
+    }
+
+    private void OnPreviewPlayerMediaOpened(object? sender, EventArgs e)
+    {
+        try
+        {
+            // Solo responder si la página está activa
+            if (!_isPageActive) return;
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "OnPreviewPlayerMediaOpened error", ex);
+        }
+    }
+
+    private void OnPreviewPlayerPositionChanged(object? sender, TimeSpan position)
+    {
+        try
+        {
+            if (!_isPageActive) return;
+
+            // Considerar "listo" cuando vemos callbacks de posición (normalmente implica playback).
+            if (sender == PreviewPlayerSingle || sender == PreviewPlayer1H || sender == PreviewPlayer1V || sender == PreviewPlayer1Q)
+            {
+                _viewModel.IsPreviewPlayer1Ready = true;
+            }
+            else if (sender == PreviewPlayer2H || sender == PreviewPlayer2V || sender == PreviewPlayer2Q)
+            {
+                _viewModel.IsPreviewPlayer2Ready = true;
+            }
+            else if (sender == PreviewPlayer3Q)
+            {
+                _viewModel.IsPreviewPlayer3Ready = true;
+            }
+            else if (sender == PreviewPlayer4Q)
+            {
+                _viewModel.IsPreviewPlayer4Ready = true;
+            }
+        }
+        catch { }
     }
 
 #if MACCATALYST
@@ -390,6 +472,39 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
     // Toggle Play/Pause para todos los videos activos
     public void TogglePlayPause()
     {
+        AppLog.Info("DashboardPage", $"TogglePlayPause | IsPreviewMode={_viewModel.IsPreviewMode} | HasVideo1={_viewModel.HasParallelVideo1} | IsSingle={_viewModel.IsSingleVideoMode} | IsQuad={_viewModel.IsQuadVideoMode} | IsHorizontal={_viewModel.IsHorizontalOrientation}");
+
+        // Importante: los mini players solo se vuelven visibles cuando IsPreviewMode=true
+        // (ver MultiTriggers en XAML). Si el usuario pulsa espacio para reproducir,
+        // activamos preview mode para evitar que se oculte la miniatura y se quede el fondo gris.
+        var enabledPreviewModeNow = false;
+        if (!_viewModel.IsPreviewMode && (
+                _viewModel.HasParallelVideo1 ||
+                _viewModel.HasParallelVideo2 ||
+                _viewModel.HasParallelVideo3 ||
+                _viewModel.HasParallelVideo4))
+        {
+            _viewModel.IsPreviewMode = true;
+            enabledPreviewModeNow = true;
+            AppLog.Info("DashboardPage", "TogglePlayPause | Enabled IsPreviewMode, will retry after delay");
+        }
+
+        // Si acabamos de activar IsPreviewMode, dejamos un tick para que se apliquen triggers
+        // (IsVisible) y el handler tenga tiempo de conectarse/cargar el Source.
+        if (enabledPreviewModeNow)
+        {
+            MainThread.BeginInvokeOnMainThread(async () =>
+            {
+                try
+                {
+                    await Task.Delay(16);
+                    TogglePlayPause();
+                }
+                catch { }
+            });
+            return;
+        }
+
         if (_viewModel.IsSingleVideoMode)
         {
             TogglePlayer(PreviewPlayerSingle);
@@ -407,11 +522,13 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
             // Modo paralelo: controlar ambos videos
             if (_viewModel.IsHorizontalOrientation)
             {
+                AppLog.Info("DashboardPage", $"TogglePlayPause Parallel H | VM.ClipPath1={_viewModel.ParallelVideo1ClipPath ?? "[null]"} | VM.ClipPath2={_viewModel.ParallelVideo2ClipPath ?? "[null]"}");
                 TogglePlayer(PreviewPlayer1H);
                 TogglePlayer(PreviewPlayer2H);
             }
             else
             {
+                AppLog.Info("DashboardPage", $"TogglePlayPause Parallel V | VM.ClipPath1={_viewModel.ParallelVideo1ClipPath ?? "[null]"} | VM.ClipPath2={_viewModel.ParallelVideo2ClipPath ?? "[null]"}");
                 TogglePlayer(PreviewPlayer1V);
                 TogglePlayer(PreviewPlayer2V);
             }
@@ -421,6 +538,8 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
     private void TogglePlayer(PrecisionVideoPlayer? player)
     {
         if (player == null) return;
+
+        AppLog.Info("DashboardPage", $"TogglePlayer | Name={player.AutomationId} | Source={player.Source ?? "[null]"} | IsVisible={player.IsVisible} | IsPlaying={player.IsPlaying} | Handler={player.Handler?.GetType().Name ?? "[null]"}");
 
         if (player.IsPlaying)
         {
@@ -447,33 +566,41 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 
     /// <summary>
     /// Limpia completamente todos los reproductores de video para evitar conflictos
-    /// de jerarquía de ViewControllers en iOS al navegar entre páginas
+    /// de jerarquía de ViewControllers en iOS al navegar entre páginas.
+    /// IMPORTANTE: No asignamos Source=null directamente porque eso ROMPE el binding XAML.
+    /// En su lugar, usamos PrepareForCleanup() que limpia el AVPlayer nativo sin tocar el binding,
+    /// y luego ClearPreviewVideos() del ViewModel que propaga null via binding.
     /// </summary>
     private void CleanupAllVideos()
     {
+        AppLog.Info("DashboardPage", "CleanupAllVideos BEGIN");
         try
         {
             // Primero pausar
             PauseAllVideos();
 
-			// Hover preview (PrecisionVideoPlayer)
+			// Hover preview (PrecisionVideoPlayer) - este sí puede tener Source=null porque no usa binding
 			try { HoverPreviewPlayer?.PrepareForCleanup(); } catch { }
 			try { HoverPreviewPlayer?.Stop(); } catch { }
             try { if (HoverPreviewPlayer != null) HoverPreviewPlayer.Source = null; } catch { }
             
-            // Luego limpiar sources para desconectar AVPlayerViewController
-            ClearVideoSource(PreviewPlayerSingle);
-            ClearVideoSource(PreviewPlayer1H);
-            ClearVideoSource(PreviewPlayer2H);
-            ClearVideoSource(PreviewPlayer1V);
-            ClearVideoSource(PreviewPlayer2V);
-            ClearVideoSource(PreviewPlayer1Q);
-            ClearVideoSource(PreviewPlayer2Q);
-            ClearVideoSource(PreviewPlayer3Q);
-            ClearVideoSource(PreviewPlayer4Q);
+            // Para los preview players del dashboard, solo llamamos PrepareForCleanup()
+            // que limpia el AVPlayer nativo pero NO rompe el binding.
+            // El binding se actualizará cuando ClearPreviewVideos() ponga ParallelVideoX = null.
+            PreparePlayerForCleanup(PreviewPlayerSingle);
+            PreparePlayerForCleanup(PreviewPlayer1H);
+            PreparePlayerForCleanup(PreviewPlayer2H);
+            PreparePlayerForCleanup(PreviewPlayer1V);
+            PreparePlayerForCleanup(PreviewPlayer2V);
+            PreparePlayerForCleanup(PreviewPlayer1Q);
+            PreparePlayerForCleanup(PreviewPlayer2Q);
+            PreparePlayerForCleanup(PreviewPlayer3Q);
+            PreparePlayerForCleanup(PreviewPlayer4Q);
             
-            // Limpiar también en el ViewModel
+            // Limpiar en el ViewModel - esto propagará null via binding a los controles
             _viewModel.ClearPreviewVideos();
+
+            AppLog.Info("DashboardPage", "CleanupAllVideos END");
         }
         catch (Exception ex)
         {
@@ -481,6 +608,20 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         }
     }
     
+    private void PreparePlayerForCleanup(PrecisionVideoPlayer? player)
+    {
+        if (player != null)
+        {
+            try
+            {
+                player.PrepareForCleanup();
+            }
+            catch { }
+        }
+    }
+    
+    // Mantenemos ClearVideoSource por si se necesita en otro lugar, pero NO lo usamos
+    // para los players con binding porque rompe el binding XAML.
     private void ClearVideoSource(PrecisionVideoPlayer? player)
     {
         if (player != null)

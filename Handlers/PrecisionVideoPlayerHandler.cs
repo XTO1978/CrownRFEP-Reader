@@ -29,6 +29,7 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
     private bool _isSeeking; // Flag para evitar seeks simultáneos
     private TimeSpan _pendingSeekPosition; // Posición pendiente si hay seek en progreso
     private bool _isDisconnected; // Flag para evitar acceso a VirtualView después de desconexión
+    private bool _autoPlayWhenReady;
 
     private sealed class PlayerContainerView : UIView
     {
@@ -36,6 +37,10 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
 
         public PlayerContainerView()
         {
+            // Fondo transparente para no tapar otros elementos cuando el player no tiene video
+            BackgroundColor = UIColor.Clear;
+            Opaque = false;
+            
             PlayerLayer = new AVPlayerLayer
             {
                 VideoGravity = AVLayerVideoGravity.ResizeAspect
@@ -75,6 +80,24 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
     {
         base.ConnectHandler(platformView);
 
+        AppLog.Info("PrecisionVideoPlayerHandler", $"ConnectHandler | previous _isDisconnected={_isDisconnected}");
+
+        // Importante: en algunos ciclos de vida (Shell navegación / Hot Reload) el handler
+        // puede desconectarse y volverse a conectar. No podemos dejarlo permanentemente
+        // en estado "disconnected".
+        _isDisconnected = false;
+
+        // Si por algún motivo perdimos referencias (p.ej. DisconnectHandler previo),
+        // recupéralas desde el platformView actual.
+        if (_containerView == null && platformView is PlayerContainerView playerContainer)
+        {
+            _containerView = playerContainer;
+        }
+        if (_playerLayer == null && _containerView != null)
+        {
+            _playerLayer = _containerView.PlayerLayer;
+        }
+
         // Suscribirse a eventos del control
         VirtualView.PlayRequested += OnPlayRequested;
         VirtualView.PauseRequested += OnPauseRequested;
@@ -87,6 +110,13 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
         VirtualView.MutedChangedInternal += OnMutedChanged;
         VirtualView.AspectChangedInternal += OnAspectChanged;
         VirtualView.PrepareForCleanupRequested += OnPrepareForCleanupRequested;
+
+        // Si el Source ya está asignado (por binding) y el player fue limpiado al desconectar,
+        // recargarlo al conectar para que Play/Seek funcionen.
+        if (!string.IsNullOrEmpty(VirtualView.Source) && (_player == null || _playerItem == null))
+        {
+            try { LoadSource(VirtualView.Source); } catch { }
+        }
     }
 
     protected override void DisconnectHandler(UIView platformView)
@@ -136,22 +166,18 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
 
         CleanupPlayer();
 
+        // Nota: no desmontar ni disponer manualmente el platformView / layer aquí.
+        // MAUI controla el ciclo de vida del UIView. Si removemos el layer o hacemos Dispose,
+        // el handler puede no ser capaz de reconectar correctamente al volver a la página.
         try
         {
             if (_playerLayer != null)
-            {
                 _playerLayer.Player = null;
-                _playerLayer.RemoveFromSuperLayer();
-            }
         }
         catch (Exception ex)
         {
-            AppLog.Error("PrecisionVideoPlayerHandler", "DisconnectHandler removing playerLayer threw", ex);
+            AppLog.Error("PrecisionVideoPlayerHandler", "DisconnectHandler setting playerLayer.Player=null threw", ex);
         }
-
-        _playerLayer = null;
-        _containerView?.Dispose();
-        _containerView = null;
 
         base.DisconnectHandler(platformView);
 
@@ -165,6 +191,8 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
 #if DEBUG
         AppLog.Info("PrecisionVideoPlayerHandler", "CleanupPlayer BEGIN");
 #endif
+
+        _autoPlayWhenReady = false;
 
         try
         {
@@ -350,6 +378,8 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
 
     private void LoadSource(string? source)
     {
+        AppLog.Info("PrecisionVideoPlayerHandler", $"LoadSource ENTER | source={(source != null ? "[set]" : "[null]")} | _isDisconnected={_isDisconnected} | _player={((_player != null) ? "[alive]" : "[null]")}");
+
         if (!MainThread.IsMainThread)
         {
             MainThread.BeginInvokeOnMainThread(() =>
@@ -446,6 +476,8 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
                 catch { /* Handler ya desconectado */ }
             });
         });
+
+        AppLog.Info("PrecisionVideoPlayerHandler", $"LoadSource EXIT | player created OK | _player={((_player != null) ? "[alive]" : "[null]")}");
     }
 
     private async Task CheckPlayerStatusAsync(CancellationToken ct)
@@ -514,15 +546,33 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
             
             try
             {
-                if (VirtualView != null && _playerItem != null && _playerItem.Duration.IsNumeric)
+                if (VirtualView != null && _playerItem != null)
                 {
-                    var duration = TimeSpan.FromSeconds(_playerItem.Duration.Seconds);
-                    VirtualView.UpdateDuration(duration);
+                    // Duration puede no estar disponible aún; no bloquear el "ready" por ello.
+                    if (_playerItem.Duration.IsNumeric)
+                    {
+                        var duration = TimeSpan.FromSeconds(_playerItem.Duration.Seconds);
+                        VirtualView.UpdateDuration(duration);
+                    }
 
                     // Detectar frame rate del vídeo
                     DetectFrameRate();
 
                     VirtualView.RaiseMediaOpened();
+
+                    // Si alguien llamó a Play() antes de que el item estuviera listo,
+                    // arrancar aquí para evitar quedarse con pantalla "gris".
+                    if ((_autoPlayWhenReady || VirtualView.IsPlaying) && _player != null)
+                    {
+                        try
+                        {
+                            _player.Play();
+                            _player.Rate = (float)VirtualView.Speed;
+                        }
+                        catch { }
+
+                        _autoPlayWhenReady = false;
+                    }
                 }
             }
             catch { /* Handler ya desconectado */ }
@@ -565,7 +615,36 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
 
     private void OnPlayRequested(object? sender, EventArgs e)
     {
-        if (_player == null || _playerItem == null) return;
+        AppLog.Info("PrecisionVideoPlayerHandler", $"OnPlayRequested | _isDisconnected={_isDisconnected} | _player={((_player != null) ? "[alive]" : "[null]")}");
+
+        if (_isDisconnected)
+        {
+            AppLog.Warn("PrecisionVideoPlayerHandler", "OnPlayRequested ignored: _isDisconnected=true");
+            return;
+        }
+
+        // UIKit/AVFoundation: siempre en main thread.
+        if (!MainThread.IsMainThread)
+        {
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                try { OnPlayRequested(sender, e); } catch { }
+            });
+            return;
+        }
+
+        // Si el player fue limpiado pero el Source sigue, recargar y auto-reproducir.
+        if (_player == null || _playerItem == null)
+        {
+            var source = VirtualView?.Source;
+            AppLog.Info("PrecisionVideoPlayerHandler", $"OnPlayRequested | player null, reloading source={(source != null ? "[set]" : "[null]")}");
+            if (!string.IsNullOrEmpty(source))
+            {
+                _autoPlayWhenReady = true;
+                LoadSource(source);
+            }
+            return;
+        }
 
         // En MacCatalyst, si la app se queda con una AVAudioSession en PlayAndRecord
         // (por ejemplo tras una grabación), al reproducir un vídeo macOS puede reactivar
@@ -606,7 +685,13 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
             }
         }
 
-        _player.Rate = (float)VirtualView.Speed;
+        // Asegurar que realmente arranca la reproducción.
+        try
+        {
+            _player.Play();
+            _player.Rate = (float)VirtualView.Speed;
+        }
+        catch { }
     }
 
     private static void TryConfigureAppleAudioSessionForPlayback()
