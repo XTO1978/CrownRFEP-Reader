@@ -103,6 +103,9 @@ public partial class QuadPlayerPage : ContentPage
         base.OnAppearing();
         SetupMediaOpenedHandlers();
         
+        // Cargar lap timing
+        _ = _viewModel.LoadLapTimingAsync();
+        
         // Suscribirse a eventos de scrubbing
         VideoScrubBehavior.ScrubUpdated += OnScrubUpdated;
         VideoScrubBehavior.ScrubEnded += OnScrubEnded;
@@ -672,6 +675,9 @@ public partial class QuadPlayerPage : ContentPage
 
             if (_viewModel.Duration.TotalSeconds > 0)
                 ProgressSlider.Value = globalRelative.TotalSeconds / _viewModel.Duration.TotalSeconds;
+
+            // Actualizar overlay de laps
+            _viewModel.UpdateLapOverlay();
 
             // Aplicar "espera" por laps si procede
             HandleLapSyncTick();

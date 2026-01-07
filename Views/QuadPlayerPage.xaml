@@ -133,6 +133,23 @@
                             Text="{Binding Video1.Atleta.NombreCompleto}"
                             TextColor="White" />
                     </Border>
+                    <!--  Lap actual (overlay) - esquina derecha inferior  -->
+                    <Border
+                        Margin="12"
+                        Padding="12,8"
+                        BackgroundColor="{Binding CurrentLapBgColor1}"
+                        HorizontalOptions="End"
+                        InputTransparent="True"
+                        IsVisible="{Binding HasLapTiming}"
+                        StrokeShape="RoundRectangle 8"
+                        StrokeThickness="0"
+                        VerticalOptions="End">
+                        <Label
+                            FontAttributes="Bold"
+                            FontSize="{StaticResource FontSizeBody}"
+                            Text="{Binding CurrentLapText1}"
+                            TextColor="{Binding CurrentLapColor1}" />
+                    </Border>
                 </Grid>
             </Border>
             
@@ -239,6 +256,23 @@
                             FontSize="{StaticResource FontSizeSmall}"
                             Text="{Binding Video2.Atleta.NombreCompleto}"
                             TextColor="White" />
+                    </Border>
+                    <!--  Lap actual (overlay) - esquina izquierda inferior  -->
+                    <Border
+                        Margin="12"
+                        Padding="12,8"
+                        BackgroundColor="{Binding CurrentLapBgColor2}"
+                        HorizontalOptions="Start"
+                        InputTransparent="True"
+                        IsVisible="{Binding HasLapTiming}"
+                        StrokeShape="RoundRectangle 8"
+                        StrokeThickness="0"
+                        VerticalOptions="End">
+                        <Label
+                            FontAttributes="Bold"
+                            FontSize="{StaticResource FontSizeBody}"
+                            Text="{Binding CurrentLapText2}"
+                            TextColor="{Binding CurrentLapColor2}" />
                     </Border>
                 </Grid>
             </Border>
@@ -347,6 +381,23 @@
                             Text="{Binding Video3.Atleta.NombreCompleto}"
                             TextColor="White" />
                     </Border>
+                    <!--  Lap actual (overlay) - esquina derecha superior  -->
+                    <Border
+                        Margin="12"
+                        Padding="12,8"
+                        BackgroundColor="{Binding CurrentLapBgColor3}"
+                        HorizontalOptions="End"
+                        InputTransparent="True"
+                        IsVisible="{Binding HasLapTiming}"
+                        StrokeShape="RoundRectangle 8"
+                        StrokeThickness="0"
+                        VerticalOptions="Start">
+                        <Label
+                            FontAttributes="Bold"
+                            FontSize="{StaticResource FontSizeBody}"
+                            Text="{Binding CurrentLapText3}"
+                            TextColor="{Binding CurrentLapColor3}" />
+                    </Border>
                 </Grid>
             </Border>
             
@@ -454,7 +505,44 @@
                             Text="{Binding Video4.Atleta.NombreCompleto}"
                             TextColor="White" />
                     </Border>
+                    <!--  Lap actual (overlay) - esquina izquierda superior  -->
+                    <Border
+                        Margin="12"
+                        Padding="12,8"
+                        BackgroundColor="{Binding CurrentLapBgColor4}"
+                        HorizontalOptions="Start"
+                        InputTransparent="True"
+                        IsVisible="{Binding HasLapTiming}"
+                        StrokeShape="RoundRectangle 8"
+                        StrokeThickness="0"
+                        VerticalOptions="Start">
+                        <Label
+                            FontAttributes="Bold"
+                            FontSize="{StaticResource FontSizeBody}"
+                            Text="{Binding CurrentLapText4}"
+                            TextColor="{Binding CurrentLapColor4}" />
+                    </Border>
                 </Grid>
+            </Border>
+
+            <!--  Delta central  -->
+            <Border
+                Grid.RowSpan="2"
+                Grid.ColumnSpan="2"
+                Padding="16,10"
+                BackgroundColor="#CC000000"
+                HorizontalOptions="Center"
+                InputTransparent="True"
+                IsVisible="{Binding HasLapTiming}"
+                StrokeShape="RoundRectangle 10"
+                StrokeThickness="0"
+                VerticalOptions="Center"
+                ZIndex="100">
+                <Label
+                    FontAttributes="Bold"
+                    FontSize="{StaticResource FontSizeSubtitle}"
+                    Text="{Binding CurrentLapDiffText}"
+                    TextColor="White" />
             </Border>
         </Grid>
 

@@ -888,6 +888,7 @@
                         Margin="16,0"
                         Padding="12,8"
                         BackgroundColor="#FF2A2A2A"
+                        IsVisible="{Binding IsSimultaneousMode}"
                         StrokeShape="RoundRectangle 6"
                         StrokeThickness="0">
                         <HorizontalStackLayout Spacing="10" VerticalOptions="Center">
@@ -1048,6 +1049,7 @@
                     Margin="16,0"
                     Padding="16,6"
                     BackgroundColor="#FF2A2A2A"
+                    IsVisible="{Binding IsSimultaneousMode}"
                     StrokeShape="RoundRectangle 4"
                     StrokeThickness="0">
                     <HorizontalStackLayout Spacing="10" VerticalOptions="Center">

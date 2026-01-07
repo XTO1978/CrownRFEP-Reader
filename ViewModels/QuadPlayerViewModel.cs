@@ -24,6 +24,28 @@ public class QuadPlayerViewModel : INotifyPropertyChanged
     private bool _isSimultaneousMode = false;
     private bool _isMuted = true; // Silenciado por defecto
 
+    // Propiedades de lap timing
+    private bool _hasLapTiming;
+    private string _currentLapText1 = string.Empty;
+    private string _currentLapText2 = string.Empty;
+    private string _currentLapText3 = string.Empty;
+    private string _currentLapText4 = string.Empty;
+    private string _currentLapDiffText = string.Empty;
+    private Color _currentLapColor1 = Colors.White;
+    private Color _currentLapColor2 = Colors.White;
+    private Color _currentLapColor3 = Colors.White;
+    private Color _currentLapColor4 = Colors.White;
+    private Color _currentLapBgColor1 = Color.FromArgb("#E6000000");
+    private Color _currentLapBgColor2 = Color.FromArgb("#E6000000");
+    private Color _currentLapBgColor3 = Color.FromArgb("#E6000000");
+    private Color _currentLapBgColor4 = Color.FromArgb("#E6000000");
+
+    // Segmentos de lap para cada vídeo
+    private List<LapSegment>? _lapSegments1;
+    private List<LapSegment>? _lapSegments2;
+    private List<LapSegment>? _lapSegments3;
+    private List<LapSegment>? _lapSegments4;
+
     // Flags para evitar actualizar Progress mientras el usuario arrastra los sliders
     private bool _isDragging1;
     private bool _isDragging2;
@@ -123,6 +145,96 @@ public class QuadPlayerViewModel : INotifyPropertyChanged
             OnPropertyChanged();
         }
     }
+
+    #region Propiedades de Lap Timing
+
+    public bool HasLapTiming
+    {
+        get => _hasLapTiming;
+        private set { if (_hasLapTiming != value) { _hasLapTiming = value; OnPropertyChanged(); } }
+    }
+
+    public string CurrentLapText1
+    {
+        get => _currentLapText1;
+        private set { if (_currentLapText1 != value) { _currentLapText1 = value; OnPropertyChanged(); } }
+    }
+
+    public string CurrentLapText2
+    {
+        get => _currentLapText2;
+        private set { if (_currentLapText2 != value) { _currentLapText2 = value; OnPropertyChanged(); } }
+    }
+
+    public string CurrentLapText3
+    {
+        get => _currentLapText3;
+        private set { if (_currentLapText3 != value) { _currentLapText3 = value; OnPropertyChanged(); } }
+    }
+
+    public string CurrentLapText4
+    {
+        get => _currentLapText4;
+        private set { if (_currentLapText4 != value) { _currentLapText4 = value; OnPropertyChanged(); } }
+    }
+
+    public string CurrentLapDiffText
+    {
+        get => _currentLapDiffText;
+        private set { if (_currentLapDiffText != value) { _currentLapDiffText = value; OnPropertyChanged(); } }
+    }
+
+    public Color CurrentLapColor1
+    {
+        get => _currentLapColor1;
+        private set { if (_currentLapColor1 != value) { _currentLapColor1 = value; OnPropertyChanged(); } }
+    }
+
+    public Color CurrentLapColor2
+    {
+        get => _currentLapColor2;
+        private set { if (_currentLapColor2 != value) { _currentLapColor2 = value; OnPropertyChanged(); } }
+    }
+
+    public Color CurrentLapColor3
+    {
+        get => _currentLapColor3;
+        private set { if (_currentLapColor3 != value) { _currentLapColor3 = value; OnPropertyChanged(); } }
+    }
+
+    public Color CurrentLapColor4
+    {
+        get => _currentLapColor4;
+        private set { if (_currentLapColor4 != value) { _currentLapColor4 = value; OnPropertyChanged(); } }
+    }
+
+    public Color CurrentLapBgColor1
+    {
+        get => _currentLapBgColor1;
+        private set { if (_currentLapBgColor1 != value) { _currentLapBgColor1 = value; OnPropertyChanged(); } }
+    }
+
+    public Color CurrentLapBgColor2
+    {
+        get => _currentLapBgColor2;
+        private set { if (_currentLapBgColor2 != value) { _currentLapBgColor2 = value; OnPropertyChanged(); } }
+    }
+
+    public Color CurrentLapBgColor3
+    {
+        get => _currentLapBgColor3;
+        private set { if (_currentLapBgColor3 != value) { _currentLapBgColor3 = value; OnPropertyChanged(); } }
+    }
+
+    public Color CurrentLapBgColor4
+    {
+        get => _currentLapBgColor4;
+        private set { if (_currentLapBgColor4 != value) { _currentLapBgColor4 = value; OnPropertyChanged(); } }
+    }
+
+    private static string FormatLapTime(TimeSpan time) => $"{time:mm\\:ss\\.ff}";
+
+    #endregion
 
     #region Propiedades de Videos
 
@@ -1133,6 +1245,200 @@ public class QuadPlayerViewModel : INotifyPropertyChanged
     protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
+
+    #endregion
+
+    #region Lap Timing Methods
+
+    private record LapSegment(int LapNumber, TimeSpan Start, TimeSpan End)
+    {
+        public TimeSpan Duration => End - Start;
+    }
+
+    private static List<LapSegment>? BuildLapSegmentsFromEvents(List<ExecutionTimingEvent> events)
+    {
+        if (events == null || events.Count < 2)
+            return null;
+
+        var sorted = events.OrderBy(e => e.Kind).ThenBy(e => e.ElapsedMilliseconds).ToList();
+        var segments = new List<LapSegment>();
+
+        for (int i = 0; i < sorted.Count - 1; i++)
+        {
+            var segStart = TimeSpan.FromMilliseconds(sorted[i].ElapsedMilliseconds);
+            var segEnd = TimeSpan.FromMilliseconds(sorted[i + 1].ElapsedMilliseconds);
+            segments.Add(new LapSegment(i + 1, segStart, segEnd));
+        }
+
+        return segments.Count > 0 ? segments : null;
+    }
+
+    private static LapSegment? FindLapAtPosition(List<LapSegment> segments, TimeSpan position)
+    {
+        if (position <= segments[0].Start)
+            return segments[0];
+        if (position >= segments[^1].End)
+            return segments[^1];
+
+        for (int i = 0; i < segments.Count; i++)
+        {
+            var seg = segments[i];
+            if (position >= seg.Start && position < seg.End)
+                return seg;
+        }
+
+        return null;
+    }
+
+    public void UpdateLapOverlay()
+    {
+        // Verificar que tenemos al menos 2 videos con lap segments
+        var validSegments = new List<(List<LapSegment> segments, int index, TimeSpan position)>();
+        
+        if (_lapSegments1 != null && _lapSegments1.Count > 0 && HasVideo1)
+            validSegments.Add((_lapSegments1, 1, CurrentPosition1));
+        if (_lapSegments2 != null && _lapSegments2.Count > 0 && HasVideo2)
+            validSegments.Add((_lapSegments2, 2, CurrentPosition2));
+        if (_lapSegments3 != null && _lapSegments3.Count > 0 && HasVideo3)
+            validSegments.Add((_lapSegments3, 3, CurrentPosition3));
+        if (_lapSegments4 != null && _lapSegments4.Count > 0 && HasVideo4)
+            validSegments.Add((_lapSegments4, 4, CurrentPosition4));
+
+        if (validSegments.Count < 2)
+        {
+            HasLapTiming = false;
+            CurrentLapText1 = CurrentLapText2 = CurrentLapText3 = CurrentLapText4 = string.Empty;
+            CurrentLapDiffText = string.Empty;
+            ResetLapColors();
+            return;
+        }
+
+        HasLapTiming = true;
+
+        // Obtener tiempos y segmentos actuales
+        var lapTimes = new List<(int index, TimeSpan duration, LapSegment seg)>();
+        
+        foreach (var (segments, index, position) in validSegments)
+        {
+            var seg = FindLapAtPosition(segments, position);
+            if (seg != null)
+            {
+                lapTimes.Add((index, seg.Duration, seg));
+                SetLapText(index, $"Lap {seg.LapNumber}: {FormatLapTime(seg.Duration)}");
+            }
+        }
+
+        if (lapTimes.Count < 2)
+        {
+            HasLapTiming = false;
+            return;
+        }
+
+        // Encontrar el más rápido y el más lento
+        var fastest = lapTimes.MinBy(x => x.duration);
+        var slowest = lapTimes.MaxBy(x => x.duration);
+
+        // Calcular delta entre el más rápido y el más lento
+        var diff = fastest.duration - slowest.duration;
+        var sign = diff.TotalMilliseconds >= 0 ? "+" : "-";
+        CurrentLapDiffText = $"Δ {sign}{FormatLapTime(TimeSpan.FromMilliseconds(Math.Abs(diff.TotalMilliseconds)))}";
+
+        // Asignar colores según ranking
+        foreach (var (index, duration, _) in lapTimes)
+        {
+            if (index == fastest.index)
+            {
+                SetLapColor(index, Color.FromArgb("#FF4CAF50"), Color.FromArgb("#FF1B5E20"));
+            }
+            else if (index == slowest.index)
+            {
+                SetLapColor(index, Color.FromArgb("#FFFF5252"), Color.FromArgb("#FF8B2020"));
+            }
+            else
+            {
+                SetLapColor(index, Colors.White, Color.FromArgb("#E6000000"));
+            }
+        }
+    }
+
+    private void SetLapText(int index, string text)
+    {
+        switch (index)
+        {
+            case 1: CurrentLapText1 = text; break;
+            case 2: CurrentLapText2 = text; break;
+            case 3: CurrentLapText3 = text; break;
+            case 4: CurrentLapText4 = text; break;
+        }
+    }
+
+    private void SetLapColor(int index, Color textColor, Color bgColor)
+    {
+        switch (index)
+        {
+            case 1:
+                CurrentLapColor1 = textColor;
+                CurrentLapBgColor1 = bgColor;
+                break;
+            case 2:
+                CurrentLapColor2 = textColor;
+                CurrentLapBgColor2 = bgColor;
+                break;
+            case 3:
+                CurrentLapColor3 = textColor;
+                CurrentLapBgColor3 = bgColor;
+                break;
+            case 4:
+                CurrentLapColor4 = textColor;
+                CurrentLapBgColor4 = bgColor;
+                break;
+        }
+    }
+
+    private void ResetLapColors()
+    {
+        var defaultBg = Color.FromArgb("#E6000000");
+        CurrentLapColor1 = CurrentLapColor2 = CurrentLapColor3 = CurrentLapColor4 = Colors.White;
+        CurrentLapBgColor1 = CurrentLapBgColor2 = CurrentLapBgColor3 = CurrentLapBgColor4 = defaultBg;
+    }
+
+    public async Task LoadLapTimingAsync()
+    {
+        try
+        {
+            var services = Application.Current?.Handler?.MauiContext?.Services;
+            var databaseService = services?.GetService<DatabaseService>();
+            if (databaseService == null)
+                return;
+
+            if (Video1 != null)
+            {
+                var events1 = await databaseService.GetExecutionTimingEventsByVideoAsync(Video1.Id);
+                _lapSegments1 = BuildLapSegmentsFromEvents(events1);
+            }
+            if (Video2 != null)
+            {
+                var events2 = await databaseService.GetExecutionTimingEventsByVideoAsync(Video2.Id);
+                _lapSegments2 = BuildLapSegmentsFromEvents(events2);
+            }
+            if (Video3 != null)
+            {
+                var events3 = await databaseService.GetExecutionTimingEventsByVideoAsync(Video3.Id);
+                _lapSegments3 = BuildLapSegmentsFromEvents(events3);
+            }
+            if (Video4 != null)
+            {
+                var events4 = await databaseService.GetExecutionTimingEventsByVideoAsync(Video4.Id);
+                _lapSegments4 = BuildLapSegmentsFromEvents(events4);
+            }
+
+            UpdateLapOverlay();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error loading lap timing: {ex.Message}");
+        }
     }
 
     #endregion
