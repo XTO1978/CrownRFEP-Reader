@@ -71,6 +71,9 @@ public sealed class WindowsVideoLessonRecorder : IVideoLessonRecorder, IDisposab
 
     public bool IsRecording => _isRecording;
 
+    public Task<bool> EnsurePermissionsAsync(bool cameraEnabled, bool microphoneEnabled, CancellationToken cancellationToken = default)
+        => Task.FromResult(true);
+
     public void SetOptions(bool cameraEnabled, bool microphoneEnabled)
     {
         _cameraEnabled = cameraEnabled;

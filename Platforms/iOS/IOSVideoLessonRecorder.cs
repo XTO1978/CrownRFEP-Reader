@@ -32,6 +32,25 @@ public sealed class IOSVideoLessonRecorder : IVideoLessonRecorder
 
     public bool IsRecording => RPScreenRecorder.SharedRecorder.Recording;
 
+    public async Task<bool> EnsurePermissionsAsync(bool cameraEnabled, bool microphoneEnabled, CancellationToken cancellationToken = default)
+    {
+        if (microphoneEnabled)
+        {
+            var micGranted = await EnsureMicrophonePermissionAsync(cancellationToken).ConfigureAwait(false);
+            if (!micGranted)
+                return false;
+        }
+
+        if (cameraEnabled)
+        {
+            var cameraGranted = await EnsureCameraPermissionAsync(cancellationToken).ConfigureAwait(false);
+            if (!cameraGranted)
+                return false;
+        }
+
+        return true;
+    }
+
     public void SetOptions(bool cameraEnabled, bool microphoneEnabled)
     {
         _cameraEnabled = cameraEnabled;
@@ -109,6 +128,31 @@ public sealed class IOSVideoLessonRecorder : IVideoLessonRecorder
         });
 
         await tcs.Task.ConfigureAwait(false);
+    }
+
+    private static Task<bool> EnsureCameraPermissionAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var status = AVCaptureDevice.GetAuthorizationStatus(AVAuthorizationMediaType.Video);
+            if (status == AVAuthorizationStatus.Authorized)
+                return Task.FromResult(true);
+
+            if (status == AVAuthorizationStatus.Denied || status == AVAuthorizationStatus.Restricted)
+                return Task.FromResult(false);
+
+            if (status == AVAuthorizationStatus.NotDetermined)
+            {
+                return AVCaptureDevice.RequestAccessForMediaTypeAsync(AVAuthorizationMediaType.Video)
+                    .WaitAsync(cancellationToken);
+            }
+
+            return Task.FromResult(false);
+        }
+        catch
+        {
+            return Task.FromResult(false);
+        }
     }
 
     public Task StopAsync(CancellationToken cancellationToken = default)

@@ -30,6 +30,8 @@ public partial class SinglePlayerPage : ContentPage
     private string? _currentVideoLessonPath;
     private bool _isVideoLessonStartStopInProgress;
 
+    private bool _videoLessonPermissionsReady;
+
     private bool _videoLessonCameraEnabled = true;
     private bool _videoLessonMicEnabled = true;
 
@@ -153,6 +155,7 @@ public partial class SinglePlayerPage : ContentPage
     {
         _isVideoLessonRecording = _videoLessonRecorder.IsRecording;
         _isVideoLessonMode = _isVideoLessonRecording;
+        _videoLessonPermissionsReady = _isVideoLessonRecording;
 
         if (VideoLessonCameraPip != null)
             VideoLessonCameraPip.IsVisible = _isVideoLessonRecording && _videoLessonCameraEnabled;
@@ -256,7 +259,9 @@ public partial class SinglePlayerPage : ContentPage
             windowsRecorder.SetOptions(cameraEnabled: _videoLessonCameraEnabled, microphoneEnabled: _videoLessonMicEnabled);
 #endif
 
-        var shouldShowCamera = _isVideoLessonRecording && _videoLessonCameraEnabled;
+        var shouldShowCamera = _videoLessonPermissionsReady
+            && (_isVideoLessonRecording || _isVideoLessonMode)
+            && _videoLessonCameraEnabled;
 
         if (VideoLessonCameraPip != null)
             VideoLessonCameraPip.IsVisible = shouldShowCamera;
@@ -269,6 +274,36 @@ public partial class SinglePlayerPage : ContentPage
 
         if (shouldShowCamera)
             EnsurePipPositioned();
+    }
+
+    private async Task<bool> WaitForVideoLessonCameraPreviewReadyAsync(TimeSpan timeout)
+    {
+        if (!_videoLessonCameraEnabled)
+            return true;
+
+        var deadline = DateTime.UtcNow + timeout;
+        while (DateTime.UtcNow < deadline)
+        {
+            if (VideoLessonCameraPip?.IsVisible == true
+                && VideoLessonCameraPip.Width > 0
+                && VideoLessonCameraPip.Height > 0)
+            {
+                var isReplayKitReady = VideoLessonCameraPreview != null
+                    && VideoLessonCameraPreview.IsActive
+                    && VideoLessonCameraPreview.Handler != null;
+
+                var isWebcamReady = VideoLessonWebcamPreview != null
+                    && VideoLessonWebcamPreview.IsActive
+                    && VideoLessonWebcamPreview.Handler != null;
+
+                if (isReplayKitReady || isWebcamReady)
+                    return true;
+            }
+
+            await Task.Delay(25);
+        }
+
+        return false;
     }
 
     private async Task StartVideoLessonRecordingAsync()
@@ -290,8 +325,41 @@ public partial class SinglePlayerPage : ContentPage
         {
             _isVideoLessonStartStopInProgress = true;
 
-            // Aplicar opciones antes de iniciar
+            // Asegurar que el PiP no aparezca mientras el prompt de permisos está pendiente.
+            _videoLessonPermissionsReady = false;
             ApplyVideoLessonRuntimeOptions();
+
+            // 1) Pedir permisos ANTES de cualquier PiP/cámara/grabación
+            var permissionsOk = await _videoLessonRecorder.EnsurePermissionsAsync(
+                cameraEnabled: _videoLessonCameraEnabled,
+                microphoneEnabled: _videoLessonMicEnabled);
+
+            if (!permissionsOk)
+            {
+                await DisplayAlert(
+                    "Permisos requeridos",
+                    "Necesitamos permisos de micrófono y cámara para grabar la videolección. Actívalos en Ajustes/Privacidad y reintenta.",
+                    "OK");
+                return;
+            }
+
+            _videoLessonPermissionsReady = true;
+
+            // 2) Con permisos listos, activar PiP + cámara (preview) y esperar a que esté visible/activa
+            _isVideoLessonMode = true;
+            ApplyVideoLessonRuntimeOptions();
+
+            if (_videoLessonCameraEnabled)
+            {
+                var previewReady = await WaitForVideoLessonCameraPreviewReadyAsync(TimeSpan.FromSeconds(2));
+                if (!previewReady)
+                {
+                    _isVideoLessonMode = false;
+                    ApplyVideoLessonRuntimeOptions();
+                    await DisplayAlert("Cámara", "No se pudo activar la cámara para la videolección.", "OK");
+                    return;
+                }
+            }
 
             var dir = Path.Combine(FileSystem.AppDataDirectory, "videolecciones");
             Directory.CreateDirectory(dir);
@@ -300,24 +368,15 @@ public partial class SinglePlayerPage : ContentPage
             var path = Path.Combine(dir, fileName);
             _currentVideoLessonPath = path;
 
+            // 3) Solo cuando PiP/cámara estén activos, arrancar grabación (audio + video)
             await _videoLessonRecorder.StartAsync(path);
             _isVideoLessonRecording = true;
-            _isVideoLessonMode = true;
 
             if (VideoLessonOptionsPanel != null)
                 VideoLessonOptionsPanel.IsVisible = true;
 
-            if (VideoLessonCameraPip != null)
-                VideoLessonCameraPip.IsVisible = _videoLessonCameraEnabled;
-
-            if (VideoLessonCameraPreview != null)
-                VideoLessonCameraPreview.IsActive = _videoLessonCameraEnabled;
-
-            if (VideoLessonWebcamPreview != null)
-                VideoLessonWebcamPreview.IsActive = _videoLessonCameraEnabled;
-
-            if (_videoLessonCameraEnabled)
-                EnsurePipPositioned();
+            // Asegurar que la UI refleje estado (grabando + opciones)
+            ApplyVideoLessonRuntimeOptions();
 
             // En Windows a veces el layout todavía no está listo; re-posicionar tras un tick
             MainThread.BeginInvokeOnMainThread(async () =>
@@ -325,7 +384,7 @@ public partial class SinglePlayerPage : ContentPage
                 try
                 {
                     await Task.Delay(75);
-                    if (_isVideoLessonRecording && _videoLessonCameraEnabled)
+                    if ((_isVideoLessonRecording || _isVideoLessonMode) && _videoLessonCameraEnabled)
                         EnsurePipPositioned();
                 }
                 catch
@@ -342,16 +401,10 @@ public partial class SinglePlayerPage : ContentPage
             _currentVideoLessonPath = null;
             _isVideoLessonRecording = false;
             _isVideoLessonMode = false;
+            _videoLessonPermissionsReady = false;
             UpdateVideoLessonToggleVisualState();
 
-            if (VideoLessonCameraPip != null)
-                VideoLessonCameraPip.IsVisible = false;
-
-            if (VideoLessonCameraPreview != null)
-                VideoLessonCameraPreview.IsActive = false;
-
-            if (VideoLessonWebcamPreview != null)
-                VideoLessonWebcamPreview.IsActive = false;
+            ApplyVideoLessonRuntimeOptions();
 
             // VideoLessonOptionsPanel siempre visible
             StopRecordingTimer();
@@ -370,6 +423,7 @@ public partial class SinglePlayerPage : ContentPage
         {
             _isVideoLessonRecording = false;
             _isVideoLessonMode = false;
+            _videoLessonPermissionsReady = false;
             UpdateVideoLessonToggleVisualState();
 
             if (VideoLessonCameraPip != null)

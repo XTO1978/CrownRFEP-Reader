@@ -46,6 +46,25 @@ public sealed class ReplayKitVideoLessonRecorder : IVideoLessonRecorder
 
     public bool IsRecording => RPScreenRecorder.SharedRecorder.Recording;
 
+    public async Task<bool> EnsurePermissionsAsync(bool cameraEnabled, bool microphoneEnabled, CancellationToken cancellationToken = default)
+    {
+        if (microphoneEnabled)
+        {
+            var micGranted = await EnsureMicrophonePermissionAsync(cancellationToken).ConfigureAwait(false);
+            if (!micGranted)
+                return false;
+        }
+
+        if (cameraEnabled)
+        {
+            var cameraGranted = await EnsureCameraPermissionAsync(cancellationToken).ConfigureAwait(false);
+            if (!cameraGranted)
+                return false;
+        }
+
+        return true;
+    }
+
     public void SetOptions(bool cameraEnabled, bool microphoneEnabled)
     {
         _cameraEnabled = cameraEnabled;
@@ -153,6 +172,32 @@ public sealed class ReplayKitVideoLessonRecorder : IVideoLessonRecorder
         });
 
         await tcs.Task.ConfigureAwait(false);
+    }
+
+    private static Task<bool> EnsureCameraPermissionAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var status = AVCaptureDevice.GetAuthorizationStatus(AVAuthorizationMediaType.Video);
+            if (status == AVAuthorizationStatus.Authorized)
+                return Task.FromResult(true);
+
+            if (status == AVAuthorizationStatus.Denied || status == AVAuthorizationStatus.Restricted)
+                return Task.FromResult(false);
+
+            if (status == AVAuthorizationStatus.NotDetermined)
+            {
+                // Nota: no hay cancelación real del prompt; el token solo cancela el await.
+                return AVCaptureDevice.RequestAccessForMediaTypeAsync(AVAuthorizationMediaType.Video)
+                    .WaitAsync(cancellationToken);
+            }
+
+            return Task.FromResult(false);
+        }
+        catch
+        {
+            return Task.FromResult(false);
+        }
     }
 
     public Task StopAsync(CancellationToken cancellationToken = default)
@@ -1559,14 +1604,31 @@ public sealed class ReplayKitVideoLessonRecorder : IVideoLessonRecorder
         if (micDuration.Seconds <= 0)
             micDuration = micAsset.Duration;
 
-        // Usar la duración más corta entre mic y video (evita insertar fuera de rango)
+        // Mux "de atrás adelante": alineamos el FIN del audio con el FIN del vídeo.
+        // Esto ayuda cuando el mic empieza antes (warmup) o cuando ReplayKit/AVCapture
+        // entregan buffers iniciales silenciosos que desplazan el audio.
         var audioDuration = (micDuration.Seconds > 0 && micDuration.Seconds < videoDuration.Seconds)
             ? micDuration
             : videoDuration;
-        var audioRange = new CMTimeRange { Start = CMTime.Zero, Duration = audioDuration };
-        
-        AppLog.Info(nameof(ReplayKitVideoLessonRecorder), $"TryMuxMicIntoVideoAsync: inserting mic audio | micDuration={micDuration.Seconds:F2}s | videoDuration={videoDuration.Seconds:F2}s | insertDuration={audioRange.Duration.Seconds:F2}s");
-        compAudio.InsertTimeRange(audioRange, micTrack, CMTime.Zero, out error);
+
+        // Rango fuente: últimos `audioDuration` segundos del mic
+        var micTrackStart = micTrack.TimeRange.Start;
+        var micTrackEnd = micTrack.TimeRange.Start + micDuration;
+        var desiredMicStart = micTrackEnd - audioDuration;
+        if (desiredMicStart < micTrackStart)
+            desiredMicStart = micTrackStart;
+
+        var audioSourceRange = new CMTimeRange { Start = desiredMicStart, Duration = audioDuration };
+
+        // Posición destino: para que termine a la vez que el vídeo
+        var insertAt = videoDuration - audioDuration;
+        if (insertAt.Seconds < 0)
+            insertAt = CMTime.Zero;
+
+        AppLog.Info(nameof(ReplayKitVideoLessonRecorder),
+            $"TryMuxMicIntoVideoAsync: inserting mic audio (align end) | micDuration={micDuration.Seconds:F2}s | videoDuration={videoDuration.Seconds:F2}s | insertDuration={audioDuration.Seconds:F2}s | sourceStart={audioSourceRange.Start.Seconds:F2}s | insertAt={insertAt.Seconds:F2}s");
+
+        compAudio.InsertTimeRange(audioSourceRange, micTrack, insertAt, out error);
         if (error != null)
         {
             AppLog.Error(nameof(ReplayKitVideoLessonRecorder), $"TryMuxMicIntoVideoAsync: InsertTimeRange error: {error.LocalizedDescription}");

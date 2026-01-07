@@ -4,6 +4,9 @@ public sealed class NullVideoLessonRecorder : IVideoLessonRecorder
 {
     public bool IsRecording => false;
 
+    public Task<bool> EnsurePermissionsAsync(bool cameraEnabled, bool microphoneEnabled, CancellationToken cancellationToken = default)
+        => Task.FromResult(true);
+
     public Task StartAsync(string outputFilePath, CancellationToken cancellationToken = default)
         => throw new NotSupportedException("La grabación de videolecciones no está soportada en esta plataforma.");
 
