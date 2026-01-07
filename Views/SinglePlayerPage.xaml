@@ -2388,6 +2388,19 @@
                         HorizontalOptions="Fill"
                         VerticalOptions="Fill" />
                 </Border>
+
+                <!-- Cuenta atrás antes de iniciar grabación (videolección) -->
+                <Label
+                    x:Name="VideoLessonCountdownLabel"
+                    IsVisible="False"
+                    HorizontalOptions="Center"
+                    VerticalOptions="Center"
+                    HorizontalTextAlignment="Center"
+                    VerticalTextAlignment="Center"
+                    TextColor="White"
+                    FontAttributes="Bold"
+                    FontSize="96"
+                    ZIndex="1100" />
             </Grid>
         </Border>
 

@@ -306,6 +306,39 @@ public partial class SinglePlayerPage : ContentPage
         return false;
     }
 
+    private async Task RunVideoLessonCountdownAsync(int seconds)
+    {
+        if (seconds <= 0)
+            return;
+
+        if (VideoLessonCountdownLabel == null)
+        {
+            await Task.Delay(seconds * 1000);
+            return;
+        }
+
+        await MainThread.InvokeOnMainThreadAsync(() =>
+        {
+            VideoLessonCountdownLabel.IsVisible = true;
+        });
+
+        for (var remaining = seconds; remaining >= 1; remaining--)
+        {
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                VideoLessonCountdownLabel.Text = remaining.ToString();
+            });
+
+            await Task.Delay(1000);
+        }
+
+        await MainThread.InvokeOnMainThreadAsync(() =>
+        {
+            VideoLessonCountdownLabel.IsVisible = false;
+            VideoLessonCountdownLabel.Text = string.Empty;
+        });
+    }
+
     private async Task StartVideoLessonRecordingAsync()
     {
         if (_videoLessonRecorder.IsRecording)
@@ -360,6 +393,9 @@ public partial class SinglePlayerPage : ContentPage
                     return;
                 }
             }
+
+            // 2.5) Con hardware listo, cuenta atrás visible para que el usuario se prepare
+            await RunVideoLessonCountdownAsync(3);
 
             var dir = Path.Combine(FileSystem.AppDataDirectory, "videolecciones");
             Directory.CreateDirectory(dir);
