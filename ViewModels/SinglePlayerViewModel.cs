@@ -127,14 +127,11 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         
         // Comandos de asignación de sección
         ToggleSectionAssignPanelCommand = new Command(() => {
-            // Cerrar otros paneles si se va a abrir este
-            if (!ShowSectionAssignPanel)
-            {
-                ShowAthleteAssignPanel = false;
-                ShowTagsAssignPanel = false;
-                ShowTagEventsPanel = false;
-            }
-            ShowSectionAssignPanel = !ShowSectionAssignPanel;
+            var wasOpen = ShowSectionAssignPanel;
+            // Cerrar todos los paneles primero
+            CloseAllPanels();
+            // Toggle este panel
+            ShowSectionAssignPanel = !wasOpen;
             if (ShowSectionAssignPanel && _videoClip != null)
                 SectionToAssign = _videoClip.Section > 0 ? _videoClip.Section : 1;
         });
@@ -1078,6 +1075,27 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     #region Métodos privados
 
     /// <summary>
+    /// Cierra todos los paneles desplegables de la barra de herramientas.
+    /// Llamar este método al abrir cualquier panel para asegurar que no haya múltiples paneles abiertos.
+    /// </summary>
+    public void CloseAllPanels()
+    {
+        ShowAthleteAssignPanel = false;
+        ShowSectionAssignPanel = false;
+        ShowTagsAssignPanel = false;
+        ShowTagEventsPanel = false;
+        ShowSplitTimePanel = false;
+        
+        // Notificar al code-behind para cerrar paneles gestionados ahí (ej: DrawingTools)
+        CloseExternalPanelsRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// Evento para notificar al code-behind que debe cerrar sus paneles (DrawingTools, VideoLessonOptions, etc.)
+    /// </summary>
+    public event EventHandler? CloseExternalPanelsRequested;
+
+    /// <summary>
     /// Notifica al Dashboard que un video ha sido actualizado para que refresque solo ese item
     /// </summary>
     private void NotifyVideoClipUpdated()
@@ -1377,12 +1395,13 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     private async Task ToggleAthleteAssignPanelAsync()
     {
-        // Cerrar otros paneles si se va a abrir este
-        if (!ShowAthleteAssignPanel)
+        var wasOpen = ShowAthleteAssignPanel;
+        // Cerrar todos los paneles primero
+        CloseAllPanels();
+        
+        // Si se va a abrir, cargar datos
+        if (!wasOpen)
         {
-            ShowSectionAssignPanel = false;
-            ShowTagsAssignPanel = false;
-            ShowTagEventsPanel = false;
             // Cargar atletas SIEMPRE (MacCatalyst tiene problemas con el Picker si se asigna la colección después)
             var athletes = await _databaseService.GetAllAthletesAsync();
             
@@ -1413,7 +1432,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             ((Command)AssignAthleteCommand).ChangeCanExecute();
         }
         
-        ShowAthleteAssignPanel = !ShowAthleteAssignPanel;
+        ShowAthleteAssignPanel = !wasOpen;
     }
 
     private void SelectAthleteToAssign(Athlete? athlete)
@@ -1552,13 +1571,13 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     private async Task ToggleTagsAssignPanelAsync()
     {
-        // Cerrar otros paneles si se va a abrir este
-        if (!ShowTagsAssignPanel)
+        var wasOpen = ShowTagsAssignPanel;
+        // Cerrar todos los paneles primero
+        CloseAllPanels();
+        
+        // Si se va a abrir, cargar datos
+        if (!wasOpen)
         {
-            ShowAthleteAssignPanel = false;
-            ShowSectionAssignPanel = false;
-            ShowTagEventsPanel = false;
-            
             // Cargar todos los tags SIEMPRE (MacCatalyst tiene problemas si se asigna la colección después)
             var tags = await _databaseService.GetAllTagsAsync();
             
@@ -1587,7 +1606,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(AllTags));
         }
         
-        ShowTagsAssignPanel = !ShowTagsAssignPanel;
+        ShowTagsAssignPanel = !wasOpen;
     }
 
     private void ToggleTagSelection(Tag tag)
@@ -1741,13 +1760,14 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     private async Task ToggleTagEventsPanelAsync()
     {
-        // Cerrar otros paneles si se va a abrir este
-        if (!ShowTagEventsPanel)
+        var wasOpen = ShowTagEventsPanel;
+        
+        // Cerrar todos los paneles (incluidos externos como DrawingTools)
+        CloseAllPanels();
+        
+        // Si no estaba abierto, cargar datos antes de abrir
+        if (!wasOpen)
         {
-            ShowAthleteAssignPanel = false;
-            ShowSectionAssignPanel = false;
-            ShowTagsAssignPanel = false;
-            
             // Cargar tipos de evento SIEMPRE (catálogo separado)
             var eventTags = await _databaseService.GetAllEventTagsAsync();
 
@@ -1775,7 +1795,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             await LoadTagEventsAsync();
         }
         
-        ShowTagEventsPanel = !ShowTagEventsPanel;
+        ShowTagEventsPanel = !wasOpen;
     }
 
     private async Task LoadTagEventsAsync()
@@ -2187,15 +2207,12 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     private void ToggleSplitTimePanel()
     {
-        // Cerrar otros paneles si se va a abrir este
-        if (!ShowSplitTimePanel)
-        {
-            ShowAthleteAssignPanel = false;
-            ShowSectionAssignPanel = false;
-            ShowTagsAssignPanel = false;
-            ShowTagEventsPanel = false;
-        }
-        ShowSplitTimePanel = !ShowSplitTimePanel;
+        var wasOpen = ShowSplitTimePanel;
+        
+        // Cerrar todos los paneles (incluidos externos como DrawingTools)
+        CloseAllPanels();
+        
+        ShowSplitTimePanel = !wasOpen;
 
         // Al abrir, cargar el split existente si lo hay
         if (ShowSplitTimePanel && _videoClip != null)

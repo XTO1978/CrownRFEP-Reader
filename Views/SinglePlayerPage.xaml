@@ -671,7 +671,7 @@
                 <!-- Barra de herramientas de dibujo (pequeña) -->
                 <Border
                     x:Name="DrawingToolsPanel"
-                    Margin="16,60,16,16"
+                    Margin="16,100,16,16"
                     Padding="10"
                     BackgroundColor="#EE1E1E1E"
                     HorizontalOptions="End"
@@ -680,6 +680,37 @@
                     StrokeThickness="0"
                     VerticalOptions="Start">
                     <VerticalStackLayout Spacing="8">
+                        <!--  Título del panel con botón cerrar  -->
+                        <Grid ColumnDefinitions="*,Auto">
+                            <HorizontalStackLayout Spacing="6">
+                                <controls:SymbolIcon
+                                    HeightRequest="{StaticResource IconSizeDefault}"
+                                    SymbolName="scribble.variable"
+                                    TintColor="#FF4CAF50"
+                                    WidthRequest="{StaticResource IconSizeDefault}" />
+                                <Label
+                                    FontAttributes="Bold"
+                                    FontSize="{StaticResource FontSizeSmall}"
+                                    Text="Dibujar"
+                                    TextColor="White"
+                                    VerticalOptions="Center" />
+                            </HorizontalStackLayout>
+                            <Border
+                                Grid.Column="1"
+                                Padding="4"
+                                BackgroundColor="Transparent"
+                                StrokeThickness="0">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Tapped="OnToggleDrawingToolsTapped" />
+                                </Border.GestureRecognizers>
+                                <controls:SymbolIcon
+                                    HeightRequest="{StaticResource IconSizeMedium}"
+                                    SymbolName="xmark.circle.fill"
+                                    TintColor="#FF888888"
+                                    WidthRequest="{StaticResource IconSizeMedium}" />
+                            </Border>
+                        </Grid>
+                        
                         <HorizontalStackLayout Spacing="8">
                             <Border
                                 x:Name="ToolStrokeButton"
@@ -1022,7 +1053,7 @@
                 
                 <!--  Panel de asignación de atleta  -->
                 <Border
-                    Margin="16,60,16,16"
+                    Margin="16,100,16,16"
                     Padding="16"
                     BackgroundColor="#EE1E1E1E"
                     HorizontalOptions="End"
@@ -1194,7 +1225,7 @@
                 
                 <!--  Panel de asignación de sección/tramo  -->
                 <Border
-                    Margin="16,60,16,16"
+                    Margin="16,100,16,16"
                     Padding="16"
                     BackgroundColor="#EE1E1E1E"
                     HorizontalOptions="End"
@@ -1306,7 +1337,7 @@
                 
                 <!--  Panel de asignación de etiquetas  -->
                 <Border
-                    Margin="16,60,16,16"
+                    Margin="16,100,16,16"
                     Padding="16"
                     BackgroundColor="#EE1E1E1E"
                     HorizontalOptions="End"
@@ -1460,7 +1491,7 @@
                 
                 <!--  Panel de eventos de etiquetas con timestamps  -->
                 <Border
-                    Margin="16,60,16,16"
+                    Margin="16,100,16,16"
                     Padding="16"
                     BackgroundColor="#EE1E1E1E"
                     HorizontalOptions="End"
@@ -1736,7 +1767,7 @@
                 
                 <!--  Panel de Split Time (Medidor de tiempo)  -->
                 <Border
-                    Margin="16,60,16,16"
+                    Margin="16,100,16,16"
                     Padding="16"
                     BackgroundColor="#EE1E1E1E"
                     HorizontalOptions="End"

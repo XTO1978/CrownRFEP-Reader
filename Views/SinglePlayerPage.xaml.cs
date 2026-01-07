@@ -108,6 +108,7 @@ public partial class SinglePlayerPage : ContentPage
         _viewModel.FrameForwardRequested += OnFrameForwardRequested;
         _viewModel.FrameBackwardRequested += OnFrameBackwardRequested;
         _viewModel.SpeedChangeRequested += OnSpeedChangeRequested;
+        _viewModel.CloseExternalPanelsRequested += OnCloseExternalPanelsRequested;
         _viewModel.VideoChanged += OnVideoChanged;
 
         if (AnalysisCanvas != null)
@@ -911,8 +912,38 @@ public partial class SinglePlayerPage : ContentPage
         return File.Exists(path) && new FileInfo(path).Length >= minBytes;
     }
 
+    /// <summary>
+    /// Cierra los paneles manejados en code-behind (como DrawingTools) cuando el ViewModel lo solicita.
+    /// </summary>
+    private void OnCloseExternalPanelsRequested(object? sender, EventArgs e)
+    {
+        // Cerrar DrawingTools si está abierto
+        if (_isDrawingMode)
+        {
+            _isDrawingMode = false;
+
+            if (DrawingToolsPanel != null)
+                DrawingToolsPanel.IsVisible = false;
+
+            if (AnalysisCanvas != null)
+                AnalysisCanvas.InputTransparent = true;
+
+            if (ScrubOverlay != null)
+                ScrubOverlay.InputTransparent = false;
+
+            if (InkOptionsPanel != null)
+                InkOptionsPanel.IsVisible = false;
+        }
+    }
+
     private void OnToggleDrawingToolsTapped(object? sender, TappedEventArgs e)
     {
+        // Si vamos a abrir DrawingTools, cerrar primero los paneles del ViewModel
+        if (!_isDrawingMode)
+        {
+            _viewModel.CloseAllPanels();
+        }
+        
         _isDrawingMode = !_isDrawingMode;
 
         if (DrawingToolsPanel != null)
