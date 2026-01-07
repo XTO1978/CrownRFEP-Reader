@@ -39,6 +39,8 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
     private string _currentLapDiffText = string.Empty;
     private Color _currentLapColor1 = Colors.White;
     private Color _currentLapColor2 = Colors.White;
+    private Color _currentLapBgColor1 = Color.FromArgb("#E6000000");
+    private Color _currentLapBgColor2 = Color.FromArgb("#E6000000");
 
     // Flags para evitar actualizar Progress mientras el usuario arrastra los sliders
     private bool _isDraggingSlider;
@@ -177,6 +179,28 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
         }
     }
 
+    public Color CurrentLapBgColor1
+    {
+        get => _currentLapBgColor1;
+        private set
+        {
+            if (_currentLapBgColor1 == value) return;
+            _currentLapBgColor1 = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public Color CurrentLapBgColor2
+    {
+        get => _currentLapBgColor2;
+        private set
+        {
+            if (_currentLapBgColor2 == value) return;
+            _currentLapBgColor2 = value;
+            OnPropertyChanged();
+        }
+    }
+
     private static string FormatLapTime(TimeSpan time)
     {
         // mm:ss.ff (centésimas) para encajar en overlay
@@ -272,6 +296,8 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
             CurrentLapDiffText = string.Empty;
             CurrentLapColor1 = Colors.White;
             CurrentLapColor2 = Colors.White;
+            CurrentLapBgColor1 = Color.FromArgb("#E6000000");
+            CurrentLapBgColor2 = Color.FromArgb("#E6000000");
             return;
         }
 
@@ -306,18 +332,24 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
 
         if (lapTime1 < lapTime2)
         {
-            CurrentLapColor1 = Color.FromArgb("#FF34C759");
-            CurrentLapColor2 = Color.FromArgb("#FFFF3B30");
+            CurrentLapColor1 = Color.FromArgb("#FF4CAF50");
+            CurrentLapBgColor1 = Color.FromArgb("#FF1B5E20");
+            CurrentLapColor2 = Color.FromArgb("#FFFF5252");
+            CurrentLapBgColor2 = Color.FromArgb("#FF8B2020");
         }
         else if (lapTime2 < lapTime1)
         {
-            CurrentLapColor1 = Color.FromArgb("#FFFF3B30");
-            CurrentLapColor2 = Color.FromArgb("#FF34C759");
+            CurrentLapColor1 = Color.FromArgb("#FFFF5252");
+            CurrentLapBgColor1 = Color.FromArgb("#FF8B2020");
+            CurrentLapColor2 = Color.FromArgb("#FF4CAF50");
+            CurrentLapBgColor2 = Color.FromArgb("#FF1B5E20");
         }
         else
         {
             CurrentLapColor1 = Colors.White;
+            CurrentLapBgColor1 = Color.FromArgb("#E6000000");
             CurrentLapColor2 = Colors.White;
+            CurrentLapBgColor2 = Color.FromArgb("#E6000000");
         }
     }
 

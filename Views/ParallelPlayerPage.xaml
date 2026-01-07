@@ -85,18 +85,18 @@
                             </Border>
                             <!--  Lap actual (overlay)  -->
                             <Border
-                                Margin="12"
-                                Padding="8,4"
-                                BackgroundColor="#CC000000"
-                                HorizontalOptions="Start"
+                                Margin="20,20,20,40"
+                                Padding="20,14"
+                                BackgroundColor="{Binding CurrentLapBgColor1}"
+                                HorizontalOptions="End"
                                 InputTransparent="True"
                                 IsVisible="{Binding HasLapTiming}"
                                 StrokeShape="RoundRectangle 4"
                                 StrokeThickness="0"
-                                VerticalOptions="Start">
+                                VerticalOptions="End">
                                 <Label
                                     FontAttributes="Bold"
-                                    FontSize="{StaticResource FontSizeSmall}"
+                                    FontSize="{StaticResource FontSizeHeader}"
                                     Text="{Binding CurrentLapText1}"
                                     TextColor="{Binding CurrentLapColor1}" />
                             </Border>
@@ -105,7 +105,7 @@
                                 Margin="12"
                                 Padding="8,4"
                                 BackgroundColor="#99000000"
-                                HorizontalOptions="Start"
+                                HorizontalOptions="End"
                                 StrokeShape="RoundRectangle 4"
                                 StrokeThickness="0"
                                 VerticalOptions="End">
@@ -233,18 +233,18 @@
                             </Border>
                             <!--  Lap actual (overlay)  -->
                             <Border
-                                Margin="12"
-                                Padding="8,4"
-                                BackgroundColor="#CC000000"
+                                Margin="20,20,20,40"
+                                Padding="20,14"
+                                BackgroundColor="{Binding CurrentLapBgColor2}"
                                 HorizontalOptions="Start"
                                 InputTransparent="True"
                                 IsVisible="{Binding HasLapTiming}"
                                 StrokeShape="RoundRectangle 4"
                                 StrokeThickness="0"
-                                VerticalOptions="Start">
+                                VerticalOptions="End">
                                 <Label
                                     FontAttributes="Bold"
-                                    FontSize="{StaticResource FontSizeSmall}"
+                                    FontSize="{StaticResource FontSizeHeader}"
                                     Text="{Binding CurrentLapText2}"
                                     TextColor="{Binding CurrentLapColor2}" />
                             </Border>
@@ -382,7 +382,8 @@
                     IsVisible="{Binding HasLapTiming}"
                     StrokeShape="RoundRectangle 8"
                     StrokeThickness="0"
-                    VerticalOptions="Center">
+                    VerticalOptions="Center"
+                    ZIndex="100">
                     <Label
                         FontAttributes="Bold"
                         FontSize="{StaticResource FontSizeSubtitle}"
@@ -434,9 +435,9 @@
                             </Border>
                             <!--  Lap actual (overlay)  -->
                             <Border
-                                Margin="12"
-                                Padding="8,4"
-                                BackgroundColor="#CC000000"
+                                Margin="16"
+                                Padding="16,10"
+                                BackgroundColor="{Binding CurrentLapBgColor1}"
                                 HorizontalOptions="Start"
                                 InputTransparent="True"
                                 IsVisible="{Binding HasLapTiming}"
@@ -445,7 +446,7 @@
                                 VerticalOptions="Start">
                                 <Label
                                     FontAttributes="Bold"
-                                    FontSize="{StaticResource FontSizeSmall}"
+                                    FontSize="{StaticResource FontSizeSubtitle}"
                                     Text="{Binding CurrentLapText1}"
                                     TextColor="{Binding CurrentLapColor1}" />
                             </Border>
@@ -565,9 +566,9 @@
                             </Border>
                             <!--  Lap actual (overlay)  -->
                             <Border
-                                Margin="12"
-                                Padding="8,4"
-                                BackgroundColor="#CC000000"
+                                Margin="16"
+                                Padding="16,10"
+                                BackgroundColor="{Binding CurrentLapBgColor2}"
                                 HorizontalOptions="Start"
                                 InputTransparent="True"
                                 IsVisible="{Binding HasLapTiming}"
@@ -576,7 +577,7 @@
                                 VerticalOptions="Start">
                                 <Label
                                     FontAttributes="Bold"
-                                    FontSize="{StaticResource FontSizeSmall}"
+                                    FontSize="{StaticResource FontSizeSubtitle}"
                                     Text="{Binding CurrentLapText2}"
                                     TextColor="{Binding CurrentLapColor2}" />
                             </Border>
