@@ -75,6 +75,14 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 
         try { SidebarSessionsCollectionView?.InvalidateMeasure(); } catch { }
 
+        try
+        {
+            SidebarSessionsCollectionView.SizeChanged += OnSidebarSessionsSizeChanged;
+            // Forzar un primer ajuste (por si ya hay tamaño en este punto)
+            OnSidebarSessionsSizeChanged(this, EventArgs.Empty);
+        }
+        catch { }
+
                 // Preview players (drop zones): cuando abren media, ocultamos miniatura.
                 PreviewPlayerSingle.MediaOpened += OnPreviewPlayerMediaOpened;
                 PreviewPlayer1H.MediaOpened += OnPreviewPlayerMediaOpened;
@@ -124,6 +132,8 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         }
         catch { }
 
+        try { SidebarSessionsCollectionView.SizeChanged -= OnSidebarSessionsSizeChanged; } catch { }
+
         try { PreviewPlayerSingle.MediaOpened -= OnPreviewPlayerMediaOpened; } catch { }
         try { PreviewPlayer1H.MediaOpened -= OnPreviewPlayerMediaOpened; } catch { }
         try { PreviewPlayer2H.MediaOpened -= OnPreviewPlayerMediaOpened; } catch { }
@@ -143,6 +153,28 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         try { PreviewPlayer2Q.PositionChanged -= OnPreviewPlayerPositionChanged; } catch { }
         try { PreviewPlayer3Q.PositionChanged -= OnPreviewPlayerPositionChanged; } catch { }
         try { PreviewPlayer4Q.PositionChanged -= OnPreviewPlayerPositionChanged; } catch { }
+    }
+
+    private void OnSidebarSessionsSizeChanged(object? sender, EventArgs e)
+    {
+        try
+        {
+            if (SidebarSessionsCollectionView == null || SidebarFixedItemsHeader == null)
+                return;
+
+            var width = SidebarSessionsCollectionView.Width;
+            if (width <= 0)
+                return;
+
+            // Ajustar el header para que se re-mida con el ancho actual del sidebar.
+            if (Math.Abs(SidebarFixedItemsHeader.WidthRequest - width) > 0.5)
+                SidebarFixedItemsHeader.WidthRequest = width;
+
+            // Re-medición para que los layouts recalculen truncado y columnas.
+            SidebarFixedItemsHeader.InvalidateMeasure();
+            SidebarSessionsCollectionView.InvalidateMeasure();
+        }
+        catch { }
     }
 
     private void OnPreviewPlayerMediaOpened(object? sender, EventArgs e)

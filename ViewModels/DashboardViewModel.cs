@@ -241,6 +241,7 @@ public class DashboardViewModel : BaseViewModel
 
     // Diario de sesión
     private SessionDiary? _currentSessionDiary;
+    private bool _isEditingDiary;
     private int _diaryValoracionFisica = 3;
     private int _diaryValoracionMental = 3;
     private int _diaryValoracionTecnica = 3;
@@ -1190,6 +1191,19 @@ public class DashboardViewModel : BaseViewModel
     }
 
     public bool HasDiaryData => _currentSessionDiary != null;
+
+    /// <summary>Indica si el usuario está editando el diario (muestra formulario vs vista de resultados)</summary>
+    public bool IsEditingDiary
+    {
+        get => _isEditingDiary;
+        set => SetProperty(ref _isEditingDiary, value);
+    }
+
+    /// <summary>Indica si debe mostrarse la vista de resultados del diario (datos guardados y no editando)</summary>
+    public bool ShowDiaryResults => HasDiaryData && !IsEditingDiary;
+
+    /// <summary>Indica si debe mostrarse el formulario del diario (sin datos o editando)</summary>
+    public bool ShowDiaryForm => !HasDiaryData || IsEditingDiary;
 
     /// <summary>Indica si debe mostrarse la galería de vídeos (no en Videolecciones ni Diario)</summary>
     public bool ShowVideoGallery => !IsVideoLessonsSelected && !IsDiaryViewSelected;
@@ -2677,6 +2691,7 @@ public class DashboardViewModel : BaseViewModel
     public ICommand SelectCrudTechTabCommand { get; }
     public ICommand SelectDiaryTabCommand { get; }
     public ICommand SaveDiaryCommand { get; }
+    public ICommand EditDiaryCommand { get; }
     public ICommand SaveCalendarDiaryCommand { get; }
     public ICommand ViewSessionAsPlaylistCommand { get; }
     public ICommand ConnectHealthKitCommand { get; }
@@ -2945,6 +2960,7 @@ public class DashboardViewModel : BaseViewModel
         SelectCrudTechTabCommand = new RelayCommand(() => IsCrudTechTabSelected = true);
         SelectDiaryTabCommand = new RelayCommand(() => IsDiaryTabSelected = true);
         SaveDiaryCommand = new AsyncRelayCommand(SaveDiaryAsync);
+        EditDiaryCommand = new RelayCommand(() => IsEditingDiary = true);
         SaveCalendarDiaryCommand = new AsyncRelayCommand<SessionWithDiary>(SaveCalendarDiaryAsync);
         ViewSessionAsPlaylistCommand = new AsyncRelayCommand<SessionWithDiary>(ViewSessionAsPlaylistAsync);
         ConnectHealthKitCommand = new AsyncRelayCommand(ConnectHealthKitAsync);
@@ -4993,6 +5009,7 @@ public class DashboardViewModel : BaseViewModel
                 DiaryValoracionMental = _currentSessionDiary.ValoracionMental;
                 DiaryValoracionTecnica = _currentSessionDiary.ValoracionTecnica;
                 DiaryNotas = _currentSessionDiary.Notas ?? "";
+                IsEditingDiary = false; // Hay datos, mostrar vista de resultados
             }
             else
             {
@@ -5001,9 +5018,12 @@ public class DashboardViewModel : BaseViewModel
                 DiaryValoracionMental = 3;
                 DiaryValoracionTecnica = 3;
                 DiaryNotas = "";
+                IsEditingDiary = true; // No hay datos, mostrar formulario
             }
 
             OnPropertyChanged(nameof(HasDiaryData));
+            OnPropertyChanged(nameof(ShowDiaryResults));
+            OnPropertyChanged(nameof(ShowDiaryForm));
 
             // Cargar promedios
             await LoadValoracionAveragesAsync(athleteId);
@@ -5120,7 +5140,10 @@ public class DashboardViewModel : BaseViewModel
 
             await _databaseService.SaveSessionDiaryAsync(diary);
             _currentSessionDiary = diary;
+            IsEditingDiary = false;
             OnPropertyChanged(nameof(HasDiaryData));
+            OnPropertyChanged(nameof(ShowDiaryResults));
+            OnPropertyChanged(nameof(ShowDiaryForm));
 
             // Recargar promedios y evolución
             await LoadValoracionAveragesAsync(athleteId);

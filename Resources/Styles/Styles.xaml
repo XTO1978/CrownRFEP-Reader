@@ -28,6 +28,15 @@
         <On Platform="Default" Value="OpenSansSemibold" />
     </OnPlatform>
 
+    <!-- Fuente monoespaciada para contadores/valores numéricos -->
+    <OnPlatform x:TypeArguments="x:String" x:Key="AppFontMono">
+        <On Platform="iOS" Value="Menlo" />
+        <On Platform="MacCatalyst" Value="Menlo" />
+        <On Platform="WinUI" Value="Cascadia Mono" />
+        <On Platform="Android" Value="monospace" />
+        <On Platform="Default" Value="monospace" />
+    </OnPlatform>
+
     <!-- Fuente de iconos (Segoe Fluent Icons on Windows, SF Symbols on Apple) -->
     <OnPlatform x:TypeArguments="x:String" x:Key="AppFontSymbols">
         <On Platform="iOS" Value="SF Pro Text" />
@@ -347,6 +356,7 @@
         <Setter Property="Stroke" Value="Transparent" />
         <Setter Property="StrokeThickness" Value="0" />
         <Setter Property="StrokeShape" Value="RoundRectangle 4" />
+        <Setter Property="HorizontalOptions" Value="Fill" />
     </Style>
 
     <!-- Estilo para el Label de items del menú lateral -->
@@ -357,12 +367,13 @@
         <Setter Property="TextColor" Value="White" />
         <Setter Property="VerticalOptions" Value="Center" />
         <Setter Property="VerticalTextAlignment" Value="Center" />
+        <Setter Property="LineBreakMode" Value="TailTruncation" />
     </Style>
 
     <!-- Estilo para items de menú lateral hijo/sub-item (con margen izquierdo) -->
     <Style TargetType="Border" x:Key="SidebarMenuSubItemBorder" BasedOn="{StaticResource SidebarMenuItemBorder}">
         <Setter Property="Margin" Value="48,0,0,0" />
-        <Setter Property="Padding" Value="10,6" />
+        <Setter Property="Padding" Value="10,6,4,6" />
         <Setter Property="StrokeShape" Value="RoundRectangle 6" />
     </Style>
 

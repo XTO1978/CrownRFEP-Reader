@@ -38,11 +38,13 @@
                         <Grid 
                             ColumnDefinitions="48,*"
                             BackgroundColor="Transparent"
+                            HorizontalOptions="Fill"
                             IsVisible="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=IsSessionsExpanded}">
                             <!-- Columna 1: contenido del header -->
                             <Border
                                 Grid.Column="1"
                                 BackgroundColor="Transparent"
+                                HorizontalOptions="Fill"
                                 Stroke="Transparent"
                                 StrokeThickness="0"
                                 StrokeShape="RoundRectangle 4">
@@ -59,7 +61,8 @@
                                 </Border.GestureRecognizers>
                                 <Grid
                                     ColumnDefinitions="Auto,*"
-                                    VerticalOptions="Center">
+                                    VerticalOptions="Center"
+                                    HorizontalOptions="Fill">
                                     <Grid.Padding>
                                         <OnPlatform x:TypeArguments="Thickness">
                                             <On Platform="iOS" Value="0,4" />
@@ -103,15 +106,17 @@
                         <Grid 
                             ColumnDefinitions="48,*"
                             BackgroundColor="Transparent"
+                            HorizontalOptions="Fill"
                             IsVisible="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=IsSessionsExpanded}">
                             <!-- Columna 1: contenido del subitem -->
                             <Border 
                                 Grid.Column="1"
-                                Padding="10,6"
+                                Padding="10,6,4,6"
                                 BackgroundColor="Transparent"
                                 Stroke="Transparent"
                                 StrokeThickness="0"
-                                StrokeShape="RoundRectangle 6">
+                                StrokeShape="RoundRectangle 6"
+                                HorizontalOptions="Fill">
                                 <Border.GestureRecognizers>
                                 <TapGestureRecognizer
                                     Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=SelectSessionRowCommand}"
@@ -159,7 +164,8 @@
                             </FlyoutBase.ContextFlyout>
                             <Grid
                                 ColumnDefinitions="Auto,*,Auto"
-                                VerticalOptions="Center">
+                                VerticalOptions="Center"
+                                HorizontalOptions="Fill">
                                 <controls:SymbolIcon
                                     Grid.Column="0"
                                     HeightRequest="{StaticResource IconSizeSidebarMenu}"
@@ -190,8 +196,11 @@
                                 </Label>
                                 <Label
                                     Grid.Column="2"
-                                    Margin="8,0,0,0"
+                                    Margin="0,0,8,0"
+                                    FontFamily="{StaticResource AppFontMono}"
                                     FontSize="{StaticResource FontSizeSmall}"
+                                    HorizontalOptions="End"
+                                    HorizontalTextAlignment="End"
                                     TextColor="#FF888888"
                                     Text="{Binding Session.VideoCount}"
                                     VerticalOptions="Center" />
@@ -270,7 +279,10 @@
 
                 <!--  Items fijos: Galería General + Videolecciones  -->
                 <CollectionView.Header>
-                    <VerticalStackLayout Spacing="{StaticResource SpacingXSmall}">
+                    <VerticalStackLayout
+                        x:Name="SidebarFixedItemsHeader"
+                        Spacing="{StaticResource SpacingXSmall}"
+                        HorizontalOptions="Fill">
                         <Border
                             x:Name="AllGalleryHeaderBorder"
                             Style="{StaticResource SidebarMenuItemBorder}">
@@ -288,26 +300,25 @@
                             <Border.GestureRecognizers>
                                 <TapGestureRecognizer Command="{Binding SelectAllGalleryCommand}" />
                             </Border.GestureRecognizers>
-                            <Grid ColumnDefinitions="Auto,*,Auto" VerticalOptions="Center">
-                                <HorizontalStackLayout
-                                    Grid.Column="0"
-                                    Margin="22,0,0,0"
-                                    Spacing="8"
-                                    VerticalOptions="Center">
-                                    <controls:SymbolIcon
-                                        HeightRequest="{StaticResource IconSizeSidebarMenu}"
-                                        SymbolName="photo.on.rectangle.angled"
-                                        TintColor="White"
-                                        VerticalOptions="Center"
-                                        WidthRequest="{StaticResource IconSizeSidebarMenu}" />
-                                    <Label
-                                        Style="{StaticResource SidebarMenuItemLabel}"
-                                        Text="Galería General" />
-                                </HorizontalStackLayout>
+                            <Grid ColumnDefinitions="22,Auto,*,Auto" ColumnSpacing="8" VerticalOptions="Center" HorizontalOptions="Fill">
+                                <controls:SymbolIcon
+                                    Grid.Column="1"
+                                    HeightRequest="{StaticResource IconSizeSidebarMenu}"
+                                    SymbolName="photo.on.rectangle.angled"
+                                    TintColor="White"
+                                    VerticalOptions="Center"
+                                    WidthRequest="{StaticResource IconSizeSidebarMenu}" />
                                 <Label
                                     Grid.Column="2"
+                                    Style="{StaticResource SidebarMenuItemLabel}"
+                                    Text="Galería General" />
+                                <Label
+                                    Grid.Column="3"
                                     Margin="0,0,8,0"
+                                    FontFamily="{StaticResource AppFontMono}"
                                     FontSize="{StaticResource FontSizeSmall}"
+                                    HorizontalOptions="End"
+                                    HorizontalTextAlignment="End"
                                     Text="{Binding Stats.TotalVideos}"
                                     TextColor="#FF888888"
                                     VerticalOptions="Center" />
@@ -331,26 +342,25 @@
                             <Border.GestureRecognizers>
                                 <TapGestureRecognizer Command="{Binding ViewVideoLessonsCommand}" />
                             </Border.GestureRecognizers>
-                            <Grid ColumnDefinitions="Auto,*,Auto" VerticalOptions="Center">
-                                <HorizontalStackLayout
-                                    Grid.Column="0"
-                                    Margin="22,0,0,0"
-                                    Spacing="8"
-                                    VerticalOptions="Center">
-                                    <controls:SymbolIcon
-                                        HeightRequest="{StaticResource IconSizeSidebarMenu}"
-                                        SymbolName="video"
-                                        TintColor="White"
-                                        VerticalOptions="Center"
-                                        WidthRequest="{StaticResource IconSizeSidebarMenu}" />
-                                    <Label
-                                        Style="{StaticResource SidebarMenuItemLabel}"
-                                        Text="Videolecciones" />
-                                </HorizontalStackLayout>
+                            <Grid ColumnDefinitions="22,Auto,*,Auto" ColumnSpacing="8" VerticalOptions="Center" HorizontalOptions="Fill">
+                                <controls:SymbolIcon
+                                    Grid.Column="1"
+                                    HeightRequest="{StaticResource IconSizeSidebarMenu}"
+                                    SymbolName="video"
+                                    TintColor="White"
+                                    VerticalOptions="Center"
+                                    WidthRequest="{StaticResource IconSizeSidebarMenu}" />
                                 <Label
                                     Grid.Column="2"
+                                    Style="{StaticResource SidebarMenuItemLabel}"
+                                    Text="Videolecciones" />
+                                <Label
+                                    Grid.Column="3"
                                     Margin="0,0,8,0"
+                                    FontFamily="{StaticResource AppFontMono}"
                                     FontSize="{StaticResource FontSizeSmall}"
+                                    HorizontalOptions="End"
+                                    HorizontalTextAlignment="End"
                                     Text="{Binding VideoLessons.Count}"
                                     TextColor="#FF888888"
                                     VerticalOptions="Center" />
@@ -364,7 +374,7 @@
                             <Border.Behaviors>
                                 <behaviors:SidebarHoverBehavior />
                             </Border.Behaviors>
-                            <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" VerticalOptions="Center">
+                            <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" VerticalOptions="Center" HorizontalOptions="Fill">
                                 <!-- Expansion toggle button -->
                                 <Border
                                     Grid.Column="0"
@@ -425,8 +435,11 @@
                                 </Border>
                                 <Label
                                     Grid.Column="4"
-                                    Margin="0,0,0,0"
+                                    Margin="0,0,8,0"
+                                    FontFamily="{StaticResource AppFontMono}"
                                     FontSize="{StaticResource FontSizeSmall}"
+                                    HorizontalOptions="End"
+                                    HorizontalTextAlignment="End"
                                     TextColor="#FF888888"
                                     Text="{Binding SmartFolders.Count}"
                                     VerticalOptions="Center" />
@@ -436,6 +449,7 @@
                         <VerticalStackLayout
                             Margin="0,0,0,6"
                             Spacing="{StaticResource SpacingXSmall}"
+                            HorizontalOptions="Fill"
                             IsVisible="{Binding IsSmartFoldersExpanded}"
                             BindableLayout.ItemsSource="{Binding SmartFolders}">
                             <BindableLayout.ItemTemplate>
@@ -478,7 +492,7 @@
                                                 </MenuFlyoutItem>
                                             </MenuFlyout>
                                         </FlyoutBase.ContextFlyout>
-                                        <Grid ColumnDefinitions="Auto,*,Auto" VerticalOptions="Center">
+                                        <Grid ColumnDefinitions="Auto,*,Auto" VerticalOptions="Center" HorizontalOptions="Fill">
                                             <controls:SymbolIcon
                                                 Grid.Column="0"
                                                 HeightRequest="{StaticResource IconSizeSidebarMenu}"
@@ -493,8 +507,11 @@
                                                 Text="{Binding Name}" />
                                             <Label
                                                 Grid.Column="2"
-                                                Margin="8,0,0,0"
+                                                Margin="0,0,8,0"
+                                                FontFamily="{StaticResource AppFontMono}"
                                                 FontSize="{StaticResource FontSizeSmall}"
+                                                HorizontalOptions="End"
+                                                HorizontalTextAlignment="End"
                                                 TextColor="#FF888888"
                                                 Text="{Binding MatchingVideoCount}"
                                                 VerticalOptions="Center" />
@@ -522,20 +539,19 @@
                             <Border.GestureRecognizers>
                                 <TapGestureRecognizer Command="{Binding ViewDiaryCommand}" />
                             </Border.GestureRecognizers>
-                            <HorizontalStackLayout
-                                Margin="22,0,0,0"
-                                Spacing="8"
-                                VerticalOptions="Center">
+                            <Grid ColumnDefinitions="22,Auto,*" ColumnSpacing="8" VerticalOptions="Center" HorizontalOptions="Fill">
                                 <controls:SymbolIcon
+                                    Grid.Column="1"
                                     HeightRequest="{StaticResource IconSizeSidebarMenu}"
                                     SymbolName="book"
                                     TintColor="White"
                                     VerticalOptions="Center"
                                     WidthRequest="{StaticResource IconSizeSidebarMenu}" />
                                 <Label
+                                    Grid.Column="2"
                                     Style="{StaticResource SidebarMenuItemLabel}"
                                     Text="Diario" />
-                            </HorizontalStackLayout>
+                            </Grid>
                         </Border>
 
                         <!--  Item padre: Sesiones (expandible)  -->
@@ -545,7 +561,7 @@
                             <Border.Behaviors>
                                 <behaviors:SidebarHoverBehavior />
                             </Border.Behaviors>
-                            <Grid ColumnDefinitions="Auto,Auto,*,Auto" VerticalOptions="Center">
+                            <Grid ColumnDefinitions="Auto,Auto,*,Auto" VerticalOptions="Center" HorizontalOptions="Fill">
                                 <!-- Expansion toggle button -->
                                 <Border
                                     Grid.Column="0"
@@ -585,8 +601,11 @@
                                     Text="Sesiones" />
                                 <Label
                                     Grid.Column="3"
-                                    Margin="8,0,8,0"
+                                    Margin="0,0,8,0"
+                                    FontFamily="{StaticResource AppFontMono}"
                                     FontSize="{StaticResource FontSizeSmall}"
+                                    HorizontalOptions="End"
+                                    HorizontalTextAlignment="End"
                                     TextColor="#FF888888"
                                     Text="{Binding Stats.TotalSessions}"
                                     VerticalOptions="Center" />
@@ -3304,12 +3323,120 @@
                         Text="Diario de Sesión"
                         TextColor="White" />
                     
+                    <!--  ===== VISTA DE RESULTADOS (cuando hay datos guardados y no está editando) =====  -->
+                    <Border
+                        Padding="16"
+                        BackgroundColor="#FF1E1E1E"
+                        StrokeShape="RoundRectangle 12"
+                        StrokeThickness="0"
+                        IsVisible="{Binding ShowDiaryResults}">
+                        <VerticalStackLayout Spacing="16">
+                            <Label
+                                FontAttributes="None"
+                                FontSize="{StaticResource FontSizeBody}"
+                                Text="Tu valoración de esta sesión"
+                                TextColor="White" />
+                            
+                            <!--  Resultados de valoración  -->
+                            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12">
+                                <!--  Físico  -->
+                                <Border
+                                    Padding="12"
+                                    BackgroundColor="#FF2A2A2A"
+                                    StrokeShape="RoundRectangle 8"
+                                    StrokeThickness="0">
+                                    <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
+                                        <Label
+                                            FontAttributes="None"
+                                            FontSize="{StaticResource FontSizeHeader}"
+                                            HorizontalOptions="Center"
+                                            Text="{Binding DiaryValoracionFisica}"
+                                            TextColor="#FF8DD3C7" />
+                                        <Label
+                                            FontSize="{StaticResource FontSizeSmall}"
+                                            HorizontalOptions="Center"
+                                            Text="Físico"
+                                            TextColor="#FF808080" />
+                                    </VerticalStackLayout>
+                                </Border>
+                                
+                                <!--  Mental  -->
+                                <Border
+                                    Grid.Column="1"
+                                    Padding="12"
+                                    BackgroundColor="#FF2A2A2A"
+                                    StrokeShape="RoundRectangle 8"
+                                    StrokeThickness="0">
+                                    <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
+                                        <Label
+                                            FontAttributes="None"
+                                            FontSize="{StaticResource FontSizeHeader}"
+                                            HorizontalOptions="Center"
+                                            Text="{Binding DiaryValoracionMental}"
+                                            TextColor="#FFFFED6F" />
+                                        <Label
+                                            FontSize="{StaticResource FontSizeSmall}"
+                                            HorizontalOptions="Center"
+                                            Text="Mental"
+                                            TextColor="#FF808080" />
+                                    </VerticalStackLayout>
+                                </Border>
+                                
+                                <!--  Técnico  -->
+                                <Border
+                                    Grid.Column="2"
+                                    Padding="12"
+                                    BackgroundColor="#FF2A2A2A"
+                                    StrokeShape="RoundRectangle 8"
+                                    StrokeThickness="0">
+                                    <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
+                                        <Label
+                                            FontAttributes="None"
+                                            FontSize="{StaticResource FontSizeHeader}"
+                                            HorizontalOptions="Center"
+                                            Text="{Binding DiaryValoracionTecnica}"
+                                            TextColor="#FFBEBADA" />
+                                        <Label
+                                            FontSize="{StaticResource FontSizeSmall}"
+                                            HorizontalOptions="Center"
+                                            Text="Técnico"
+                                            TextColor="#FF808080" />
+                                    </VerticalStackLayout>
+                                </Border>
+                            </Grid>
+                            
+                            <!--  Notas guardadas  -->
+                            <VerticalStackLayout Spacing="4" IsVisible="{Binding DiaryNotas, Converter={StaticResource NotNullOrEmptyBoolConverter}}">
+                                <Label
+                                    FontSize="{StaticResource FontSizeSmall}"
+                                    Text="Notas"
+                                    TextColor="#FF808080" />
+                                <Label
+                                    FontSize="{StaticResource FontSizeBody}"
+                                    Text="{Binding DiaryNotas}"
+                                    TextColor="#FFCCCCCC" />
+                            </VerticalStackLayout>
+                            
+                            <!--  Botón Editar valoración  -->
+                            <Button
+                                Padding="16,10"
+                                BackgroundColor="#FF404040"
+                                Command="{Binding EditDiaryCommand}"
+                                CornerRadius="4"
+                                HorizontalOptions="Start"
+                                Text="Editar valoración"
+                                TextColor="White" />
+                        </VerticalStackLayout>
+                    </Border>
+                    
+                    <!--  ===== FORMULARIO DE VALORACIÓN (cuando no hay datos o está editando) =====  -->
                     <!--  Cuestionario de valoraciones  -->
                     <Border
                         Padding="16"
                         BackgroundColor="Transparent"
                         StrokeShape="RoundRectangle 12"
-                        StrokeThickness="0">
+                        StrokeThickness="0"
+                        IsVisible="{Binding ShowDiaryForm}">
                         <VerticalStackLayout Spacing="16">
                             <Label
                                 FontAttributes="None"
@@ -3592,12 +3719,13 @@
                     <Border HeightRequest="0.4" BackgroundColor="#FF0A0A0A"/>
                     
                     
-                    <!--  Notas de sesión  -->
+                    <!--  Notas de sesión (solo en modo edición)  -->
                     <Border
                         Padding="16"
                         BackgroundColor="#FF1E1E1E"
                         StrokeShape="RoundRectangle 12"
-                        StrokeThickness="0">
+                        StrokeThickness="0"
+                        IsVisible="{Binding ShowDiaryForm}">
                         <VerticalStackLayout Spacing="12">
                             <Label
                                 FontAttributes="None"
@@ -3616,7 +3744,7 @@
                         </VerticalStackLayout>
                     </Border>
                     
-                    <!--  Botón Guardar  -->
+                    <!--  Botón Guardar (solo en modo edición)  -->
                     <Button
                         Padding="20,12"
                         BackgroundColor="#FF303030"
@@ -3624,7 +3752,8 @@
                         CornerRadius="4"
                         HorizontalOptions="Fill"
                         Text="Guardar Diario"
-                        TextColor="White" />
+                        TextColor="White"
+                        IsVisible="{Binding ShowDiaryForm}" />
                     
                 </VerticalStackLayout>
 
