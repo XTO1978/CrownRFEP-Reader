@@ -1,4 +1,6 @@
 using SQLite;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 
 namespace CrownRFEP_Reader.Models;
 
@@ -6,8 +8,13 @@ namespace CrownRFEP_Reader.Models;
 /// Representa una sesión de entrenamiento
 /// </summary>
 [Table("sesion")]
-public class Session
+public class Session : INotifyPropertyChanged
 {
+    private string _icon = "oar.2.crossed";
+    private string _iconColor = "#FF6DDDFF";
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
     [PrimaryKey, AutoIncrement]
     [Column("id")]
     public int Id { get; set; }
@@ -56,4 +63,37 @@ public class Session
 
     [Ignore]
     public bool IsSelected { get; set; }
+
+    /// <summary>
+    /// SF Symbol name for the session icon (stored in Preferences, not DB)
+    /// </summary>
+    [Ignore]
+    public string Icon
+    {
+        get => _icon;
+        set
+        {
+            if (_icon == value) return;
+            _icon = value;
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>
+    /// Hex color for the session icon (stored in Preferences, not DB)
+    /// </summary>
+    [Ignore]
+    public string IconColor
+    {
+        get => _iconColor;
+        set
+        {
+            if (_iconColor == value) return;
+            _iconColor = value;
+            OnPropertyChanged();
+        }
+    }
+
+    private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }

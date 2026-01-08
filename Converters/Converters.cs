@@ -691,3 +691,161 @@ public class NotNullOrEmptyBoolConverter : IValueConverter
         throw new NotImplementedException();
     }
 }
+
+/// <summary>
+/// Convierte un string hexadecimal a Color
+/// </summary>
+public class HexStringToColorConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is string hexColor && !string.IsNullOrEmpty(hexColor))
+        {
+            try
+            {
+                return Color.FromArgb(hexColor);
+            }
+            catch
+            {
+                return Colors.Gray;
+            }
+        }
+        return Colors.Gray;
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+/// <summary>
+/// Converter para crear una tupla (SmartFolderDefinition, string icon) para el comando de cambiar icono
+/// </summary>
+public class SmartFolderIconParameterConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is CrownRFEP_Reader.Models.SmartFolderDefinition folder && parameter is string icon)
+        {
+            return (folder, icon);
+        }
+        return null;
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+/// <summary>
+/// Converter para crear una tupla (SmartFolderDefinition, string color) para el comando de cambiar color
+/// </summary>
+public class SmartFolderColorParameterConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is CrownRFEP_Reader.Models.SmartFolderDefinition folder && parameter is string color)
+        {
+            return (folder, color);
+        }
+        return null;
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+/// <summary>
+/// Converter para crear una tupla (SessionRow, string icon) para el comando de cambiar icono de sesión
+/// </summary>
+public class SessionIconParameterConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is CrownRFEP_Reader.ViewModels.SessionRow row && parameter is string icon)
+        {
+            return (row, icon);
+        }
+        return null;
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+/// <summary>
+/// Converter para crear una tupla (SessionRow, string color) para el comando de cambiar color de sesión
+/// </summary>
+public class SessionColorParameterConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is CrownRFEP_Reader.ViewModels.SessionRow row && parameter is string color)
+        {
+            return (row, color);
+        }
+        return null;
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+/// <summary>
+/// Compara un valor con el parámetro y retorna true si son iguales (para marcar selección)
+/// </summary>
+public class StringEqualsConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is string str1 && parameter is string str2)
+        {
+            return string.Equals(str1, str2, StringComparison.OrdinalIgnoreCase);
+        }
+        return false;
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+/// <summary>
+/// Convierte un booleano (isSelected) a Color para el borde de selección
+/// Parámetro: "selectedColor|unselectedColor" (ej: "#FF6DDDFF|Transparent")
+/// </summary>
+public class BoolToStrokeColorConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        var isSelected = value is bool b && b;
+        var colors = (parameter as string)?.Split('|') ?? new[] { "#FF6DDDFF", "Transparent" };
+        
+        var colorStr = isSelected ? colors[0] : (colors.Length > 1 ? colors[1] : "Transparent");
+        
+        try
+        {
+            if (colorStr.Equals("Transparent", StringComparison.OrdinalIgnoreCase))
+                return Colors.Transparent;
+            return Color.FromArgb(colorStr);
+        }
+        catch
+        {
+            return Colors.Transparent;
+        }
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}

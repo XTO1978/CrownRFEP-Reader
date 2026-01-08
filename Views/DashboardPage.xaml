@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage
     x:Class="CrownRFEP_Reader.Views.DashboardPage"
+    x:Name="ThisPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:behaviors="clr-namespace:CrownRFEP_Reader.Behaviors"
@@ -23,6 +24,13 @@
             <converters:EqualityToBorderWidthConverter x:Key="EqualityToBorderWidthConverter" />
             <converters:NotNullOrEmptyBoolConverter x:Key="NotNullOrEmptyBoolConverter" />
             <converters:IsNotNullConverter x:Key="IsNotNullConverter" />
+            <converters:HexStringToColorConverter x:Key="HexStringToColorConverter" />
+            <converters:SmartFolderIconParameterConverter x:Key="SmartFolderIconParameterConverter" />
+            <converters:SmartFolderColorParameterConverter x:Key="SmartFolderColorParameterConverter" />
+            <converters:SessionIconParameterConverter x:Key="SessionIconParameterConverter" />
+            <converters:SessionColorParameterConverter x:Key="SessionColorParameterConverter" />
+            <converters:StringEqualsConverter x:Key="StringEqualsConverter" />
+            <converters:BoolToStrokeColorConverter x:Key="BoolToStrokeColorConverter" />
 
             <controls:SessionsListRowTemplateSelector x:Key="SessionsListRowTemplateSelector">
                 <controls:SessionsListRowTemplateSelector.HeaderTemplate>
@@ -94,6 +102,23 @@
                                     <Setter Property="BackgroundColor" Value="#FF2A2A2A" />
                                 </DataTrigger>
                             </Border.Triggers>
+                            <FlyoutBase.ContextFlyout>
+                                <MenuFlyout>
+                                    <MenuFlyoutItem
+                                        Text="Renombrar"
+                                        Command="{Binding BindingContext.RenameSessionCommand, Source={x:Reference ThisPage}}"
+                                        CommandParameter="{Binding .}" />
+                                    <MenuFlyoutItem
+                                        Text="Personalizar..."
+                                        Command="{Binding BindingContext.OpenIconColorPickerForSessionCommand, Source={x:Reference ThisPage}}"
+                                        CommandParameter="{Binding .}" />
+                                    <MenuFlyoutSeparator />
+                                    <MenuFlyoutItem
+                                        Text="Eliminar"
+                                        Command="{Binding BindingContext.DeleteSessionCommand, Source={x:Reference ThisPage}}"
+                                        CommandParameter="{Binding .}" />
+                                </MenuFlyout>
+                            </FlyoutBase.ContextFlyout>
                             <HorizontalStackLayout
                                 Spacing="8"
                                 VerticalOptions="Center">
@@ -111,8 +136,8 @@
                                     WidthRequest="{StaticResource IconSizeMedium}" />
                                 <controls:SymbolIcon
                                     HeightRequest="{StaticResource IconSizeDefault}"
-                                    SymbolName="oar.2.crossed"
-                                    TintColor="#FF6DDDFF"
+                                    SymbolName="{Binding Session.Icon}"
+                                    TintColor="{Binding Session.IconColor, Converter={StaticResource HexStringToColorConverter}}"
                                     VerticalOptions="Center"
                                     WidthRequest="{StaticResource IconSizeDefault}" />
                                 <Label
@@ -203,6 +228,7 @@
             RowDefinitions="*,Auto">
 
             <CollectionView
+                x:Name="SidebarSessionsCollectionView"
                 Grid.Row="0"
                 Margin="0,20,0,0"
                 BackgroundColor="#00BBBABA"
@@ -241,7 +267,7 @@
                                 <controls:SymbolIcon
                                     HeightRequest="{OnPlatform WinUI={StaticResource IconSizeXLarge}, Default={StaticResource IconSizeXLarge}}"
                                     SymbolName="photo.on.rectangle.angled"
-                                    TintColor="#FF6DDDFF"
+                                    TintColor="White"
                                     VerticalOptions="Center"
                                     WidthRequest="{OnPlatform WinUI={StaticResource IconSizeXLarge}, Default={StaticResource IconSizeXLarge}}" />
                                 <Label
@@ -282,7 +308,7 @@
                                 <controls:SymbolIcon
                                     HeightRequest="{OnPlatform WinUI={StaticResource IconSizeXLarge}, Default={StaticResource IconSizeXLarge}}"
                                     SymbolName="video"
-                                    TintColor="#FF6DDDFF"
+                                    TintColor="White"
                                     VerticalOptions="Center"
                                     WidthRequest="{OnPlatform WinUI={StaticResource IconSizeXLarge}, Default={StaticResource IconSizeXLarge}}" />
                                 <Label
@@ -294,6 +320,116 @@
                                     VerticalTextAlignment="Center" />
                             </HorizontalStackLayout>
                         </Border>
+
+                        <!--  Carpetas inteligentes  -->
+                        <Border
+                            x:Name="SmartFoldersHeaderBorder"
+                            Margin="0"
+                            Padding="{StaticResource PaddingXSmall}"
+                            BackgroundColor="Transparent"
+                            Stroke="Transparent"
+                            StrokeThickness="0"
+                            StrokeShape="RoundRectangle 4">
+                            <Border.Behaviors>
+                                <behaviors:SidebarHoverBehavior />
+                            </Border.Behaviors>
+                            <Grid ColumnDefinitions="Auto,*,Auto" VerticalOptions="Center">
+                                <controls:SymbolIcon
+                                    Grid.Column="0"
+                                    HeightRequest="{OnPlatform WinUI={StaticResource IconSizeXLarge}, Default={StaticResource IconSizeXLarge}}"
+                                    SymbolName="folder"
+                                    TintColor="White"
+                                    VerticalOptions="Center"
+                                    WidthRequest="{OnPlatform WinUI={StaticResource IconSizeXLarge}, Default={StaticResource IconSizeXLarge}}" />
+                                <Label
+                                    Grid.Column="1"
+                                    Margin="8,0,0,0"
+                                    FontFamily="{StaticResource AppFontBody}"
+                                    FontSize="{StaticResource FontSizeSubtitle}"
+                                    Text="Carpeta inteligente"
+                                    TextColor="White"
+                                    VerticalOptions="Center"
+                                    VerticalTextAlignment="Center" />
+                                <Border
+                                    Grid.Column="2"
+                                    Padding="4"
+                                    BackgroundColor="Transparent"
+                                    Stroke="Transparent"
+                                    StrokeShape="RoundRectangle 4"
+                                    HorizontalOptions="End"
+                                    VerticalOptions="Center">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Command="{Binding OpenSmartFolderSidebarPopupCommand}" />
+                                    </Border.GestureRecognizers>
+                                    <controls:SymbolIcon
+                                        HeightRequest="{StaticResource IconSizeLarge}"
+                                        SymbolName="plus"
+                                        TintColor="#FF888888"
+                                        WidthRequest="{StaticResource IconSizeLarge}" />
+                                </Border>
+                            </Grid>
+                        </Border>
+
+                        <VerticalStackLayout
+                            Margin="0,0,0,6"
+                            Spacing="{StaticResource SpacingXSmall}"
+                            BindableLayout.ItemsSource="{Binding SmartFolders}">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate x:DataType="models:SmartFolderDefinition">
+                                    <Border
+                                        Margin="12,0,0,0"
+                                        Padding="10,6"
+                                        BackgroundColor="Transparent"
+                                        Stroke="Transparent"
+                                        StrokeThickness="0"
+                                        StrokeShape="RoundRectangle 6">
+                                        <Border.Behaviors>
+                                            <behaviors:SidebarHoverBehavior />
+                                        </Border.Behaviors>
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer
+                                                Command="{Binding BindingContext.SelectSmartFolderCommand, Source={x:Reference ThisPage}}"
+                                                CommandParameter="{Binding .}" />
+                                        </Border.GestureRecognizers>
+                                        <FlyoutBase.ContextFlyout>
+                                            <MenuFlyout>
+                                                <MenuFlyoutItem
+                                                    Text="Renombrar"
+                                                    Command="{Binding BindingContext.RenameSmartFolderCommand, Source={x:Reference ThisPage}}"
+                                                    CommandParameter="{Binding .}" />
+                                                <MenuFlyoutItem
+                                                    Text="Personalizar..."
+                                                    Command="{Binding BindingContext.OpenIconColorPickerForSmartFolderCommand, Source={x:Reference ThisPage}}"
+                                                    CommandParameter="{Binding .}" />
+                                                <MenuFlyoutSeparator />
+                                                <MenuFlyoutItem
+                                                    Text="Eliminar"
+                                                    Command="{Binding BindingContext.DeleteSmartFolderCommand, Source={x:Reference ThisPage}}"
+                                                    CommandParameter="{Binding .}" />
+                                            </MenuFlyout>
+                                        </FlyoutBase.ContextFlyout>
+                                        <Grid ColumnDefinitions="Auto,*" VerticalOptions="Center">
+                                            <controls:SymbolIcon
+                                                Grid.Column="0"
+                                                HeightRequest="{StaticResource IconSizeMedium}"
+                                                WidthRequest="{StaticResource IconSizeMedium}"
+                                                SymbolName="{Binding Icon}"
+                                                TintColor="{Binding IconColor, Converter={StaticResource HexStringToColorConverter}}"
+                                                VerticalOptions="Center" />
+                                            <Label
+                                                Grid.Column="1"
+                                                Margin="8,0,0,0"
+                                                FontFamily="{StaticResource AppFontBody}"
+                                                FontSize="{StaticResource FontSizeSmall}"
+                                                Text="{Binding Name}"
+                                                TextColor="#FFB1B1B1"
+                                                LineBreakMode="TailTruncation"
+                                                VerticalOptions="Center" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </VerticalStackLayout>
 
                         <!--  Diario Personal  -->
                         <Border
@@ -324,7 +460,7 @@
                                 <controls:SymbolIcon
                                     HeightRequest="{OnPlatform WinUI={StaticResource IconSizeXLarge}, Default={StaticResource IconSizeXLarge}}"
                                     SymbolName="book"
-                                    TintColor="#FF6DDDFF"
+                                    TintColor="White"
                                     VerticalOptions="Center"
                                     WidthRequest="{OnPlatform WinUI={StaticResource IconSizeXLarge}, Default={StaticResource IconSizeXLarge}}" />
                                 <Label
@@ -355,7 +491,7 @@
                                 <controls:SymbolIcon
                                     HeightRequest="{OnPlatform WinUI={StaticResource IconSizeXLarge}, Default={StaticResource IconSizeXLarge}}"
                                     SymbolName="clock"
-                                    TintColor="#FF6DDDFF"
+                                    TintColor="White"
                                     VerticalOptions="Center"
                                     WidthRequest="{OnPlatform WinUI={StaticResource IconSizeXLarge}, Default={StaticResource IconSizeXLarge}}" />
                                 <Label
@@ -2476,7 +2612,9 @@
                                                     Stroke="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF4A9FD4|#FF3A3A3A'}"
                                                     StrokeShape="RoundRectangle 4">
                                                     <Border.GestureRecognizers>
-                                                        <TapGestureRecognizer Tapped="OnFilterChipTapped" />
+                                                        <TapGestureRecognizer
+                                                            Command="{Binding BindingContext.ToggleFilterItemCommand, Source={x:Reference ThisPage}}"
+                                                            CommandParameter="{Binding .}" />
                                                     </Border.GestureRecognizers>
                                                     <Label
                                                         FontFamily="{StaticResource AppFontBody}"
@@ -2519,7 +2657,9 @@
                                                     Stroke="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF4A9FD4|#FF3A3A3A'}"
                                                     StrokeShape="RoundRectangle 4">
                                                     <Border.GestureRecognizers>
-                                                        <TapGestureRecognizer Tapped="OnFilterChipTapped" />
+                                                        <TapGestureRecognizer
+                                                            Command="{Binding BindingContext.ToggleFilterItemCommand, Source={x:Reference ThisPage}}"
+                                                            CommandParameter="{Binding .}" />
                                                     </Border.GestureRecognizers>
                                                     <Label
                                                         FontFamily="{StaticResource AppFontBody}"
@@ -2562,7 +2702,9 @@
                                                     Stroke="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF4A9FD4|#FF3A3A3A'}"
                                                     StrokeShape="RoundRectangle 4">
                                                     <Border.GestureRecognizers>
-                                                        <TapGestureRecognizer Tapped="OnFilterChipTapped" />
+                                                        <TapGestureRecognizer
+                                                            Command="{Binding BindingContext.ToggleFilterItemCommand, Source={x:Reference ThisPage}}"
+                                                            CommandParameter="{Binding .}" />
                                                     </Border.GestureRecognizers>
                                                     <Label
                                                         FontFamily="{StaticResource AppFontBody}"
@@ -2605,7 +2747,9 @@
                                                     Stroke="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF4A9FD4|#FF3A3A3A'}"
                                                     StrokeShape="RoundRectangle 4">
                                                     <Border.GestureRecognizers>
-                                                        <TapGestureRecognizer Tapped="OnFilterChipTapped" />
+                                                        <TapGestureRecognizer
+                                                            Command="{Binding BindingContext.ToggleFilterItemCommand, Source={x:Reference ThisPage}}"
+                                                            CommandParameter="{Binding .}" />
                                                     </Border.GestureRecognizers>
                                                     <Label
                                                         FontFamily="{StaticResource AppFontBody}"
@@ -4684,6 +4828,518 @@
                             HeightRequest="{StaticResource ElementHeightLarge}"
                             Command="{Binding CreateSessionAndRecordCommand}" />
                     </Grid>
+                </VerticalStackLayout>
+            </Border>
+        </Grid>
+
+        <!--  Popup de carpeta inteligente  -->
+        <Grid
+            Grid.Row="0"
+            Grid.RowSpan="2"
+            Grid.ColumnSpan="5"
+            BackgroundColor="#CC000000"
+            IsVisible="{Binding ShowSmartFolderSidebarPopup}">
+            <Border
+                Padding="24"
+                BackgroundColor="#FF1E1E1E"
+                HorizontalOptions="Center"
+                Stroke="#FF3A3A3A"
+                StrokeShape="RoundRectangle 12"
+                StrokeThickness="1"
+                VerticalOptions="Center"
+                WidthRequest="520">
+                <VerticalStackLayout Spacing="16">
+                    <!--  Título  -->
+                    <Grid ColumnDefinitions="*,Auto">
+                        <VerticalStackLayout Grid.Column="0">
+                            <Label
+                                FontAttributes="Bold"
+                                FontSize="{StaticResource FontSizeTitle}"
+                                Text="Carpeta inteligente"
+                                TextColor="White" />
+                            <Label
+                                FontSize="{StaticResource FontSizeSmall}"
+                                Text="Define criterios para agrupar vídeos automáticamente"
+                                TextColor="#FF888888" />
+                        </VerticalStackLayout>
+                        <Border
+                            Grid.Column="1"
+                            Padding="4"
+                            BackgroundColor="Transparent"
+                            Stroke="Transparent"
+                            StrokeShape="RoundRectangle 4">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding CancelSmartFolderSidebarPopupCommand}" />
+                            </Border.GestureRecognizers>
+                            <controls:SymbolIcon
+                                HeightRequest="{StaticResource IconSizeLarge}"
+                                SymbolName="xmark"
+                                TintColor="#FF888888"
+                                WidthRequest="{StaticResource IconSizeLarge}" />
+                        </Border>
+                    </Grid>
+
+                    <!--  Nombre  -->
+                    <VerticalStackLayout Spacing="4">
+                        <Label
+                            FontSize="{StaticResource FontSizeSmall}"
+                            Text="Nombre"
+                            TextColor="#FFB1B1B1" />
+                        <Entry
+                            Placeholder="Ej: Técnica - tags"
+                            PlaceholderColor="#FF666666"
+                            Text="{Binding NewSmartFolderName}"
+                            TextColor="White"
+                            BackgroundColor="#FF2A2A2A" />
+                    </VerticalStackLayout>
+
+                    <!--  Match mode: AND/OR  -->
+                    <VerticalStackLayout Spacing="8">
+                        <Label
+                            FontSize="{StaticResource FontSizeSmall}"
+                            Text="Condiciones"
+                            TextColor="#FFB1B1B1" />
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                            <Border
+                                Grid.Column="0"
+                                Padding="12,8"
+                                StrokeShape="RoundRectangle 6"
+                                StrokeThickness="0"
+                                BackgroundColor="{Binding IsSmartFolderMatchAll, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF6DDDFF|#FF2A2A2A}">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding SetSmartFolderMatchModeCommand}" CommandParameter="All" />
+                                </Border.GestureRecognizers>
+                                <Label
+                                    FontSize="{StaticResource FontSizeSmall}"
+                                    Text="Y (AND)"
+                                    TextColor="{Binding IsSmartFolderMatchAll, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF121212|#FFB1B1B1}"
+                                    FontAttributes="{Binding IsSmartFolderMatchAll, Converter={StaticResource BoolToFontAttributesConverter}}"
+                                    HorizontalOptions="Center"
+                                    VerticalOptions="Center" />
+                            </Border>
+                            <Border
+                                Grid.Column="1"
+                                Padding="12,8"
+                                StrokeShape="RoundRectangle 6"
+                                StrokeThickness="0"
+                                BackgroundColor="{Binding IsSmartFolderMatchAny, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF6DDDFF|#FF2A2A2A}">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding SetSmartFolderMatchModeCommand}" CommandParameter="Any" />
+                                </Border.GestureRecognizers>
+                                <Label
+                                    FontSize="{StaticResource FontSizeSmall}"
+                                    Text="O (OR)"
+                                    TextColor="{Binding IsSmartFolderMatchAny, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF121212|#FFB1B1B1}"
+                                    FontAttributes="{Binding IsSmartFolderMatchAny, Converter={StaticResource BoolToFontAttributesConverter}}"
+                                    HorizontalOptions="Center"
+                                    VerticalOptions="Center" />
+                            </Border>
+                        </Grid>
+                    </VerticalStackLayout>
+
+                    <!--  Lista de criterios  -->
+                    <VerticalStackLayout Spacing="8">
+                        <CollectionView
+                            ItemsSource="{Binding NewSmartFolderCriteria}"
+                            SelectionMode="None">
+                            <CollectionView.ItemTemplate>
+                                <DataTemplate x:DataType="models:SmartFolderCriterion">
+                                    <Grid ColumnDefinitions="*,*,*,Auto" ColumnSpacing="8" RowDefinitions="Auto,Auto" Margin="0,0,0,8">
+                                        <Border
+                                            Grid.Row="0"
+                                            Grid.Column="0"
+                                            Padding="12,8"
+                                            BackgroundColor="#FF2A2A2A"
+                                            Stroke="#FF3A3A3A"
+                                            StrokeShape="RoundRectangle 4"
+                                            HeightRequest="44">
+                                            <Border.GestureRecognizers>
+                                                <TapGestureRecognizer
+                                                    Command="{Binding BindingContext.SelectCriterionFieldCommand, Source={x:Reference ThisPage}}"
+                                                    CommandParameter="{Binding .}" />
+                                            </Border.GestureRecognizers>
+                                            <Grid ColumnDefinitions="*,Auto">
+                                                <Label
+                                                    Grid.Column="0"
+                                                    Text="{Binding Field}"
+                                                    TextColor="White"
+                                                    VerticalOptions="Center" />
+                                                <Label
+                                                    Grid.Column="1"
+                                                    Text="▼"
+                                                    TextColor="#FF888888"
+                                                    VerticalOptions="Center" />
+                                            </Grid>
+                                        </Border>
+                                        <Border
+                                            Grid.Row="0"
+                                            Grid.Column="1"
+                                            Padding="12,8"
+                                            BackgroundColor="#FF2A2A2A"
+                                            Stroke="#FF3A3A3A"
+                                            StrokeShape="RoundRectangle 4"
+                                            HeightRequest="44">
+                                            <Border.GestureRecognizers>
+                                                <TapGestureRecognizer
+                                                    Command="{Binding BindingContext.SelectCriterionOperatorCommand, Source={x:Reference ThisPage}}"
+                                                    CommandParameter="{Binding .}" />
+                                            </Border.GestureRecognizers>
+                                            <Grid ColumnDefinitions="*,Auto">
+                                                <Label
+                                                    Grid.Column="0"
+                                                    Text="{Binding Operator}"
+                                                    TextColor="White"
+                                                    VerticalOptions="Center" />
+                                                <Label
+                                                    Grid.Column="1"
+                                                    Text="▼"
+                                                    TextColor="#FF888888"
+                                                    VerticalOptions="Center" />
+                                            </Grid>
+                                        </Border>
+                                        <Entry
+                                            Grid.Row="0"
+                                            Grid.Column="2"
+                                            Placeholder="Valor"
+                                            PlaceholderColor="#FF666666"
+                                            Text="{Binding Value}"
+                                            TextColor="White"
+                                            BackgroundColor="#FF2A2A2A" />
+                                        <Border
+                                            Grid.Row="0"
+                                            Grid.Column="3"
+                                            Padding="4"
+                                            BackgroundColor="Transparent"
+                                            Stroke="Transparent"
+                                            StrokeShape="RoundRectangle 4"
+                                            VerticalOptions="Center">
+                                            <Border.GestureRecognizers>
+                                                <TapGestureRecognizer
+                                                    Command="{Binding BindingContext.RemoveSmartFolderCriterionCommand, Source={x:Reference ThisPage}}"
+                                                    CommandParameter="{Binding .}" />
+                                            </Border.GestureRecognizers>
+                                            <controls:SymbolIcon
+                                                HeightRequest="{StaticResource IconSizeLarge}"
+                                                SymbolName="trash"
+                                                TintColor="#FF888888"
+                                                WidthRequest="{StaticResource IconSizeLarge}" />
+                                        </Border>
+
+                                        <Entry
+                                            Grid.Row="1"
+                                            Grid.Column="2"
+                                            IsVisible="{Binding ShowSecondValue}"
+                                            Placeholder="Segundo valor (fecha)"
+                                            PlaceholderColor="#FF666666"
+                                            Text="{Binding Value2}"
+                                            TextColor="White"
+                                            BackgroundColor="#FF2A2A2A" />
+                                    </Grid>
+                                </DataTemplate>
+                            </CollectionView.ItemTemplate>
+                        </CollectionView>
+
+                        <Button
+                            Text="Añadir condición"
+                            BackgroundColor="#FF2A2A2A"
+                            TextColor="#FFB1B1B1"
+                            CornerRadius="8"
+                            HeightRequest="{StaticResource ElementHeightLarge}"
+                            Command="{Binding AddSmartFolderCriterionCommand}" />
+
+                        <Label
+                            FontSize="{StaticResource FontSizeSmall}"
+                            TextColor="#FF888888"
+                            Text="{Binding NewSmartFolderLiveMatchCount, StringFormat='Coinciden: {0}'}" />
+                    </VerticalStackLayout>
+
+                    <!--  Botones  -->
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="12" Margin="0,8,0,0">
+                        <Button
+                            Grid.Column="0"
+                            Text="Cancelar"
+                            BackgroundColor="#FF2A2A2A"
+                            TextColor="#FFB1B1B1"
+                            CornerRadius="8"
+                            HeightRequest="{StaticResource ElementHeightLarge}"
+                            Command="{Binding CancelSmartFolderSidebarPopupCommand}" />
+                        <Button
+                            Grid.Column="1"
+                            Text="Crear"
+                            BackgroundColor="#FF6DDDFF"
+                            TextColor="#FF121212"
+                            FontAttributes="Bold"
+                            CornerRadius="8"
+                            HeightRequest="{StaticResource ElementHeightLarge}"
+                            Command="{Binding CreateSmartFolderCommand}" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+        </Grid>
+
+        <!--  Popup de selección de icono y color  -->
+        <Grid
+            Grid.Row="0"
+            Grid.RowSpan="2"
+            Grid.ColumnSpan="5"
+            BackgroundColor="#CC000000"
+            IsVisible="{Binding ShowIconColorPickerPopup}">
+            <Grid.GestureRecognizers>
+                <TapGestureRecognizer Command="{Binding CloseIconColorPickerCommand}" />
+            </Grid.GestureRecognizers>
+            <Border
+                Padding="20"
+                BackgroundColor="#FF1E1E1E"
+                HorizontalOptions="Center"
+                Stroke="#FF3A3A3A"
+                StrokeShape="RoundRectangle 12"
+                StrokeThickness="1"
+                VerticalOptions="Center"
+                WidthRequest="380">
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer />
+                </Border.GestureRecognizers>
+                <VerticalStackLayout Spacing="16">
+                    <!--  Cabecera con título y botón cerrar  -->
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label
+                            Grid.Column="0"
+                            FontAttributes="Bold"
+                            FontSize="{StaticResource FontSizeTitle}"
+                            Text="{Binding IconColorPickerTitle}"
+                            TextColor="White"
+                            VerticalOptions="Center" />
+                        <Border
+                            Grid.Column="1"
+                            Padding="4"
+                            BackgroundColor="Transparent"
+                            Stroke="Transparent"
+                            StrokeShape="RoundRectangle 4">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding CloseIconColorPickerCommand}" />
+                            </Border.GestureRecognizers>
+                            <controls:SymbolIcon
+                                HeightRequest="{StaticResource IconSizeLarge}"
+                                SymbolName="xmark"
+                                TintColor="#FF888888"
+                                WidthRequest="{StaticResource IconSizeLarge}" />
+                        </Border>
+                    </Grid>
+
+                    <!--  Fila de colores  -->
+                    <VerticalStackLayout Spacing="8">
+                        <Label
+                            FontSize="{StaticResource FontSizeSmall}"
+                            Text="Color"
+                            TextColor="#FF888888" />
+                        <HorizontalStackLayout Spacing="8" HorizontalOptions="Center">
+                            <!--  Círculos de color con marca de selección  -->
+                            <Border
+                                WidthRequest="28"
+                                HeightRequest="28"
+                                BackgroundColor="#FF888888"
+                                StrokeShape="RoundRectangle 14"
+                                Stroke="Transparent"
+                                StrokeThickness="3">
+                                <Border.Triggers>
+                                    <DataTrigger TargetType="Border" Binding="{Binding SelectedPickerColor}" Value="#FF888888">
+                                        <Setter Property="Stroke" Value="White" />
+                                    </DataTrigger>
+                                </Border.Triggers>
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding SelectPickerColorCommand}" CommandParameter="#FF888888" />
+                                </Border.GestureRecognizers>
+                            </Border>
+                            <Border
+                                WidthRequest="28"
+                                HeightRequest="28"
+                                BackgroundColor="#FFFF453A"
+                                StrokeShape="RoundRectangle 14"
+                                Stroke="Transparent"
+                                StrokeThickness="3">
+                                <Border.Triggers>
+                                    <DataTrigger TargetType="Border" Binding="{Binding SelectedPickerColor}" Value="#FFFF453A">
+                                        <Setter Property="Stroke" Value="White" />
+                                    </DataTrigger>
+                                </Border.Triggers>
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding SelectPickerColorCommand}" CommandParameter="#FFFF453A" />
+                                </Border.GestureRecognizers>
+                            </Border>
+                            <Border
+                                WidthRequest="28"
+                                HeightRequest="28"
+                                BackgroundColor="#FFFF9F0A"
+                                StrokeShape="RoundRectangle 14"
+                                Stroke="Transparent"
+                                StrokeThickness="3">
+                                <Border.Triggers>
+                                    <DataTrigger TargetType="Border" Binding="{Binding SelectedPickerColor}" Value="#FFFF9F0A">
+                                        <Setter Property="Stroke" Value="White" />
+                                    </DataTrigger>
+                                </Border.Triggers>
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding SelectPickerColorCommand}" CommandParameter="#FFFF9F0A" />
+                                </Border.GestureRecognizers>
+                            </Border>
+                            <Border
+                                WidthRequest="28"
+                                HeightRequest="28"
+                                BackgroundColor="#FFFFD60A"
+                                StrokeShape="RoundRectangle 14"
+                                Stroke="Transparent"
+                                StrokeThickness="3">
+                                <Border.Triggers>
+                                    <DataTrigger TargetType="Border" Binding="{Binding SelectedPickerColor}" Value="#FFFFD60A">
+                                        <Setter Property="Stroke" Value="White" />
+                                    </DataTrigger>
+                                </Border.Triggers>
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding SelectPickerColorCommand}" CommandParameter="#FFFFD60A" />
+                                </Border.GestureRecognizers>
+                            </Border>
+                            <Border
+                                WidthRequest="28"
+                                HeightRequest="28"
+                                BackgroundColor="#FF30D158"
+                                StrokeShape="RoundRectangle 14"
+                                Stroke="Transparent"
+                                StrokeThickness="3">
+                                <Border.Triggers>
+                                    <DataTrigger TargetType="Border" Binding="{Binding SelectedPickerColor}" Value="#FF30D158">
+                                        <Setter Property="Stroke" Value="White" />
+                                    </DataTrigger>
+                                </Border.Triggers>
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding SelectPickerColorCommand}" CommandParameter="#FF30D158" />
+                                </Border.GestureRecognizers>
+                            </Border>
+                            <Border
+                                WidthRequest="28"
+                                HeightRequest="28"
+                                BackgroundColor="#FF64D2FF"
+                                StrokeShape="RoundRectangle 14"
+                                Stroke="Transparent"
+                                StrokeThickness="3">
+                                <Border.Triggers>
+                                    <DataTrigger TargetType="Border" Binding="{Binding SelectedPickerColor}" Value="#FF64D2FF">
+                                        <Setter Property="Stroke" Value="White" />
+                                    </DataTrigger>
+                                </Border.Triggers>
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding SelectPickerColorCommand}" CommandParameter="#FF64D2FF" />
+                                </Border.GestureRecognizers>
+                            </Border>
+                            <Border
+                                WidthRequest="28"
+                                HeightRequest="28"
+                                BackgroundColor="#FF0A84FF"
+                                StrokeShape="RoundRectangle 14"
+                                Stroke="Transparent"
+                                StrokeThickness="3">
+                                <Border.Triggers>
+                                    <DataTrigger TargetType="Border" Binding="{Binding SelectedPickerColor}" Value="#FF0A84FF">
+                                        <Setter Property="Stroke" Value="White" />
+                                    </DataTrigger>
+                                </Border.Triggers>
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding SelectPickerColorCommand}" CommandParameter="#FF0A84FF" />
+                                </Border.GestureRecognizers>
+                            </Border>
+                            <Border
+                                WidthRequest="28"
+                                HeightRequest="28"
+                                BackgroundColor="#FFBF5AF2"
+                                StrokeShape="RoundRectangle 14"
+                                Stroke="Transparent"
+                                StrokeThickness="3">
+                                <Border.Triggers>
+                                    <DataTrigger TargetType="Border" Binding="{Binding SelectedPickerColor}" Value="#FFBF5AF2">
+                                        <Setter Property="Stroke" Value="White" />
+                                    </DataTrigger>
+                                </Border.Triggers>
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding SelectPickerColorCommand}" CommandParameter="#FFBF5AF2" />
+                                </Border.GestureRecognizers>
+                            </Border>
+                            <Border
+                                WidthRequest="28"
+                                HeightRequest="28"
+                                BackgroundColor="#FFFF375F"
+                                StrokeShape="RoundRectangle 14"
+                                Stroke="Transparent"
+                                StrokeThickness="3">
+                                <Border.Triggers>
+                                    <DataTrigger TargetType="Border" Binding="{Binding SelectedPickerColor}" Value="#FFFF375F">
+                                        <Setter Property="Stroke" Value="White" />
+                                    </DataTrigger>
+                                </Border.Triggers>
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding SelectPickerColorCommand}" CommandParameter="#FFFF375F" />
+                                </Border.GestureRecognizers>
+                            </Border>
+                            <Border
+                                WidthRequest="28"
+                                HeightRequest="28"
+                                BackgroundColor="#FF6DDDFF"
+                                StrokeShape="RoundRectangle 14"
+                                Stroke="Transparent"
+                                StrokeThickness="3">
+                                <Border.Triggers>
+                                    <DataTrigger TargetType="Border" Binding="{Binding SelectedPickerColor}" Value="#FF6DDDFF">
+                                        <Setter Property="Stroke" Value="White" />
+                                    </DataTrigger>
+                                </Border.Triggers>
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding SelectPickerColorCommand}" CommandParameter="#FF6DDDFF" />
+                                </Border.GestureRecognizers>
+                            </Border>
+                        </HorizontalStackLayout>
+                    </VerticalStackLayout>
+
+                    <!--  Separador  -->
+                    <BoxView HeightRequest="1" BackgroundColor="#FF3A3A3A" />
+
+                    <!--  Grid de iconos  -->
+                    <VerticalStackLayout Spacing="8">
+                        <Label
+                            FontSize="{StaticResource FontSizeSmall}"
+                            Text="Icono"
+                            TextColor="#FF888888" />
+                        <FlexLayout
+                            Direction="Row"
+                            Wrap="Wrap"
+                            JustifyContent="Start"
+                            AlignContent="Start"
+                            BindableLayout.ItemsSource="{Binding AvailableIcons}">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate x:DataType="vm:IconPickerItem">
+                                    <Border
+                                        Margin="4"
+                                        Padding="8"
+                                        BackgroundColor="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF3A5A6A|#FF2A2A2A}"
+                                        StrokeShape="RoundRectangle 6"
+                                        Stroke="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF6DDDFF|Transparent}"
+                                        StrokeThickness="2"
+                                        WidthRequest="40"
+                                        HeightRequest="40">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=SelectPickerIconCommand}"
+                                                CommandParameter="{Binding Name}" />
+                                        </Border.GestureRecognizers>
+                                        <controls:SymbolIcon
+                                            SymbolName="{Binding Name}"
+                                            TintColor="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=SelectedPickerColor, Converter={StaticResource HexStringToColorConverter}}"
+                                            WidthRequest="20"
+                                            HeightRequest="20"
+                                            HorizontalOptions="Center"
+                                            VerticalOptions="Center" />
+                                    </Border>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </FlexLayout>
+                    </VerticalStackLayout>
                 </VerticalStackLayout>
             </Border>
         </Grid>

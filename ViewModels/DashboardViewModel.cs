@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 using System.Windows.Input;
 using CrownRFEP_Reader.Models;
 using CrownRFEP_Reader.Services;
@@ -125,6 +126,33 @@ public class SessionWithDiary : INotifyPropertyChanged
 }
 
 /// <summary>
+/// Modelo para los iconos del picker con estado de selección
+/// </summary>
+public class IconPickerItem : INotifyPropertyChanged
+{
+    private bool _isSelected;
+    
+    public string Name { get; set; } = "";
+    
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set
+        {
+            if (_isSelected != value)
+            {
+                _isSelected = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+    protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+}
+
+/// <summary>
 /// ViewModel para la página principal / Dashboard
 /// </summary>
 public class DashboardViewModel : BaseViewModel
@@ -174,6 +202,18 @@ public class DashboardViewModel : BaseViewModel
     private string _newSessionType = "Gimnasio";
     private string _newSessionLugar = "";
     private bool _showNewSessionSidebarPopup;
+
+    // Carpetas inteligentes (galería)
+    private const string SmartFoldersPreferencesKey = "SmartFolders";
+    private bool _showSmartFolderSidebarPopup;
+    private string _newSmartFolderName = "";
+    private string _newSmartFolderMatchMode = "All"; // All=AND, Any=OR
+    private int _newSmartFolderLiveMatchCount;
+
+    // Popup de personalización de icono/color
+    private bool _showIconColorPickerPopup;
+    private SmartFolderDefinition? _iconColorPickerTargetSmartFolder;
+    private SessionRow? _iconColorPickerTargetSession;
 
     // HealthKit / Datos de Salud (solo iOS) y Bienestar manual
     private DailyHealthData? _selectedDateHealthData;
@@ -600,6 +640,133 @@ public class DashboardViewModel : BaseViewModel
     {
         get => _showNewSessionSidebarPopup;
         set => SetProperty(ref _showNewSessionSidebarPopup, value);
+    }
+
+    public bool ShowSmartFolderSidebarPopup
+    {
+        get => _showSmartFolderSidebarPopup;
+        set => SetProperty(ref _showSmartFolderSidebarPopup, value);
+    }
+
+    public bool ShowIconColorPickerPopup
+    {
+        get => _showIconColorPickerPopup;
+        set => SetProperty(ref _showIconColorPickerPopup, value);
+    }
+
+    public SmartFolderDefinition? IconColorPickerTargetSmartFolder
+    {
+        get => _iconColorPickerTargetSmartFolder;
+        set => SetProperty(ref _iconColorPickerTargetSmartFolder, value);
+    }
+
+    public SessionRow? IconColorPickerTargetSession
+    {
+        get => _iconColorPickerTargetSession;
+        set => SetProperty(ref _iconColorPickerTargetSession, value);
+    }
+
+    public bool IsPickerForSmartFolder => IconColorPickerTargetSmartFolder != null;
+    public bool IsPickerForSession => IconColorPickerTargetSession != null;
+
+    public string IconColorPickerTitle => IsPickerForSmartFolder 
+        ? IconColorPickerTargetSmartFolder?.Name ?? "Carpeta" 
+        : IconColorPickerTargetSession?.Session?.DisplayName ?? "Sesión";
+
+    // Icono y color actualmente seleccionado del elemento target
+    public string SelectedPickerIcon => IsPickerForSmartFolder 
+        ? IconColorPickerTargetSmartFolder?.Icon ?? "folder"
+        : IconColorPickerTargetSession?.Session?.Icon ?? "oar.2.crossed";
+
+    public string SelectedPickerColor => IsPickerForSmartFolder 
+        ? IconColorPickerTargetSmartFolder?.IconColor ?? "#FF888888"
+        : IconColorPickerTargetSession?.Session?.IconColor ?? "#FF6DDDFF";
+
+    // Iconos disponibles para el picker
+    public ObservableCollection<IconPickerItem> AvailableIcons { get; } = new()
+    {
+        new() { Name = "folder" }, new() { Name = "folder.fill" }, new() { Name = "star" }, new() { Name = "star.fill" },
+        new() { Name = "heart" }, new() { Name = "heart.fill" }, new() { Name = "flag" }, new() { Name = "flag.fill" },
+        new() { Name = "bookmark" }, new() { Name = "bookmark.fill" }, new() { Name = "tag" }, new() { Name = "tag.fill" },
+        new() { Name = "bolt" }, new() { Name = "bolt.fill" }, new() { Name = "flame" }, new() { Name = "flame.fill" },
+        new() { Name = "trophy" }, new() { Name = "trophy.fill" }, new() { Name = "figure.run" }, new() { Name = "oar.2.crossed" },
+        new() { Name = "sportscourt" }, new() { Name = "bicycle" }, new() { Name = "figure.walk" }, new() { Name = "camera" },
+        new() { Name = "video" }, new() { Name = "photo" }, new() { Name = "doc" }, new() { Name = "calendar" },
+        new() { Name = "clock" }, new() { Name = "bell" }, new() { Name = "mappin" }, new() { Name = "location" },
+        new() { Name = "house" }, new() { Name = "building.2" }, new() { Name = "car" }, new() { Name = "airplane" }
+    };
+
+    // Colores disponibles para el picker
+    public List<string> AvailableColors { get; } = new()
+    {
+        "#FF888888", // Gris
+        "#FFFF453A", // Rojo
+        "#FFFF9F0A", // Naranja
+        "#FFFFD60A", // Amarillo
+        "#FF30D158", // Verde
+        "#FF64D2FF", // Cyan
+        "#FF0A84FF", // Azul
+        "#FFBF5AF2", // Morado
+        "#FFFF375F", // Rosa
+        "#FF6DDDFF"  // Cyan claro (default sesión)
+    };
+
+    public ObservableCollection<SmartFolderDefinition> SmartFolders { get; } = new();
+    public ObservableCollection<SmartFolderCriterion> NewSmartFolderCriteria { get; } = new();
+
+    public ObservableCollection<string> SmartFolderFieldOptions { get; } = new()
+    {
+        "Lugar",
+        "Deportista",
+        "Sección",
+        "Tag",
+        "Fecha",
+    };
+
+    public string NewSmartFolderName
+    {
+        get => _newSmartFolderName;
+        set => SetProperty(ref _newSmartFolderName, value);
+    }
+
+    public string NewSmartFolderMatchMode
+    {
+        get => _newSmartFolderMatchMode;
+        set
+        {
+            if (SetProperty(ref _newSmartFolderMatchMode, value))
+            {
+                OnPropertyChanged(nameof(IsSmartFolderMatchAll));
+                OnPropertyChanged(nameof(IsSmartFolderMatchAny));
+                RecomputeNewSmartFolderLiveMatchCount();
+            }
+        }
+    }
+
+    public bool IsSmartFolderMatchAll
+    {
+        get => NewSmartFolderMatchMode == "All";
+        set
+        {
+            if (value)
+                NewSmartFolderMatchMode = "All";
+        }
+    }
+
+    public bool IsSmartFolderMatchAny
+    {
+        get => NewSmartFolderMatchMode == "Any";
+        set
+        {
+            if (value)
+                NewSmartFolderMatchMode = "Any";
+        }
+    }
+
+    public int NewSmartFolderLiveMatchCount
+    {
+        get => _newSmartFolderLiveMatchCount;
+        private set => SetProperty(ref _newSmartFolderLiveMatchCount, value);
     }
 
     /// <summary>
@@ -1562,6 +1729,9 @@ public class DashboardViewModel : BaseViewModel
 
             foreach (var s in g)
             {
+                // Aplicar personalizaciones de icono y color
+                ApplySessionCustomization(s);
+                
                 var row = new SessionRow(s);
                 // Marcar como seleccionado si corresponde a la sesión actual (comparar por Id)
                 if (SelectedSession != null && s.Id == SelectedSession.Id)
@@ -2467,6 +2637,7 @@ public class DashboardViewModel : BaseViewModel
     public ICommand SelectDiaryDateCommand { get; }
     public ICommand LoadMoreVideosCommand { get; }
     public ICommand ClearFiltersCommand { get; }
+    public ICommand ToggleFilterItemCommand { get; }
     public ICommand ToggleSessionsListExpandedCommand { get; }
     public ICommand ToggleSessionGroupExpandedCommand { get; }
     public ICommand SelectSessionRowCommand { get; }
@@ -2496,6 +2667,31 @@ public class DashboardViewModel : BaseViewModel
     public ICommand OpenNewSessionSidebarPopupCommand { get; }
     public ICommand CancelNewSessionSidebarPopupCommand { get; }
     public ICommand CreateSessionAndRecordCommand { get; }
+    public ICommand OpenSmartFolderSidebarPopupCommand { get; }
+    public ICommand CancelSmartFolderSidebarPopupCommand { get; }
+    public ICommand AddSmartFolderCriterionCommand { get; }
+    public ICommand RemoveSmartFolderCriterionCommand { get; }
+    public ICommand CreateSmartFolderCommand { get; }
+    public ICommand SetSmartFolderMatchModeCommand { get; }
+    public ICommand SelectSmartFolderCommand { get; }
+    public ICommand SelectCriterionFieldCommand { get; }
+    public ICommand SelectCriterionOperatorCommand { get; }
+    public ICommand ShowSmartFolderContextMenuCommand { get; }
+    public ICommand RenameSmartFolderCommand { get; }
+    public ICommand DeleteSmartFolderCommand { get; }
+    public ICommand ChangeSmartFolderIconCommand { get; }
+    public ICommand ChangeSmartFolderColorCommand { get; }
+    public ICommand SetSmartFolderIconCommand { get; }
+    public ICommand SetSmartFolderColorCommand { get; }
+    public ICommand OpenIconColorPickerForSmartFolderCommand { get; }
+    public ICommand OpenIconColorPickerForSessionCommand { get; }
+    public ICommand CloseIconColorPickerCommand { get; }
+    public ICommand SelectPickerIconCommand { get; }
+    public ICommand SelectPickerColorCommand { get; }
+    public ICommand RenameSessionCommand { get; }
+    public ICommand DeleteSessionCommand { get; }
+    public ICommand SetSessionIconCommand { get; }
+    public ICommand SetSessionColorCommand { get; }
     public ICommand RecordForSelectedSessionCommand { get; }
     public ICommand ExportSelectedSessionCommand { get; }
     public ICommand SetEvolutionPeriodCommand { get; }
@@ -2639,7 +2835,8 @@ public class DashboardViewModel : BaseViewModel
         ViewDiaryCommand = new RelayCommand(() => IsDiaryViewSelected = true);
         SelectDiaryDateCommand = new RelayCommand<DateTime>(date => SelectedDiaryDate = date);
         LoadMoreVideosCommand = new AsyncRelayCommand(LoadMoreVideosAsync);
-        ClearFiltersCommand = new RelayCommand(ClearFilters);
+        ClearFiltersCommand = new RelayCommand(() => ClearFilters());
+        ToggleFilterItemCommand = new RelayCommand<object?>(ToggleFilterItem);
         ToggleSessionsListExpandedCommand = new RelayCommand(() => IsSessionsListExpanded = !IsSessionsListExpanded);
         ToggleSessionGroupExpandedCommand = new RelayCommand<string>(ToggleSessionGroupExpanded);
         SelectSessionRowCommand = new RelayCommand<SessionRow>(row => { if (row != null) SelectedSessionListItem = row; });
@@ -2647,6 +2844,40 @@ public class DashboardViewModel : BaseViewModel
         ToggleAthletesExpandedCommand = new RelayCommand(() => IsAthletesExpanded = !IsAthletesExpanded);
         ToggleSectionsExpandedCommand = new RelayCommand(() => IsSectionsExpanded = !IsSectionsExpanded);
         ToggleTagsExpandedCommand = new RelayCommand(() => IsTagsExpanded = !IsTagsExpanded);
+
+        OpenSmartFolderSidebarPopupCommand = new RelayCommand(OpenSmartFolderSidebarPopup);
+        CancelSmartFolderSidebarPopupCommand = new RelayCommand(CloseSmartFolderSidebarPopup);
+        AddSmartFolderCriterionCommand = new RelayCommand(AddSmartFolderCriterion);
+        RemoveSmartFolderCriterionCommand = new RelayCommand<SmartFolderCriterion>(RemoveSmartFolderCriterion);
+        CreateSmartFolderCommand = new RelayCommand(CreateSmartFolder);
+        SelectCriterionFieldCommand = new AsyncRelayCommand<SmartFolderCriterion>(SelectCriterionFieldAsync);
+        SelectCriterionOperatorCommand = new AsyncRelayCommand<SmartFolderCriterion>(SelectCriterionOperatorAsync);
+        SetSmartFolderMatchModeCommand = new RelayCommand<string>(mode =>
+        {
+            if (string.Equals(mode, "Any", StringComparison.OrdinalIgnoreCase))
+                NewSmartFolderMatchMode = "Any";
+            else
+                NewSmartFolderMatchMode = "All";
+        });
+        SelectSmartFolderCommand = new AsyncRelayCommand<SmartFolderDefinition>(SelectSmartFolderAsync);
+        ShowSmartFolderContextMenuCommand = new AsyncRelayCommand<SmartFolderDefinition>(ShowSmartFolderContextMenuAsync);
+        RenameSmartFolderCommand = new AsyncRelayCommand<SmartFolderDefinition>(RenameSmartFolderAsync);
+        DeleteSmartFolderCommand = new AsyncRelayCommand<SmartFolderDefinition>(DeleteSmartFolderAsync);
+        ChangeSmartFolderIconCommand = new AsyncRelayCommand<SmartFolderDefinition>(ChangeSmartFolderIconAsync);
+        ChangeSmartFolderColorCommand = new AsyncRelayCommand<SmartFolderDefinition>(ChangeSmartFolderColorAsync);
+        SetSmartFolderIconCommand = new RelayCommand<object?>(SetSmartFolderIcon);
+        SetSmartFolderColorCommand = new RelayCommand<object?>(SetSmartFolderColor);
+        RenameSessionCommand = new AsyncRelayCommand<SessionRow>(RenameSessionAsync);
+        DeleteSessionCommand = new AsyncRelayCommand<SessionRow>(DeleteSessionAsync);
+        SetSessionIconCommand = new RelayCommand<object?>(SetSessionIcon);
+        SetSessionColorCommand = new RelayCommand<object?>(SetSessionColor);
+
+        // Icon/Color Picker Popup commands
+        OpenIconColorPickerForSmartFolderCommand = new RelayCommand<SmartFolderDefinition>(OpenIconColorPickerForSmartFolder);
+        OpenIconColorPickerForSessionCommand = new RelayCommand<SessionRow>(OpenIconColorPickerForSession);
+        CloseIconColorPickerCommand = new RelayCommand(CloseIconColorPicker);
+        SelectPickerIconCommand = new RelayCommand<string>(SelectPickerIcon);
+        SelectPickerColorCommand = new RelayCommand<string>(SelectPickerColor);
 
         SelectStatsTabCommand = new RelayCommand(() => IsStatsTabSelected = true);
         SelectCrudTechTabCommand = new RelayCommand(() => IsCrudTechTabSelected = true);
@@ -2695,6 +2926,10 @@ public class DashboardViewModel : BaseViewModel
         });
         CancelNewSessionSidebarPopupCommand = new RelayCommand(() => ShowNewSessionSidebarPopup = false);
         CreateSessionAndRecordCommand = new AsyncRelayCommand(CreateSessionAndRecordAsync);
+
+        LoadSmartFoldersFromPreferences();
+        LoadSessionCustomizationsFromPreferences();
+
         RecordForSelectedSessionCommand = new AsyncRelayCommand(RecordForSelectedSessionAsync);
         ExportSelectedSessionCommand = new AsyncRelayCommand(ExportSelectedSessionAsync);
         SelectSessionTypeCommand = new RelayCommand<SessionTypeOption>(option => 
@@ -3678,7 +3913,7 @@ public class DashboardViewModel : BaseViewModel
         }
     }
 
-    private void ClearFilters()
+    private void ClearFilters(bool skipApplyFilters = false)
     {
         // Limpiar selección múltiple
         foreach (var place in FilterPlaces) place.IsSelected = false;
@@ -3697,7 +3932,31 @@ public class DashboardViewModel : BaseViewModel
         OnPropertyChanged(nameof(SelectedSectionsSummary));
         OnPropertyChanged(nameof(SelectedTagsSummary));
         
-        _ = ApplyFiltersAsync();
+        if (!skipApplyFilters)
+        {
+            _ = ApplyFiltersAsync();
+        }
+    }
+
+    private void ToggleFilterItem(object? item)
+    {
+        try
+        {
+            if (item == null)
+                return;
+
+            // FilterItem<T> es genérico; usamos reflexión para alternar IsSelected.
+            var prop = item.GetType().GetProperty("IsSelected");
+            if (prop == null || prop.PropertyType != typeof(bool) || !prop.CanWrite)
+                return;
+
+            var current = (bool)(prop.GetValue(item) ?? false);
+            prop.SetValue(item, !current);
+        }
+        catch
+        {
+            // Ignorar: un item no compatible no debería romper la UI.
+        }
     }
 
     private async Task ApplyFiltersAsync()
@@ -5494,6 +5753,721 @@ public class DashboardViewModel : BaseViewModel
             SelectedDateSessionsWithDiary.Clear();
             OnPropertyChanged(nameof(HasSelectedDateSessions));
         }
+    }
+
+    private void OpenSmartFolderSidebarPopup()
+    {
+        NewSmartFolderName = "";
+        NewSmartFolderMatchMode = "All";
+
+        foreach (var existing in NewSmartFolderCriteria)
+            existing.PropertyChanged -= OnNewSmartFolderCriterionChanged;
+
+        NewSmartFolderCriteria.Clear();
+        AddSmartFolderCriterion();
+        RecomputeNewSmartFolderLiveMatchCount();
+
+        ShowSmartFolderSidebarPopup = true;
+    }
+
+    private void CloseSmartFolderSidebarPopup()
+    {
+        ShowSmartFolderSidebarPopup = false;
+    }
+
+    private void AddSmartFolderCriterion()
+    {
+        var criterion = new SmartFolderCriterion();
+        criterion.PropertyChanged += OnNewSmartFolderCriterionChanged;
+        NewSmartFolderCriteria.Add(criterion);
+        RecomputeNewSmartFolderLiveMatchCount();
+    }
+
+    private void RemoveSmartFolderCriterion(SmartFolderCriterion? criterion)
+    {
+        if (criterion == null)
+            return;
+
+        criterion.PropertyChanged -= OnNewSmartFolderCriterionChanged;
+        NewSmartFolderCriteria.Remove(criterion);
+        RecomputeNewSmartFolderLiveMatchCount();
+    }
+
+    private void OnNewSmartFolderCriterionChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        RecomputeNewSmartFolderLiveMatchCount();
+    }
+
+    private async Task SelectCriterionFieldAsync(SmartFolderCriterion? criterion)
+    {
+        if (criterion == null)
+            return;
+
+        try
+        {
+            var page = Application.Current?.Windows?.FirstOrDefault()?.Page;
+            if (page == null)
+                return;
+
+            var options = SmartFolderFieldOptions.ToArray();
+            var result = await page.DisplayActionSheet("Seleccionar campo", "Cancelar", null, options);
+            if (!string.IsNullOrEmpty(result) && result != "Cancelar")
+            {
+                criterion.Field = result;
+            }
+        }
+        catch { }
+    }
+
+    private async Task SelectCriterionOperatorAsync(SmartFolderCriterion? criterion)
+    {
+        if (criterion == null)
+            return;
+
+        try
+        {
+            var page = Application.Current?.Windows?.FirstOrDefault()?.Page;
+            if (page == null)
+                return;
+
+            var options = criterion.AvailableOperators.ToArray();
+            var result = await page.DisplayActionSheet("Seleccionar operador", "Cancelar", null, options);
+            if (!string.IsNullOrEmpty(result) && result != "Cancelar")
+            {
+                criterion.Operator = result;
+            }
+        }
+        catch { }
+    }
+
+    private void CreateSmartFolder()
+    {
+        var name = (NewSmartFolderName ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(name))
+            return;
+
+        var definition = new SmartFolderDefinition
+        {
+            Name = name,
+            MatchMode = NewSmartFolderMatchMode == "Any" ? "Any" : "All",
+            Criteria = NewSmartFolderCriteria
+                .Select(c => new SmartFolderCriterion
+                {
+                    Field = c.Field,
+                    Operator = c.Operator,
+                    Value = c.Value,
+                    Value2 = c.Value2,
+                })
+                .ToList(),
+        };
+
+        SmartFolders.Add(definition);
+        SaveSmartFoldersToPreferences();
+        CloseSmartFolderSidebarPopup();
+    }
+
+    private async Task SelectSmartFolderAsync(SmartFolderDefinition? definition)
+    {
+        if (definition == null)
+            return;
+
+        SelectedSession = null;
+        IsAllGallerySelected = true;
+
+        if (_allVideosCache == null)
+            await LoadAllVideosAsync();
+
+        await ApplySmartFolderFilterAsync(definition);
+    }
+
+    private async Task ApplySmartFolderFilterAsync(SmartFolderDefinition definition)
+    {
+        var source = _allVideosCache;
+        if (source == null)
+            return;
+
+        // Evitar que los filtros manuales se mezclen con el filtro de carpeta.
+        // Usamos skipApplyFilters=true para evitar que se sobrescriba el filtro de la carpeta inteligente.
+        ClearFilters(skipApplyFilters: true);
+
+        var criteria = definition.Criteria ?? new List<SmartFolderCriterion>();
+        bool matchAll = !string.Equals(definition.MatchMode, "Any", StringComparison.OrdinalIgnoreCase);
+
+        List<VideoClip> filtered;
+        if (criteria.Count == 0)
+        {
+            filtered = source.ToList();
+        }
+        else
+        {
+            filtered = source
+                .Where(v =>
+                {
+                    var matches = criteria.Select(c => MatchesCriterion(v, c)).ToList();
+                    return matchAll ? matches.All(m => m) : matches.Any(m => m);
+                })
+                .ToList();
+        }
+
+        _filteredVideosCache = filtered;
+
+        _currentPage = 0;
+        var firstBatch = filtered.Take(PageSize).ToList();
+        await MainThread.InvokeOnMainThreadAsync(async () =>
+        {
+            await ReplaceCollectionInBatchesAsync(SelectedSessionVideos, firstBatch, CancellationToken.None);
+        });
+        _currentPage = 1;
+        HasMoreVideos = filtered.Count > PageSize;
+
+        var snapshot = await Task.Run(() => BuildGalleryStatsSnapshot(filtered));
+        await ApplyGalleryStatsSnapshotAsync(snapshot, CancellationToken.None);
+
+        OnPropertyChanged(nameof(TotalFilteredVideoCount));
+        OnPropertyChanged(nameof(TotalFilteredDurationSeconds));
+        OnPropertyChanged(nameof(VideoCountDisplayText));
+        OnPropertyChanged(nameof(SelectedSessionTotalDurationSeconds));
+        OnPropertyChanged(nameof(SelectedSessionTotalDurationFormatted));
+    }
+
+    private void LoadSmartFoldersFromPreferences()
+    {
+        try
+        {
+            var json = Preferences.Get(SmartFoldersPreferencesKey, string.Empty);
+            if (string.IsNullOrWhiteSpace(json))
+                return;
+
+            var parsed = JsonSerializer.Deserialize<List<SmartFolderDefinition>>(json);
+            if (parsed == null)
+                return;
+
+            SmartFolders.Clear();
+            foreach (var def in parsed)
+                SmartFolders.Add(def);
+        }
+        catch
+        {
+            // Si falla la deserialización, ignorar y seguir sin carpetas.
+        }
+    }
+
+    private void SaveSmartFoldersToPreferences()
+    {
+        try
+        {
+            var json = JsonSerializer.Serialize(SmartFolders.ToList());
+            Preferences.Set(SmartFoldersPreferencesKey, json);
+        }
+        catch
+        {
+            // Ignorar errores de persistencia.
+        }
+    }
+
+    #region Smart Folder Context Menu
+
+    private static readonly string[] SmartFolderIconOptions = new[]
+    {
+        "folder", "folder.fill", "star", "star.fill", "heart", "heart.fill",
+        "flag", "flag.fill", "bookmark", "bookmark.fill", "tag", "tag.fill",
+        "bolt", "bolt.fill", "flame", "flame.fill", "trophy", "trophy.fill",
+        "sportscourt", "figure.run"
+    };
+
+    private static readonly (string Name, string HexColor)[] SmartFolderColorOptions = new[]
+    {
+        ("Gris", "#FF888888"),
+        ("Rojo", "#FFFF453A"),
+        ("Naranja", "#FFFF9F0A"),
+        ("Amarillo", "#FFFFD60A"),
+        ("Verde", "#FF30D158"),
+        ("Menta", "#FF63E6E2"),
+        ("Cyan", "#FF64D2FF"),
+        ("Azul", "#FF0A84FF"),
+        ("Morado", "#FFBF5AF2"),
+        ("Rosa", "#FFFF375F")
+    };
+
+    private async Task ShowSmartFolderContextMenuAsync(SmartFolderDefinition? folder)
+    {
+        if (folder == null) return;
+
+        var page = Application.Current?.MainPage;
+        if (page == null) return;
+
+        var result = await page.DisplayActionSheet(
+            folder.Name,
+            "Cancelar",
+            null,
+            "Renombrar",
+            "Cambiar icono",
+            "Cambiar color",
+            "Eliminar");
+
+        switch (result)
+        {
+            case "Renombrar":
+                await RenameSmartFolderAsync(folder);
+                break;
+            case "Cambiar icono":
+                await ChangeSmartFolderIconAsync(folder);
+                break;
+            case "Cambiar color":
+                await ChangeSmartFolderColorAsync(folder);
+                break;
+            case "Eliminar":
+                await DeleteSmartFolderAsync(folder);
+                break;
+        }
+    }
+
+    private async Task RenameSmartFolderAsync(SmartFolderDefinition? folder)
+    {
+        if (folder == null) return;
+
+        var page = Application.Current?.MainPage;
+        if (page == null) return;
+
+        var newName = await page.DisplayPromptAsync(
+            "Renombrar carpeta",
+            "Introduce el nuevo nombre:",
+            "Aceptar",
+            "Cancelar",
+            folder.Name,
+            50,
+            Keyboard.Text,
+            folder.Name);
+
+        if (!string.IsNullOrWhiteSpace(newName) && newName != folder.Name)
+        {
+            folder.Name = newName;
+            SaveSmartFoldersToPreferences();
+        }
+    }
+
+    private async Task DeleteSmartFolderAsync(SmartFolderDefinition? folder)
+    {
+        if (folder == null) return;
+
+        var page = Application.Current?.MainPage;
+        if (page == null) return;
+
+        var confirm = await page.DisplayAlert(
+            "Eliminar carpeta",
+            $"¿Seguro que quieres eliminar la carpeta \"{folder.Name}\"?",
+            "Eliminar",
+            "Cancelar");
+
+        if (confirm)
+        {
+            SmartFolders.Remove(folder);
+            SaveSmartFoldersToPreferences();
+        }
+    }
+
+    private async Task ChangeSmartFolderIconAsync(SmartFolderDefinition? folder)
+    {
+        if (folder == null) return;
+
+        var page = Application.Current?.MainPage;
+        if (page == null) return;
+
+        var result = await page.DisplayActionSheet(
+            "Seleccionar icono",
+            "Cancelar",
+            null,
+            SmartFolderIconOptions);
+
+        if (!string.IsNullOrEmpty(result) && result != "Cancelar")
+        {
+            folder.Icon = result;
+            SaveSmartFoldersToPreferences();
+        }
+    }
+
+    private async Task ChangeSmartFolderColorAsync(SmartFolderDefinition? folder)
+    {
+        if (folder == null) return;
+
+        var page = Application.Current?.MainPage;
+        if (page == null) return;
+
+        var colorNames = SmartFolderColorOptions.Select(c => c.Name).ToArray();
+        var result = await page.DisplayActionSheet(
+            "Seleccionar color",
+            "Cancelar",
+            null,
+            colorNames);
+
+        if (!string.IsNullOrEmpty(result) && result != "Cancelar")
+        {
+            var selected = SmartFolderColorOptions.FirstOrDefault(c => c.Name == result);
+            if (!string.IsNullOrEmpty(selected.HexColor))
+            {
+                folder.IconColor = selected.HexColor;
+                SaveSmartFoldersToPreferences();
+            }
+        }
+    }
+
+    private void SetSmartFolderIcon(object? parameter)
+    {
+        if (parameter is ValueTuple<SmartFolderDefinition, string> tuple)
+        {
+            var (folder, icon) = tuple;
+            folder.Icon = icon;
+            SaveSmartFoldersToPreferences();
+        }
+    }
+
+    private void SetSmartFolderColor(object? parameter)
+    {
+        if (parameter is ValueTuple<SmartFolderDefinition, string> tuple)
+        {
+            var (folder, color) = tuple;
+            folder.IconColor = color;
+            SaveSmartFoldersToPreferences();
+        }
+    }
+
+    #endregion
+
+    #region Session Context Menu
+
+    private const string SessionCustomizationsPreferencesKey = "SessionCustomizations";
+
+    private Dictionary<int, (string Icon, string Color)> _sessionCustomizations = new();
+
+    private void LoadSessionCustomizationsFromPreferences()
+    {
+        try
+        {
+            var json = Preferences.Get(SessionCustomizationsPreferencesKey, string.Empty);
+            if (string.IsNullOrWhiteSpace(json))
+                return;
+
+            var parsed = JsonSerializer.Deserialize<Dictionary<int, SessionCustomization>>(json);
+            if (parsed == null)
+                return;
+
+            _sessionCustomizations.Clear();
+            foreach (var kvp in parsed)
+                _sessionCustomizations[kvp.Key] = (kvp.Value.Icon, kvp.Value.Color);
+        }
+        catch
+        {
+            // Si falla la deserialización, ignorar.
+        }
+    }
+
+    private void SaveSessionCustomizationsToPreferences()
+    {
+        try
+        {
+            var toSerialize = _sessionCustomizations.ToDictionary(
+                kvp => kvp.Key,
+                kvp => new SessionCustomization { Icon = kvp.Value.Icon, Color = kvp.Value.Color });
+            var json = JsonSerializer.Serialize(toSerialize);
+            Preferences.Set(SessionCustomizationsPreferencesKey, json);
+        }
+        catch
+        {
+            // Ignorar errores de persistencia.
+        }
+    }
+
+    private void ApplySessionCustomization(Session session)
+    {
+        if (_sessionCustomizations.TryGetValue(session.Id, out var customization))
+        {
+            session.Icon = customization.Icon;
+            session.IconColor = customization.Color;
+        }
+    }
+
+    private async Task RenameSessionAsync(SessionRow? row)
+    {
+        if (row?.Session == null) return;
+
+        var page = Application.Current?.MainPage;
+        if (page == null) return;
+
+        var session = row.Session;
+        var currentName = session.NombreSesion ?? session.DisplayName;
+
+        var newName = await page.DisplayPromptAsync(
+            "Renombrar sesión",
+            "Introduce el nuevo nombre:",
+            "Aceptar",
+            "Cancelar",
+            currentName,
+            100,
+            Keyboard.Text,
+            currentName);
+
+        if (!string.IsNullOrWhiteSpace(newName) && newName != currentName)
+        {
+            session.NombreSesion = newName;
+            await _databaseService.SaveSessionAsync(session);
+            SyncVisibleSessionRows();
+        }
+    }
+
+    private async Task DeleteSessionAsync(SessionRow? row)
+    {
+        if (row?.Session == null) return;
+
+        var page = Application.Current?.MainPage;
+        if (page == null) return;
+
+        var session = row.Session;
+        var confirm = await page.DisplayAlert(
+            "Eliminar sesión",
+            $"¿Seguro que quieres eliminar la sesión \"{session.DisplayName}\"?\n\nEsto eliminará también todos los videos asociados.",
+            "Eliminar",
+            "Cancelar");
+
+        if (confirm)
+        {
+            await _databaseService.DeleteSessionAsync(session);
+            RecentSessions.Remove(session);
+            _sessionCustomizations.Remove(session.Id);
+            SaveSessionCustomizationsToPreferences();
+            SyncVisibleSessionRows();
+
+            if (SelectedSession?.Id == session.Id)
+            {
+                SelectedSession = null;
+            }
+        }
+    }
+
+    private void SetSessionIcon(object? parameter)
+    {
+        if (parameter is ValueTuple<SessionRow, string> tuple)
+        {
+            var (row, icon) = tuple;
+            if (row.Session != null)
+            {
+                row.Session.Icon = icon;
+                _sessionCustomizations[row.Session.Id] = (icon, row.Session.IconColor);
+                SaveSessionCustomizationsToPreferences();
+            }
+        }
+    }
+
+    private void SetSessionColor(object? parameter)
+    {
+        if (parameter is ValueTuple<SessionRow, string> tuple)
+        {
+            var (row, color) = tuple;
+            if (row.Session != null)
+            {
+                row.Session.IconColor = color;
+                _sessionCustomizations[row.Session.Id] = (row.Session.Icon, color);
+                SaveSessionCustomizationsToPreferences();
+            }
+        }
+    }
+
+    private record SessionCustomization
+    {
+        public string Icon { get; init; } = "oar.2.crossed";
+        public string Color { get; init; } = "#FF6DDDFF";
+    }
+
+    #endregion
+
+    #region Icon/Color Picker Popup
+
+    private void OpenIconColorPickerForSmartFolder(SmartFolderDefinition? folder)
+    {
+        if (folder == null) return;
+        IconColorPickerTargetSession = null;
+        IconColorPickerTargetSmartFolder = folder;
+        OnPropertyChanged(nameof(IsPickerForSmartFolder));
+        OnPropertyChanged(nameof(IsPickerForSession));
+        OnPropertyChanged(nameof(IconColorPickerTitle));
+        UpdateIconPickerSelection();
+        ShowIconColorPickerPopup = true;
+    }
+
+    private void OpenIconColorPickerForSession(SessionRow? row)
+    {
+        if (row?.Session == null) return;
+        IconColorPickerTargetSmartFolder = null;
+        IconColorPickerTargetSession = row;
+        OnPropertyChanged(nameof(IsPickerForSmartFolder));
+        OnPropertyChanged(nameof(IsPickerForSession));
+        OnPropertyChanged(nameof(IconColorPickerTitle));
+        UpdateIconPickerSelection();
+        ShowIconColorPickerPopup = true;
+    }
+
+    private void CloseIconColorPicker()
+    {
+        ShowIconColorPickerPopup = false;
+        IconColorPickerTargetSmartFolder = null;
+        IconColorPickerTargetSession = null;
+    }
+
+    private void UpdateIconPickerSelection()
+    {
+        var selectedIcon = SelectedPickerIcon;
+        foreach (var item in AvailableIcons)
+        {
+            item.IsSelected = string.Equals(item.Name, selectedIcon, StringComparison.OrdinalIgnoreCase);
+        }
+        OnPropertyChanged(nameof(SelectedPickerIcon));
+        OnPropertyChanged(nameof(SelectedPickerColor));
+    }
+
+    private void SelectPickerIcon(string? icon)
+    {
+        if (string.IsNullOrWhiteSpace(icon)) return;
+
+        if (IconColorPickerTargetSmartFolder is { } folder)
+        {
+            folder.Icon = icon;
+            SaveSmartFoldersToPreferences();
+        }
+        else if (IconColorPickerTargetSession?.Session is { } session)
+        {
+            session.Icon = icon;
+            _sessionCustomizations[session.Id] = (icon, session.IconColor);
+            SaveSessionCustomizationsToPreferences();
+        }
+        UpdateIconPickerSelection();
+    }
+
+    private void SelectPickerColor(string? color)
+    {
+        if (string.IsNullOrWhiteSpace(color)) return;
+
+        if (IconColorPickerTargetSmartFolder is { } folder)
+        {
+            folder.IconColor = color;
+            SaveSmartFoldersToPreferences();
+        }
+        else if (IconColorPickerTargetSession?.Session is { } session)
+        {
+            session.IconColor = color;
+            _sessionCustomizations[session.Id] = (session.Icon, color);
+            SaveSessionCustomizationsToPreferences();
+        }
+        OnPropertyChanged(nameof(SelectedPickerColor));
+    }
+
+    #endregion
+
+    private void RecomputeNewSmartFolderLiveMatchCount()
+    {
+        try
+        {
+            var source = _allVideosCache;
+            if (source == null || source.Count == 0)
+            {
+                NewSmartFolderLiveMatchCount = 0;
+                return;
+            }
+
+            var criteriaSnapshot = NewSmartFolderCriteria.ToList();
+            if (criteriaSnapshot.Count == 0)
+            {
+                NewSmartFolderLiveMatchCount = source.Count;
+                return;
+            }
+
+            bool matchAll = NewSmartFolderMatchMode != "Any";
+
+            int count = 0;
+            foreach (var video in source)
+            {
+                var matches = criteriaSnapshot.Select(c => MatchesCriterion(video, c)).ToList();
+                var ok = matchAll ? matches.All(m => m) : matches.Any(m => m);
+                if (ok)
+                    count++;
+            }
+
+            NewSmartFolderLiveMatchCount = count;
+        }
+        catch
+        {
+            NewSmartFolderLiveMatchCount = 0;
+        }
+    }
+
+    private static bool MatchesCriterion(VideoClip video, SmartFolderCriterion c)
+    {
+        var field = (c.Field ?? string.Empty).Trim();
+        var op = (c.Operator ?? string.Empty).Trim();
+        var value = (c.Value ?? string.Empty).Trim();
+        var value2 = (c.Value2 ?? string.Empty).Trim();
+
+        if (string.IsNullOrWhiteSpace(field))
+            return true;
+
+        if (field == "Fecha")
+        {
+            var dt = video.CreationDateTime.Date;
+
+            static bool TryParseDate(string s, out DateTime d)
+            {
+                if (DateTime.TryParse(s, CultureInfo.GetCultureInfo("es-ES"), DateTimeStyles.AssumeLocal, out d))
+                {
+                    d = d.Date;
+                    return true;
+                }
+                return false;
+            }
+
+            if (op == "Entre")
+            {
+                if (!TryParseDate(value, out var from) || !TryParseDate(value2, out var to))
+                    return false;
+                if (to < from)
+                    (from, to) = (to, from);
+                return dt >= from && dt <= to;
+            }
+
+            if (op == "Hasta")
+            {
+                if (!TryParseDate(value, out var to))
+                    return false;
+                return dt <= to;
+            }
+
+            // Desde (default)
+            if (!TryParseDate(value, out var fromDate))
+                return false;
+            return dt >= fromDate;
+        }
+
+        if (field == "Sección")
+        {
+            if (!int.TryParse(value, out var section))
+                return false;
+            return video.Section == section;
+        }
+
+        string haystack = field switch
+        {
+            "Lugar" => video.Session?.Lugar ?? string.Empty,
+            "Deportista" => video.Atleta?.NombreCompleto ?? string.Empty,
+            "Tag" => string.Join(" ", (video.Tags ?? new List<Tag>()).Select(t => t.NombreTag ?? string.Empty))
+                + " " + string.Join(" ", (video.EventTags ?? new List<Tag>()).Select(t => t.NombreTag ?? string.Empty)),
+            _ => string.Empty,
+        };
+
+        if (string.IsNullOrWhiteSpace(value))
+            return true;
+
+        if (op == "Es")
+            return string.Equals(haystack.Trim(), value, StringComparison.OrdinalIgnoreCase);
+
+        // Contiene (default)
+        return haystack.Contains(value, StringComparison.OrdinalIgnoreCase);
     }
 
     #endregion

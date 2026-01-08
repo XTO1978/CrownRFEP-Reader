@@ -3,6 +3,7 @@ using CrownRFEP_Reader.Models;
 using CrownRFEP_Reader.ViewModels;
 using CrownRFEP_Reader.Controls;
 using CrownRFEP_Reader.Services;
+using System.Collections.Specialized;
 
 #if MACCATALYST
 using CrownRFEP_Reader.Platforms.MacCatalyst;
@@ -13,6 +14,7 @@ namespace CrownRFEP_Reader.Views;
 public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 {
     private readonly DashboardViewModel _viewModel;
+    private NotifyCollectionChangedEventHandler? _smartFoldersChangedHandler;
     
     // Posiciones actuales de cada video para scrubbing incremental
     private double _currentPosition0;
@@ -53,6 +55,25 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 		// Hover preview: usamos PrecisionVideoPlayer (AVPlayerLayer). Autoplay+loop aquí.
 		HoverPreviewPlayer.MediaOpened += OnHoverPreviewOpened;
 		HoverPreviewPlayer.MediaEnded += OnHoverPreviewEnded;
+
+        _smartFoldersChangedHandler = (_, __) =>
+        {
+            try
+            {
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    try
+                    {
+                        SidebarSessionsCollectionView?.InvalidateMeasure();
+                    }
+                    catch { }
+                });
+            }
+            catch { }
+        };
+        _viewModel.SmartFolders.CollectionChanged += _smartFoldersChangedHandler;
+
+        try { SidebarSessionsCollectionView?.InvalidateMeasure(); } catch { }
 
                 // Preview players (drop zones): cuando abren media, ocultamos miniatura.
                 PreviewPlayerSingle.MediaOpened += OnPreviewPlayerMediaOpened;
@@ -95,6 +116,13 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 
 		try { HoverPreviewPlayer.MediaOpened -= OnHoverPreviewOpened; } catch { }
 		try { HoverPreviewPlayer.MediaEnded -= OnHoverPreviewEnded; } catch { }
+
+        try
+        {
+            if (_smartFoldersChangedHandler != null)
+                _viewModel.SmartFolders.CollectionChanged -= _smartFoldersChangedHandler;
+        }
+        catch { }
 
         try { PreviewPlayerSingle.MediaOpened -= OnPreviewPlayerMediaOpened; } catch { }
         try { PreviewPlayer1H.MediaOpened -= OnPreviewPlayerMediaOpened; } catch { }
