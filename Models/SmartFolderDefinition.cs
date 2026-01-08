@@ -9,7 +9,7 @@ public sealed class SmartFolderDefinition : INotifyPropertyChanged
     private string _name = "";
     private string _matchMode = "All";
     private string _icon = "folder";
-    private string _iconColor = "#FF888888";
+    private string _iconColor = "#FFFFFFFF";
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -62,6 +62,21 @@ public sealed class SmartFolderDefinition : INotifyPropertyChanged
         {
             if (_iconColor == value) return;
             _iconColor = value;
+            OnPropertyChanged();
+        }
+    }
+
+    private int _matchingVideoCount;
+    /// <summary>
+    /// Number of videos matching this smart folder's criteria
+    /// </summary>
+    public int MatchingVideoCount
+    {
+        get => _matchingVideoCount;
+        set
+        {
+            if (_matchingVideoCount == value) return;
+            _matchingVideoCount = value;
             OnPropertyChanged();
         }
     }

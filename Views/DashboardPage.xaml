@@ -35,58 +35,84 @@
             <controls:SessionsListRowTemplateSelector x:Key="SessionsListRowTemplateSelector">
                 <controls:SessionsListRowTemplateSelector.HeaderTemplate>
                     <DataTemplate x:DataType="vm:SessionGroupHeaderRow">
-                        <Border
+                        <Grid 
+                            ColumnDefinitions="48,*"
                             BackgroundColor="Transparent"
-                            Stroke="Transparent"
-                            StrokeThickness="0"
-                            StrokeShape="RoundRectangle 4">
-                            <Border.Margin>
-                                <OnPlatform x:TypeArguments="Thickness">
-                                    <On Platform="iOS" Value="0,2,0,0" />
-                                    <On Platform="MacCatalyst,WinUI" Value="0,6,0,0" />
-                                </OnPlatform>
-                            </Border.Margin>
-                            <Border.GestureRecognizers>
-                                <TapGestureRecognizer
-                                    Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ToggleSessionGroupExpandedCommand}"
-                                    CommandParameter="{Binding Key}" />
-                            </Border.GestureRecognizers>
-                            <Grid
-                                ColumnDefinitions="*,Auto"
-                                VerticalOptions="Center">
-                                <Grid.Padding>
+                            IsVisible="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=IsSessionsExpanded}">
+                            <!-- Columna 1: contenido del header -->
+                            <Border
+                                Grid.Column="1"
+                                BackgroundColor="Transparent"
+                                Stroke="Transparent"
+                                StrokeThickness="0"
+                                StrokeShape="RoundRectangle 4">
+                                <Border.Margin>
                                     <OnPlatform x:TypeArguments="Thickness">
-                                        <On Platform="iOS" Value="16,4" />
-                                        <On Platform="MacCatalyst,WinUI" Value="16,8" />
+                                        <On Platform="iOS" Value="0,2,0,0" />
+                                        <On Platform="MacCatalyst,WinUI" Value="0,6,0,0" />
                                     </OnPlatform>
-                                </Grid.Padding>
-                                <Label
-                                    Grid.Column="0"
-                                    FontFamily="{StaticResource AppFontBody}"
-                                    FontSize="{StaticResource FontSizeBody}"
-                                    FontAttributes="Bold"
-                                    Text="{Binding Title}"
-                                    TextColor="#FF888888"
-                                    VerticalOptions="Center" />
-                                <Label
-                                    Grid.Column="1"
-                                    FontSize="{StaticResource FontSizeBody}"
-                                    Text="{Binding IsExpanded, Converter={StaticResource BoolToExpandIconConverter}}"
-                                    TextColor="#FF888888"
-                                    VerticalOptions="Center" />
-                            </Grid>
-                        </Border>
+                                </Border.Margin>
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer
+                                        Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ToggleSessionGroupExpandedCommand}"
+                                        CommandParameter="{Binding Key}" />
+                                </Border.GestureRecognizers>
+                                <Grid
+                                    ColumnDefinitions="Auto,*"
+                                    VerticalOptions="Center">
+                                    <Grid.Padding>
+                                        <OnPlatform x:TypeArguments="Thickness">
+                                            <On Platform="iOS" Value="0,4" />
+                                            <On Platform="MacCatalyst,WinUI" Value="0,8" />
+                                        </OnPlatform>
+                                    </Grid.Padding>
+                                    <!-- Chevron de expansión -->
+                                    <controls:SymbolIcon
+                                        Grid.Column="0"
+                                        HeightRequest="{StaticResource IconSizeSmall}"
+                                        WidthRequest="{StaticResource IconSizeSmall}"
+                                        TintColor="#FF888888"
+                                        VerticalOptions="Center">
+                                        <controls:SymbolIcon.Triggers>
+                                            <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding IsExpanded}" Value="True">
+                                                <Setter Property="SymbolName" Value="chevron.down" />
+                                            </DataTrigger>
+                                            <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding IsExpanded}" Value="False">
+                                                <Setter Property="SymbolName" Value="chevron.right" />
+                                            </DataTrigger>
+                                        </controls:SymbolIcon.Triggers>
+                                    </controls:SymbolIcon>
+                                    <!-- Título del grupo -->
+                                    <Label
+                                        Grid.Column="1"
+                                        Margin="8,0,0,0"
+                                        FontFamily="{StaticResource AppFontBody}"
+                                        FontSize="{StaticResource FontSizeBody}"
+                                        FontAttributes="None"
+                                        Text="{Binding Title}"
+                                        TextColor="#FF888888"
+                                        VerticalOptions="Center" />
+                                </Grid>
+                            </Border>
+                        </Grid>
                     </DataTemplate>
                 </controls:SessionsListRowTemplateSelector.HeaderTemplate>
 
                 <controls:SessionsListRowTemplateSelector.SessionTemplate>
                     <DataTemplate x:DataType="vm:SessionRow">
-                        <Border
-                            Margin="0"
+                        <Grid 
+                            ColumnDefinitions="48,*"
                             BackgroundColor="Transparent"
-                            Stroke="Transparent"
-                            StrokeShape="RoundRectangle 4">
-                            <Border.GestureRecognizers>
+                            IsVisible="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=IsSessionsExpanded}">
+                            <!-- Columna 1: contenido del subitem -->
+                            <Border 
+                                Grid.Column="1"
+                                Padding="10,6"
+                                BackgroundColor="Transparent"
+                                Stroke="Transparent"
+                                StrokeThickness="0"
+                                StrokeShape="RoundRectangle 6">
+                                <Border.GestureRecognizers>
                                 <TapGestureRecognizer
                                     Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=SelectSessionRowCommand}"
                                     CommandParameter="{Binding .}" />
@@ -105,68 +131,73 @@
                             <FlyoutBase.ContextFlyout>
                                 <MenuFlyout>
                                     <MenuFlyoutItem
-                                        Text="Renombrar"
-                                        Command="{Binding BindingContext.RenameSessionCommand, Source={x:Reference ThisPage}}"
-                                        CommandParameter="{Binding .}" />
+                                        Text="Editar..."
+                                        Command="{Binding BindingContext.OpenSessionEditPopupCommand, Source={x:Reference ThisPage}}"
+                                        CommandParameter="{Binding .}">
+                                        <MenuFlyoutItem.IconImageSource>
+                                            <FontImageSource Glyph="&#x270F;" Color="White" Size="16" />
+                                        </MenuFlyoutItem.IconImageSource>
+                                    </MenuFlyoutItem>
                                     <MenuFlyoutItem
                                         Text="Personalizar..."
                                         Command="{Binding BindingContext.OpenIconColorPickerForSessionCommand, Source={x:Reference ThisPage}}"
-                                        CommandParameter="{Binding .}" />
+                                        CommandParameter="{Binding .}">
+                                        <MenuFlyoutItem.IconImageSource>
+                                            <FontImageSource Glyph="&#x2699;" Color="White" Size="16" />
+                                        </MenuFlyoutItem.IconImageSource>
+                                    </MenuFlyoutItem>
                                     <MenuFlyoutSeparator />
                                     <MenuFlyoutItem
                                         Text="Eliminar"
                                         Command="{Binding BindingContext.DeleteSessionCommand, Source={x:Reference ThisPage}}"
-                                        CommandParameter="{Binding .}" />
+                                        CommandParameter="{Binding .}">
+                                        <MenuFlyoutItem.IconImageSource>
+                                            <FontImageSource Glyph="&#x1F5D1;" Color="#FFFF453A" Size="16" />
+                                        </MenuFlyoutItem.IconImageSource>
+                                    </MenuFlyoutItem>
                                 </MenuFlyout>
                             </FlyoutBase.ContextFlyout>
-                            <HorizontalStackLayout
-                                Spacing="8"
+                            <Grid
+                                ColumnDefinitions="Auto,*,Auto"
                                 VerticalOptions="Center">
-                                <HorizontalStackLayout.Padding>
-                                    <OnPlatform x:TypeArguments="Thickness">
-                                        <On Platform="iOS" Value="16,4" />
-                                        <On Platform="MacCatalyst,WinUI" Value="16,10" />
-                                    </OnPlatform>
-                                </HorizontalStackLayout.Padding>
                                 <controls:SymbolIcon
-                                    HeightRequest="{StaticResource IconSizeMedium}"
-                                    SymbolName="arrow.turn.down.right"
-                                    TintColor="#FF888888"
-                                    VerticalOptions="Center"
-                                    WidthRequest="{StaticResource IconSizeMedium}" />
-                                <controls:SymbolIcon
-                                    HeightRequest="{StaticResource IconSizeDefault}"
+                                    Grid.Column="0"
+                                    HeightRequest="{StaticResource IconSizeSidebarMenu}"
                                     SymbolName="{Binding Session.Icon}"
                                     TintColor="{Binding Session.IconColor, Converter={StaticResource HexStringToColorConverter}}"
                                     VerticalOptions="Center"
-                                    WidthRequest="{StaticResource IconSizeDefault}" />
-                                <Label
-                                    FontFamily="{StaticResource AppFontBody}"
-                                    FontSize="{StaticResource FontSizeSubtitle}"
-                                    LineBreakMode="TailTruncation"
-                                    TextColor="White">
+                                    WidthRequest="{StaticResource IconSizeSidebarMenu}" />
+                                <Label Grid.Column="1" Margin="8,0,0,0" Style="{StaticResource SidebarMenuSubItemLabel}">
                                     <Label.FormattedText>
                                         <FormattedString>
-                                            <Span
-                                                Text="{Binding Session.FechaDateTime, StringFormat='{0:dd/MM/yyyy}'}"
-                                                TextColor="White" />
-                                            <Span
-                                                Text=" en "
-                                                TextColor="White" />
                                             <Span
                                                 Text="{Binding Session.Lugar}"
                                                 TextColor="White" />
                                             <Span
-                                                Text=" - "
+                                                Text=" "
                                                 TextColor="White" />
                                             <Span
-                                                Text="{Binding Session.DisplayName}"
+                                                Text="{Binding Session.TipoSesion}"
+                                                TextColor="White" />
+                                            <Span
+                                                Text=" "
+                                                TextColor="White" />
+                                            <Span
+                                                Text="{Binding Session.FechaDateTime, StringFormat='{0:dd/MM/yyyy}'}"
                                                 TextColor="White" />
                                         </FormattedString>
                                     </Label.FormattedText>
                                 </Label>
-                            </HorizontalStackLayout>
+                                <Label
+                                    Grid.Column="2"
+                                    Margin="8,0,0,0"
+                                    FontSize="{StaticResource FontSizeSmall}"
+                                    TextColor="#FF888888"
+                                    Text="{Binding Session.VideoCount}"
+                                    VerticalOptions="Center" />
+                            </Grid>
                         </Border>
+                        </Grid>
                     </DataTemplate>
                 </controls:SessionsListRowTemplateSelector.SessionTemplate>
             </controls:SessionsListRowTemplateSelector>
@@ -225,6 +256,7 @@
             Grid.Row="1"
             Grid.Column="0"
             Padding="20,0"
+            BackgroundColor="#FF1E1E1E"
             RowDefinitions="*,Auto">
 
             <CollectionView
@@ -241,12 +273,7 @@
                     <VerticalStackLayout Spacing="{StaticResource SpacingXSmall}">
                         <Border
                             x:Name="AllGalleryHeaderBorder"
-                            Margin="0,0,0,0"
-                            Padding="{StaticResource PaddingXSmall}"
-                            BackgroundColor="Transparent"
-                            Stroke="Transparent"
-                            StrokeThickness="0"
-                            StrokeShape="RoundRectangle 4">
+                            Style="{StaticResource SidebarMenuItemBorder}">
                             <Border.Behaviors>
                                 <behaviors:SidebarHoverBehavior />
                             </Border.Behaviors>
@@ -261,33 +288,35 @@
                             <Border.GestureRecognizers>
                                 <TapGestureRecognizer Command="{Binding SelectAllGalleryCommand}" />
                             </Border.GestureRecognizers>
-                            <HorizontalStackLayout
-                                Spacing="8"
-                                VerticalOptions="Center">
-                                <controls:SymbolIcon
-                                    HeightRequest="{OnPlatform WinUI={StaticResource IconSizeXLarge}, Default={StaticResource IconSizeXLarge}}"
-                                    SymbolName="photo.on.rectangle.angled"
-                                    TintColor="White"
-                                    VerticalOptions="Center"
-                                    WidthRequest="{OnPlatform WinUI={StaticResource IconSizeXLarge}, Default={StaticResource IconSizeXLarge}}" />
+                            <Grid ColumnDefinitions="Auto,*,Auto" VerticalOptions="Center">
+                                <HorizontalStackLayout
+                                    Grid.Column="0"
+                                    Margin="22,0,0,0"
+                                    Spacing="8"
+                                    VerticalOptions="Center">
+                                    <controls:SymbolIcon
+                                        HeightRequest="{StaticResource IconSizeSidebarMenu}"
+                                        SymbolName="photo.on.rectangle.angled"
+                                        TintColor="White"
+                                        VerticalOptions="Center"
+                                        WidthRequest="{StaticResource IconSizeSidebarMenu}" />
+                                    <Label
+                                        Style="{StaticResource SidebarMenuItemLabel}"
+                                        Text="Galería General" />
+                                </HorizontalStackLayout>
                                 <Label
-                                    FontFamily="{StaticResource AppFontBody}"
-                                    FontSize="{StaticResource FontSizeSubtitle}"
-                                    Text="Galería General"
-                                    TextColor="White"
-                                    VerticalOptions="Center"
-                                    VerticalTextAlignment="Center" />
-                            </HorizontalStackLayout>
+                                    Grid.Column="2"
+                                    Margin="0,0,8,0"
+                                    FontSize="{StaticResource FontSizeSmall}"
+                                    Text="{Binding Stats.TotalVideos}"
+                                    TextColor="#FF888888"
+                                    VerticalOptions="Center" />
+                            </Grid>
                         </Border>
 
                         <Border
                             x:Name="VideoLessonsHeaderBorder"
-                            Margin="0"
-                            Padding="{StaticResource PaddingXSmall}"
-                            BackgroundColor="Transparent"
-                            Stroke="Transparent"
-                            StrokeThickness="0"
-                            StrokeShape="RoundRectangle 4">
+                            Style="{StaticResource SidebarMenuItemBorder}">
                             <Border.Behaviors>
                                 <behaviors:SidebarHoverBehavior />
                             </Border.Behaviors>
@@ -302,87 +331,116 @@
                             <Border.GestureRecognizers>
                                 <TapGestureRecognizer Command="{Binding ViewVideoLessonsCommand}" />
                             </Border.GestureRecognizers>
-                            <HorizontalStackLayout
-                                Spacing="8"
-                                VerticalOptions="Center">
-                                <controls:SymbolIcon
-                                    HeightRequest="{OnPlatform WinUI={StaticResource IconSizeXLarge}, Default={StaticResource IconSizeXLarge}}"
-                                    SymbolName="video"
-                                    TintColor="White"
-                                    VerticalOptions="Center"
-                                    WidthRequest="{OnPlatform WinUI={StaticResource IconSizeXLarge}, Default={StaticResource IconSizeXLarge}}" />
+                            <Grid ColumnDefinitions="Auto,*,Auto" VerticalOptions="Center">
+                                <HorizontalStackLayout
+                                    Grid.Column="0"
+                                    Margin="22,0,0,0"
+                                    Spacing="8"
+                                    VerticalOptions="Center">
+                                    <controls:SymbolIcon
+                                        HeightRequest="{StaticResource IconSizeSidebarMenu}"
+                                        SymbolName="video"
+                                        TintColor="White"
+                                        VerticalOptions="Center"
+                                        WidthRequest="{StaticResource IconSizeSidebarMenu}" />
+                                    <Label
+                                        Style="{StaticResource SidebarMenuItemLabel}"
+                                        Text="Videolecciones" />
+                                </HorizontalStackLayout>
                                 <Label
-                                    FontFamily="{StaticResource AppFontBody}"
-                                    FontSize="{StaticResource FontSizeSubtitle}"
-                                    Text="Videolecciones"
-                                    TextColor="White"
-                                    VerticalOptions="Center"
-                                    VerticalTextAlignment="Center" />
-                            </HorizontalStackLayout>
+                                    Grid.Column="2"
+                                    Margin="0,0,8,0"
+                                    FontSize="{StaticResource FontSizeSmall}"
+                                    Text="{Binding VideoLessons.Count}"
+                                    TextColor="#FF888888"
+                                    VerticalOptions="Center" />
+                            </Grid>
                         </Border>
 
                         <!--  Carpetas inteligentes  -->
                         <Border
                             x:Name="SmartFoldersHeaderBorder"
-                            Margin="0"
-                            Padding="{StaticResource PaddingXSmall}"
-                            BackgroundColor="Transparent"
-                            Stroke="Transparent"
-                            StrokeThickness="0"
-                            StrokeShape="RoundRectangle 4">
+                            Style="{StaticResource SidebarMenuItemBorder}">
                             <Border.Behaviors>
                                 <behaviors:SidebarHoverBehavior />
                             </Border.Behaviors>
-                            <Grid ColumnDefinitions="Auto,*,Auto" VerticalOptions="Center">
-                                <controls:SymbolIcon
+                            <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" VerticalOptions="Center">
+                                <!-- Expansion toggle button -->
+                                <Border
                                     Grid.Column="0"
-                                    HeightRequest="{OnPlatform WinUI={StaticResource IconSizeXLarge}, Default={StaticResource IconSizeXLarge}}"
+                                    Padding="2"
+                                    BackgroundColor="Transparent"
+                                    StrokeThickness="0">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Command="{Binding ToggleSmartFoldersExpansionCommand}" />
+                                    </Border.GestureRecognizers>
+                                    <controls:SymbolIcon
+                                        HeightRequest="{StaticResource IconSizeSmall}"
+                                        WidthRequest="{StaticResource IconSizeSmall}"
+                                        TintColor="#FF888888"
+                                        VerticalOptions="Center">
+                                        <controls:SymbolIcon.Triggers>
+                                            <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding IsSmartFoldersExpanded}" Value="True">
+                                                <Setter Property="SymbolName" Value="chevron.down" />
+                                            </DataTrigger>
+                                            <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding IsSmartFoldersExpanded}" Value="False">
+                                                <Setter Property="SymbolName" Value="chevron.right" />
+                                            </DataTrigger>
+                                        </controls:SymbolIcon.Triggers>
+                                    </controls:SymbolIcon>
+                                </Border>
+                                <controls:SymbolIcon
+                                    Grid.Column="1"
+                                    Margin="4,0,0,0"
+                                    HeightRequest="{StaticResource IconSizeSidebarMenu}"
                                     SymbolName="folder"
                                     TintColor="White"
                                     VerticalOptions="Center"
-                                    WidthRequest="{OnPlatform WinUI={StaticResource IconSizeXLarge}, Default={StaticResource IconSizeXLarge}}" />
+                                    WidthRequest="{StaticResource IconSizeSidebarMenu}" />
                                 <Label
-                                    Grid.Column="1"
-                                    Margin="8,0,0,0"
-                                    FontFamily="{StaticResource AppFontBody}"
-                                    FontSize="{StaticResource FontSizeSubtitle}"
-                                    Text="Carpeta inteligente"
-                                    TextColor="White"
-                                    VerticalOptions="Center"
-                                    VerticalTextAlignment="Center" />
-                                <Border
                                     Grid.Column="2"
-                                    Padding="4"
+                                    Margin="8,0,0,0"
+                                    Style="{StaticResource SidebarMenuItemLabel}"
+                                    Text="Carpeta inteligente" />
+                                <!-- Add button - visible on hover via behavior -->
+                                <Border
+                                    x:Name="SmartFolderAddButton"
+                                    Grid.Column="3"
+                                    Margin="8,0,0,0"
+                                    Padding="2"
                                     BackgroundColor="Transparent"
                                     Stroke="Transparent"
                                     StrokeShape="RoundRectangle 4"
+                                    Opacity="0"
                                     HorizontalOptions="End"
                                     VerticalOptions="Center">
                                     <Border.GestureRecognizers>
                                         <TapGestureRecognizer Command="{Binding OpenSmartFolderSidebarPopupCommand}" />
                                     </Border.GestureRecognizers>
                                     <controls:SymbolIcon
-                                        HeightRequest="{StaticResource IconSizeLarge}"
+                                        HeightRequest="{StaticResource IconSizeSmall}"
                                         SymbolName="plus"
                                         TintColor="#FF888888"
-                                        WidthRequest="{StaticResource IconSizeLarge}" />
+                                        WidthRequest="{StaticResource IconSizeSmall}" />
                                 </Border>
+                                <Label
+                                    Grid.Column="4"
+                                    Margin="0,0,0,0"
+                                    FontSize="{StaticResource FontSizeSmall}"
+                                    TextColor="#FF888888"
+                                    Text="{Binding SmartFolders.Count}"
+                                    VerticalOptions="Center" />
                             </Grid>
                         </Border>
 
                         <VerticalStackLayout
                             Margin="0,0,0,6"
                             Spacing="{StaticResource SpacingXSmall}"
+                            IsVisible="{Binding IsSmartFoldersExpanded}"
                             BindableLayout.ItemsSource="{Binding SmartFolders}">
                             <BindableLayout.ItemTemplate>
                                 <DataTemplate x:DataType="models:SmartFolderDefinition">
-                                    <Border
-                                        Margin="12,0,0,0"
-                                        Padding="10,6"
-                                        BackgroundColor="Transparent"
-                                        Stroke="Transparent"
-                                        StrokeThickness="0"
-                                        StrokeShape="RoundRectangle 6">
+                                    <Border Style="{StaticResource SidebarMenuSubItemBorder}">
                                         <Border.Behaviors>
                                             <behaviors:SidebarHoverBehavior />
                                         </Border.Behaviors>
@@ -396,34 +454,49 @@
                                                 <MenuFlyoutItem
                                                     Text="Renombrar"
                                                     Command="{Binding BindingContext.RenameSmartFolderCommand, Source={x:Reference ThisPage}}"
-                                                    CommandParameter="{Binding .}" />
+                                                    CommandParameter="{Binding .}">
+                                                    <MenuFlyoutItem.IconImageSource>
+                                                        <FontImageSource Glyph="&#x270F;" Color="White" Size="16" />
+                                                    </MenuFlyoutItem.IconImageSource>
+                                                </MenuFlyoutItem>
                                                 <MenuFlyoutItem
                                                     Text="Personalizar..."
                                                     Command="{Binding BindingContext.OpenIconColorPickerForSmartFolderCommand, Source={x:Reference ThisPage}}"
-                                                    CommandParameter="{Binding .}" />
+                                                    CommandParameter="{Binding .}">
+                                                    <MenuFlyoutItem.IconImageSource>
+                                                        <FontImageSource Glyph="&#x2699;" Color="White" Size="16" />
+                                                    </MenuFlyoutItem.IconImageSource>
+                                                </MenuFlyoutItem>
                                                 <MenuFlyoutSeparator />
                                                 <MenuFlyoutItem
                                                     Text="Eliminar"
                                                     Command="{Binding BindingContext.DeleteSmartFolderCommand, Source={x:Reference ThisPage}}"
-                                                    CommandParameter="{Binding .}" />
+                                                    CommandParameter="{Binding .}">
+                                                    <MenuFlyoutItem.IconImageSource>
+                                                        <FontImageSource Glyph="&#x1F5D1;" Color="#FFFF453A" Size="16" />
+                                                    </MenuFlyoutItem.IconImageSource>
+                                                </MenuFlyoutItem>
                                             </MenuFlyout>
                                         </FlyoutBase.ContextFlyout>
-                                        <Grid ColumnDefinitions="Auto,*" VerticalOptions="Center">
+                                        <Grid ColumnDefinitions="Auto,*,Auto" VerticalOptions="Center">
                                             <controls:SymbolIcon
                                                 Grid.Column="0"
-                                                HeightRequest="{StaticResource IconSizeMedium}"
-                                                WidthRequest="{StaticResource IconSizeMedium}"
+                                                HeightRequest="{StaticResource IconSizeSidebarMenu}"
+                                                WidthRequest="{StaticResource IconSizeSidebarMenu}"
                                                 SymbolName="{Binding Icon}"
                                                 TintColor="{Binding IconColor, Converter={StaticResource HexStringToColorConverter}}"
                                                 VerticalOptions="Center" />
                                             <Label
                                                 Grid.Column="1"
                                                 Margin="8,0,0,0"
-                                                FontFamily="{StaticResource AppFontBody}"
+                                                Style="{StaticResource SidebarMenuSubItemLabel}"
+                                                Text="{Binding Name}" />
+                                            <Label
+                                                Grid.Column="2"
+                                                Margin="8,0,0,0"
                                                 FontSize="{StaticResource FontSizeSmall}"
-                                                Text="{Binding Name}"
-                                                TextColor="#FFB1B1B1"
-                                                LineBreakMode="TailTruncation"
+                                                TextColor="#FF888888"
+                                                Text="{Binding MatchingVideoCount}"
                                                 VerticalOptions="Center" />
                                         </Grid>
                                     </Border>
@@ -434,12 +507,7 @@
                         <!--  Diario Personal  -->
                         <Border
                             x:Name="DiaryHeaderBorder"
-                            Margin="0"
-                            Padding="{StaticResource PaddingXSmall}"
-                            BackgroundColor="Transparent"
-                            Stroke="Transparent"
-                            StrokeThickness="0"
-                            StrokeShape="RoundRectangle 4">
+                            Style="{StaticResource SidebarMenuItemBorder}">
                             <Border.Behaviors>
                                 <behaviors:SidebarHoverBehavior />
                             </Border.Behaviors>
@@ -455,53 +523,74 @@
                                 <TapGestureRecognizer Command="{Binding ViewDiaryCommand}" />
                             </Border.GestureRecognizers>
                             <HorizontalStackLayout
+                                Margin="22,0,0,0"
                                 Spacing="8"
                                 VerticalOptions="Center">
                                 <controls:SymbolIcon
-                                    HeightRequest="{OnPlatform WinUI={StaticResource IconSizeXLarge}, Default={StaticResource IconSizeXLarge}}"
+                                    HeightRequest="{StaticResource IconSizeSidebarMenu}"
                                     SymbolName="book"
                                     TintColor="White"
                                     VerticalOptions="Center"
-                                    WidthRequest="{OnPlatform WinUI={StaticResource IconSizeXLarge}, Default={StaticResource IconSizeXLarge}}" />
+                                    WidthRequest="{StaticResource IconSizeSidebarMenu}" />
                                 <Label
-                                    FontFamily="{StaticResource AppFontBody}"
-                                    FontSize="{StaticResource FontSizeSubtitle}"
-                                    Text="Diario"
-                                    TextColor="White"
-                                    VerticalOptions="Center"
-                                    VerticalTextAlignment="Center" />
+                                    Style="{StaticResource SidebarMenuItemLabel}"
+                                    Text="Diario" />
                             </HorizontalStackLayout>
                         </Border>
 
-                        <!--  Item padre: Sesiones (no expandible)  -->
+                        <!--  Item padre: Sesiones (expandible)  -->
                         <Border
                             x:Name="SessionsHeaderBorder"
-                            Margin="0"
-                            Padding="{StaticResource PaddingXSmall}"
-                            BackgroundColor="Transparent"
-                            Stroke="Transparent"
-                            StrokeThickness="0"
-                            StrokeShape="RoundRectangle 4">
+                            Style="{StaticResource SidebarMenuItemBorder}">
                             <Border.Behaviors>
                                 <behaviors:SidebarHoverBehavior />
                             </Border.Behaviors>
-                            <HorizontalStackLayout
-                                Spacing="8"
-                                VerticalOptions="Center">
+                            <Grid ColumnDefinitions="Auto,Auto,*,Auto" VerticalOptions="Center">
+                                <!-- Expansion toggle button -->
+                                <Border
+                                    Grid.Column="0"
+                                    Padding="2"
+                                    BackgroundColor="Transparent"
+                                    StrokeThickness="0">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Command="{Binding ToggleSessionsExpansionCommand}" />
+                                    </Border.GestureRecognizers>
+                                    <controls:SymbolIcon
+                                        HeightRequest="{StaticResource IconSizeSmall}"
+                                        WidthRequest="{StaticResource IconSizeSmall}"
+                                        TintColor="#FF888888"
+                                        VerticalOptions="Center">
+                                        <controls:SymbolIcon.Triggers>
+                                            <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding IsSessionsExpanded}" Value="True">
+                                                <Setter Property="SymbolName" Value="chevron.down" />
+                                            </DataTrigger>
+                                            <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding IsSessionsExpanded}" Value="False">
+                                                <Setter Property="SymbolName" Value="chevron.right" />
+                                            </DataTrigger>
+                                        </controls:SymbolIcon.Triggers>
+                                    </controls:SymbolIcon>
+                                </Border>
                                 <controls:SymbolIcon
-                                    HeightRequest="{OnPlatform WinUI={StaticResource IconSizeXLarge}, Default={StaticResource IconSizeXLarge}}"
+                                    Grid.Column="1"
+                                    Margin="4,0,0,0"
+                                    HeightRequest="{StaticResource IconSizeSidebarMenu}"
                                     SymbolName="clock"
                                     TintColor="White"
                                     VerticalOptions="Center"
-                                    WidthRequest="{OnPlatform WinUI={StaticResource IconSizeXLarge}, Default={StaticResource IconSizeXLarge}}" />
+                                    WidthRequest="{StaticResource IconSizeSidebarMenu}" />
                                 <Label
-                                    FontFamily="{StaticResource AppFontBody}"
-                                    FontSize="{StaticResource FontSizeSubtitle}"
-                                    Text="Sesiones"
-                                    TextColor="White"
-                                    VerticalOptions="Center"
-                                    VerticalTextAlignment="Center" />
-                            </HorizontalStackLayout>
+                                    Grid.Column="2"
+                                    Margin="8,0,0,0"
+                                    Style="{StaticResource SidebarMenuItemLabel}"
+                                    Text="Sesiones" />
+                                <Label
+                                    Grid.Column="3"
+                                    Margin="8,0,8,0"
+                                    FontSize="{StaticResource FontSizeSmall}"
+                                    TextColor="#FF888888"
+                                    Text="{Binding Stats.TotalSessions}"
+                                    VerticalOptions="Center" />
+                            </Grid>
                         </Border>
 
                         <!--  Item de sesión en importación (con barra de progreso)  -->
@@ -545,7 +634,7 @@
                                     <Label
                                         FontFamily="{StaticResource AppFontBody}"
                                         FontSize="11"
-                                        FontAttributes="Bold"
+                                        FontAttributes="None"
                                         Text="{Binding BackgroundImportProgress, StringFormat='{0}%'}"
                                         TextColor="#FF6DDDFF"
                                         VerticalOptions="Center"
@@ -557,7 +646,7 @@
                                     Margin="0"
                                     Progress="{Binding BackgroundImportProgressNormalized}"
                                     ProgressColor="#FF6DDDFF"
-                                    BackgroundColor="#FF2A2A2A"
+                                    BackgroundColor="#FF404040"
                                     HeightRequest="4" />
                             </Grid>
                         </Border>
@@ -592,14 +681,14 @@
                 <Label
                     FontFamily="{StaticResource AppFontBody}"
                     FontSize="{StaticResource FontSizeBody}"
-                    FontAttributes="Bold"
+                    FontAttributes="None"
                     Text="Acciones de sesión"
                     TextColor="#FF888888" />
                 <Grid ColumnDefinitions="*,*" ColumnSpacing="4">
                     <Border
                         Grid.Column="0"
                         Padding="{StaticResource PaddingActionButton}"
-                        BackgroundColor="#FF2A2A2A"
+                        BackgroundColor="#FF404040"
                         Stroke="Transparent"
                         StrokeShape="RoundRectangle 4">
                         <Border.GestureRecognizers>
@@ -618,7 +707,7 @@
                     <Border
                         Grid.Column="1"
                         Padding="{StaticResource PaddingActionButton}"
-                        BackgroundColor="#FF2A2A2A"
+                        BackgroundColor="#FF404040"
                         Stroke="Transparent"
                         StrokeShape="RoundRectangle 4">
                         <Border.GestureRecognizers>
@@ -639,7 +728,7 @@
                 <!--  Botón Nueva sesión (solo iOS)  -->
                 <Border
                     Padding="{StaticResource PaddingActionButton}"
-                    BackgroundColor="#FF2A2A2A"
+                    BackgroundColor="#FF404040"
                     Stroke="Transparent"
                     StrokeShape="RoundRectangle 4">
                     <Border.IsVisible>
@@ -665,7 +754,7 @@
                 <!--  Botón Exportar sesión (solo iOS)  -->
                 <Border
                     Padding="{StaticResource PaddingActionButton}"
-                    BackgroundColor="#FF2A2A2A"
+                    BackgroundColor="#FF404040"
                     Stroke="Transparent"
                     StrokeShape="RoundRectangle 4">
                     <Border.IsVisible>
@@ -728,7 +817,7 @@
                         <Label 
                             Text="Grabar" 
                             TextColor="White" 
-                            FontAttributes="Bold" 
+                            FontAttributes="None" 
                             FontSize="{StaticResource FontSizeBody}"
                             VerticalOptions="Center" />
                     </HorizontalStackLayout>
@@ -742,7 +831,7 @@
                 <Label
                     FontSize="{StaticResource FontSizeBody}"
                     Text="{Binding VideoCountDisplayText}"
-                    TextColor="#FFB1B1B1" />
+                    TextColor="#FFCCCCCC" />
                 <ActivityIndicator
                     HeightRequest="16"
                     IsRunning="{Binding IsLoadingSelectedSessionVideos}"
@@ -855,7 +944,7 @@
                                                     Text="VS"
                                                     TextColor="#FF6DDDFF"
                                                     VerticalOptions="Center"
-                                                    FontAttributes="Bold" />
+                                                    FontAttributes="None" />
                                             </HorizontalStackLayout>
                                         </Border>
 
@@ -888,8 +977,8 @@
                                     <VerticalStackLayout Spacing="2">
                                         <!--  Primera línea: APELLIDOS Nombre - Sesión  -->
                                         <Label
-                                            FontSize="{StaticResource FontSizeSmall}"
-                                            FontAttributes="Bold"
+                                            FontSize="{StaticResource FontSizeBody}"
+                                            FontAttributes="None"
                                             LineBreakMode="TailTruncation"
                                             Text="{Binding DisplayLine1}"
                                             TextColor="White" />
@@ -898,7 +987,7 @@
                                             FontSize="{StaticResource FontSizeSmall}"
                                             LineBreakMode="TailTruncation"
                                             Text="{Binding DisplayLine2}"
-                                            TextColor="#FFB1B1B1" />
+                                            TextColor="#FFCCCCCC" />
                                         
                                         <!--  Tags del video (chips)  -->
                                         <ScrollView
@@ -1080,11 +1169,11 @@
                                             FontSize="{StaticResource FontSizeSmall}"
                                             LineBreakMode="TailTruncation"
                                             Text="{Binding SessionDisplayName}"
-                                            TextColor="#FFB1B1B1" />
+                                            TextColor="#FFCCCCCC" />
                                         <Label
                                             FontSize="{StaticResource FontSizeSmall}"
                                             Text="{Binding CreatedAtUtc, StringFormat='{0:dd/MM/yyyy HH:mm}'}"
-                                            TextColor="#FFB1B1B1" />
+                                            TextColor="#FFCCCCCC" />
                                     </VerticalStackLayout>
                                     
                                     <!--  Botones de acción  -->
@@ -1169,7 +1258,8 @@
         <ScrollView
             Grid.Row="1"
             Grid.Column="4"
-            Padding="20">
+            Padding="20"
+            BackgroundColor="#FF1E1E1E">
             <ScrollView.IsVisible>
                 <Binding Path="IsVideoLessonsSelected" Converter="{toolkit:InvertedBoolConverter}" />
             </ScrollView.IsVisible>
@@ -1182,7 +1272,7 @@
                     </Grid.IsVisible>
                     <Border
                         Padding="10,8"
-                        BackgroundColor="#FF2A2A2A"
+                        BackgroundColor="#FF404040"
                         Stroke="Transparent"
                         StrokeShape="RoundRectangle 6">
                         <Border.Triggers>
@@ -1218,7 +1308,7 @@
                                 </Label.IsVisible>
                                 <Label.Triggers>
                                     <DataTrigger TargetType="Label" Binding="{Binding IsCrudTechTabSelected}" Value="True">
-                                        <Setter Property="FontAttributes" Value="Bold" />
+                                        <Setter Property="FontAttributes" Value="None" />
                                     </DataTrigger>
                                     <DataTrigger TargetType="Label" Binding="{Binding IsCrudTechTabSelected}" Value="False">
                                         <Setter Property="FontAttributes" Value="None" />
@@ -1231,7 +1321,7 @@
                     <Border
                         Grid.Column="1"
                         Padding="10,8"
-                        BackgroundColor="#FF2A2A2A"
+                        BackgroundColor="#FF404040"
                         Stroke="Transparent"
                         StrokeShape="RoundRectangle 6">
                         <Border.Triggers>
@@ -1267,7 +1357,7 @@
                                 </Label.IsVisible>
                                 <Label.Triggers>
                                     <DataTrigger TargetType="Label" Binding="{Binding IsStatsTabSelected}" Value="True">
-                                        <Setter Property="FontAttributes" Value="Bold" />
+                                        <Setter Property="FontAttributes" Value="None" />
                                     </DataTrigger>
                                     <DataTrigger TargetType="Label" Binding="{Binding IsStatsTabSelected}" Value="False">
                                         <Setter Property="FontAttributes" Value="None" />
@@ -1280,7 +1370,7 @@
                     <Border
                         Grid.Column="2"
                         Padding="10,8"
-                        BackgroundColor="#FF2A2A2A"
+                        BackgroundColor="#FF404040"
                         Stroke="Transparent"
                         StrokeShape="RoundRectangle 6"
                         IsVisible="{Binding HasSpecificSessionSelected}">
@@ -1317,7 +1407,7 @@
                                 </Label.IsVisible>
                                 <Label.Triggers>
                                     <DataTrigger TargetType="Label" Binding="{Binding IsDiaryTabSelected}" Value="True">
-                                        <Setter Property="FontAttributes" Value="Bold" />
+                                        <Setter Property="FontAttributes" Value="None" />
                                     </DataTrigger>
                                     <DataTrigger TargetType="Label" Binding="{Binding IsDiaryTabSelected}" Value="False">
                                         <Setter Property="FontAttributes" Value="None" />
@@ -1355,13 +1445,13 @@
                     <Label
                         FontSize="{StaticResource FontSizeBody}"
                         Text="Selección de vídeos"
-                        TextColor="#FFB1B1B1" />
+                        TextColor="#FFCCCCCC" />
 
                     <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
                         <!--  Toggle: Selección múltiple  -->
                         <Border
                             Padding="10,8"
-                            BackgroundColor="#FF2A2A2A"
+                            BackgroundColor="#FF404040"
                             Stroke="Transparent"
                             StrokeShape="RoundRectangle 6">
                             <Border.Triggers>
@@ -1382,7 +1472,7 @@
                                 <Label Text="Seleccionar" TextColor="White" VerticalOptions="Center">
                                     <Label.Triggers>
                                         <DataTrigger TargetType="Label" Binding="{Binding IsMultiSelectMode}" Value="True">
-                                            <Setter Property="FontAttributes" Value="Bold" />
+                                            <Setter Property="FontAttributes" Value="None" />
                                         </DataTrigger>
                                     </Label.Triggers>
                                 </Label>
@@ -1393,7 +1483,7 @@
                         <Border
                             Grid.Column="1"
                             Padding="10,8"
-                            BackgroundColor="#FF2A2A2A"
+                            BackgroundColor="#FF404040"
                             Stroke="Transparent"
                             StrokeShape="RoundRectangle 6">
                             <Border.Triggers>
@@ -1414,7 +1504,7 @@
                                 <Label Text="Todos" TextColor="White" VerticalOptions="Center">
                                     <Label.Triggers>
                                         <DataTrigger TargetType="Label" Binding="{Binding IsSelectAllActive}" Value="True">
-                                            <Setter Property="FontAttributes" Value="Bold" />
+                                            <Setter Property="FontAttributes" Value="None" />
                                         </DataTrigger>
                                     </Label.Triggers>
                                 </Label>
@@ -1427,7 +1517,7 @@
                         Margin="0,12,0,0"
                         FontSize="{StaticResource FontSizeBody}"
                         Text="Acciones en lote"
-                        TextColor="#FFB1B1B1" />
+                        TextColor="#FFCCCCCC" />
 
                     <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="8">
                         <!--  Botón: Reproducir como playlist  -->
@@ -1435,7 +1525,7 @@
                             Grid.Row="0"
                             Grid.Column="0"
                             Padding="{StaticResource PaddingActionButton}"
-                            BackgroundColor="#FF2A2A2A"
+                            BackgroundColor="#FF404040"
                             Stroke="Transparent"
                             StrokeShape="RoundRectangle 6">
                             <Border.GestureRecognizers>
@@ -1457,7 +1547,7 @@
                             Grid.Row="0"
                             Grid.Column="1"
                             Padding="{StaticResource PaddingActionButton}"
-                            BackgroundColor="#FF2A2A2A"
+                            BackgroundColor="#FF404040"
                             Stroke="Transparent"
                             StrokeShape="RoundRectangle 6">
                             <Border.GestureRecognizers>
@@ -1479,7 +1569,7 @@
                             Grid.Row="1"
                             Grid.Column="0"
                             Padding="{StaticResource PaddingActionButton}"
-                            BackgroundColor="#FF2A2A2A"
+                            BackgroundColor="#FF404040"
                             Stroke="Transparent"
                             StrokeShape="RoundRectangle 6">
                             <Border.GestureRecognizers>
@@ -1501,7 +1591,7 @@
                             Grid.Row="1"
                             Grid.Column="1"
                             Padding="{StaticResource PaddingActionButton}"
-                            BackgroundColor="#FF2A2A2A"
+                            BackgroundColor="#FF404040"
                             Stroke="Transparent"
                             StrokeShape="RoundRectangle 6">
                             <Border.GestureRecognizers>
@@ -1555,7 +1645,7 @@
                     <Label
                         FontSize="{StaticResource FontSizeBody}"
                         Text="Análisis rápido"
-                        TextColor="#FFB1B1B1">
+                        TextColor="#FFCCCCCC">
                         <Label.Margin>
                             <OnPlatform x:TypeArguments="Thickness">
                                 <On Platform="WinUI" Value="0,4,0,0" />
@@ -1739,7 +1829,7 @@
                         IsVisible="{Binding IsSingleVideoMode}"
                         HorizontalOptions="Fill">
                         <Border
-                            BackgroundColor="#FF2A2A2A"
+                            BackgroundColor="#FF404040"
                             Stroke="Transparent"
                             StrokeShape="RoundRectangle 6">
                             <Border.GestureRecognizers>
@@ -1774,7 +1864,7 @@
                                     HorizontalOptions="Center"
                                     VerticalOptions="Center"
                                     Text="Arrastra un clip aquí"
-                                    TextColor="#FF666666"
+                                    TextColor="#FF888888"
                                     FontSize="{StaticResource FontSizeBody}"
                                     IsVisible="{Binding HasParallelVideo1, Converter={StaticResource InvertedBoolConverter}}" />
                                 <!--  Overlay transparente para capturar gestos de scrubbing  -->
@@ -1808,7 +1898,7 @@
                         </Grid.Style>
                         <controls:AspectRatioContainer AspectRatio="1.777">
                             <Border
-                                BackgroundColor="#FF2A2A2A"
+                                BackgroundColor="#FF404040"
                                 Stroke="Transparent"
                                 StrokeShape="RoundRectangle 6">
                                 <Border.GestureRecognizers>
@@ -1842,9 +1932,9 @@
                                         HorizontalOptions="Center"
                                         VerticalOptions="Center"
                                         Text="1"
-                                        TextColor="#FF666666"
+                                        TextColor="#FF888888"
                                         FontSize="{StaticResource FontSizeHeader}"
-                                        FontAttributes="Bold"
+                                        FontAttributes="None"
                                         IsVisible="{Binding HasParallelVideo1, Converter={StaticResource InvertedBoolConverter}}" />
                                     <!--  Overlay para scrubbing  -->
                                     <BoxView
@@ -1859,7 +1949,7 @@
                         </controls:AspectRatioContainer>
                         <controls:AspectRatioContainer Grid.Column="1" AspectRatio="1.777">
                             <Border
-                                BackgroundColor="#FF2A2A2A"
+                                BackgroundColor="#FF404040"
                                 Stroke="Transparent"
                                 StrokeShape="RoundRectangle 6">
                                 <Border.GestureRecognizers>
@@ -1893,9 +1983,9 @@
                                         HorizontalOptions="Center"
                                         VerticalOptions="Center"
                                         Text="2"
-                                        TextColor="#FF666666"
+                                        TextColor="#FF888888"
                                         FontSize="{StaticResource FontSizeHeader}"
-                                        FontAttributes="Bold"
+                                        FontAttributes="None"
                                         IsVisible="{Binding HasParallelVideo2, Converter={StaticResource InvertedBoolConverter}}" />
                                     <!--  Overlay para scrubbing  -->
                                     <BoxView
@@ -1928,7 +2018,7 @@
                         </Grid.Style>
                         <controls:AspectRatioContainer AspectRatio="1.777">
                             <Border
-                                BackgroundColor="#FF2A2A2A"
+                                BackgroundColor="#FF404040"
                                 Stroke="Transparent"
                                 StrokeShape="RoundRectangle 6">
                                 <Border.GestureRecognizers>
@@ -1962,9 +2052,9 @@
                                         HorizontalOptions="Center"
                                         VerticalOptions="Center"
                                         Text="1"
-                                        TextColor="#FF666666"
+                                        TextColor="#FF888888"
                                         FontSize="{StaticResource FontSizeHeader}"
-                                        FontAttributes="Bold"
+                                        FontAttributes="None"
                                         IsVisible="{Binding HasParallelVideo1, Converter={StaticResource InvertedBoolConverter}}" />
                                     <!--  Overlay para scrubbing  -->
                                     <BoxView
@@ -1979,7 +2069,7 @@
                         </controls:AspectRatioContainer>
                         <controls:AspectRatioContainer Grid.Row="1" AspectRatio="1.777">
                             <Border
-                                BackgroundColor="#FF2A2A2A"
+                                BackgroundColor="#FF404040"
                                 Stroke="Transparent"
                                 StrokeShape="RoundRectangle 6">
                                 <Border.GestureRecognizers>
@@ -2013,9 +2103,9 @@
                                         HorizontalOptions="Center"
                                         VerticalOptions="Center"
                                         Text="2"
-                                        TextColor="#FF666666"
+                                        TextColor="#FF888888"
                                         FontSize="{StaticResource FontSizeHeader}"
-                                        FontAttributes="Bold"
+                                        FontAttributes="None"
                                         IsVisible="{Binding HasParallelVideo2, Converter={StaticResource InvertedBoolConverter}}" />
                                     <!--  Overlay para scrubbing  -->
                                     <BoxView
@@ -2040,7 +2130,7 @@
                         <!--  Video 1 (arriba izquierda)  -->
                         <controls:AspectRatioContainer AspectRatio="1.777">
                             <Border
-                                BackgroundColor="#FF2A2A2A"
+                                BackgroundColor="#FF404040"
                                 Stroke="Transparent"
                                 StrokeShape="RoundRectangle 6">
                                 <Border.GestureRecognizers>
@@ -2075,9 +2165,9 @@
                                         HorizontalOptions="Center"
                                         VerticalOptions="Center"
                                         Text="1"
-                                        TextColor="#FF666666"
+                                        TextColor="#FF888888"
                                         FontSize="{StaticResource FontSizeHeader}"
-                                        FontAttributes="Bold"
+                                        FontAttributes="None"
                                         IsVisible="{Binding HasParallelVideo1, Converter={StaticResource InvertedBoolConverter}}" />
                                     <!--  Overlay para scrubbing  -->
                                     <BoxView
@@ -2093,7 +2183,7 @@
                         <!--  Video 2 (arriba derecha)  -->
                         <controls:AspectRatioContainer Grid.Column="1" AspectRatio="1.777">
                             <Border
-                                BackgroundColor="#FF2A2A2A"
+                                BackgroundColor="#FF404040"
                                 Stroke="Transparent"
                                 StrokeShape="RoundRectangle 6">
                                 <Border.GestureRecognizers>
@@ -2128,9 +2218,9 @@
                                         HorizontalOptions="Center"
                                         VerticalOptions="Center"
                                         Text="2"
-                                        TextColor="#FF666666"
+                                        TextColor="#FF888888"
                                         FontSize="{StaticResource FontSizeHeader}"
-                                        FontAttributes="Bold"
+                                        FontAttributes="None"
                                         IsVisible="{Binding HasParallelVideo2, Converter={StaticResource InvertedBoolConverter}}" />
                                     <!--  Overlay para scrubbing  -->
                                     <BoxView
@@ -2146,7 +2236,7 @@
                         <!--  Video 3 (abajo izquierda)  -->
                         <controls:AspectRatioContainer Grid.Row="1" AspectRatio="1.777">
                             <Border
-                                BackgroundColor="#FF2A2A2A"
+                                BackgroundColor="#FF404040"
                                 Stroke="Transparent"
                                 StrokeShape="RoundRectangle 6">
                                 <Border.GestureRecognizers>
@@ -2181,9 +2271,9 @@
                                         HorizontalOptions="Center"
                                         VerticalOptions="Center"
                                         Text="3"
-                                        TextColor="#FF666666"
+                                        TextColor="#FF888888"
                                         FontSize="{StaticResource FontSizeHeader}"
-                                        FontAttributes="Bold"
+                                        FontAttributes="None"
                                         IsVisible="{Binding HasParallelVideo3, Converter={StaticResource InvertedBoolConverter}}" />
                                     <!--  Overlay para scrubbing  -->
                                     <BoxView
@@ -2199,7 +2289,7 @@
                         <!--  Video 4 (abajo derecha)  -->
                         <controls:AspectRatioContainer Grid.Row="1" Grid.Column="1" AspectRatio="1.777">
                             <Border
-                                BackgroundColor="#FF2A2A2A"
+                                BackgroundColor="#FF404040"
                                 Stroke="Transparent"
                                 StrokeShape="RoundRectangle 6">
                                 <Border.GestureRecognizers>
@@ -2234,9 +2324,9 @@
                                         HorizontalOptions="Center"
                                         VerticalOptions="Center"
                                         Text="4"
-                                        TextColor="#FF666666"
+                                        TextColor="#FF888888"
                                         FontSize="{StaticResource FontSizeHeader}"
-                                        FontAttributes="Bold"
+                                        FontAttributes="None"
                                         IsVisible="{Binding HasParallelVideo4, Converter={StaticResource InvertedBoolConverter}}" />
                                     <!--  Overlay para scrubbing  -->
                                     <BoxView
@@ -2315,7 +2405,7 @@
                     <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
                         <Border
                             Padding="10,8"
-                            BackgroundColor="#FF2A2A2A"
+                            BackgroundColor="#FF404040"
                             Stroke="Transparent"
                             StrokeShape="RoundRectangle 6">
                             <Border.GestureRecognizers>
@@ -2335,7 +2425,7 @@
                         <Border
                             Grid.Column="1"
                             Padding="10,8"
-                            BackgroundColor="#FF2A2A2A"
+                            BackgroundColor="#FF404040"
                             Stroke="Transparent"
                             StrokeShape="RoundRectangle 6">
                             <Border.GestureRecognizers>
@@ -2401,7 +2491,7 @@
                                 <Border
                                     x:Name="PlacesHeader"
                                     Padding="10,8"
-                                    BackgroundColor="#FF2A2A2A"
+                                    BackgroundColor="#FF404040"
                                     Stroke="Transparent"
                                     StrokeShape="RoundRectangle 4">
                                     <Border.GestureRecognizers>
@@ -2412,7 +2502,7 @@
                                             <Label
                                                 FontSize="{StaticResource FontSizeSubtitle}"
                                                 Text="Lugar"
-                                                TextColor="#FFB1B1B1" />
+                                                TextColor="#FFCCCCCC" />
                                             <Label
                                                 FontSize="{StaticResource FontSizeSubtitle}"
                                                 Text="{Binding SelectedPlacesSummary}"
@@ -2431,7 +2521,7 @@
                                 <Border
                                     x:Name="AthletesHeader"
                                     Padding="10,8"
-                                    BackgroundColor="#FF2A2A2A"
+                                    BackgroundColor="#FF404040"
                                     Stroke="Transparent"
                                     StrokeShape="RoundRectangle 4">
                                     <Border.GestureRecognizers>
@@ -2442,7 +2532,7 @@
                                             <Label
                                                 FontSize="{StaticResource FontSizeSubtitle}"
                                                 Text="Deportista"
-                                                TextColor="#FFB1B1B1" />
+                                                TextColor="#FFCCCCCC" />
                                             <Label
                                                 FontSize="{StaticResource FontSizeSubtitle}"
                                                 Text="{Binding SelectedAthletesSummary}"
@@ -2461,7 +2551,7 @@
                                 <Border
                                     x:Name="SectionsHeader"
                                     Padding="10,8"
-                                    BackgroundColor="#FF2A2A2A"
+                                    BackgroundColor="#FF404040"
                                     Stroke="Transparent"
                                     StrokeShape="RoundRectangle 4">
                                     <Border.GestureRecognizers>
@@ -2472,7 +2562,7 @@
                                             <Label
                                                 FontSize="{StaticResource FontSizeSubtitle}"
                                                 Text="Sección"
-                                                TextColor="#FFB1B1B1" />
+                                                TextColor="#FFCCCCCC" />
                                             <Label
                                                 FontSize="{StaticResource FontSizeSubtitle}"
                                                 Text="{Binding SelectedSectionsSummary}"
@@ -2491,7 +2581,7 @@
                                 <Border
                                     x:Name="TagsHeader"
                                     Padding="10,8"
-                                    BackgroundColor="#FF2A2A2A"
+                                    BackgroundColor="#FF404040"
                                     Stroke="Transparent"
                                     StrokeShape="RoundRectangle 4">
                                     <Border.GestureRecognizers>
@@ -2503,7 +2593,7 @@
                                                 FontFamily="{StaticResource AppFontBody}"
                                                 FontSize="{StaticResource FontSizeSubtitle}"
                                                 Text="Tag"
-                                                TextColor="#FFB1B1B1" />
+                                                TextColor="#FFCCCCCC" />
                                             <Label
                                                 FontFamily="{StaticResource AppFontBody}"
                                                 FontSize="{StaticResource FontSizeSubtitle}"
@@ -2524,7 +2614,7 @@
                                         <Label
                                             FontSize="{StaticResource FontSizeSubtitle}"
                                             Text="Fecha desde"
-                                            TextColor="#FFB1B1B1" />
+                                            TextColor="#FFCCCCCC" />
                                         <Border
                                             StrokeShape="RoundRectangle 4"
                                             Stroke="Transparent"
@@ -2555,7 +2645,7 @@
                                         <Label
                                             FontSize="{StaticResource FontSizeSubtitle}"
                                             Text="Fecha hasta"
-                                            TextColor="#FFB1B1B1" />
+                                            TextColor="#FFCCCCCC" />
                                         <Border
                                             StrokeShape="RoundRectangle 4"
                                             Stroke="Transparent"
@@ -2588,7 +2678,7 @@
                             <Border
                                 Margin="0,114,0,0"
                                 Padding="8"
-                                BackgroundColor="#FF2A2A2A"
+                                BackgroundColor="#FF404040"
                                 HorizontalOptions="Fill"
                                 IsVisible="{Binding IsPlacesExpanded}"
                                 Stroke="Transparent"
@@ -2633,7 +2723,7 @@
                             <Border
                                 Margin="0,180,0,0"
                                 Padding="8"
-                                BackgroundColor="#FF2A2A2A"
+                                BackgroundColor="#FF404040"
                                 HorizontalOptions="Fill"
                                 IsVisible="{Binding IsAthletesExpanded}"
                                 Stroke="Transparent"
@@ -2678,7 +2768,7 @@
                             <Border
                                 Margin="0,244,0,0"
                                 Padding="8"
-                                BackgroundColor="#FF2A2A2A"
+                                BackgroundColor="#FF404040"
                                 HorizontalOptions="Fill"
                                 IsVisible="{Binding IsSectionsExpanded}"
                                 Stroke="Transparent"
@@ -2723,7 +2813,7 @@
                             <Border
                                 Margin="0,310,0,0"
                                 Padding="8"
-                                BackgroundColor="#FF2A2A2A"
+                                BackgroundColor="#FF404040"
                                 HorizontalOptions="Fill"
                                 IsVisible="{Binding IsTagsExpanded}"
                                 Stroke="Transparent"
@@ -2795,19 +2885,19 @@
                     FontSize="{StaticResource FontSizeBody}"
                     LineBreakMode="TailTruncation"
                     Text="{Binding SelectedSessionTitle}"
-                    TextColor="#FFB1B1B1" />
+                    TextColor="#FFCCCCCC" />
 
                 <!--  RESUMEN PRINCIPAL  -->
                 <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
                     <!--  Número de vídeos  -->
                     <Border
                         Padding="12"
-                        BackgroundColor="#FF2A2A2A"
+                        BackgroundColor="#FF404040"
                         StrokeShape="RoundRectangle 10"
                         StrokeThickness="0">
                         <VerticalStackLayout HorizontalOptions="Center" Spacing="4">
                             <Label
-                                FontAttributes="Bold"
+                                FontAttributes="None"
                                 FontSize="{StaticResource FontSizeHeader}"
                                 HorizontalOptions="Center"
                                 Text="{Binding TotalFilteredVideoCount}"
@@ -2816,19 +2906,19 @@
                                 FontSize="{StaticResource FontSizeSmall}"
                                 HorizontalOptions="Center"
                                 Text="Vídeos"
-                                TextColor="#FFB1B1B1" />
+                                TextColor="#FFCCCCCC" />
                         </VerticalStackLayout>
                     </Border>
                     <!--  Tiempo Total  -->
                     <Border
                         Grid.Column="1"
                         Padding="12"
-                        BackgroundColor="#FF2A2A2A"
+                        BackgroundColor="#FF404040"
                         StrokeShape="RoundRectangle 10"
                         StrokeThickness="0">
                         <VerticalStackLayout HorizontalOptions="Center" Spacing="4">
                             <Label
-                                FontAttributes="Bold"
+                                FontAttributes="None"
                                 FontSize="{StaticResource FontSizeHeader}"
                                 HorizontalOptions="Center"
                                 Text="{Binding SelectedSessionTotalDurationFormatted}"
@@ -2837,19 +2927,19 @@
                                 FontSize="{StaticResource FontSizeSmall}"
                                 HorizontalOptions="Center"
                                 Text="Tiempo"
-                                TextColor="#FFB1B1B1" />
+                                TextColor="#FFCCCCCC" />
                         </VerticalStackLayout>
                     </Border>
                     <!--  Sesiones  -->
                     <Border
                         Grid.Column="2"
                         Padding="12"
-                        BackgroundColor="#FF2A2A2A"
+                        BackgroundColor="#FF404040"
                         StrokeShape="RoundRectangle 10"
                         StrokeThickness="0">
                         <VerticalStackLayout HorizontalOptions="Center" Spacing="4">
                             <Label
-                                FontAttributes="Bold"
+                                FontAttributes="None"
                                 FontSize="{StaticResource FontSizeHeader}"
                                 HorizontalOptions="Center"
                                 Text="{Binding Stats.TotalSessions}"
@@ -2858,7 +2948,7 @@
                                 FontSize="{StaticResource FontSizeSmall}"
                                 HorizontalOptions="Center"
                                 Text="Sesiones"
-                                TextColor="#FFB1B1B1" />
+                                TextColor="#FFCCCCCC" />
                         </VerticalStackLayout>
                     </Border>
                 </Grid>
@@ -2868,7 +2958,7 @@
                     <!--  Cabecera con título, botón expandir y toggle  -->
                     <Grid ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="8">
                         <Label
-                            FontAttributes="Bold"
+                            FontAttributes="None"
                             FontSize="{StaticResource FontSizeSubtitle}"
                             Text="⏱ Tiempos por Sección"
                             TextColor="White"
@@ -2878,7 +2968,7 @@
                         <Border
                             Grid.Column="1"
                             Padding="8,4"
-                            BackgroundColor="#FF2A2A2A"
+                            BackgroundColor="#FF404040"
                             StrokeShape="RoundRectangle 4"
                             StrokeThickness="0"
                             VerticalOptions="Center">
@@ -2953,7 +3043,7 @@
                                     <VerticalStackLayout Spacing="6">
                                         <!--  Nombre de la sección  -->
                                         <Label
-                                            FontAttributes="Bold"
+                                            FontAttributes="None"
                                             FontSize="{StaticResource FontSizeBody}"
                                             Text="{Binding SectionName}"
                                             TextColor="#FF6DDDFF" />
@@ -2962,11 +3052,11 @@
                                         <VerticalStackLayout Spacing="4" IsVisible="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=ShowSectionTimesAbsolute}">
                                             <!--  Cabecera de tabla (absoluta)  -->
                                             <Grid ColumnDefinitions="2*,*,*,*,*" ColumnSpacing="4" Padding="4,2" BackgroundColor="#FF252525">
-                                                <Label Grid.Column="0" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="ATLETA" TextColor="#FFB1B1B1" />
-                                                <Label Grid.Column="1" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="CAT." TextColor="#FFB1B1B1" />
-                                                <Label Grid.Column="2" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="TIEMPO" TextColor="#FFB1B1B1" HorizontalTextAlignment="End" />
-                                                <Label Grid.Column="3" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="PENAL." TextColor="#FFB1B1B1" HorizontalTextAlignment="End" />
-                                                <Label Grid.Column="4" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="TOTAL" TextColor="#FFB1B1B1" HorizontalTextAlignment="End" />
+                                                <Label Grid.Column="0" FontSize="{StaticResource FontSizeSmall}" FontAttributes="None" Text="ATLETA" TextColor="#FFCCCCCC" />
+                                                <Label Grid.Column="1" FontSize="{StaticResource FontSizeSmall}" FontAttributes="None" Text="CAT." TextColor="#FFCCCCCC" />
+                                                <Label Grid.Column="2" FontSize="{StaticResource FontSizeSmall}" FontAttributes="None" Text="TIEMPO" TextColor="#FFCCCCCC" HorizontalTextAlignment="End" />
+                                                <Label Grid.Column="3" FontSize="{StaticResource FontSizeSmall}" FontAttributes="None" Text="PENAL." TextColor="#FFCCCCCC" HorizontalTextAlignment="End" />
+                                                <Label Grid.Column="4" FontSize="{StaticResource FontSizeSmall}" FontAttributes="None" Text="TOTAL" TextColor="#FFCCCCCC" HorizontalTextAlignment="End" />
                                             </Grid>
                                             
                                             <!--  Filas de atletas (tiempos absolutos)  -->
@@ -2981,7 +3071,7 @@
                                                             <Label Grid.Column="1" FontSize="{StaticResource FontSizeSmall}" Text="{Binding CategoryName}" TextColor="#FF808080" LineBreakMode="TailTruncation" VerticalOptions="Center" />
                                                             <Label Grid.Column="2" FontSize="{StaticResource FontSizeSmall}" Text="{Binding DurationFormatted}" TextColor="#FF4CAF50" HorizontalTextAlignment="End" VerticalOptions="Center" />
                                                             <Label Grid.Column="3" FontSize="{StaticResource FontSizeSmall}" Text="{Binding PenaltyFormatted}" TextColor="#FFFF6B6B" HorizontalTextAlignment="End" VerticalOptions="Center" />
-                                                            <Label Grid.Column="4" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="{Binding TotalFormatted}" TextColor="#FFFFD700" HorizontalTextAlignment="End" VerticalOptions="Center" />
+                                                            <Label Grid.Column="4" FontSize="{StaticResource FontSizeSmall}" FontAttributes="None" Text="{Binding TotalFormatted}" TextColor="#FFFFD700" HorizontalTextAlignment="End" VerticalOptions="Center" />
                                                         </Grid>
                                                     </DataTemplate>
                                                 </BindableLayout.ItemTemplate>
@@ -2992,10 +3082,10 @@
                                         <VerticalStackLayout Spacing="4" IsVisible="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=ShowSectionTimesDifferences}">
                                             <!--  Cabecera de tabla (diferencias)  -->
                                             <Grid ColumnDefinitions="2*,*,*,*" ColumnSpacing="4" Padding="4,2" BackgroundColor="#FF252525">
-                                                <Label Grid.Column="0" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="ATLETA" TextColor="#FFB1B1B1" />
-                                                <Label Grid.Column="1" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="CAT." TextColor="#FFB1B1B1" />
-                                                <Label Grid.Column="2" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="TOTAL" TextColor="#FFB1B1B1" HorizontalTextAlignment="End" />
-                                                <Label Grid.Column="3" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="vs TÚ" TextColor="#FFB1B1B1" HorizontalTextAlignment="End" />
+                                                <Label Grid.Column="0" FontSize="{StaticResource FontSizeSmall}" FontAttributes="None" Text="ATLETA" TextColor="#FFCCCCCC" />
+                                                <Label Grid.Column="1" FontSize="{StaticResource FontSizeSmall}" FontAttributes="None" Text="CAT." TextColor="#FFCCCCCC" />
+                                                <Label Grid.Column="2" FontSize="{StaticResource FontSizeSmall}" FontAttributes="None" Text="TOTAL" TextColor="#FFCCCCCC" HorizontalTextAlignment="End" />
+                                                <Label Grid.Column="3" FontSize="{StaticResource FontSizeSmall}" FontAttributes="None" Text="vs TÚ" TextColor="#FFCCCCCC" HorizontalTextAlignment="End" />
                                             </Grid>
                                             
                                             <!--  Filas de atletas (diferencias)  -->
@@ -3009,7 +3099,7 @@
                                                             <Label Grid.Column="0" FontSize="{StaticResource FontSizeSmall}" Text="{Binding AthleteName}" TextColor="White" LineBreakMode="TailTruncation" VerticalOptions="Center" FontAttributes="{Binding IsReferenceAthlete, Converter={StaticResource BoolToFontAttributesConverter}}" />
                                                             <Label Grid.Column="1" FontSize="{StaticResource FontSizeSmall}" Text="{Binding CategoryName}" TextColor="#FF808080" LineBreakMode="TailTruncation" VerticalOptions="Center" />
                                                             <Label Grid.Column="2" FontSize="{StaticResource FontSizeSmall}" Text="{Binding TotalFormatted}" TextColor="#FFFFD700" HorizontalTextAlignment="End" VerticalOptions="Center" />
-                                                            <Label Grid.Column="3" FontSize="{StaticResource FontSizeSmall}" FontAttributes="Bold" Text="{Binding DifferenceFormatted}" TextColor="{Binding DifferenceColor}" HorizontalTextAlignment="End" VerticalOptions="Center" />
+                                                            <Label Grid.Column="3" FontSize="{StaticResource FontSizeSmall}" FontAttributes="None" Text="{Binding DifferenceFormatted}" TextColor="{Binding DifferenceColor}" HorizontalTextAlignment="End" VerticalOptions="Center" />
                                                         </Grid>
                                                     </DataTemplate>
                                                 </BindableLayout.ItemTemplate>
@@ -3038,11 +3128,11 @@
                             <Label
                                 FontSize="{StaticResource FontSizeSmall}"
                                 Text="{Binding LabeledVideosText, StringFormat='{0} vídeos con nombre asignado'}"
-                                TextColor="#FFB1B1B1" />
+                                TextColor="#FFCCCCCC" />
                         </VerticalStackLayout>
                         <Label
                             Grid.Column="1"
-                            FontAttributes="Bold"
+                            FontAttributes="None"
                             FontSize="{StaticResource FontSizeTitle}"
                             Text="{Binding LabeledVideosPercentage, StringFormat='{0:F0}%'}"
                             TextColor="#FF6DDDFF"
@@ -3054,16 +3144,16 @@
                 <Label
                     FontSize="{StaticResource FontSizeBody}"
                     Text="Tags de eventos"
-                    TextColor="#FFB1B1B1" />
+                    TextColor="#FFCCCCCC" />
                 <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
                     <Border
                         Padding="10"
-                        BackgroundColor="#FF2A2A2A"
+                        BackgroundColor="#FF404040"
                         StrokeShape="RoundRectangle 8"
                         StrokeThickness="0">
                         <HorizontalStackLayout Spacing="8">
                             <Label
-                                FontAttributes="Bold"
+                                FontAttributes="None"
                                 FontSize="{StaticResource FontSizeTitle}"
                                 Text="{Binding TotalEventTagsCount}"
                                 TextColor="White"
@@ -3078,12 +3168,12 @@
                     <Border
                         Grid.Column="1"
                         Padding="10"
-                        BackgroundColor="#FF2A2A2A"
+                        BackgroundColor="#FF404040"
                         StrokeShape="RoundRectangle 8"
                         StrokeThickness="0">
                         <HorizontalStackLayout Spacing="8">
                             <Label
-                                FontAttributes="Bold"
+                                FontAttributes="None"
                                 FontSize="{StaticResource FontSizeTitle}"
                                 Text="{Binding TotalUniqueEventTagsCount}"
                                 TextColor="White"
@@ -3116,16 +3206,16 @@
                 <Label
                     FontSize="{StaticResource FontSizeBody}"
                     Text="Etiquetas"
-                    TextColor="#FFB1B1B1" />
+                    TextColor="#FFCCCCCC" />
                 <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
                     <Border
                         Padding="10"
-                        BackgroundColor="#FF2A2A2A"
+                        BackgroundColor="#FF404040"
                         StrokeShape="RoundRectangle 8"
                         StrokeThickness="0">
                         <VerticalStackLayout HorizontalOptions="Center" Spacing="2">
                             <Label
-                                FontAttributes="Bold"
+                                FontAttributes="None"
                                 FontSize="{StaticResource FontSizeSubtitle}"
                                 HorizontalOptions="Center"
                                 Text="{Binding TotalLabelTagsCount}"
@@ -3140,12 +3230,12 @@
                     <Border
                         Grid.Column="1"
                         Padding="10"
-                        BackgroundColor="#FF2A2A2A"
+                        BackgroundColor="#FF404040"
                         StrokeShape="RoundRectangle 8"
                         StrokeThickness="0">
                         <VerticalStackLayout HorizontalOptions="Center" Spacing="2">
                             <Label
-                                FontAttributes="Bold"
+                                FontAttributes="None"
                                 FontSize="{StaticResource FontSizeSubtitle}"
                                 HorizontalOptions="Center"
                                 Text="{Binding TotalUniqueLabelTagsCount}"
@@ -3160,12 +3250,12 @@
                     <Border
                         Grid.Column="2"
                         Padding="10"
-                        BackgroundColor="#FF2A2A2A"
+                        BackgroundColor="#FF404040"
                         StrokeShape="RoundRectangle 8"
                         StrokeThickness="0">
                         <VerticalStackLayout HorizontalOptions="Center" Spacing="2">
                             <Label
-                                FontAttributes="Bold"
+                                FontAttributes="None"
                                 FontSize="{StaticResource FontSizeSubtitle}"
                                 HorizontalOptions="Center"
                                 Text="{Binding AvgTagsPerSession, StringFormat='{0:F1}'}"
@@ -3209,7 +3299,7 @@
                     
                     <!--  Título  -->
                     <Label
-                        FontAttributes="Bold"
+                        FontAttributes="None"
                         FontSize="{StaticResource FontSizeTitle}"
                         Text="Diario de Sesión"
                         TextColor="White" />
@@ -3222,7 +3312,7 @@
                         StrokeThickness="0">
                         <VerticalStackLayout Spacing="16">
                             <Label
-                                FontAttributes="Bold"
+                                FontAttributes="None"
                                 FontSize="{StaticResource FontSizeBody}"
                                 Text="¿Cómo te has sentido hoy?"
                                 TextColor="White" />
@@ -3232,7 +3322,7 @@
                                 <Label
                                     FontSize="{StaticResource FontSizeBody}"
                                     Text="Físico"
-                                    TextColor="#FFB1B1B1"
+                                    TextColor="#FFCCCCCC"
                                     VerticalOptions="Center" />
                                 <Slider
                                     Grid.Column="1"
@@ -3244,7 +3334,7 @@
                                     Value="{Binding DiaryValoracionFisica}" />
                                 <Label
                                     Grid.Column="2"
-                                    FontAttributes="Bold"
+                                    FontAttributes="None"
                                     FontSize="{StaticResource FontSizeSubtitle}"
                                     HorizontalOptions="Center"
                                     Text="{Binding DiaryValoracionFisica}"
@@ -3257,7 +3347,7 @@
                                 <Label
                                     FontSize="{StaticResource FontSizeBody}"
                                     Text="Mental"
-                                    TextColor="#FFB1B1B1"
+                                    TextColor="#FFCCCCCC"
                                     VerticalOptions="Center" />
                                 <Slider
                                     Grid.Column="1"
@@ -3269,7 +3359,7 @@
                                     Value="{Binding DiaryValoracionMental}" />
                                 <Label
                                     Grid.Column="2"
-                                    FontAttributes="Bold"
+                                    FontAttributes="None"
                                     FontSize="{StaticResource FontSizeSubtitle}"
                                     HorizontalOptions="Center"
                                     Text="{Binding DiaryValoracionMental}"
@@ -3282,7 +3372,7 @@
                                 <Label
                                     FontSize="{StaticResource FontSizeBody}"
                                     Text="Técnico"
-                                    TextColor="#FFB1B1B1"
+                                    TextColor="#FFCCCCCC"
                                     VerticalOptions="Center" />
                                 <Slider
                                     Grid.Column="1"
@@ -3294,7 +3384,7 @@
                                     Value="{Binding DiaryValoracionTecnica}" />
                                 <Label
                                     Grid.Column="2"
-                                    FontAttributes="Bold"
+                                    FontAttributes="None"
                                     FontSize="{StaticResource FontSizeSubtitle}"
                                     HorizontalOptions="Center"
                                     Text="{Binding DiaryValoracionTecnica}"
@@ -3316,7 +3406,7 @@
                         <VerticalStackLayout Spacing="12">
                             <Grid ColumnDefinitions="*,Auto">
                                 <Label
-                                    FontAttributes="Bold"
+                                    FontAttributes="None"
                                     FontSize="{StaticResource FontSizeBody}"
                                     Text="Promedios (últimos 30 días)"
                                     TextColor="White"
@@ -3338,7 +3428,7 @@
                                     StrokeThickness="0">
                                     <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
                                         <Label
-                                            FontAttributes="Bold"
+                                            FontAttributes="None"
                                             FontSize="{StaticResource FontSizeHeader}"
                                             HorizontalOptions="Center"
                                             Text="{Binding AvgValoracionFisica, StringFormat='{0:F1}'}"
@@ -3360,7 +3450,7 @@
                                     StrokeThickness="0">
                                     <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
                                         <Label
-                                            FontAttributes="Bold"
+                                            FontAttributes="None"
                                             FontSize="{StaticResource FontSizeHeader}"
                                             HorizontalOptions="Center"
                                             Text="{Binding AvgValoracionMental, StringFormat='{0:F1}'}"
@@ -3382,7 +3472,7 @@
                                     StrokeThickness="0">
                                     <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
                                         <Label
-                                            FontAttributes="Bold"
+                                            FontAttributes="None"
                                             FontSize="{StaticResource FontSizeHeader}"
                                             HorizontalOptions="Center"
                                             Text="{Binding AvgValoracionTecnica, StringFormat='{0:F1}'}"
@@ -3408,7 +3498,7 @@
                         <VerticalStackLayout Spacing="12">
                             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
                                 <Label
-                                    FontAttributes="Bold"
+                                    FontAttributes="None"
                                     FontSize="{StaticResource FontSizeBody}"
                                     Text="Evolución"
                                     TextColor="White"
@@ -3510,7 +3600,7 @@
                         StrokeThickness="0">
                         <VerticalStackLayout Spacing="12">
                             <Label
-                                FontAttributes="Bold"
+                                FontAttributes="None"
                                 FontSize="{StaticResource FontSizeBody}"
                                 Text="Notas de sesión"
                                 TextColor="White" />
@@ -3566,7 +3656,7 @@
                             <!--  Botón + Nueva sesión manual  -->
                             <Border
                                 Padding="6"
-                                BackgroundColor="#FF2A2A2A"
+                                BackgroundColor="#FF404040"
                                 StrokeShape="RoundRectangle 8"
                                 StrokeThickness="0">
                                 <Border.GestureRecognizers>
@@ -3585,7 +3675,7 @@
                     <Label
                         FontSize="{StaticResource FontSizeBody}"
                         Text="{Binding SelectedDiaryDate, StringFormat='{0:dddd, dd MMMM yyyy}'}"
-                        TextColor="#FFB1B1B1" />
+                        TextColor="#FFCCCCCC" />
 
                     <!--  Formulario nueva sesión  -->
                     <Border
@@ -3597,7 +3687,7 @@
                         IsVisible="{Binding IsAddingNewSession}">
                         <VerticalStackLayout Spacing="16">
                             <Label
-                                FontAttributes="Bold"
+                                FontAttributes="None"
                                 FontSize="{StaticResource FontSizeSubtitle}"
                                 Text="Nueva sesión"
                                 TextColor="White" />
@@ -3607,13 +3697,13 @@
                                 <Label
                                     FontSize="{StaticResource FontSizeSmall}"
                                     Text="Nombre de la sesión"
-                                    TextColor="#FFB1B1B1" />
+                                    TextColor="#FFCCCCCC" />
                                 <Entry
                                     Placeholder="Ej: Entrenamiento de fuerza"
                                     PlaceholderColor="#FF666666"
                                     Text="{Binding NewSessionName}"
                                     TextColor="White"
-                                    BackgroundColor="#FF2A2A2A" />
+                                    BackgroundColor="#FF404040" />
                             </VerticalStackLayout>
                             
                             <!--  Tipo de sesión  -->
@@ -3621,7 +3711,7 @@
                                 <Label
                                     FontSize="{StaticResource FontSizeSmall}"
                                     Text="Tipo de sesión"
-                                    TextColor="#FFB1B1B1" />
+                                    TextColor="#FFCCCCCC" />
                                 <FlexLayout 
                                     Wrap="Wrap" 
                                     JustifyContent="Start"
@@ -3657,21 +3747,21 @@
                                 <Label
                                     FontSize="{StaticResource FontSizeSmall}"
                                     Text="Lugar (opcional)"
-                                    TextColor="#FFB1B1B1" />
+                                    TextColor="#FFCCCCCC" />
                                 <Entry
                                     Placeholder="Ej: Gimnasio municipal"
                                     PlaceholderColor="#FF666666"
                                     Text="{Binding NewSessionLugar}"
                                     TextColor="White"
-                                    BackgroundColor="#FF2A2A2A" />
+                                    BackgroundColor="#FF404040" />
                             </VerticalStackLayout>
                             
                             <!--  Botones  -->
                             <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12">
                                 <Button
                                     Text="Cancelar"
-                                    BackgroundColor="#FF2A2A2A"
-                                    TextColor="#FFB1B1B1"
+                                    BackgroundColor="#FF404040"
+                                    TextColor="#FFCCCCCC"
                                     CornerRadius="8"
                                     HeightRequest="{StaticResource ElementHeightLarge}"
                                     Command="{Binding CancelNewSessionCommand}" />
@@ -3680,7 +3770,7 @@
                                     Text="Crear sesión"
                                     BackgroundColor="#FF6DDDFF"
                                     TextColor="#FF121212"
-                                    FontAttributes="Bold"
+                                    FontAttributes="None"
                                     CornerRadius="8"
                                     HeightRequest="{StaticResource ElementHeightLarge}"
                                     Command="{Binding CreateNewSessionCommand}" />
@@ -3713,7 +3803,7 @@
                                                     WidthRequest="{StaticResource IconSizeLarge}" />
                                                 <VerticalStackLayout>
                                                     <Label
-                                                        FontAttributes="Bold"
+                                                        FontAttributes="None"
                                                         FontSize="{StaticResource FontSizeSubtitle}"
                                                         Text="{Binding Session.DisplayName}"
                                                         TextColor="White" />
@@ -3743,7 +3833,7 @@
                                                             HeightRequest="40"
                                                             StrokeShape="RoundRectangle 2"
                                                             StrokeThickness="0"
-                                                            BackgroundColor="#FF2A2A2A">
+                                                            BackgroundColor="#FF404040">
                                                             <Image
                                                                 Source="{Binding LocalThumbnailPath}"
                                                                 Aspect="AspectFill" />
@@ -3758,7 +3848,7 @@
                                                 IsVisible="{Binding HasExtraVideos}" />
                                             <Button
                                                 Text="Ver sesión"
-                                                BackgroundColor="#FF2A2A2A"
+                                                BackgroundColor="#FF404040"
                                                 TextColor="#FF6DDDFF"
                                                 FontSize="{StaticResource FontSizeSmall}"
                                                 CornerRadius="6"
@@ -3772,7 +3862,7 @@
                                         <!--  Valoraciones existentes (solo lectura)  -->
                                         <VerticalStackLayout Spacing="12" IsVisible="{Binding HasValoraciones}">
                                             <Label
-                                                FontAttributes="Bold"
+                                                FontAttributes="None"
                                                 FontSize="{StaticResource FontSizeBody}"
                                                 Text="Valoraciones"
                                                 TextColor="White" />
@@ -3782,7 +3872,7 @@
                                                 <Label
                                                     FontSize="{StaticResource FontSizeBody}"
                                                     Text="Físico"
-                                                    TextColor="#FFB1B1B1"
+                                                    TextColor="#FFCCCCCC"
                                                     VerticalOptions="Center" />
                                                 <ProgressBar
                                                     Grid.Column="1"
@@ -3791,7 +3881,7 @@
                                                     VerticalOptions="Center" />
                                                 <Label
                                                     Grid.Column="2"
-                                                    FontAttributes="Bold"
+                                                    FontAttributes="None"
                                                     FontSize="{StaticResource FontSizeSubtitle}"
                                                     HorizontalOptions="Center"
                                                     Text="{Binding Diary.ValoracionFisica}"
@@ -3804,7 +3894,7 @@
                                                 <Label
                                                     FontSize="{StaticResource FontSizeBody}"
                                                     Text="Mental"
-                                                    TextColor="#FFB1B1B1"
+                                                    TextColor="#FFCCCCCC"
                                                     VerticalOptions="Center" />
                                                 <ProgressBar
                                                     Grid.Column="1"
@@ -3813,7 +3903,7 @@
                                                     VerticalOptions="Center" />
                                                 <Label
                                                     Grid.Column="2"
-                                                    FontAttributes="Bold"
+                                                    FontAttributes="None"
                                                     FontSize="{StaticResource FontSizeSubtitle}"
                                                     HorizontalOptions="Center"
                                                     Text="{Binding Diary.ValoracionMental}"
@@ -3826,7 +3916,7 @@
                                                 <Label
                                                     FontSize="{StaticResource FontSizeBody}"
                                                     Text="Técnico"
-                                                    TextColor="#FFB1B1B1"
+                                                    TextColor="#FFCCCCCC"
                                                     VerticalOptions="Center" />
                                                 <ProgressBar
                                                     Grid.Column="1"
@@ -3835,7 +3925,7 @@
                                                     VerticalOptions="Center" />
                                                 <Label
                                                     Grid.Column="2"
-                                                    FontAttributes="Bold"
+                                                    FontAttributes="None"
                                                     FontSize="{StaticResource FontSizeSubtitle}"
                                                     HorizontalOptions="Center"
                                                     Text="{Binding Diary.ValoracionTecnica}"
@@ -3847,7 +3937,7 @@
                                         <!--  Formulario de valoraciones (si no existen)  -->
                                         <VerticalStackLayout Spacing="12" IsVisible="{Binding HasValoraciones, Converter={toolkit:InvertedBoolConverter}}">
                                             <Label
-                                                FontAttributes="Bold"
+                                                FontAttributes="None"
                                                 FontSize="{StaticResource FontSizeBody}"
                                                 Text="¿Cómo te sentiste en esta sesión?"
                                                 TextColor="White" />
@@ -3857,7 +3947,7 @@
                                                 <Label
                                                     FontSize="{StaticResource FontSizeBody}"
                                                     Text="Físico"
-                                                    TextColor="#FFB1B1B1"
+                                                    TextColor="#FFCCCCCC"
                                                     VerticalOptions="Center" />
                                                 <Slider
                                                     Grid.Column="1"
@@ -3869,7 +3959,7 @@
                                                     Value="{Binding EditValoracionFisica}" />
                                                 <Label
                                                     Grid.Column="2"
-                                                    FontAttributes="Bold"
+                                                    FontAttributes="None"
                                                     FontSize="{StaticResource FontSizeSubtitle}"
                                                     HorizontalOptions="Center"
                                                     Text="{Binding EditValoracionFisica}"
@@ -3882,7 +3972,7 @@
                                                 <Label
                                                     FontSize="{StaticResource FontSizeBody}"
                                                     Text="Mental"
-                                                    TextColor="#FFB1B1B1"
+                                                    TextColor="#FFCCCCCC"
                                                     VerticalOptions="Center" />
                                                 <Slider
                                                     Grid.Column="1"
@@ -3894,7 +3984,7 @@
                                                     Value="{Binding EditValoracionMental}" />
                                                 <Label
                                                     Grid.Column="2"
-                                                    FontAttributes="Bold"
+                                                    FontAttributes="None"
                                                     FontSize="{StaticResource FontSizeSubtitle}"
                                                     HorizontalOptions="Center"
                                                     Text="{Binding EditValoracionMental}"
@@ -3907,7 +3997,7 @@
                                                 <Label
                                                     FontSize="{StaticResource FontSizeBody}"
                                                     Text="Técnico"
-                                                    TextColor="#FFB1B1B1"
+                                                    TextColor="#FFCCCCCC"
                                                     VerticalOptions="Center" />
                                                 <Slider
                                                     Grid.Column="1"
@@ -3919,7 +4009,7 @@
                                                     Value="{Binding EditValoracionTecnica}" />
                                                 <Label
                                                     Grid.Column="2"
-                                                    FontAttributes="Bold"
+                                                    FontAttributes="None"
                                                     FontSize="{StaticResource FontSizeSubtitle}"
                                                     HorizontalOptions="Center"
                                                     Text="{Binding EditValoracionTecnica}"
@@ -3931,21 +4021,21 @@
                                         <!--  Notas existentes  -->
                                         <VerticalStackLayout Spacing="8" IsVisible="{Binding HasNotas}">
                                             <Label
-                                                FontAttributes="Bold"
+                                                FontAttributes="None"
                                                 FontSize="{StaticResource FontSizeBody}"
                                                 Text="Notas"
                                                 TextColor="White" />
                                             <Label
                                                 FontSize="{StaticResource FontSizeBody}"
                                                 Text="{Binding Diary.Notas}"
-                                                TextColor="#FFB1B1B1"
+                                                TextColor="#FFCCCCCC"
                                                 LineBreakMode="WordWrap" />
                                         </VerticalStackLayout>
 
                                         <!--  Editor de notas (si no hay valoraciones o no hay notas)  -->
                                         <VerticalStackLayout Spacing="8" IsVisible="{Binding HasValoraciones, Converter={toolkit:InvertedBoolConverter}}">
                                             <Label
-                                                FontAttributes="Bold"
+                                                FontAttributes="None"
                                                 FontSize="{StaticResource FontSizeBody}"
                                                 Text="Notas"
                                                 TextColor="White" />
@@ -3954,7 +4044,7 @@
                                                 PlaceholderColor="#FF666666"
                                                 Text="{Binding EditNotas}"
                                                 TextColor="White"
-                                                BackgroundColor="#FF2A2A2A"
+                                                BackgroundColor="#FF404040"
                                                 HeightRequest="100"
                                                 AutoSize="TextChanges" />
                                         </VerticalStackLayout>
@@ -3964,7 +4054,7 @@
                                             Text="Guardar"
                                             BackgroundColor="#FF6DDDFF"
                                             TextColor="#FF121212"
-                                            FontAttributes="Bold"
+                                            FontAttributes="None"
                                             CornerRadius="8"
                                             HeightRequest="{StaticResource ElementHeightLarge}"
                                             Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=SaveCalendarDiaryCommand}"
@@ -3995,7 +4085,7 @@
                                         VerticalOptions="Center"
                                         WidthRequest="{StaticResource IconSizeXLarge}" />
                                     <Label
-                                        FontAttributes="Bold"
+                                        FontAttributes="None"
                                         FontSize="{StaticResource FontSizeSubtitle}"
                                         Text="Bienestar"
                                         TextColor="White"
@@ -4005,7 +4095,7 @@
                                 <Button
                                     Grid.Column="1"
                                     Text="{Binding HasWellnessData, Converter={StaticResource BoolToTextConverter}, ConverterParameter='Editar|Añadir'}"
-                                    BackgroundColor="#FF2A2A2A"
+                                    BackgroundColor="#FF404040"
                                     TextColor="#FFFF6B6B"
                                     FontSize="{StaticResource FontSizeSmall}"
                                     CornerRadius="6"
@@ -4050,7 +4140,7 @@
                                 <!--  Sueño  -->
                                 <Border
                                     Padding="12"
-                                    BackgroundColor="#FF2A2A2A"
+                                    BackgroundColor="#FF404040"
                                     StrokeShape="RoundRectangle 8"
                                     StrokeThickness="0">
                                     <VerticalStackLayout Spacing="8">
@@ -4068,7 +4158,7 @@
                                                 Text="{Binding WellnessSleepHours, StringFormat='{0:F1} h'}"
                                                 TextColor="White"
                                                 FontSize="{StaticResource FontSizeSubtitle}"
-                                                FontAttributes="Bold"
+                                                FontAttributes="None"
                                                 HorizontalOptions="End"
                                                 VerticalOptions="Center" />
                                         </Grid>
@@ -4078,7 +4168,7 @@
                                 <!--  Sensación de recuperación  -->
                                 <Border
                                     Padding="12"
-                                    BackgroundColor="#FF2A2A2A"
+                                    BackgroundColor="#FF404040"
                                     StrokeShape="RoundRectangle 8"
                                     StrokeThickness="0">
                                     <VerticalStackLayout Spacing="8">
@@ -4096,7 +4186,7 @@
                                                 Text="{Binding WellnessRecoveryFeeling}"
                                                 TextColor="White"
                                                 FontSize="{StaticResource FontSizeTitle}"
-                                                FontAttributes="Bold"
+                                                FontAttributes="None"
                                                 HorizontalOptions="End"
                                                 VerticalOptions="Center" />
                                         </Grid>
@@ -4106,7 +4196,7 @@
                                 <!--  Fatiga muscular  -->
                                 <Border
                                     Padding="12"
-                                    BackgroundColor="#FF2A2A2A"
+                                    BackgroundColor="#FF404040"
                                     StrokeShape="RoundRectangle 8"
                                     StrokeThickness="0">
                                     <VerticalStackLayout Spacing="8">
@@ -4124,7 +4214,7 @@
                                                 Text="{Binding WellnessMuscleFatigue}"
                                                 TextColor="White"
                                                 FontSize="{StaticResource FontSizeTitle}"
-                                                FontAttributes="Bold"
+                                                FontAttributes="None"
                                                 HorizontalOptions="End"
                                                 VerticalOptions="Center" />
                                         </Grid>
@@ -4134,7 +4224,7 @@
                                 <!--  Estado de ánimo  -->
                                 <Border
                                     Padding="12"
-                                    BackgroundColor="#FF2A2A2A"
+                                    BackgroundColor="#FF404040"
                                     StrokeShape="RoundRectangle 8"
                                     StrokeThickness="0">
                                     <VerticalStackLayout Spacing="8">
@@ -4254,7 +4344,7 @@
                                     <!--  PPM Basal  -->
                                     <Border
                                         Padding="12"
-                                        BackgroundColor="#FF2A2A2A"
+                                        BackgroundColor="#FF404040"
                                         StrokeShape="RoundRectangle 8"
                                         StrokeThickness="0">
                                         <VerticalStackLayout Spacing="8">
@@ -4272,7 +4362,7 @@
                                                     Grid.Column="2"
                                                     Text="?"
                                                     FontSize="{StaticResource FontSizeBody}"
-                                                    FontAttributes="Bold"
+                                                    FontAttributes="None"
                                                     BackgroundColor="Transparent"
                                                     TextColor="#FFABABAB"
                                                     CornerRadius="4"
@@ -4291,7 +4381,7 @@
                                                     Keyboard="Numeric"
                                                     HorizontalTextAlignment="Center"
                                                     FontSize="{StaticResource FontSizeTitle}"
-                                                    FontAttributes="Bold" />
+                                                    FontAttributes="None" />
                                                 <Label
                                                     Grid.Column="1"
                                                     Text="bpm"
@@ -4306,7 +4396,7 @@
                                     <Border
                                         Grid.Column="1"
                                         Padding="12"
-                                        BackgroundColor="#FF2A2A2A"
+                                        BackgroundColor="#FF404040"
                                         StrokeShape="RoundRectangle 8"
                                         StrokeThickness="0">
                                         <VerticalStackLayout Spacing="8">
@@ -4324,7 +4414,7 @@
                                                     Grid.Column="2"
                                                     Text="?"
                                                     FontSize="{StaticResource FontSizeBody}"
-                                                    FontAttributes="Bold"
+                                                    FontAttributes="None"
                                                     BackgroundColor="Transparent"
                                                     TextColor="#FFADADAD"
                                                     CornerRadius="4"
@@ -4343,7 +4433,7 @@
                                                     Keyboard="Numeric"
                                                     HorizontalTextAlignment="Center"
                                                     FontSize="{StaticResource FontSizeTitle}"
-                                                    FontAttributes="Bold" />
+                                                    FontAttributes="None" />
                                                 <Label
                                                     Grid.Column="1"
                                                     Text="ms"
@@ -4358,7 +4448,7 @@
                                 <!--  Notas  -->
                                 <Border
                                     Padding="12"
-                                    BackgroundColor="#FF2A2A2A"
+                                    BackgroundColor="#FF404040"
                                     StrokeShape="RoundRectangle 8"
                                     StrokeThickness="0">
                                     <VerticalStackLayout Spacing="8">
@@ -4412,14 +4502,14 @@
                                                 TextColor="#FF121212"
                                                 Opacity="0.7" />
                                             <Label
-                                                FontAttributes="Bold"
+                                                FontAttributes="None"
                                                 FontSize="{StaticResource FontSizeTitle}"
                                                 Text="{Binding SelectedDateWellness.WellnessText}"
                                                 TextColor="#FF121212" />
                                         </VerticalStackLayout>
                                         <Label
                                             Grid.Column="1"
-                                            FontAttributes="Bold"
+                                            FontAttributes="None"
                                             FontSize="{StaticResource FontSizeDisplay}"
                                             Text="{Binding SelectedDateWellness.WellnessScore}"
                                             TextColor="#FF121212"
@@ -4433,7 +4523,7 @@
                                     <!--  Sueño  -->
                                     <Border
                                         Padding="10"
-                                        BackgroundColor="#FF2A2A2A"
+                                        BackgroundColor="#FF404040"
                                         StrokeShape="RoundRectangle 8"
                                         StrokeThickness="0">
                                         <VerticalStackLayout HorizontalOptions="Center" Spacing="2">
@@ -4444,7 +4534,7 @@
                                                 HorizontalOptions="Center"
                                                 WidthRequest="{StaticResource IconSizeLarge}" />
                                             <Label
-                                                FontAttributes="Bold"
+                                                FontAttributes="None"
                                                 FontSize="{StaticResource FontSizeSubtitle}"
                                                 Text="{Binding SelectedDateWellness.SleepFormatted}"
                                                 TextColor="White"
@@ -4461,7 +4551,7 @@
                                     <Border
                                         Grid.Column="1"
                                         Padding="10"
-                                        BackgroundColor="#FF2A2A2A"
+                                        BackgroundColor="#FF404040"
                                         StrokeShape="RoundRectangle 8"
                                         StrokeThickness="0">
                                         <VerticalStackLayout HorizontalOptions="Center" Spacing="2">
@@ -4472,7 +4562,7 @@
                                                 HorizontalOptions="Center"
                                                 WidthRequest="{StaticResource IconSizeLarge}" />
                                             <Label
-                                                FontAttributes="Bold"
+                                                FontAttributes="None"
                                                 FontSize="{StaticResource FontSizeSubtitle}"
                                                 Text="{Binding SelectedDateWellness.RecoveryFeeling, StringFormat='{0}/10'}"
                                                 TextColor="White"
@@ -4489,7 +4579,7 @@
                                     <Border
                                         Grid.Column="2"
                                         Padding="10"
-                                        BackgroundColor="#FF2A2A2A"
+                                        BackgroundColor="#FF404040"
                                         StrokeShape="RoundRectangle 8"
                                         StrokeThickness="0">
                                         <VerticalStackLayout HorizontalOptions="Center" Spacing="2">
@@ -4514,7 +4604,7 @@
                                     <!--  PPM Basal  -->
                                     <Border
                                         Padding="10"
-                                        BackgroundColor="#FF2A2A2A"
+                                        BackgroundColor="#FF404040"
                                         StrokeShape="RoundRectangle 8"
                                         StrokeThickness="0"
                                         IsVisible="{Binding SelectedDateWellness.RestingHeartRate, Converter={StaticResource IsNotNullConverter}}">
@@ -4528,7 +4618,7 @@
                                             <VerticalStackLayout Spacing="0">
                                                 <HorizontalStackLayout Spacing="4">
                                                     <Label
-                                                        FontAttributes="Bold"
+                                                        FontAttributes="None"
                                                         FontSize="{StaticResource FontSizeSubtitle}"
                                                         Text="{Binding SelectedDateWellness.RestingHeartRate}"
                                                         TextColor="White"
@@ -4551,7 +4641,7 @@
                                     <Border
                                         Grid.Column="1"
                                         Padding="10"
-                                        BackgroundColor="#FF2A2A2A"
+                                        BackgroundColor="#FF404040"
                                         StrokeShape="RoundRectangle 8"
                                         StrokeThickness="0"
                                         IsVisible="{Binding SelectedDateWellness.HeartRateVariability, Converter={StaticResource IsNotNullConverter}}">
@@ -4565,7 +4655,7 @@
                                             <VerticalStackLayout Spacing="0">
                                                 <HorizontalStackLayout Spacing="4">
                                                     <Label
-                                                        FontAttributes="Bold"
+                                                        FontAttributes="None"
                                                         FontSize="{StaticResource FontSizeSubtitle}"
                                                         Text="{Binding SelectedDateWellness.HeartRateVariability}"
                                                         TextColor="White"
@@ -4588,7 +4678,7 @@
                                 <!--  Notas si existen  -->
                                 <Border
                                     Padding="12"
-                                    BackgroundColor="#FF2A2A2A"
+                                    BackgroundColor="#FF404040"
                                     StrokeShape="RoundRectangle 8"
                                     StrokeThickness="0"
                                     IsVisible="{Binding SelectedDateWellness.Notes, Converter={StaticResource NotNullOrEmptyBoolConverter}}">
@@ -4605,7 +4695,7 @@
                                 <!--  Mensaje si no hay datos  -->
                                 <Label
                                     Text="Pulsa 'Añadir' para registrar tu bienestar del día"
-                                    TextColor="#FF666666"
+                                    TextColor="#FF888888"
                                     FontSize="{StaticResource FontSizeBody}"
                                     HorizontalTextAlignment="Center"
                                     IsVisible="{Binding HasWellnessData, Converter={toolkit:InvertedBoolConverter}}" />
@@ -4635,14 +4725,14 @@
                             <Label
                                 FontSize="{StaticResource FontSizeBody}"
                                 Text="Puedes crear una sesión manual para registrar&#x0a;entrenamientos sin vídeo (gimnasio, agua tranquila, etc.)"
-                                TextColor="#FF666666"
+                                TextColor="#FF888888"
                                 HorizontalOptions="Center"
                                 HorizontalTextAlignment="Center" />
                             <Button
                                 Text="+ Crear nueva sesión"
                                 BackgroundColor="#FF6DDDFF"
                                 TextColor="#FF121212"
-                                FontAttributes="Bold"
+                                FontAttributes="None"
                                 CornerRadius="8"
                                 Padding="24,0"
                                 HeightRequest="{StaticResource ElementHeightLarge}"
@@ -4718,7 +4808,7 @@
                     <Grid ColumnDefinitions="*,Auto">
                         <VerticalStackLayout Grid.Column="0">
                             <Label
-                                FontAttributes="Bold"
+                                FontAttributes="None"
                                 FontSize="{StaticResource FontSizeTitle}"
                                 Text="Nueva sesión de grabación"
                                 TextColor="White" />
@@ -4749,13 +4839,13 @@
                         <Label
                             FontSize="{StaticResource FontSizeSmall}"
                             Text="Nombre de la sesión"
-                            TextColor="#FFB1B1B1" />
+                            TextColor="#FFCCCCCC" />
                         <Entry
                             Placeholder="Ej: Entrenamiento mañana"
                             PlaceholderColor="#FF666666"
                             Text="{Binding NewSessionName}"
                             TextColor="White"
-                            BackgroundColor="#FF2A2A2A" />
+                            BackgroundColor="#FF404040" />
                     </VerticalStackLayout>
 
                     <!--  Tipo de sesión  -->
@@ -4763,7 +4853,7 @@
                         <Label
                             FontSize="{StaticResource FontSizeSmall}"
                             Text="Tipo de sesión"
-                            TextColor="#FFB1B1B1" />
+                            TextColor="#FFCCCCCC" />
                         <FlexLayout 
                             Wrap="Wrap" 
                             JustifyContent="Start"
@@ -4799,13 +4889,13 @@
                         <Label
                             FontSize="{StaticResource FontSizeSmall}"
                             Text="Lugar (opcional)"
-                            TextColor="#FFB1B1B1" />
+                            TextColor="#FFCCCCCC" />
                         <Entry
                             Placeholder="Ej: Canal olímpico"
                             PlaceholderColor="#FF666666"
                             Text="{Binding NewSessionLugar}"
                             TextColor="White"
-                            BackgroundColor="#FF2A2A2A" />
+                            BackgroundColor="#FF404040" />
                     </VerticalStackLayout>
 
                     <!--  Botones  -->
@@ -4813,8 +4903,8 @@
                         <Button
                             Grid.Column="0"
                             Text="Cancelar"
-                            BackgroundColor="#FF2A2A2A"
-                            TextColor="#FFB1B1B1"
+                            BackgroundColor="#FF404040"
+                            TextColor="#FFCCCCCC"
                             CornerRadius="8"
                             HeightRequest="{StaticResource ElementHeightLarge}"
                             Command="{Binding CancelNewSessionSidebarPopupCommand}" />
@@ -4823,7 +4913,7 @@
                             Text="Crear y grabar"
                             BackgroundColor="#FFFF3B30"
                             TextColor="White"
-                            FontAttributes="Bold"
+                            FontAttributes="None"
                             CornerRadius="8"
                             HeightRequest="{StaticResource ElementHeightLarge}"
                             Command="{Binding CreateSessionAndRecordCommand}" />
@@ -4853,7 +4943,7 @@
                     <Grid ColumnDefinitions="*,Auto">
                         <VerticalStackLayout Grid.Column="0">
                             <Label
-                                FontAttributes="Bold"
+                                FontAttributes="None"
                                 FontSize="{StaticResource FontSizeTitle}"
                                 Text="Carpeta inteligente"
                                 TextColor="White" />
@@ -4884,13 +4974,13 @@
                         <Label
                             FontSize="{StaticResource FontSizeSmall}"
                             Text="Nombre"
-                            TextColor="#FFB1B1B1" />
+                            TextColor="#FFCCCCCC" />
                         <Entry
                             Placeholder="Ej: Técnica - tags"
                             PlaceholderColor="#FF666666"
                             Text="{Binding NewSmartFolderName}"
                             TextColor="White"
-                            BackgroundColor="#FF2A2A2A" />
+                            BackgroundColor="#FF404040" />
                     </VerticalStackLayout>
 
                     <!--  Match mode: AND/OR  -->
@@ -4898,7 +4988,7 @@
                         <Label
                             FontSize="{StaticResource FontSizeSmall}"
                             Text="Condiciones"
-                            TextColor="#FFB1B1B1" />
+                            TextColor="#FFCCCCCC" />
                         <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
                             <Border
                                 Grid.Column="0"
@@ -4949,7 +5039,7 @@
                                             Grid.Row="0"
                                             Grid.Column="0"
                                             Padding="12,8"
-                                            BackgroundColor="#FF2A2A2A"
+                                            BackgroundColor="#FF404040"
                                             Stroke="#FF3A3A3A"
                                             StrokeShape="RoundRectangle 4"
                                             HeightRequest="44">
@@ -4975,7 +5065,7 @@
                                             Grid.Row="0"
                                             Grid.Column="1"
                                             Padding="12,8"
-                                            BackgroundColor="#FF2A2A2A"
+                                            BackgroundColor="#FF404040"
                                             Stroke="#FF3A3A3A"
                                             StrokeShape="RoundRectangle 4"
                                             HeightRequest="44">
@@ -5004,7 +5094,7 @@
                                             PlaceholderColor="#FF666666"
                                             Text="{Binding Value}"
                                             TextColor="White"
-                                            BackgroundColor="#FF2A2A2A" />
+                                            BackgroundColor="#FF404040" />
                                         <Border
                                             Grid.Row="0"
                                             Grid.Column="3"
@@ -5033,7 +5123,7 @@
                                             PlaceholderColor="#FF666666"
                                             Text="{Binding Value2}"
                                             TextColor="White"
-                                            BackgroundColor="#FF2A2A2A" />
+                                            BackgroundColor="#FF404040" />
                                     </Grid>
                                 </DataTemplate>
                             </CollectionView.ItemTemplate>
@@ -5041,8 +5131,8 @@
 
                         <Button
                             Text="Añadir condición"
-                            BackgroundColor="#FF2A2A2A"
-                            TextColor="#FFB1B1B1"
+                            BackgroundColor="#FF404040"
+                            TextColor="#FFCCCCCC"
                             CornerRadius="8"
                             HeightRequest="{StaticResource ElementHeightLarge}"
                             Command="{Binding AddSmartFolderCriterionCommand}" />
@@ -5058,8 +5148,8 @@
                         <Button
                             Grid.Column="0"
                             Text="Cancelar"
-                            BackgroundColor="#FF2A2A2A"
-                            TextColor="#FFB1B1B1"
+                            BackgroundColor="#FF404040"
+                            TextColor="#FFCCCCCC"
                             CornerRadius="8"
                             HeightRequest="{StaticResource ElementHeightLarge}"
                             Command="{Binding CancelSmartFolderSidebarPopupCommand}" />
@@ -5068,7 +5158,7 @@
                             Text="Crear"
                             BackgroundColor="#FF6DDDFF"
                             TextColor="#FF121212"
-                            FontAttributes="Bold"
+                            FontAttributes="None"
                             CornerRadius="8"
                             HeightRequest="{StaticResource ElementHeightLarge}"
                             Command="{Binding CreateSmartFolderCommand}" />
@@ -5104,7 +5194,7 @@
                     <Grid ColumnDefinitions="*,Auto">
                         <Label
                             Grid.Column="0"
-                            FontAttributes="Bold"
+                            FontAttributes="None"
                             FontSize="{StaticResource FontSizeTitle}"
                             Text="{Binding IconColorPickerTitle}"
                             TextColor="White"
@@ -5134,6 +5224,25 @@
                             TextColor="#FF888888" />
                         <HorizontalStackLayout Spacing="8" HorizontalOptions="Center">
                             <!--  Círculos de color con marca de selección  -->
+                            <!-- Blanco -->
+                            <Border
+                                WidthRequest="28"
+                                HeightRequest="28"
+                                BackgroundColor="#FFFFFFFF"
+                                StrokeShape="RoundRectangle 14"
+                                Stroke="#FF888888"
+                                StrokeThickness="1">
+                                <Border.Triggers>
+                                    <DataTrigger TargetType="Border" Binding="{Binding SelectedPickerColor}" Value="#FFFFFFFF">
+                                        <Setter Property="Stroke" Value="#FF0A84FF" />
+                                        <Setter Property="StrokeThickness" Value="3" />
+                                    </DataTrigger>
+                                </Border.Triggers>
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding SelectPickerColorCommand}" CommandParameter="#FFFFFFFF" />
+                                </Border.GestureRecognizers>
+                            </Border>
+                            <!-- Gris -->
                             <Border
                                 WidthRequest="28"
                                 HeightRequest="28"
@@ -5364,7 +5473,7 @@
                     <!--  Título  -->
                     <Grid ColumnDefinitions="*,Auto">
                         <Label
-                            FontAttributes="Bold"
+                            FontAttributes="None"
                             FontSize="{StaticResource FontSizeTitle}"
                             Text="Editar vídeos seleccionados"
                             TextColor="White" />
@@ -5437,13 +5546,13 @@
                         <!--  Nuevo atleta (no existente)  -->
                         <Grid ColumnDefinitions="*,*,Auto" ColumnSpacing="8">
                             <Entry
-                                BackgroundColor="#FF2A2A2A"
+                                BackgroundColor="#FF404040"
                                 Placeholder="Apellido"
                                 Text="{Binding NewBatchAthleteSurname}"
                                 TextColor="White" />
                             <Entry
                                 Grid.Column="1"
-                                BackgroundColor="#FF2A2A2A"
+                                BackgroundColor="#FF404040"
                                 Placeholder="Nombre"
                                 Text="{Binding NewBatchAthleteName}"
                                 TextColor="White" />
@@ -5458,7 +5567,7 @@
                         <Label
                             FontSize="{StaticResource FontSizeSmall}"
                             Text="No hay atletas disponibles"
-                            TextColor="#FF666666">
+                            TextColor="#FF888888">
                             <Label.Triggers>
                                 <DataTrigger TargetType="Label" Binding="{Binding BatchEditAthletes.Count}" Value="0">
                                     <Setter Property="IsVisible" Value="True" />
@@ -5488,7 +5597,7 @@
                         </Grid>
                         <HorizontalStackLayout IsEnabled="{Binding BatchEditSectionEnabled}" Spacing="12">
                             <Entry
-                                BackgroundColor="#FF2A2A2A"
+                                BackgroundColor="#FF404040"
                                 Keyboard="Numeric"
                                 Text="{Binding BatchEditSection}"
                                 TextColor="White"
@@ -5511,7 +5620,7 @@
                         <!--  Nueva etiqueta (no existente)  -->
                         <HorizontalStackLayout Spacing="12">
                             <Entry
-                                BackgroundColor="#FF2A2A2A"
+                                BackgroundColor="#FF404040"
                                 HorizontalOptions="FillAndExpand"
                                 Placeholder="Nueva etiqueta"
                                 Text="{Binding NewBatchTagText}"
@@ -5551,7 +5660,7 @@
                         <Label
                             FontSize="{StaticResource FontSizeSmall}"
                             Text="No hay etiquetas disponibles"
-                            TextColor="#FF666666">
+                            TextColor="#FF888888">
                             <Label.Triggers>
                                 <DataTrigger TargetType="Label" Binding="{Binding BatchEditTags.Count}" Value="0">
                                     <Setter Property="IsVisible" Value="True" />
@@ -5583,6 +5692,104 @@
             </Border>
         </Grid>
 
+        <!--  Popup de edición de sesión  -->
+        <Grid
+            Grid.Row="0"
+            Grid.RowSpan="2"
+            Grid.ColumnSpan="5"
+            BackgroundColor="#CC000000"
+            IsVisible="{Binding ShowSessionEditPopup}">
+            <Border
+                Padding="24"
+                BackgroundColor="#FF1E1E1E"
+                HorizontalOptions="Center"
+                Stroke="#FF3A3A3A"
+                StrokeShape="RoundRectangle 12"
+                StrokeThickness="1"
+                VerticalOptions="Center"
+                WidthRequest="400">
+                <VerticalStackLayout Spacing="16">
+                    <!--  Título  -->
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label
+                            FontAttributes="None"
+                            FontSize="{StaticResource FontSizeTitle}"
+                            Text="Editar sesión"
+                            TextColor="White" />
+                        <Border
+                            Grid.Column="1"
+                            Padding="4"
+                            BackgroundColor="Transparent"
+                            Stroke="Transparent"
+                            StrokeShape="RoundRectangle 4">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding CloseSessionEditPopupCommand}" />
+                            </Border.GestureRecognizers>
+                            <controls:SymbolIcon
+                                HeightRequest="{StaticResource IconSizeLarge}"
+                                SymbolName="xmark"
+                                TintColor="#FF888888"
+                                WidthRequest="{StaticResource IconSizeLarge}" />
+                        </Border>
+                    </Grid>
+
+                    <!--  Nombre de sesión  -->
+                    <VerticalStackLayout Spacing="8">
+                        <Label
+                            FontSize="{StaticResource FontSizeBody}"
+                            Text="Nombre"
+                            TextColor="#FFAAAAAA" />
+                        <Entry
+                            BackgroundColor="#FF404040"
+                            Placeholder="Nombre de la sesión"
+                            Text="{Binding SessionEditName}"
+                            TextColor="White" />
+                    </VerticalStackLayout>
+
+                    <!--  Lugar  -->
+                    <VerticalStackLayout Spacing="8">
+                        <Label
+                            FontSize="{StaticResource FontSizeBody}"
+                            Text="Lugar"
+                            TextColor="#FFAAAAAA" />
+                        <Entry
+                            BackgroundColor="#FF404040"
+                            Placeholder="Lugar de la sesión"
+                            Text="{Binding SessionEditLugar}"
+                            TextColor="White" />
+                    </VerticalStackLayout>
+
+                    <!--  Tipo de sesión  -->
+                    <VerticalStackLayout Spacing="8">
+                        <Label
+                            FontSize="{StaticResource FontSizeBody}"
+                            Text="Tipo de sesión"
+                            TextColor="#FFAAAAAA" />
+                        <Entry
+                            BackgroundColor="#FF404040"
+                            Placeholder="Tipo de sesión"
+                            Text="{Binding SessionEditTipoSesion}"
+                            TextColor="White" />
+                    </VerticalStackLayout>
+
+                    <!--  Botones  -->
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="12" Margin="0,8,0,0">
+                        <Button
+                            BackgroundColor="#FF3A3A3A"
+                            Command="{Binding CloseSessionEditPopupCommand}"
+                            Text="Cancelar"
+                            TextColor="White" />
+                        <Button
+                            Grid.Column="1"
+                            BackgroundColor="#FF4A9FD4"
+                            Command="{Binding ApplySessionEditCommand}"
+                            Text="Guardar"
+                            TextColor="White" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+        </Grid>
+
         <!--  ===== POPUP: TABLA DE TIEMPOS DETALLADA =====  -->
         <Grid
             Grid.Row="0"
@@ -5604,7 +5811,7 @@
                     <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="12">
                         <VerticalStackLayout Grid.Column="0" Spacing="2">
                             <Label
-                                FontAttributes="Bold"
+                                FontAttributes="None"
                                 FontSize="{StaticResource FontSizeTitle}"
                                 Text="Tiempos por Sección"
                                 TextColor="White" />
@@ -5612,7 +5819,7 @@
                                 FontSize="{StaticResource FontSizeSmall}"
                                 LineBreakMode="TailTruncation"
                                 Text="{Binding SelectedSessionTitle}"
-                                TextColor="#FFB1B1B1" />
+                                TextColor="#FFCCCCCC" />
                         </VerticalStackLayout>
                         
                         <!--  Selector de atleta de referencia (dropdown estilo chip)  -->
@@ -5621,7 +5828,7 @@
                             <Border
                                 Grid.Column="0"
                                 Padding="12,8"
-                                BackgroundColor="#FF2A2A2A"
+                                BackgroundColor="#FF404040"
                                 Stroke="#FF3A3A3A"
                                 StrokeShape="RoundRectangle 4"
                                 MinimumWidthRequest="180">
@@ -5668,7 +5875,7 @@
                         <Border
                             Grid.Column="2"
                             Padding="10,8"
-                            BackgroundColor="#FF2A2A2A"
+                            BackgroundColor="#FF404040"
                             Stroke="#FF3A3A3A"
                             StrokeShape="RoundRectangle 4"
                             VerticalOptions="Center"
@@ -5701,7 +5908,7 @@
                         <Border
                             Grid.Column="3"
                             Padding="10,8"
-                            BackgroundColor="#FF2A2A2A"
+                            BackgroundColor="#FF404040"
                             Stroke="#FF3A3A3A"
                             StrokeShape="RoundRectangle 4"
                             VerticalOptions="Center"
@@ -5726,7 +5933,7 @@
                         <Border
                             Grid.Column="4"
                             Padding="10,8"
-                            BackgroundColor="#FF2A2A2A"
+                            BackgroundColor="#FF404040"
                             Stroke="#FF3A3A3A"
                             StrokeShape="RoundRectangle 4"
                             VerticalOptions="Center"
@@ -5794,7 +6001,7 @@
                         Grid.Row="2"
                         FontSize="{StaticResource FontSizeSmall}"
                         Text="Lap = tiempo parcial · Acum. = tiempo acumulado · CV% = Coeficiente de Variación = (σ / x̄) × 100 (menor = más consistente)"
-                        TextColor="#FFB1B1B1"
+                        TextColor="#FFCCCCCC"
                         VerticalOptions="Center" />
                     
                     <!--  ===== DROPDOWNS FLOTANTES (absolutos sobre todo el contenido) =====  -->
@@ -5804,7 +6011,7 @@
                         Grid.RowSpan="3"
                         Margin="0,52,380,0"
                         Padding="8"
-                        BackgroundColor="#FF2A2A2A"
+                        BackgroundColor="#FF404040"
                         HorizontalOptions="End"
                         IsVisible="{Binding IsAthleteDropdownExpanded}"
                         Stroke="#FF3A3A3A"
@@ -5849,7 +6056,7 @@
                         Grid.RowSpan="3"
                         Margin="0,52,200,0"
                         Padding="16"
-                        BackgroundColor="#FF2A2A2A"
+                        BackgroundColor="#FF404040"
                         HorizontalOptions="End"
                         IsVisible="{Binding ShowReportOptionsPanel}"
                         Stroke="#FF3A3A3A"
@@ -5862,7 +6069,7 @@
                         x:Name="SectionsDropdownPanel">
                         <VerticalStackLayout Spacing="12">
                             <Label
-                                FontAttributes="Bold"
+                                FontAttributes="None"
                                 FontSize="{StaticResource FontSizeSubtitle}"
                                 Text="Secciones del informe"
                                 TextColor="White" />

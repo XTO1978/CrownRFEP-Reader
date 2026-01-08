@@ -209,6 +209,8 @@ public class DashboardViewModel : BaseViewModel
     private string _newSmartFolderName = "";
     private string _newSmartFolderMatchMode = "All"; // All=AND, Any=OR
     private int _newSmartFolderLiveMatchCount;
+    private SmartFolderDefinition? _activeSmartFolder;
+    private List<VideoClip>? _smartFolderFilteredVideosCache;
 
     // Popup de personalización de icono/color
     private bool _showIconColorPickerPopup;
@@ -312,6 +314,13 @@ public class DashboardViewModel : BaseViewModel
     private string? _newBatchAthleteName;
     private string? _newBatchTagText;
     private readonly HashSet<int> _batchEditSelectedTagIds = new();
+
+    // Edición de sesión individual
+    private bool _showSessionEditPopup;
+    private SessionRow? _editingSessionRow;
+    private string? _sessionEditName;
+    private string? _sessionEditLugar;
+    private string? _sessionEditTipoSesion;
 
     private CancellationTokenSource? _selectedSessionVideosCts;
 
@@ -699,6 +708,7 @@ public class DashboardViewModel : BaseViewModel
     // Colores disponibles para el picker
     public List<string> AvailableColors { get; } = new()
     {
+        "#FFFFFFFF", // Blanco
         "#FF888888", // Gris
         "#FFFF453A", // Rojo
         "#FFFF9F0A", // Naranja
@@ -710,6 +720,20 @@ public class DashboardViewModel : BaseViewModel
         "#FFFF375F", // Rosa
         "#FF6DDDFF"  // Cyan claro (default sesión)
     };
+
+    private bool _isSmartFoldersExpanded = true;
+    public bool IsSmartFoldersExpanded
+    {
+        get => _isSmartFoldersExpanded;
+        set => SetProperty(ref _isSmartFoldersExpanded, value);
+    }
+
+    private bool _isSessionsExpanded = true;
+    public bool IsSessionsExpanded
+    {
+        get => _isSessionsExpanded;
+        set => SetProperty(ref _isSessionsExpanded, value);
+    }
 
     public ObservableCollection<SmartFolderDefinition> SmartFolders { get; } = new();
     public ObservableCollection<SmartFolderCriterion> NewSmartFolderCriteria { get; } = new();
@@ -1689,6 +1713,10 @@ public class DashboardViewModel : BaseViewModel
                 {
                     newRow.IsSelected = true;
                     SelectedSession = newRow.Session;
+                    
+                    // Limpiar carpeta inteligente activa al seleccionar una sesión
+                    _activeSmartFolder = null;
+                    _smartFolderFilteredVideosCache = null;
                 }
             }
         }
@@ -2688,6 +2716,8 @@ public class DashboardViewModel : BaseViewModel
     public ICommand CloseIconColorPickerCommand { get; }
     public ICommand SelectPickerIconCommand { get; }
     public ICommand SelectPickerColorCommand { get; }
+    public ICommand ToggleSmartFoldersExpansionCommand { get; }
+    public ICommand ToggleSessionsExpansionCommand { get; }
     public ICommand RenameSessionCommand { get; }
     public ICommand DeleteSessionCommand { get; }
     public ICommand SetSessionIconCommand { get; }
@@ -2781,6 +2811,36 @@ public class DashboardViewModel : BaseViewModel
         get => _newBatchTagText;
         set => SetProperty(ref _newBatchTagText, value);
     }
+
+    // Propiedades de edición de sesión individual
+    public bool ShowSessionEditPopup
+    {
+        get => _showSessionEditPopup;
+        set => SetProperty(ref _showSessionEditPopup, value);
+    }
+
+    public string? SessionEditName
+    {
+        get => _sessionEditName;
+        set => SetProperty(ref _sessionEditName, value);
+    }
+
+    public string? SessionEditLugar
+    {
+        get => _sessionEditLugar;
+        set => SetProperty(ref _sessionEditLugar, value);
+    }
+
+    public string? SessionEditTipoSesion
+    {
+        get => _sessionEditTipoSesion;
+        set => SetProperty(ref _sessionEditTipoSesion, value);
+    }
+
+    // Comandos de edición de sesión
+    public ICommand OpenSessionEditPopupCommand { get; }
+    public ICommand CloseSessionEditPopupCommand { get; }
+    public ICommand ApplySessionEditCommand { get; }
 
     public DashboardViewModel(
         DatabaseService databaseService,
@@ -2878,6 +2938,8 @@ public class DashboardViewModel : BaseViewModel
         CloseIconColorPickerCommand = new RelayCommand(CloseIconColorPicker);
         SelectPickerIconCommand = new RelayCommand<string>(SelectPickerIcon);
         SelectPickerColorCommand = new RelayCommand<string>(SelectPickerColor);
+        ToggleSmartFoldersExpansionCommand = new RelayCommand(ToggleSmartFoldersExpansion);
+        ToggleSessionsExpansionCommand = new RelayCommand(ToggleSessionsExpansion);
 
         SelectStatsTabCommand = new RelayCommand(() => IsStatsTabSelected = true);
         SelectCrudTechTabCommand = new RelayCommand(() => IsCrudTechTabSelected = true);
@@ -2980,6 +3042,11 @@ public class DashboardViewModel : BaseViewModel
         SelectBatchAthleteCommand = new RelayCommand<Athlete>(SelectBatchAthlete);
         AddNewBatchAthleteCommand = new AsyncRelayCommand(AddNewBatchAthleteAsync);
         AddNewBatchTagCommand = new AsyncRelayCommand(AddNewBatchTagAsync);
+
+        // Comandos de edición de sesión individual
+        OpenSessionEditPopupCommand = new RelayCommand<SessionRow>(OpenSessionEditPopup);
+        CloseSessionEditPopupCommand = new RelayCommand(() => ShowSessionEditPopup = false);
+        ApplySessionEditCommand = new AsyncRelayCommand(ApplySessionEditAsync);
         
         // Comando para alternar vista de tiempos
         ToggleSectionTimesViewCommand = new RelayCommand(() => ShowSectionTimesDifferences = !ShowSectionTimesDifferences);
@@ -3964,7 +4031,10 @@ public class DashboardViewModel : BaseViewModel
         if (!IsAllGallerySelected || _allVideosCache == null)
             return;
 
-        var allVideos = _allVideosCache;
+        // Si hay una carpeta inteligente activa, usar sus videos filtrados como base
+        var allVideos = _activeSmartFolder != null && _smartFolderFilteredVideosCache != null
+            ? _smartFolderFilteredVideosCache
+            : _allVideosCache;
         var sessionsSnapshot = RecentSessions.ToList();
         var inputsSnapshot = _allInputsCache;
 
@@ -4105,6 +4175,10 @@ public class DashboardViewModel : BaseViewModel
         // Deseleccionar sesión actual usando el setter para que se deseleccione el row
         SelectedSession = null;
         
+        // Limpiar carpeta inteligente activa
+        _activeSmartFolder = null;
+        _smartFolderFilteredVideosCache = null;
+        
         IsAllGallerySelected = true;
         System.Diagnostics.Debug.WriteLine($"[SelectAllGalleryAsync] IsAllGallerySelected = true, calling LoadAllVideosAsync...");
         await LoadAllVideosAsync();
@@ -4204,6 +4278,9 @@ public class DashboardViewModel : BaseViewModel
             OnPropertyChanged(nameof(TotalFilteredDurationSeconds));
             OnPropertyChanged(nameof(SelectedSessionTotalDurationSeconds));
             OnPropertyChanged(nameof(SelectedSessionTotalDurationFormatted));
+
+            // Actualizar contadores de SmartFolders
+            UpdateSmartFolderVideoCounts();
         }
         catch (Exception ex)
         {
@@ -5866,6 +5943,16 @@ public class DashboardViewModel : BaseViewModel
         CloseSmartFolderSidebarPopup();
     }
 
+    private void ToggleSmartFoldersExpansion()
+    {
+        IsSmartFoldersExpanded = !IsSmartFoldersExpanded;
+    }
+
+    private void ToggleSessionsExpansion()
+    {
+        IsSessionsExpanded = !IsSessionsExpanded;
+    }
+
     private async Task SelectSmartFolderAsync(SmartFolderDefinition? definition)
     {
         if (definition == null)
@@ -5885,6 +5972,9 @@ public class DashboardViewModel : BaseViewModel
         var source = _allVideosCache;
         if (source == null)
             return;
+
+        // Guardar la carpeta inteligente activa para que ApplyFiltersAsync la use
+        _activeSmartFolder = definition;
 
         // Evitar que los filtros manuales se mezclen con el filtro de carpeta.
         // Usamos skipApplyFilters=true para evitar que se sobrescriba el filtro de la carpeta inteligente.
@@ -5910,6 +6000,7 @@ public class DashboardViewModel : BaseViewModel
         }
 
         _filteredVideosCache = filtered;
+        _smartFolderFilteredVideosCache = filtered; // Guardar cache de videos filtrados por carpeta inteligente
 
         _currentPage = 0;
         var firstBatch = filtered.Take(PageSize).ToList();
@@ -5922,6 +6013,19 @@ public class DashboardViewModel : BaseViewModel
 
         var snapshot = await Task.Run(() => BuildGalleryStatsSnapshot(filtered));
         await ApplyGalleryStatsSnapshotAsync(snapshot, CancellationToken.None);
+
+        // Actualizar Stats con los datos filtrados de la carpeta inteligente
+        var uniqueSessionIds = filtered.Select(v => v.SessionId).Distinct().Count();
+        var uniqueAthleteIds = filtered.Where(v => v.AtletaId != 0).Select(v => v.AtletaId).Distinct().Count();
+        var totalDuration = filtered.Sum(v => v.ClipDuration);
+        
+        Stats = new DashboardStats
+        {
+            TotalSessions = uniqueSessionIds,
+            TotalVideos = filtered.Count,
+            TotalAthletes = uniqueAthleteIds,
+            TotalDurationSeconds = totalDuration
+        };
 
         OnPropertyChanged(nameof(TotalFilteredVideoCount));
         OnPropertyChanged(nameof(TotalFilteredDurationSeconds));
@@ -5949,6 +6053,38 @@ public class DashboardViewModel : BaseViewModel
         catch
         {
             // Si falla la deserialización, ignorar y seguir sin carpetas.
+        }
+    }
+
+    /// <summary>
+    /// Updates the MatchingVideoCount for each SmartFolder based on the current _allVideosCache.
+    /// </summary>
+    private void UpdateSmartFolderVideoCounts()
+    {
+        var source = _allVideosCache;
+        if (source == null)
+            return;
+
+        foreach (var folder in SmartFolders)
+        {
+            var criteria = folder.Criteria ?? new List<SmartFolderCriterion>();
+            bool matchAll = !string.Equals(folder.MatchMode, "Any", StringComparison.OrdinalIgnoreCase);
+
+            int count;
+            if (criteria.Count == 0)
+            {
+                count = source.Count;
+            }
+            else
+            {
+                count = source.Count(v =>
+                {
+                    var matches = criteria.Select(c => MatchesCriterion(v, c)).ToList();
+                    return matchAll ? matches.All(m => m) : matches.Any(m => m);
+                });
+            }
+
+            folder.MatchingVideoCount = count;
         }
     }
 
@@ -6184,6 +6320,64 @@ public class DashboardViewModel : BaseViewModel
             session.Icon = customization.Icon;
             session.IconColor = customization.Color;
         }
+    }
+
+    private void OpenSessionEditPopup(SessionRow? row)
+    {
+        if (row?.Session == null) return;
+
+        _editingSessionRow = row;
+        var session = row.Session;
+
+        // Cargar valores actuales
+        SessionEditName = session.NombreSesion ?? session.DisplayName;
+        SessionEditLugar = session.Lugar ?? string.Empty;
+        SessionEditTipoSesion = session.TipoSesion ?? string.Empty;
+
+        ShowSessionEditPopup = true;
+    }
+
+    private async Task ApplySessionEditAsync()
+    {
+        if (_editingSessionRow?.Session == null)
+        {
+            ShowSessionEditPopup = false;
+            return;
+        }
+
+        var session = _editingSessionRow.Session;
+        var hasChanges = false;
+
+        // Aplicar cambios
+        var newName = NormalizeSpaces(SessionEditName);
+        if (!string.IsNullOrEmpty(newName) && newName != session.NombreSesion)
+        {
+            session.NombreSesion = newName;
+            hasChanges = true;
+        }
+
+        var newLugar = NormalizeSpaces(SessionEditLugar);
+        if (newLugar != session.Lugar)
+        {
+            session.Lugar = newLugar;
+            hasChanges = true;
+        }
+
+        var newTipo = NormalizeSpaces(SessionEditTipoSesion);
+        if (newTipo != session.TipoSesion)
+        {
+            session.TipoSesion = newTipo;
+            hasChanges = true;
+        }
+
+        if (hasChanges)
+        {
+            await _databaseService.SaveSessionAsync(session);
+            SyncVisibleSessionRows();
+        }
+
+        _editingSessionRow = null;
+        ShowSessionEditPopup = false;
     }
 
     private async Task RenameSessionAsync(SessionRow? row)

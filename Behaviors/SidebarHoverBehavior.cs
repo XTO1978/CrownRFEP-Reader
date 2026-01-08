@@ -117,6 +117,9 @@ public class SidebarHoverBehavior : Behavior<Border>
 
         border.BackgroundColor = HoverColor;
         _didApplyHover = true;
+
+        // Show any "AddButton" children
+        ShowHoverElements(border, true);
     }
 
     private void RemoveHover(Border border)
@@ -126,6 +129,38 @@ public class SidebarHoverBehavior : Behavior<Border>
         {
             border.BackgroundColor = Colors.Transparent;
             _didApplyHover = false;
+        }
+
+        // Hide any "AddButton" children
+        ShowHoverElements(border, false);
+    }
+
+    private void ShowHoverElements(Border border, bool show)
+    {
+        // Find child elements that should only be visible on hover (those with Opacity=0)
+        if (border.Content is Layout layout)
+        {
+            foreach (var child in layout.Children)
+            {
+                if (child is Border childBorder)
+                {
+                    // Only toggle elements that start with Opacity=0 (hover-only elements)
+                    // When showing, set to 1. When hiding, set back to 0.
+                    if (show && childBorder.Opacity == 0)
+                    {
+                        childBorder.Opacity = 1.0;
+                    }
+                    else if (!show && childBorder.Opacity == 1.0)
+                    {
+                        // Check if this was a hover-only element (we track by checking if it has no background)
+                        if (childBorder.BackgroundColor == Colors.Transparent && 
+                            childBorder.Stroke == null || (childBorder.Stroke is SolidColorBrush scb && scb.Color == Colors.Transparent))
+                        {
+                            childBorder.Opacity = 0;
+                        }
+                    }
+                }
+            }
         }
     }
 }

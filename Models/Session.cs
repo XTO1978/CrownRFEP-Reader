@@ -11,7 +11,7 @@ namespace CrownRFEP_Reader.Models;
 public class Session : INotifyPropertyChanged
 {
     private string _icon = "oar.2.crossed";
-    private string _iconColor = "#FF6DDDFF";
+    private string _iconColor = "#FFFFFFFF";
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
