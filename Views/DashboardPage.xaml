@@ -55,14 +55,14 @@
                                 <Label
                                     Grid.Column="0"
                                     FontFamily="{StaticResource AppFontBody}"
-                                    FontSize="{StaticResource FontSizeSmall}"
+                                    FontSize="{StaticResource FontSizeBody}"
                                     FontAttributes="Bold"
                                     Text="{Binding Title}"
                                     TextColor="#FF888888"
                                     VerticalOptions="Center" />
                                 <Label
                                     Grid.Column="1"
-                                    FontSize="{StaticResource FontSizeSmall}"
+                                    FontSize="{StaticResource FontSizeBody}"
                                     Text="{Binding IsExpanded, Converter={StaticResource BoolToExpandIconConverter}}"
                                     TextColor="#FF888888"
                                     VerticalOptions="Center" />
@@ -104,19 +104,20 @@
                                     </OnPlatform>
                                 </HorizontalStackLayout.Padding>
                                 <controls:SymbolIcon
-                                    HeightRequest="{StaticResource IconSizeSmall}"
+                                    HeightRequest="{StaticResource IconSizeMedium}"
                                     SymbolName="arrow.turn.down.right"
                                     TintColor="#FF888888"
                                     VerticalOptions="Center"
-                                    WidthRequest="{StaticResource IconSizeSmall}" />
+                                    WidthRequest="{StaticResource IconSizeMedium}" />
                                 <controls:SymbolIcon
-                                    HeightRequest="{StaticResource IconSizeMedium}"
+                                    HeightRequest="{StaticResource IconSizeDefault}"
                                     SymbolName="oar.2.crossed"
                                     TintColor="#FF6DDDFF"
                                     VerticalOptions="Center"
-                                    WidthRequest="{StaticResource IconSizeMedium}" />
+                                    WidthRequest="{StaticResource IconSizeDefault}" />
                                 <Label
                                     FontFamily="{StaticResource AppFontBody}"
+                                    FontSize="{StaticResource FontSizeSubtitle}"
                                     LineBreakMode="TailTruncation"
                                     TextColor="White">
                                     <Label.FormattedText>
@@ -215,9 +216,8 @@
                         <Border
                             x:Name="AllGalleryHeaderBorder"
                             Margin="0,0,0,0"
-                            Padding="{StaticResource PaddingSidebarItem}"
+                            Padding="{StaticResource PaddingXSmall}"
                             BackgroundColor="Transparent"
-                            HeightRequest="{StaticResource ElementHeightLarge}"
                             Stroke="Transparent"
                             StrokeThickness="0"
                             StrokeShape="RoundRectangle 4">
@@ -239,11 +239,11 @@
                                 Spacing="8"
                                 VerticalOptions="Center">
                                 <controls:SymbolIcon
-                                    HeightRequest="{StaticResource IconSizeLarge}"
+                                    HeightRequest="{OnPlatform WinUI={StaticResource IconSizeXLarge}, Default={StaticResource IconSizeXLarge}}"
                                     SymbolName="photo.on.rectangle.angled"
                                     TintColor="#FF6DDDFF"
                                     VerticalOptions="Center"
-                                    WidthRequest="{StaticResource IconSizeLarge}" />
+                                    WidthRequest="{OnPlatform WinUI={StaticResource IconSizeXLarge}, Default={StaticResource IconSizeXLarge}}" />
                                 <Label
                                     FontFamily="{StaticResource AppFontBody}"
                                     FontSize="{StaticResource FontSizeSubtitle}"
@@ -257,9 +257,8 @@
                         <Border
                             x:Name="VideoLessonsHeaderBorder"
                             Margin="0"
-                            Padding="{StaticResource PaddingSidebarItem}"
+                            Padding="{StaticResource PaddingXSmall}"
                             BackgroundColor="Transparent"
-                            HeightRequest="{StaticResource ElementHeightLarge}"
                             Stroke="Transparent"
                             StrokeThickness="0"
                             StrokeShape="RoundRectangle 4">
@@ -281,11 +280,11 @@
                                 Spacing="8"
                                 VerticalOptions="Center">
                                 <controls:SymbolIcon
-                                    HeightRequest="{StaticResource IconSizeLarge}"
+                                    HeightRequest="{OnPlatform WinUI={StaticResource IconSizeXLarge}, Default={StaticResource IconSizeXLarge}}"
                                     SymbolName="video"
                                     TintColor="#FF6DDDFF"
                                     VerticalOptions="Center"
-                                    WidthRequest="{StaticResource IconSizeLarge}" />
+                                    WidthRequest="{OnPlatform WinUI={StaticResource IconSizeXLarge}, Default={StaticResource IconSizeXLarge}}" />
                                 <Label
                                     FontFamily="{StaticResource AppFontBody}"
                                     FontSize="{StaticResource FontSizeSubtitle}"
@@ -300,9 +299,8 @@
                         <Border
                             x:Name="DiaryHeaderBorder"
                             Margin="0"
-                            Padding="{StaticResource PaddingSidebarItem}"
+                            Padding="{StaticResource PaddingXSmall}"
                             BackgroundColor="Transparent"
-                            HeightRequest="{StaticResource ElementHeightLarge}"
                             Stroke="Transparent"
                             StrokeThickness="0"
                             StrokeShape="RoundRectangle 4">
@@ -324,11 +322,11 @@
                                 Spacing="8"
                                 VerticalOptions="Center">
                                 <controls:SymbolIcon
-                                    HeightRequest="{StaticResource IconSizeLarge}"
+                                    HeightRequest="{OnPlatform WinUI={StaticResource IconSizeXLarge}, Default={StaticResource IconSizeXLarge}}"
                                     SymbolName="book"
                                     TintColor="#FF6DDDFF"
                                     VerticalOptions="Center"
-                                    WidthRequest="{StaticResource IconSizeLarge}" />
+                                    WidthRequest="{OnPlatform WinUI={StaticResource IconSizeXLarge}, Default={StaticResource IconSizeXLarge}}" />
                                 <Label
                                     FontFamily="{StaticResource AppFontBody}"
                                     FontSize="{StaticResource FontSizeSubtitle}"
@@ -343,9 +341,8 @@
                         <Border
                             x:Name="SessionsHeaderBorder"
                             Margin="0"
-                            Padding="{StaticResource PaddingSidebarItem}"
+                            Padding="{StaticResource PaddingXSmall}"
                             BackgroundColor="Transparent"
-                            HeightRequest="{StaticResource ElementHeightLarge}"
                             Stroke="Transparent"
                             StrokeThickness="0"
                             StrokeShape="RoundRectangle 4">
@@ -356,11 +353,11 @@
                                 Spacing="8"
                                 VerticalOptions="Center">
                                 <controls:SymbolIcon
-                                    HeightRequest="{StaticResource IconSizeLarge}"
+                                    HeightRequest="{OnPlatform WinUI={StaticResource IconSizeXLarge}, Default={StaticResource IconSizeXLarge}}"
                                     SymbolName="clock"
                                     TintColor="#FF6DDDFF"
                                     VerticalOptions="Center"
-                                    WidthRequest="{StaticResource IconSizeLarge}" />
+                                    WidthRequest="{OnPlatform WinUI={StaticResource IconSizeXLarge}, Default={StaticResource IconSizeXLarge}}" />
                                 <Label
                                     FontFamily="{StaticResource AppFontBody}"
                                     FontSize="{StaticResource FontSizeSubtitle}"

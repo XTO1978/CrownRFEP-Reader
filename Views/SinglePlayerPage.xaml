@@ -556,10 +556,10 @@
                                 <controls:SymbolIcon
                                     HeightRequest="{StaticResource IconSizeMedium}"
                                     SymbolName="person.badge.plus"
-                                    TintColor="#FF6DDDFF"
+                                    TintColor="White"
                                     WidthRequest="{StaticResource IconSizeMedium}" />
                                 <Label
-                                    FontSize="{StaticResource FontSizeSmall}"
+                                    FontSize="{StaticResource FontSizeBody}"
                                     Text="Atleta"
                                     TextColor="White"
                                     VerticalOptions="Center" />
@@ -581,10 +581,10 @@
                                 <controls:SymbolIcon
                                     HeightRequest="{StaticResource IconSizeMedium}"
                                     SymbolName="arrow.triangle.branch"
-                                    TintColor="#FFFFA726"
+                                    TintColor="White"
                                     WidthRequest="{StaticResource IconSizeMedium}" />
                                 <Label
-                                    FontSize="{StaticResource FontSizeSmall}"
+                                    FontSize="{StaticResource FontSizeBody}"
                                     Text="Tramo"
                                     TextColor="White"
                                     VerticalOptions="Center" />
@@ -606,10 +606,10 @@
                                 <controls:SymbolIcon
                                     HeightRequest="{StaticResource IconSizeMedium}"
                                     SymbolName="tag.fill"
-                                    TintColor="#FF6DDDFF"
+                                    TintColor="White"
                                     WidthRequest="{StaticResource IconSizeMedium}" />
                                 <Label
-                                    FontSize="{StaticResource FontSizeSmall}"
+                                    FontSize="{StaticResource FontSizeBody}"
                                     Text="Etiquetas"
                                     TextColor="White"
                                     VerticalOptions="Center" />
@@ -631,10 +631,10 @@
                                 <controls:SymbolIcon
                                     HeightRequest="{StaticResource IconSizeMedium}"
                                     SymbolName="clock.badge.checkmark"
-                                    TintColor="#FFFF7043"
+                                    TintColor="White"
                                     WidthRequest="{StaticResource IconSizeMedium}" />
                                 <Label
-                                    FontSize="{StaticResource FontSizeSmall}"
+                                    FontSize="{StaticResource FontSizeBody}"
                                     Text="Eventos"
                                     TextColor="White"
                                     VerticalOptions="Center" />
@@ -656,10 +656,10 @@
                                 <controls:SymbolIcon
                                     HeightRequest="{StaticResource IconSizeMedium}"
                                     SymbolName="pencil"
-                                    TintColor="#FFFF7043"
+                                    TintColor="White"
                                     WidthRequest="{StaticResource IconSizeMedium}" />
                                 <Label
-                                    FontSize="{StaticResource FontSizeSmall}"
+                                    FontSize="{StaticResource FontSizeBody}"
                                     Text="Dibujar"
                                     TextColor="White"
                                     VerticalOptions="Center" />
@@ -681,10 +681,10 @@
                                 <controls:SymbolIcon
                                     HeightRequest="{StaticResource IconSizeMedium}"
                                     SymbolName="timer"
-                                    TintColor="#FF4FC3F7"
+                                    TintColor="White"
                                     WidthRequest="16" />
                                 <Label
-                                    FontSize="{StaticResource FontSizeSmall}"
+                                    FontSize="{StaticResource FontSizeBody}"
                                     Text="Split"
                                     TextColor="White"
                                     VerticalOptions="Center" />
@@ -1845,6 +1845,11 @@
                     StrokeThickness="0"
                     VerticalOptions="Start"
                     WidthRequest="320">
+                    <Border.Triggers>
+                        <DataTrigger TargetType="Border" Binding="{Binding IsAssistedModeEnabled}" Value="True">
+                            <Setter Property="WidthRequest" Value="520" />
+                        </DataTrigger>
+                    </Border.Triggers>
                     <VerticalStackLayout Spacing="14">
                         <!--  Título del panel  -->
                         <Grid ColumnDefinitions="*,Auto">
