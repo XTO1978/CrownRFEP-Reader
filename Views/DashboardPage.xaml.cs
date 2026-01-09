@@ -430,7 +430,9 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 
         // Clamp para no salirse por la derecha/abajo
         var previewWidth = HoverPreviewContainer.WidthRequest > 0 ? HoverPreviewContainer.WidthRequest : 480;
-        var previewHeight = HoverPreviewContainer.Height > 0 ? HoverPreviewContainer.Height : 300;
+        var previewHeight = HoverPreviewContainer.Height > 0
+            ? HoverPreviewContainer.Height
+            : (previewWidth / 1.777) + 44; // 16:9 + fila de texto
 
         var containerWidth = RootGrid?.Width > 0 ? RootGrid.Width : this.Width;
         var containerHeight = RootGrid?.Height > 0 ? RootGrid.Height : this.Height;

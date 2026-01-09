@@ -360,7 +360,7 @@
             </Setter.Value>
         </Setter>
         <Setter Property="BackgroundColor" Value="Transparent" />
-        <Setter Property="Stroke" Value="Transparent" />
+        <Setter Property="Stroke" Value="{x:Null}" />
         <Setter Property="StrokeThickness" Value="0" />
         <Setter Property="StrokeShape" Value="RoundRectangle 4" />
         <Setter Property="HorizontalOptions" Value="Fill" />

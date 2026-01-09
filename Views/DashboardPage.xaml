@@ -316,6 +316,12 @@
                         <Border
                             x:Name="AllGalleryHeaderBorder"
                             Style="{StaticResource SidebarMenuItemBorder}">
+                            <Border.Padding>
+                                <OnPlatform x:TypeArguments="Thickness">
+                                    <On Platform="iOS" Value="10,2,4,2" />
+                                    <On Platform="Default" Value="10,6,4,6" />
+                                </OnPlatform>
+                            </Border.Padding>
                             <Border.Behaviors>
                                 <behaviors:SidebarHoverBehavior />
                             </Border.Behaviors>
@@ -330,11 +336,9 @@
                             <Border.GestureRecognizers>
                                 <TapGestureRecognizer Command="{Binding SelectAllGalleryCommand}" />
                             </Border.GestureRecognizers>
-                            <Grid ColumnDefinitions="Auto,Auto,*,Auto" VerticalOptions="Center" HorizontalOptions="Fill">
-                                <!-- Espacio para alinear con items que tienen chevron -->
-                                <BoxView Grid.Column="0" WidthRequest="{StaticResource IconSizeSmall}" HeightRequest="1" Color="Transparent" />
+                            <Grid ColumnDefinitions="Auto,*,Auto" Margin="18,0,0,0" VerticalOptions="Center" HorizontalOptions="Fill">
                                 <controls:SymbolIcon
-                                    Grid.Column="1"
+                                    Grid.Column="0"
                                     Margin="4,0,0,0"
                                     HeightRequest="{StaticResource IconSizeSidebarMenu}"
                                     SymbolName="photo.on.rectangle.angled"
@@ -342,12 +346,12 @@
                                     VerticalOptions="Center"
                                     WidthRequest="{StaticResource IconSizeSidebarMenu}" />
                                 <Label
-                                    Grid.Column="2"
+                                    Grid.Column="1"
                                     Margin="8,0,0,0"
                                     Style="{StaticResource SidebarMenuItemLabel}"
                                     Text="Galería General" />
                                 <Label
-                                    Grid.Column="3"
+                                    Grid.Column="2"
                                     Margin="0,0,8,0"
                                     FontFamily="{StaticResource AppFontMono}"
                                     FontSize="{StaticResource FontSizeSmall}"
@@ -362,6 +366,12 @@
                         <Border
                             x:Name="VideoLessonsHeaderBorder"
                             Style="{StaticResource SidebarMenuItemBorder}">
+                            <Border.Padding>
+                                <OnPlatform x:TypeArguments="Thickness">
+                                    <On Platform="iOS" Value="10,2,4,2" />
+                                    <On Platform="Default" Value="10,6,4,6" />
+                                </OnPlatform>
+                            </Border.Padding>
                             <Border.Behaviors>
                                 <behaviors:SidebarHoverBehavior />
                             </Border.Behaviors>
@@ -376,11 +386,9 @@
                             <Border.GestureRecognizers>
                                 <TapGestureRecognizer Command="{Binding ViewVideoLessonsCommand}" />
                             </Border.GestureRecognizers>
-                            <Grid ColumnDefinitions="Auto,Auto,*,Auto" VerticalOptions="Center" HorizontalOptions="Fill">
-                                <!-- Espacio para alinear con items que tienen chevron -->
-                                <BoxView Grid.Column="0" WidthRequest="{StaticResource IconSizeSmall}" HeightRequest="1" Color="Transparent" />
+                            <Grid ColumnDefinitions="Auto,*,Auto" Margin="18,0,0,0" VerticalOptions="Center" HorizontalOptions="Fill">
                                 <controls:SymbolIcon
-                                    Grid.Column="1"
+                                    Grid.Column="0"
                                     Margin="4,0,0,0"
                                     HeightRequest="{StaticResource IconSizeSidebarMenu}"
                                     SymbolName="video"
@@ -388,12 +396,12 @@
                                     VerticalOptions="Center"
                                     WidthRequest="{StaticResource IconSizeSidebarMenu}" />
                                 <Label
-                                    Grid.Column="2"
+                                    Grid.Column="1"
                                     Margin="8,0,0,0"
                                     Style="{StaticResource SidebarMenuItemLabel}"
                                     Text="Videolecciones" />
                                 <Label
-                                    Grid.Column="3"
+                                    Grid.Column="2"
                                     Margin="0,0,8,0"
                                     FontFamily="{StaticResource AppFontMono}"
                                     FontSize="{StaticResource FontSizeSmall}"
@@ -409,6 +417,12 @@
                         <Border
                             x:Name="SmartFoldersHeaderBorder"
                             Style="{StaticResource SidebarMenuItemBorder}">
+                            <Border.Padding>
+                                <OnPlatform x:TypeArguments="Thickness">
+                                    <On Platform="iOS" Value="10,2,4,2" />
+                                    <On Platform="Default" Value="10,6,4,6" />
+                                </OnPlatform>
+                            </Border.Padding>
                             <Border.Behaviors>
                                 <behaviors:SidebarHoverBehavior />
                             </Border.Behaviors>
@@ -568,6 +582,12 @@
                         <Border
                             x:Name="DiaryHeaderBorder"
                             Style="{StaticResource SidebarMenuItemBorder}">
+                            <Border.Padding>
+                                <OnPlatform x:TypeArguments="Thickness">
+                                    <On Platform="iOS" Value="10,2,4,2" />
+                                    <On Platform="Default" Value="10,6,4,6" />
+                                </OnPlatform>
+                            </Border.Padding>
                             <Border.Behaviors>
                                 <behaviors:SidebarHoverBehavior />
                             </Border.Behaviors>
@@ -582,11 +602,9 @@
                             <Border.GestureRecognizers>
                                 <TapGestureRecognizer Command="{Binding ViewDiaryCommand}" />
                             </Border.GestureRecognizers>
-                            <Grid ColumnDefinitions="Auto,Auto,*" VerticalOptions="Center" HorizontalOptions="Fill">
-                                <!-- Espacio para alinear con items que tienen chevron -->
-                                <BoxView Grid.Column="0" WidthRequest="{StaticResource IconSizeSmall}" HeightRequest="1" Color="Transparent" />
+                            <Grid ColumnDefinitions="Auto,*" Margin="18,0,0,0" VerticalOptions="Center" HorizontalOptions="Fill">
                                 <controls:SymbolIcon
-                                    Grid.Column="1"
+                                    Grid.Column="0"
                                     Margin="4,0,0,0"
                                     HeightRequest="{StaticResource IconSizeSidebarMenu}"
                                     SymbolName="book"
@@ -594,7 +612,7 @@
                                     VerticalOptions="Center"
                                     WidthRequest="{StaticResource IconSizeSidebarMenu}" />
                                 <Label
-                                    Grid.Column="2"
+                                    Grid.Column="1"
                                     Margin="8,0,0,0"
                                     Style="{StaticResource SidebarMenuItemLabel}"
                                     Text="Diario" />
@@ -605,6 +623,12 @@
                         <Border
                             x:Name="SessionsHeaderBorder"
                             Style="{StaticResource SidebarMenuItemBorder}">
+                            <Border.Padding>
+                                <OnPlatform x:TypeArguments="Thickness">
+                                    <On Platform="iOS" Value="10,2,4,2" />
+                                    <On Platform="Default" Value="10,6,4,6" />
+                                </OnPlatform>
+                            </Border.Padding>
                             <Border.Behaviors>
                                 <behaviors:SidebarHoverBehavior />
                             </Border.Behaviors>
@@ -4949,13 +4973,13 @@
             StrokeShape="RoundRectangle 12"
             StrokeThickness="1"
             VerticalOptions="Start"
-            WidthRequest="480"
+            WidthRequest="960"
             ZIndex="50">
             <Grid RowDefinitions="Auto,Auto">
                 <controls:AspectRatioContainer AspectRatio="1.777">
                     <appcontrols:PrecisionVideoPlayer
                         x:Name="HoverPreviewPlayer"
-                        Aspect="AspectFill"
+                        Aspect="AspectFit"
                         IsMuted="True"
                         Source="{Binding HoverVideo.LocalClipPath}" />
                 </controls:AspectRatioContainer>
