@@ -77,19 +77,12 @@ public partial class SinglePlayerPage : ContentPage
 
 #if WINDOWS || IOS
         // En Windows e iOS: controles de reproducción como overlay en Row 0, anclados abajo
+        // En Windows la navegación está integrada en el mismo PlayerControlsBorder
         if (PlayerControlsBorder != null)
         {
             Grid.SetRow(PlayerControlsBorder, 0);
             PlayerControlsBorder.VerticalOptions = LayoutOptions.End;
         }
-#if WINDOWS
-        // Solo en Windows: barra de navegación también como overlay en la parte superior
-        if (NavigationFiltersBorder != null)
-        {
-            Grid.SetRow(NavigationFiltersBorder, 0);
-            NavigationFiltersBorder.VerticalOptions = LayoutOptions.Start;
-        }
-#endif
 #else
         // En otras plataformas: controles en Row 1 separados del video
         if (PlayerControlsBorder != null)

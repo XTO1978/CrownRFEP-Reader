@@ -40,7 +40,7 @@
                             HorizontalOptions="Fill"
                             IsVisible="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=IsSessionsExpanded}">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="{OnPlatform iOS=24, MacCatalyst=48, WinUI=48, Default=48}" />
+                                <ColumnDefinition Width="{OnPlatform iOS=24, WinUI=24, MacCatalyst=48, Default=48}" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <!-- Columna 1: contenido del header -->
@@ -111,7 +111,7 @@
                             HorizontalOptions="Fill"
                             IsVisible="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=IsSessionsExpanded}">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="{OnPlatform iOS=24, MacCatalyst=48, WinUI=48, Default=48}" />
+                                <ColumnDefinition Width="{OnPlatform iOS=24, WinUI=24, MacCatalyst=48, Default=48}" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <!-- Columna 1: contenido del subitem -->
@@ -130,7 +130,7 @@
                                 </Border.Padding>
                                 <Border.GestureRecognizers>
                                 <TapGestureRecognizer
-                                    Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=SelectSessionRowCommand}"
+                                    Command="{Binding BindingContext.SelectSessionRowCommand, Source={x:Reference ThisPage}}"
                                     CommandParameter="{Binding .}" />
                             </Border.GestureRecognizers>
                             <Border.Behaviors>
@@ -330,9 +330,12 @@
                             <Border.GestureRecognizers>
                                 <TapGestureRecognizer Command="{Binding SelectAllGalleryCommand}" />
                             </Border.GestureRecognizers>
-                            <Grid ColumnDefinitions="22,Auto,*,Auto" ColumnSpacing="8" VerticalOptions="Center" HorizontalOptions="Fill">
+                            <Grid ColumnDefinitions="Auto,Auto,*,Auto" VerticalOptions="Center" HorizontalOptions="Fill">
+                                <!-- Espacio para alinear con items que tienen chevron -->
+                                <BoxView Grid.Column="0" WidthRequest="{StaticResource IconSizeSmall}" HeightRequest="1" Color="Transparent" />
                                 <controls:SymbolIcon
                                     Grid.Column="1"
+                                    Margin="4,0,0,0"
                                     HeightRequest="{StaticResource IconSizeSidebarMenu}"
                                     SymbolName="photo.on.rectangle.angled"
                                     TintColor="White"
@@ -340,6 +343,7 @@
                                     WidthRequest="{StaticResource IconSizeSidebarMenu}" />
                                 <Label
                                     Grid.Column="2"
+                                    Margin="8,0,0,0"
                                     Style="{StaticResource SidebarMenuItemLabel}"
                                     Text="Galería General" />
                                 <Label
@@ -372,9 +376,12 @@
                             <Border.GestureRecognizers>
                                 <TapGestureRecognizer Command="{Binding ViewVideoLessonsCommand}" />
                             </Border.GestureRecognizers>
-                            <Grid ColumnDefinitions="22,Auto,*,Auto" ColumnSpacing="8" VerticalOptions="Center" HorizontalOptions="Fill">
+                            <Grid ColumnDefinitions="Auto,Auto,*,Auto" VerticalOptions="Center" HorizontalOptions="Fill">
+                                <!-- Espacio para alinear con items que tienen chevron -->
+                                <BoxView Grid.Column="0" WidthRequest="{StaticResource IconSizeSmall}" HeightRequest="1" Color="Transparent" />
                                 <controls:SymbolIcon
                                     Grid.Column="1"
+                                    Margin="4,0,0,0"
                                     HeightRequest="{StaticResource IconSizeSidebarMenu}"
                                     SymbolName="video"
                                     TintColor="White"
@@ -382,6 +389,7 @@
                                     WidthRequest="{StaticResource IconSizeSidebarMenu}" />
                                 <Label
                                     Grid.Column="2"
+                                    Margin="8,0,0,0"
                                     Style="{StaticResource SidebarMenuItemLabel}"
                                     Text="Videolecciones" />
                                 <Label
@@ -574,9 +582,12 @@
                             <Border.GestureRecognizers>
                                 <TapGestureRecognizer Command="{Binding ViewDiaryCommand}" />
                             </Border.GestureRecognizers>
-                            <Grid ColumnDefinitions="22,Auto,*" ColumnSpacing="8" VerticalOptions="Center" HorizontalOptions="Fill">
+                            <Grid ColumnDefinitions="Auto,Auto,*" VerticalOptions="Center" HorizontalOptions="Fill">
+                                <!-- Espacio para alinear con items que tienen chevron -->
+                                <BoxView Grid.Column="0" WidthRequest="{StaticResource IconSizeSmall}" HeightRequest="1" Color="Transparent" />
                                 <controls:SymbolIcon
                                     Grid.Column="1"
+                                    Margin="4,0,0,0"
                                     HeightRequest="{StaticResource IconSizeSidebarMenu}"
                                     SymbolName="book"
                                     TintColor="White"
@@ -584,6 +595,7 @@
                                     WidthRequest="{StaticResource IconSizeSidebarMenu}" />
                                 <Label
                                     Grid.Column="2"
+                                    Margin="8,0,0,0"
                                     Style="{StaticResource SidebarMenuItemLabel}"
                                     Text="Diario" />
                             </Grid>
@@ -597,14 +609,20 @@
                                 <behaviors:SidebarHoverBehavior />
                             </Border.Behaviors>
                             <Grid ColumnDefinitions="Auto,Auto,*,Auto" VerticalOptions="Center" HorizontalOptions="Fill">
-                                <!-- Expansion toggle button -->
+                                <!-- Expansion toggle button (oculto en Windows por ahora) -->
                                 <Border
                                     Grid.Column="0"
                                     Padding="2"
                                     BackgroundColor="Transparent"
                                     StrokeThickness="0">
+                                    <Border.IsVisible>
+                                        <OnPlatform x:TypeArguments="x:Boolean">
+                                            <On Platform="WinUI" Value="False" />
+                                            <On Platform="iOS,MacCatalyst,Android" Value="True" />
+                                        </OnPlatform>
+                                    </Border.IsVisible>
                                     <Border.GestureRecognizers>
-                                        <TapGestureRecognizer Command="{Binding ToggleSessionsExpansionCommand}" />
+                                        <TapGestureRecognizer Command="{Binding ToggleSessionsListExpandedCommand}" />
                                     </Border.GestureRecognizers>
                                     <controls:SymbolIcon
                                         HeightRequest="{StaticResource IconSizeSmall}"
@@ -612,10 +630,10 @@
                                         TintColor="#FF888888"
                                         VerticalOptions="Center">
                                         <controls:SymbolIcon.Triggers>
-                                            <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding IsSessionsExpanded}" Value="True">
+                                            <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding IsSessionsListExpanded}" Value="True">
                                                 <Setter Property="SymbolName" Value="chevron.down" />
                                             </DataTrigger>
-                                            <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding IsSessionsExpanded}" Value="False">
+                                            <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding IsSessionsListExpanded}" Value="False">
                                                 <Setter Property="SymbolName" Value="chevron.right" />
                                             </DataTrigger>
                                         </controls:SymbolIcon.Triggers>
