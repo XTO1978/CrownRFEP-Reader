@@ -96,7 +96,7 @@
          Espaciados adaptativos - Windows usa espaciados más compactos.
          ==================================================================== -->
     <OnPlatform x:TypeArguments="x:Double" x:Key="SpacingXSmall">
-        <On Platform="WinUI" Value="3" />
+        <On Platform="WinUI" Value="6" />
         <On Platform="Default" Value="4" />
     </OnPlatform>
 
@@ -174,7 +174,7 @@
          ADAPTIVE PADDINGS (Thickness)
          ==================================================================== -->
     <OnPlatform x:TypeArguments="Thickness" x:Key="PaddingXSmall">
-        <On Platform="WinUI" Value="0" />
+        <On Platform="WinUI" Value="4,4" />
         <On Platform="Default" Value="4" />
     </OnPlatform>
 
@@ -372,7 +372,14 @@
 
     <!-- Estilo para items de menú lateral hijo/sub-item (con margen izquierdo) -->
     <Style TargetType="Border" x:Key="SidebarMenuSubItemBorder" BasedOn="{StaticResource SidebarMenuItemBorder}">
-        <Setter Property="Margin" Value="48,0,0,0" />
+        <Setter Property="Margin">
+            <Setter.Value>
+                <OnPlatform x:TypeArguments="Thickness">
+                    <On Platform="WinUI" Value="24,0,0,0" />
+                    <On Platform="Default" Value="48,0,0,0" />
+                </OnPlatform>
+            </Setter.Value>
+        </Setter>
         <Setter Property="Padding" Value="10,6,4,6" />
         <Setter Property="StrokeShape" Value="RoundRectangle 6" />
     </Style>

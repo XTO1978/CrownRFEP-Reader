@@ -963,6 +963,7 @@ public class DashboardViewModel : BaseViewModel
         {
             if (SetProperty(ref _isSessionsListExpanded, value))
             {
+                // La visibilidad se controla llenando/vaciando la colección
                 SyncVisibleSessionRows();
             }
         }
@@ -1756,6 +1757,7 @@ public class DashboardViewModel : BaseViewModel
     {
         SessionRows.Clear();
 
+        // La visibilidad se controla llenando/vaciando la colección
         if (!IsSessionsListExpanded)
             return;
 

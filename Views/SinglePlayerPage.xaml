@@ -2419,13 +2419,14 @@
             HorizontalOptions="Fill">
             <Border.WidthRequest>
                 <OnPlatform x:TypeArguments="x:Double">
-                    <On Platform="WinUI" Value="600" />
+                    <On Platform="WinUI" Value="-1" />
                     <On Platform="iOS" Value="-1" />
                     <On Platform="Default" Value="-1" />
                 </OnPlatform>
             </Border.WidthRequest>
             <Border.HorizontalOptions>
                 <OnPlatform x:TypeArguments="LayoutOptions">
+                    <On Platform="WinUI" Value="Fill" />
                     <On Platform="iOS" Value="Fill" />
                     <On Platform="Default" Value="Center" />
                 </OnPlatform>
@@ -2439,14 +2440,14 @@
             </Border.BackgroundColor>
             <Border.Margin>
                 <OnPlatform x:TypeArguments="Thickness">
-                    <On Platform="WinUI" Value="12,0,12,4" />
+                    <On Platform="WinUI" Value="16,0,16,8" />
                     <On Platform="iOS" Value="8,0,8,4" />
                     <On Platform="Default" Value="16" />
                 </OnPlatform>
             </Border.Margin>
             <Border.Padding>
                 <OnPlatform x:TypeArguments="Thickness">
-                    <On Platform="WinUI" Value="12,4" />
+                    <On Platform="WinUI" Value="16,8" />
                     <On Platform="iOS" Value="8,6" />
                     <On Platform="Default" Value="16" />
                 </OnPlatform>
@@ -2454,6 +2455,190 @@
             
             <!-- Grid contenedor único para ambos layouts -->
             <Grid>
+                <!-- ===================== LAYOUT Windows: Todo en una línea horizontal ===================== -->
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                    <Grid.IsVisible>
+                        <OnPlatform x:TypeArguments="x:Boolean">
+                            <On Platform="WinUI" Value="True" />
+                            <On Platform="Default" Value="False" />
+                        </OnPlatform>
+                    </Grid.IsVisible>
+                    
+                    <!-- Columna 0: Navegación anterior -->
+                    <HorizontalStackLayout Grid.Column="0" Spacing="8" VerticalOptions="Center">
+                        <Border
+                            Padding="10,6"
+                            BackgroundColor="#FF2A2A2A"
+                            IsEnabled="{Binding CanGoPrevious}"
+                            Opacity="{Binding CanGoPrevious, Converter={StaticResource BoolToOpacityConverter}}"
+                            StrokeShape="RoundRectangle 4"
+                            StrokeThickness="0">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding PreviousVideoCommand}" />
+                            </Border.GestureRecognizers>
+                            <HorizontalStackLayout Spacing="4">
+                                <controls:SymbolIcon
+                                    HeightRequest="16"
+                                    SymbolName="chevron.left"
+                                    TintColor="White"
+                                    WidthRequest="16" />
+                                <Label
+                                    FontSize="{StaticResource FontSizeSmall}"
+                                    Text="Anterior"
+                                    TextColor="White"
+                                    VerticalOptions="Center" />
+                            </HorizontalStackLayout>
+                        </Border>
+                    </HorizontalStackLayout>
+                    
+                    <!-- Columna 1: Controles centrales (slider + botones + filtros) -->
+                    <Grid Grid.Column="1" RowDefinitions="Auto,Auto" RowSpacing="4">
+                        <!-- Fila 0: Slider con tiempo -->
+                        <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                            <Label
+                                Grid.Column="0"
+                                FontSize="{StaticResource FontSizeSmall}"
+                                Text="{Binding CurrentPositionText}"
+                                TextColor="#FFB1B1B1"
+                                VerticalOptions="Center" />
+                            <Slider
+                                x:Name="ProgressSliderWindows"
+                                Grid.Column="1"
+                                DragCompleted="OnSliderDragCompleted"
+                                DragStarted="OnSliderDragStarted"
+                                Maximum="1"
+                                MaximumTrackColor="#FF3A3A3A"
+                                Minimum="0"
+                                MinimumTrackColor="#FF6DDDFF"
+                                ThumbColor="#FF6DDDFF"
+                                ValueChanged="OnSliderValueChanged" />
+                            <Label
+                                Grid.Column="2"
+                                FontSize="{StaticResource FontSizeSmall}"
+                                Text="{Binding DurationText}"
+                                TextColor="#FFB1B1B1"
+                                VerticalOptions="Center" />
+                        </Grid>
+                        
+                        <!-- Fila 1: Botones de control + Filtros -->
+                        <HorizontalStackLayout Grid.Row="1" HorizontalOptions="Center" Spacing="6">
+                            <!-- Botones de reproducción -->
+                            <Border Padding="8,4" BackgroundColor="#FF2A2A2A" StrokeShape="RoundRectangle 4" StrokeThickness="0">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding FrameBackwardCommand}" />
+                                </Border.GestureRecognizers>
+                                <controls:SymbolIcon HeightRequest="18" WidthRequest="18" SymbolName="backward.frame.fill" TintColor="White" />
+                            </Border>
+                            <Border Padding="8,4" BackgroundColor="#FF2A2A2A" StrokeShape="RoundRectangle 4" StrokeThickness="0">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding SeekBackwardCommand}" />
+                                </Border.GestureRecognizers>
+                                <controls:SymbolIcon HeightRequest="18" WidthRequest="18" SymbolName="gobackward.5" TintColor="White" />
+                            </Border>
+                            <Border Padding="16,4" BackgroundColor="#FF6DDDFF" StrokeShape="RoundRectangle 4" StrokeThickness="0">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding PlayPauseCommand}" />
+                                </Border.GestureRecognizers>
+                                <controls:SymbolIcon HeightRequest="18" WidthRequest="18" SymbolName="{Binding PlayPauseIcon}" TintColor="Black" />
+                            </Border>
+                            <Border Padding="8,4" BackgroundColor="#FF2A2A2A" StrokeShape="RoundRectangle 4" StrokeThickness="0">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding SeekForwardCommand}" />
+                                </Border.GestureRecognizers>
+                                <controls:SymbolIcon HeightRequest="18" WidthRequest="18" SymbolName="goforward.5" TintColor="White" />
+                            </Border>
+                            <Border Padding="8,4" BackgroundColor="#FF2A2A2A" StrokeShape="RoundRectangle 4" StrokeThickness="0">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding FrameForwardCommand}" />
+                                </Border.GestureRecognizers>
+                                <controls:SymbolIcon HeightRequest="18" WidthRequest="18" SymbolName="forward.frame.fill" TintColor="White" />
+                            </Border>
+                            <Border Padding="8,4" BackgroundColor="#FF2A2A2A" StrokeShape="RoundRectangle 4" StrokeThickness="0">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding ToggleMuteCommand}" />
+                                </Border.GestureRecognizers>
+                                <controls:SymbolIcon HeightRequest="18" WidthRequest="18" SymbolName="{Binding MuteIcon}" TintColor="White" />
+                            </Border>
+                            
+                            <!-- Separador -->
+                            <BoxView WidthRequest="1" HeightRequest="24" BackgroundColor="#FF3A3A3A" Margin="4,0" />
+                            
+                            <!-- Velocidad compacta -->
+                            <HorizontalStackLayout Spacing="4">
+                                <Label FontSize="{StaticResource FontSizeSmall}" Text="{Binding SpeedText}" TextColor="White" VerticalOptions="Center" />
+                                <Border Padding="6,3" BackgroundColor="#FF3A3A3A" StrokeShape="RoundRectangle 4" StrokeThickness="0">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Command="{Binding SetSpeedCommand}" CommandParameter="0.25" />
+                                    </Border.GestureRecognizers>
+                                    <Label FontSize="{StaticResource FontSizeSmall}" Text="0.25x" TextColor="#FFB1B1B1" />
+                                </Border>
+                                <Border Padding="6,3" BackgroundColor="#FF3A3A3A" StrokeShape="RoundRectangle 4" StrokeThickness="0">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Command="{Binding SetSpeedCommand}" CommandParameter="0.5" />
+                                    </Border.GestureRecognizers>
+                                    <Label FontSize="{StaticResource FontSizeSmall}" Text="0.5x" TextColor="#FFB1B1B1" />
+                                </Border>
+                                <Border Padding="6,3" BackgroundColor="#FF3A3A3A" StrokeShape="RoundRectangle 4" StrokeThickness="0">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Command="{Binding SetSpeedCommand}" CommandParameter="1" />
+                                    </Border.GestureRecognizers>
+                                    <Label FontSize="{StaticResource FontSizeSmall}" Text="1x" TextColor="#FFB1B1B1" />
+                                </Border>
+                                <Border Padding="6,3" BackgroundColor="#FF3A3A3A" StrokeShape="RoundRectangle 4" StrokeThickness="0">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Command="{Binding SetSpeedCommand}" CommandParameter="2" />
+                                    </Border.GestureRecognizers>
+                                    <Label FontSize="{StaticResource FontSizeSmall}" Text="2x" TextColor="#FFB1B1B1" />
+                                </Border>
+                            </HorizontalStackLayout>
+                            
+                            <!-- Separador -->
+                            <BoxView WidthRequest="1" HeightRequest="24" BackgroundColor="#FF3A3A3A" Margin="4,0" />
+                            
+                            <!-- Posición en playlist -->
+                            <Label FontSize="{StaticResource FontSizeSmall}" Text="{Binding PlaylistPositionText}" TextColor="#FFB1B1B1" VerticalOptions="Center" />
+                            
+                            <!-- Botón filtros -->
+                            <Border Padding="8,4" BackgroundColor="#FF2A2A2A" StrokeShape="RoundRectangle 4" StrokeThickness="0">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding ToggleFiltersCommand}" />
+                                </Border.GestureRecognizers>
+                                <HorizontalStackLayout Spacing="4">
+                                    <controls:SymbolIcon HeightRequest="14" WidthRequest="14" SymbolName="line.3.horizontal.decrease" TintColor="#FF6DDDFF" />
+                                    <Label FontSize="{StaticResource FontSizeSmall}" Text="Filtros" TextColor="#FF6DDDFF" VerticalOptions="Center" />
+                                </HorizontalStackLayout>
+                            </Border>
+                        </HorizontalStackLayout>
+                    </Grid>
+                    
+                    <!-- Columna 2: Navegación siguiente -->
+                    <HorizontalStackLayout Grid.Column="2" Spacing="8" VerticalOptions="Center">
+                        <Border
+                            Padding="10,6"
+                            BackgroundColor="#FF2A2A2A"
+                            IsEnabled="{Binding CanGoNext}"
+                            Opacity="{Binding CanGoNext, Converter={StaticResource BoolToOpacityConverter}}"
+                            StrokeShape="RoundRectangle 4"
+                            StrokeThickness="0">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding NextVideoCommand}" />
+                            </Border.GestureRecognizers>
+                            <HorizontalStackLayout Spacing="4">
+                                <Label
+                                    FontSize="{StaticResource FontSizeSmall}"
+                                    Text="Siguiente"
+                                    TextColor="White"
+                                    VerticalOptions="Center" />
+                                <controls:SymbolIcon
+                                    HeightRequest="16"
+                                    SymbolName="chevron.right"
+                                    TintColor="White"
+                                    WidthRequest="16" />
+                            </HorizontalStackLayout>
+                        </Border>
+                    </HorizontalStackLayout>
+                </Grid>
+                
                 <!-- ===================== LAYOUT iOS: Slider izquierda, botones derecha ===================== -->
                 <Grid RowDefinitions="Auto,Auto" RowSpacing="8">
                     <Grid.IsVisible>
@@ -2673,6 +2858,7 @@
                 <VerticalStackLayout.IsVisible>
                     <OnPlatform x:TypeArguments="x:Boolean">
                         <On Platform="iOS" Value="False" />
+                        <On Platform="WinUI" Value="False" />
                         <On Platform="Default" Value="True" />
                     </OnPlatform>
                 </VerticalStackLayout.IsVisible>
@@ -3019,7 +3205,7 @@
             </Grid>
         </Border>
 
-        <!--  Barra de navegación y filtros (oculta en iOS, visible en otras plataformas)  -->
+        <!--  Barra de navegación y filtros (oculta en iOS y WinUI - en Windows está integrada arriba)  -->
         <Border
             x:Name="NavigationFiltersBorder"
             Grid.Row="2"
@@ -3029,6 +3215,7 @@
             <Border.IsVisible>
                 <OnPlatform x:TypeArguments="x:Boolean">
                     <On Platform="iOS" Value="False" />
+                    <On Platform="WinUI" Value="False" />
                     <On Platform="Default" Value="True" />
                 </OnPlatform>
             </Border.IsVisible>
