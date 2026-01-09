@@ -6,6 +6,11 @@ using CrownRFEP_Reader.Services;
 using System.Collections.Specialized;
 
 #if MACCATALYST
+using CoreGraphics;
+using UIKit;
+#endif
+
+#if MACCATALYST
 using CrownRFEP_Reader.Platforms.MacCatalyst;
 #endif
 
@@ -36,6 +41,7 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         // Suscribirse a eventos de hover para video preview
         HoverVideoPreviewBehavior.VideoHoverStarted += OnVideoHoverStarted;
         HoverVideoPreviewBehavior.VideoHoverEnded += OnVideoHoverEnded;
+        HoverVideoPreviewBehavior.VideoHoverMoved += OnVideoHoverMoved;
         
         // Suscribirse a eventos de scrubbing
         VideoScrubBehavior.ScrubUpdated += OnScrubUpdated;
@@ -110,6 +116,7 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
     {
         HoverVideoPreviewBehavior.VideoHoverStarted -= OnVideoHoverStarted;
         HoverVideoPreviewBehavior.VideoHoverEnded -= OnVideoHoverEnded;
+        HoverVideoPreviewBehavior.VideoHoverMoved -= OnVideoHoverMoved;
         VideoScrubBehavior.ScrubUpdated -= OnScrubUpdated;
         VideoScrubBehavior.ScrubEnded -= OnScrubEnded;
         
@@ -313,7 +320,6 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
             // Hover preview: parar y soltar el Source ANTES del cambio de ShellItem.
             try { HoverPreviewPlayer?.PrepareForCleanup(); } catch { }
             try { HoverPreviewPlayer?.Stop(); } catch { }
-            try { if (HoverPreviewPlayer != null) HoverPreviewPlayer.Source = null; } catch { }
 
             // Forzar que el binding deje de referenciar el vídeo
             _viewModel.HoverVideo = null;
@@ -354,6 +360,12 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         MainThread.BeginInvokeOnMainThread(() =>
         {
             _viewModel.HoverVideo = e.Video;
+
+            try
+            {
+                PositionHoverPreview(e);
+            }
+            catch { }
         });
     }
 
@@ -363,6 +375,90 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         {
             _viewModel.HoverVideo = null;
         });
+    }
+
+    private void OnVideoHoverMoved(object? sender, HoverVideoEventArgs e)
+    {
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            try
+            {
+                // Solo reposicionar si el preview está activo
+                if (_viewModel.HasHoverVideo)
+                    PositionHoverPreview(e);
+            }
+            catch { }
+        });
+    }
+
+    private void PositionHoverPreview(HoverVideoEventArgs e)
+    {
+        if (HoverPreviewContainer == null)
+            return;
+
+        // Si todavía no estamos activos, no reposicionar (evita glitches durante navegación)
+        if (!_isPageActive)
+            return;
+
+        var targetX = 0.0;
+        var targetY = 0.0;
+
+#if MACCATALYST
+        // Preferimos coordenadas reales del puntero si están disponibles
+        if (e.PointerLocationInSourceView is Point pointerInSource
+            && e.SourceView?.Handler?.PlatformView is UIView sourceUIView
+            && RootGrid?.Handler?.PlatformView is UIView rootUIView)
+        {
+            var p = new CGPoint(pointerInSource.X, pointerInSource.Y);
+            var pInRoot = sourceUIView.ConvertPointToView(p, rootUIView);
+            targetX = pInRoot.X;
+            targetY = pInRoot.Y;
+        }
+#endif
+
+        // Fallback: anclar al borde derecho del icono del ojo
+        if (targetX <= 0 && targetY <= 0)
+        {
+            var anchor = GetApproximatePositionRelativeToPage(e.SourceView);
+            targetX = anchor.X + Math.Max(0, e.SourceView.Width);
+            targetY = anchor.Y;
+        }
+
+        // Offset tipo menú contextual
+        targetX += 12;
+        targetY += 12;
+
+        // Clamp para no salirse por la derecha/abajo
+        var previewWidth = HoverPreviewContainer.WidthRequest > 0 ? HoverPreviewContainer.WidthRequest : 480;
+        var previewHeight = HoverPreviewContainer.Height > 0 ? HoverPreviewContainer.Height : 300;
+
+        var containerWidth = RootGrid?.Width > 0 ? RootGrid.Width : this.Width;
+        var containerHeight = RootGrid?.Height > 0 ? RootGrid.Height : this.Height;
+
+        var maxX = Math.Max(0, containerWidth - previewWidth - 12);
+        var maxY = Math.Max(0, containerHeight - previewHeight - 12);
+
+        targetX = Math.Clamp(targetX, 12, maxX);
+        targetY = Math.Clamp(targetY, 12, maxY);
+
+        HoverPreviewContainer.TranslationX = targetX;
+        HoverPreviewContainer.TranslationY = targetY;
+    }
+
+    private static Point GetApproximatePositionRelativeToPage(VisualElement? element)
+    {
+        double x = 0;
+        double y = 0;
+
+        Element? current = element;
+        while (current is VisualElement ve)
+        {
+            x += ve.X;
+            y += ve.Y;
+            current = ve.Parent;
+        }
+
+        return new Point(x, y);
     }
 
 #if IOS
@@ -639,10 +735,13 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
             // Primero pausar
             PauseAllVideos();
 
-			// Hover preview (PrecisionVideoPlayer) - este sí puede tener Source=null porque no usa binding
+			// Hover preview (PrecisionVideoPlayer)
 			try { HoverPreviewPlayer?.PrepareForCleanup(); } catch { }
 			try { HoverPreviewPlayer?.Stop(); } catch { }
-            try { if (HoverPreviewPlayer != null) HoverPreviewPlayer.Source = null; } catch { }
+
+			// IMPORTANTE: NO asignar HoverPreviewPlayer.Source = null, porque rompe el binding XAML.
+			// En su lugar, limpiar el valor en el ViewModel para que el binding propague null.
+			_viewModel.HoverVideo = null;
             
             // Para los preview players del dashboard, solo llamamos PrepareForCleanup()
             // que limpia el AVPlayer nativo pero NO rompe el binding.

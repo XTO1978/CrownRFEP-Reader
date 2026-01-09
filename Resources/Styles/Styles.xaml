@@ -351,7 +351,14 @@
     <!-- Estilo para el contenedor Border de items del menú lateral -->
     <Style TargetType="Border" x:Key="SidebarMenuItemBorder">
         <Setter Property="Margin" Value="0" />
-        <Setter Property="Padding" Value="{StaticResource PaddingXSmall}" />
+        <Setter Property="Padding">
+            <Setter.Value>
+                <OnPlatform x:TypeArguments="Thickness">
+                    <On Platform="iOS" Value="0" />
+                    <On Platform="Default" Value="{StaticResource PaddingXSmall}" />
+                </OnPlatform>
+            </Setter.Value>
+        </Setter>
         <Setter Property="BackgroundColor" Value="Transparent" />
         <Setter Property="Stroke" Value="Transparent" />
         <Setter Property="StrokeThickness" Value="0" />
@@ -372,8 +379,22 @@
 
     <!-- Estilo para items de menú lateral hijo/sub-item (con margen izquierdo) -->
     <Style TargetType="Border" x:Key="SidebarMenuSubItemBorder" BasedOn="{StaticResource SidebarMenuItemBorder}">
-        <Setter Property="Margin" Value="48,0,0,0" />
-        <Setter Property="Padding" Value="10,6,4,6" />
+        <Setter Property="Margin">
+            <Setter.Value>
+                <OnPlatform x:TypeArguments="Thickness">
+                    <On Platform="iOS" Value="24,0,0,0" />
+                    <On Platform="Default" Value="48,0,0,0" />
+                </OnPlatform>
+            </Setter.Value>
+        </Setter>
+        <Setter Property="Padding">
+            <Setter.Value>
+                <OnPlatform x:TypeArguments="Thickness">
+                    <On Platform="iOS" Value="10,2,4,2" />
+                    <On Platform="Default" Value="10,6,4,6" />
+                </OnPlatform>
+            </Setter.Value>
+        </Setter>
         <Setter Property="StrokeShape" Value="RoundRectangle 6" />
     </Style>
 

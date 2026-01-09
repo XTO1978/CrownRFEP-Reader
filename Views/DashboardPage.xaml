@@ -36,10 +36,13 @@
                 <controls:SessionsListRowTemplateSelector.HeaderTemplate>
                     <DataTemplate x:DataType="vm:SessionGroupHeaderRow">
                         <Grid 
-                            ColumnDefinitions="48,*"
                             BackgroundColor="Transparent"
                             HorizontalOptions="Fill"
                             IsVisible="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=IsSessionsExpanded}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="{OnPlatform iOS=24, MacCatalyst=48, WinUI=48, Default=48}" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
                             <!-- Columna 1: contenido del header -->
                             <Border
                                 Grid.Column="1"
@@ -50,7 +53,7 @@
                                 StrokeShape="RoundRectangle 4">
                                 <Border.Margin>
                                     <OnPlatform x:TypeArguments="Thickness">
-                                        <On Platform="iOS" Value="0,2,0,0" />
+                                        <On Platform="iOS" Value="0,1,0,0" />
                                         <On Platform="MacCatalyst,WinUI" Value="0,6,0,0" />
                                     </OnPlatform>
                                 </Border.Margin>
@@ -65,7 +68,7 @@
                                     HorizontalOptions="Fill">
                                     <Grid.Padding>
                                         <OnPlatform x:TypeArguments="Thickness">
-                                            <On Platform="iOS" Value="0,4" />
+                                            <On Platform="iOS" Value="0,2" />
                                             <On Platform="MacCatalyst,WinUI" Value="0,8" />
                                         </OnPlatform>
                                     </Grid.Padding>
@@ -104,19 +107,27 @@
                 <controls:SessionsListRowTemplateSelector.SessionTemplate>
                     <DataTemplate x:DataType="vm:SessionRow">
                         <Grid 
-                            ColumnDefinitions="48,*"
                             BackgroundColor="Transparent"
                             HorizontalOptions="Fill"
                             IsVisible="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=IsSessionsExpanded}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="{OnPlatform iOS=24, MacCatalyst=48, WinUI=48, Default=48}" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
                             <!-- Columna 1: contenido del subitem -->
                             <Border 
                                 Grid.Column="1"
-                                Padding="10,6,4,6"
                                 BackgroundColor="Transparent"
                                 Stroke="Transparent"
                                 StrokeThickness="0"
                                 StrokeShape="RoundRectangle 6"
                                 HorizontalOptions="Fill">
+                                <Border.Padding>
+                                    <OnPlatform x:TypeArguments="Thickness">
+                                        <On Platform="iOS" Value="10,2,4,2" />
+                                        <On Platform="Default" Value="10,6,4,6" />
+                                    </OnPlatform>
+                                </Border.Padding>
                                 <Border.GestureRecognizers>
                                 <TapGestureRecognizer
                                     Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=SelectSessionRowCommand}"
@@ -214,6 +225,7 @@
     </ContentPage.Resources>
 
     <Grid
+        x:Name="RootGrid"
         Padding="0"
         RowDefinitions="Auto,*,Auto">
         <Grid.ColumnDefinitions>
@@ -264,25 +276,43 @@
         <Grid
             Grid.Row="1"
             Grid.Column="0"
-            Padding="20,0"
             BackgroundColor="#FF1E1E1E"
             RowDefinitions="*,Auto">
+
+            <Grid.Padding>
+                <OnPlatform x:TypeArguments="Thickness">
+                    <On Platform="iOS" Value="8,0" />
+                    <On Platform="Default" Value="20,0" />
+                </OnPlatform>
+            </Grid.Padding>
 
             <CollectionView
                 x:Name="SidebarSessionsCollectionView"
                 Grid.Row="0"
-                Margin="0,20,0,0"
                 BackgroundColor="#00BBBABA"
                 ItemsSource="{Binding SessionRows}"
                 ItemTemplate="{StaticResource SessionsListRowTemplateSelector}"
                 SelectionMode="None">
 
+                <CollectionView.Margin>
+                    <OnPlatform x:TypeArguments="Thickness">
+                        <On Platform="iOS" Value="0,8,0,0" />
+                        <On Platform="Default" Value="0,20,0,0" />
+                    </OnPlatform>
+                </CollectionView.Margin>
+
                 <!--  Items fijos: Galería General + Videolecciones  -->
                 <CollectionView.Header>
                     <VerticalStackLayout
                         x:Name="SidebarFixedItemsHeader"
-                        Spacing="{StaticResource SpacingXSmall}"
                         HorizontalOptions="Fill">
+
+                        <VerticalStackLayout.Spacing>
+                            <OnPlatform x:TypeArguments="x:Double">
+                                <On Platform="iOS" Value="1" />
+                                <On Platform="Default" Value="{StaticResource SpacingXSmall}" />
+                            </OnPlatform>
+                        </VerticalStackLayout.Spacing>
                         <Border
                             x:Name="AllGalleryHeaderBorder"
                             Style="{StaticResource SidebarMenuItemBorder}">
@@ -447,11 +477,16 @@
                         </Border>
 
                         <VerticalStackLayout
-                            Margin="0,0,0,6"
                             Spacing="{StaticResource SpacingXSmall}"
                             HorizontalOptions="Fill"
                             IsVisible="{Binding IsSmartFoldersExpanded}"
                             BindableLayout.ItemsSource="{Binding SmartFolders}">
+                            <VerticalStackLayout.Margin>
+                                <OnPlatform x:TypeArguments="Thickness">
+                                    <On Platform="iOS" Value="0,0,0,2" />
+                                    <On Platform="Default" Value="0,0,0,6" />
+                                </OnPlatform>
+                            </VerticalStackLayout.Margin>
                             <BindableLayout.ItemTemplate>
                                 <DataTemplate x:DataType="models:SmartFolderDefinition">
                                     <Border Style="{StaticResource SidebarMenuSubItemBorder}">
@@ -673,7 +708,14 @@
                 </CollectionView.Header>
 
                 <CollectionView.ItemsLayout>
-                    <LinearItemsLayout ItemSpacing="{StaticResource SpacingXSmall}" Orientation="Vertical" />
+                    <LinearItemsLayout Orientation="Vertical">
+                        <LinearItemsLayout.ItemSpacing>
+                            <OnPlatform x:TypeArguments="x:Double">
+                                <On Platform="iOS" Value="2" />
+                                <On Platform="Default" Value="{StaticResource SpacingXSmall}" />
+                            </OnPlatform>
+                        </LinearItemsLayout.ItemSpacing>
+                    </LinearItemsLayout>
                 </CollectionView.ItemsLayout>
 
                 <CollectionView.EmptyView>
@@ -4877,18 +4919,20 @@
         </ScrollView>
         <Border
             x:Name="HoverPreviewContainer"
-            Grid.Row="1"
-            Grid.Column="2"
-            Grid.ColumnSpan="3"
-            Margin="20"
+            Grid.Row="0"
+            Grid.RowSpan="3"
+            Grid.Column="0"
+            Grid.ColumnSpan="5"
+            Margin="0"
             BackgroundColor="#FF121212"
-            HorizontalOptions="End"
+            HorizontalOptions="Start"
             IsVisible="{Binding HasHoverVideo}"
             Stroke="#FF3A3A3A"
             StrokeShape="RoundRectangle 12"
             StrokeThickness="1"
             VerticalOptions="Start"
-            WidthRequest="480">
+            WidthRequest="480"
+            ZIndex="50">
             <Grid RowDefinitions="Auto,Auto">
                 <controls:AspectRatioContainer AspectRatio="1.777">
                     <appcontrols:PrecisionVideoPlayer

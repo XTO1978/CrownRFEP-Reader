@@ -23,6 +23,9 @@
 		<!-- Hot Reload -->
 		<MauiEnableHotReload>true</MauiEnableHotReload>
 
+		<!-- Ignorar temporalmente la verificación de versión de Xcode (26.2 > 26.0 esperado) -->
+		<ValidateXcodeVersion>false</ValidateXcodeVersion>
+
 		<!-- Display name -->
 		<ApplicationTitle>CrownRFEP Reader</ApplicationTitle>
 

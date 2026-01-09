@@ -17,6 +17,9 @@ public class HoverVideoPreviewBehavior : Behavior<View>
     private CancellationTokenSource? _hoverCts;
     private bool _isHovering;
 
+    // Última posición del puntero dentro del SourceView (si el sistema la proporciona)
+    private Point? _lastPointerLocationInSourceView;
+
 #if MACCATALYST
     private UIHoverGestureRecognizer? _hoverRecognizer;
 #endif
@@ -24,6 +27,10 @@ public class HoverVideoPreviewBehavior : Behavior<View>
     // Evento estático para comunicar con el page
     public static event EventHandler<HoverVideoEventArgs>? VideoHoverStarted;
     public static event EventHandler<HoverVideoEventArgs>? VideoHoverEnded;
+    public static event EventHandler<HoverVideoEventArgs>? VideoHoverMoved;
+
+    private Point? _lastSentPointerLocation;
+    private DateTime _lastSentPointerAtUtc = DateTime.MinValue;
 
     protected override void OnAttachedTo(View bindable)
     {
@@ -72,10 +79,23 @@ public class HoverVideoPreviewBehavior : Behavior<View>
         {
             _hoverRecognizer = new UIHoverGestureRecognizer(gesture =>
             {
+                try
+                {
+                    var pt = gesture.LocationInView(platformView);
+                    _lastPointerLocationInSourceView = new Point(pt.X, pt.Y);
+                }
+                catch
+                {
+                    _lastPointerLocationInSourceView = null;
+                }
+
                 switch (gesture.State)
                 {
                     case UIGestureRecognizerState.Began:
                         OnPointerEntered(view);
+                        break;
+                    case UIGestureRecognizerState.Changed:
+                        TryRaiseMoved(view);
                         break;
                     case UIGestureRecognizerState.Ended:
                     case UIGestureRecognizerState.Cancelled:
@@ -114,7 +134,7 @@ public class HoverVideoPreviewBehavior : Behavior<View>
             var video = FindVideoClip(bindable);
             if (video != null)
             {
-                VideoHoverStarted?.Invoke(this, new HoverVideoEventArgs(video, bindable));
+                VideoHoverStarted?.Invoke(this, new HoverVideoEventArgs(video, bindable, _lastPointerLocationInSourceView));
             }
         }
         catch (TaskCanceledException)
@@ -128,10 +148,13 @@ public class HoverVideoPreviewBehavior : Behavior<View>
         _isHovering = false;
         _hoverCts?.Cancel();
 
+        _lastSentPointerLocation = null;
+        _lastSentPointerAtUtc = DateTime.MinValue;
+
         var video = FindVideoClip(bindable);
         if (video != null)
         {
-            VideoHoverEnded?.Invoke(this, new HoverVideoEventArgs(video, bindable));
+            VideoHoverEnded?.Invoke(this, new HoverVideoEventArgs(video, bindable, _lastPointerLocationInSourceView));
         }
     }
 
@@ -151,16 +174,45 @@ public class HoverVideoPreviewBehavior : Behavior<View>
         }
         return null;
     }
+
+    private void TryRaiseMoved(View bindable)
+    {
+        if (!_isHovering)
+            return;
+
+        if (_lastPointerLocationInSourceView is not Point pointer)
+            return;
+
+        // Throttle: como máximo ~60fps y solo si se mueve de verdad
+        var now = DateTime.UtcNow;
+        if ((now - _lastSentPointerAtUtc).TotalMilliseconds < 16)
+            return;
+
+        if (_lastSentPointerLocation is Point last
+            && Math.Abs(pointer.X - last.X) < 1
+            && Math.Abs(pointer.Y - last.Y) < 1)
+            return;
+
+        var video = FindVideoClip(bindable);
+        if (video == null)
+            return;
+
+        _lastSentPointerLocation = pointer;
+        _lastSentPointerAtUtc = now;
+        VideoHoverMoved?.Invoke(this, new HoverVideoEventArgs(video, bindable, pointer));
+    }
 }
 
 public class HoverVideoEventArgs : EventArgs
 {
     public VideoClip Video { get; }
     public View SourceView { get; }
+    public Point? PointerLocationInSourceView { get; }
 
-    public HoverVideoEventArgs(VideoClip video, View sourceView)
+    public HoverVideoEventArgs(VideoClip video, View sourceView, Point? pointerLocationInSourceView)
     {
         Video = video;
         SourceView = sourceView;
+        PointerLocationInSourceView = pointerLocationInSourceView;
     }
 }
