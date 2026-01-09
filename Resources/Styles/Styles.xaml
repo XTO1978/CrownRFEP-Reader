@@ -4,6 +4,9 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
 
+    <!-- Color de acento (cian) utilizado en la app -->
+    <Color x:Key="AppAccentCyan">#FF6DDDFF</Color>
+
     <!-- Typography (SF Pro on Apple; Segoe UI on Windows; OpenSans elsewhere)
          Nota: No se incluyen archivos SF Pro por licencia; en Apple se usa la fuente del sistema.
          En Windows usamos Segoe UI que es la fuente nativa del sistema. -->
@@ -52,42 +55,50 @@
          ==================================================================== -->
     <OnPlatform x:TypeArguments="x:Double" x:Key="FontSizeCaption">
         <On Platform="WinUI" Value="9" />
+        <On Platform="MacCatalyst" Value="13" />
         <On Platform="Default" Value="11" />
     </OnPlatform>
 
     <OnPlatform x:TypeArguments="x:Double" x:Key="FontSizeSmall">
         <On Platform="WinUI" Value="12" />
+        <On Platform="MacCatalyst" Value="14" />
         <On Platform="Default" Value="12" />
     </OnPlatform>
 
     <OnPlatform x:TypeArguments="x:Double" x:Key="FontSizeBody">
         <On Platform="WinUI" Value="12" />
+        <On Platform="MacCatalyst" Value="16" />
         <On Platform="Default" Value="14" />
     </OnPlatform>
 
     <!-- Alias de compatibilidad: algunas vistas antiguas usan FontSizeMedium -->
     <OnPlatform x:TypeArguments="x:Double" x:Key="FontSizeMedium">
         <On Platform="WinUI" Value="12" />
+        <On Platform="MacCatalyst" Value="16" />
         <On Platform="Default" Value="14" />
     </OnPlatform>
 
     <OnPlatform x:TypeArguments="x:Double" x:Key="FontSizeSubtitle">
         <On Platform="WinUI" Value="12" />
+        <On Platform="MacCatalyst" Value="18" />
         <On Platform="Default" Value="16" />
     </OnPlatform>
 
     <OnPlatform x:TypeArguments="x:Double" x:Key="FontSizeTitle">
         <On Platform="WinUI" Value="16" />
+        <On Platform="MacCatalyst" Value="22" />
         <On Platform="Default" Value="20" />
     </OnPlatform>
 
     <OnPlatform x:TypeArguments="x:Double" x:Key="FontSizeHeader">
         <On Platform="WinUI" Value="18" />
+        <On Platform="MacCatalyst" Value="26" />
         <On Platform="Default" Value="24" />
     </OnPlatform>
 
     <OnPlatform x:TypeArguments="x:Double" x:Key="FontSizeDisplay">
         <On Platform="WinUI" Value="22" />
+        <On Platform="MacCatalyst" Value="34" />
         <On Platform="Default" Value="32" />
     </OnPlatform>
 
@@ -127,7 +138,7 @@
     <OnPlatform x:TypeArguments="x:Double" x:Key="SidebarWidthDefault">
         <On Platform="WinUI" Value="260" />
         <On Platform="iOS" Value="240" />
-        <On Platform="Default" Value="350" />
+        <On Platform="Default" Value="380" />
     </OnPlatform>
 
     <!-- ====================================================================
@@ -295,12 +306,14 @@
     <!-- Tamaño de fuente para items del menú lateral principal -->
     <OnPlatform x:TypeArguments="x:Double" x:Key="FontSizeSidebarMenu">
         <On Platform="WinUI" Value="12" />
+        <On Platform="MacCatalyst" Value="17" />
         <On Platform="Default" Value="15" />
     </OnPlatform>
 
     <!-- Tamaño de fuente para sub-items del menú lateral (mismo que items principales) -->
     <OnPlatform x:TypeArguments="x:Double" x:Key="FontSizeSidebarSubItem">
         <On Platform="WinUI" Value="12" />
+        <On Platform="MacCatalyst" Value="17" />
         <On Platform="Default" Value="15" />
     </OnPlatform>
 
@@ -407,6 +420,31 @@
         <Setter Property="TextColor" Value="White" />
         <Setter Property="VerticalOptions" Value="Center" />
         <Setter Property="LineBreakMode" Value="TailTruncation" />
+    </Style>
+
+    <!-- ====================================================================
+         OVERLAY CONTEXT MENU STYLES
+         Estilos para menús contextuales tipo overlay (ej: Mi biblioteca, Sesiones)
+         ==================================================================== -->
+
+    <!-- Contenedor del menú contextual (el panel flotante) -->
+    <Style TargetType="Border" x:Key="ContextMenuOverlayBorder">
+        <Setter Property="Padding" Value="8" />
+        <Setter Property="BackgroundColor" Value="#FF2A2A2A" />
+        <Setter Property="Stroke" Value="#FF404040" />
+        <Setter Property="StrokeThickness" Value="0.5" />
+        <Setter Property="StrokeShape" Value="RoundRectangle 10" />
+        <Setter Property="HorizontalOptions" Value="Start" />
+        <Setter Property="VerticalOptions" Value="Start" />
+    </Style>
+
+    <!-- Fila/item clicable dentro del menú contextual -->
+    <Style TargetType="Border" x:Key="ContextMenuItemBorder">
+        <Setter Property="Padding" Value="14,12" />
+        <Setter Property="BackgroundColor" Value="Transparent" />
+        <Setter Property="Stroke" Value="{x:Null}" />
+        <Setter Property="StrokeThickness" Value="0" />
+        <Setter Property="StrokeShape" Value="RoundRectangle 6" />
     </Style>
 
     <Style TargetType="ActivityIndicator">

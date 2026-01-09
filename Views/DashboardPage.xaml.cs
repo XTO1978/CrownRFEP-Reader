@@ -4,6 +4,7 @@ using CrownRFEP_Reader.ViewModels;
 using CrownRFEP_Reader.Controls;
 using CrownRFEP_Reader.Services;
 using System.Collections.Specialized;
+using System.Reflection;
 
 #if MACCATALYST
 using CoreGraphics;
@@ -20,6 +21,9 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 {
     private readonly DashboardViewModel _viewModel;
     private NotifyCollectionChangedEventHandler? _smartFoldersChangedHandler;
+
+    private SessionRow? _contextMenuSessionRow;
+    private SmartFolderDefinition? _contextMenuSmartFolder;
     
     // Posiciones actuales de cada video para scrubbing incremental
     private double _currentPosition0;
@@ -30,6 +34,11 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
     
     // Indica si esta página está activa
     private bool _isPageActive;
+
+#if MACCATALYST
+	private UITapGestureRecognizer? _globalDismissTapRecognizer;
+	private UIView? _globalDismissHostView;
+#endif
 
     public DashboardPage(DashboardViewModel viewModel)
     {
@@ -81,11 +90,15 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 
         try { SidebarSessionsCollectionView?.InvalidateMeasure(); } catch { }
 
+
         try
         {
-            SidebarSessionsCollectionView.SizeChanged += OnSidebarSessionsSizeChanged;
-            // Forzar un primer ajuste (por si ya hay tamaño en este punto)
-            OnSidebarSessionsSizeChanged(this, EventArgs.Empty);
+            if (SidebarSessionsCollectionView != null)
+            {
+                SidebarSessionsCollectionView.SizeChanged += OnSidebarSessionsSizeChanged;
+                // Forzar un primer ajuste (por si ya hay tamaño en este punto)
+                OnSidebarSessionsSizeChanged(this, EventArgs.Empty);
+            }
         }
         catch { }
 
@@ -184,6 +197,495 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         catch { }
     }
 
+    private void OnUserLibraryMenuTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            if (UserLibraryContextMenuOverlay == null || UserLibraryContextMenu == null || RootGrid == null || UserLibraryHeaderBorder == null)
+                return;
+
+            if (UserLibraryContextMenuOverlay.IsVisible)
+            {
+                HideUserLibraryContextMenu();
+                return;
+            }
+
+            HideSessionsContextMenu();
+            HideSessionRowContextMenu();
+            HideSmartFolderContextMenu();
+
+            // Posicionar el menú al lado del item "Mi biblioteca".
+            var anchor = UserLibraryHeaderBorder;
+            var anchorPos = GetPositionRelativeTo(anchor, RootGrid);
+
+            UserLibraryContextMenu.TranslationX = anchorPos.X + anchor.Width + 8;
+            UserLibraryContextMenu.TranslationY = anchorPos.Y;
+
+            UserLibraryContextMenuOverlay.IsVisible = true;
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "OnUserLibraryMenuTapped error", ex);
+        }
+    }
+
+    private void OnUserLibraryContextMenuDismissTapped(object? sender, TappedEventArgs e) => HideUserLibraryContextMenu();
+
+    private void OnUserLibraryMenuCreateTapped(object? sender, TappedEventArgs e) => HideUserLibraryContextMenu();
+    private void OnUserLibraryMenuImportTapped(object? sender, TappedEventArgs e) => HideUserLibraryContextMenu();
+    private void OnUserLibraryMenuRefreshTapped(object? sender, TappedEventArgs e) => HideUserLibraryContextMenu();
+    private void OnUserLibraryMenuMergeTapped(object? sender, TappedEventArgs e) => HideUserLibraryContextMenu();
+
+    private void HideUserLibraryContextMenu()
+    {
+        try
+        {
+            if (UserLibraryContextMenuOverlay != null)
+                UserLibraryContextMenuOverlay.IsVisible = false;
+        }
+        catch { }
+    }
+
+    private void OnSessionsMenuTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            if (SessionsContextMenuOverlay == null || SessionsContextMenu == null || RootGrid == null || SessionsHeaderBorder == null)
+                return;
+
+            if (SessionsContextMenuOverlay.IsVisible)
+            {
+                HideSessionsContextMenu();
+                return;
+            }
+
+            HideUserLibraryContextMenu();
+            HideSessionRowContextMenu();
+            HideSmartFolderContextMenu();
+
+            // Posicionar el menú al lado del item "Sesiones".
+            var anchor = SessionsHeaderBorder;
+            var anchorPos = GetPositionRelativeTo(anchor, RootGrid);
+
+            SessionsContextMenu.TranslationX = anchorPos.X + anchor.Width + 8;
+            SessionsContextMenu.TranslationY = anchorPos.Y;
+
+            SessionsContextMenuOverlay.IsVisible = true;
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "OnSessionsMenuTapped error", ex);
+        }
+    }
+
+    private void OnSessionsContextMenuDismissTapped(object? sender, TappedEventArgs e) => HideSessionsContextMenu();
+
+    private void OnSessionsMenuImportCrownTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            HideSessionsContextMenu();
+
+            if (BindingContext is DashboardViewModel vm)
+            {
+                if (vm.ImportCrownFileCommand?.CanExecute(null) ?? false)
+                    vm.ImportCrownFileCommand.Execute(null);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "OnSessionsMenuImportCrownTapped error", ex);
+        }
+    }
+
+    private void OnSessionsMenuNewFromVideosTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            HideSessionsContextMenu();
+
+            if (BindingContext is DashboardViewModel vm)
+            {
+                if (vm.CreateSessionFromVideosCommand?.CanExecute(null) ?? false)
+                    vm.CreateSessionFromVideosCommand.Execute(null);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "OnSessionsMenuNewFromVideosTapped error", ex);
+        }
+    }
+
+    private void HideSessionsContextMenu()
+    {
+        try
+        {
+            if (SessionsContextMenuOverlay != null)
+                SessionsContextMenuOverlay.IsVisible = false;
+        }
+        catch { }
+    }
+
+    private void OnGlobalTapToDismissContextMenus(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            HideAllContextMenus();
+        }
+        catch { }
+    }
+
+    private void OnContextMenuSurfaceTapped(object? sender, TappedEventArgs e)
+    {
+        // Intencionalmente vacío: consume el tap para que no llegue al handler global.
+    }
+
+    private void OnSessionRowPrimaryTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            HideAllContextMenus();
+
+            if (sender is VisualElement anchor && anchor.BindingContext is SessionRow row)
+            {
+                if (BindingContext is DashboardViewModel vm && vm.SelectSessionRowCommand?.CanExecute(row) == true)
+                    vm.SelectSessionRowCommand.Execute(row);
+            }
+        }
+        catch { }
+    }
+
+    private void OnSmartFolderPrimaryTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            HideAllContextMenus();
+
+            if (sender is VisualElement anchor && anchor.BindingContext is SmartFolderDefinition folder)
+            {
+                if (BindingContext is DashboardViewModel vm && vm.SelectSmartFolderCommand?.CanExecute(folder) == true)
+                    vm.SelectSmartFolderCommand.Execute(folder);
+            }
+        }
+        catch { }
+    }
+
+    private void OnSessionRowContextMenuTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            if (SessionRowContextMenu == null || SubItemContextMenusLayer == null)
+                return;
+
+            if (sender is not VisualElement anchor)
+                return;
+
+            if (anchor.BindingContext is not SessionRow row)
+                return;
+
+            if (SessionRowContextMenu.IsVisible && ReferenceEquals(_contextMenuSessionRow, row))
+            {
+                HideSessionRowContextMenu();
+                return;
+            }
+
+            _contextMenuSessionRow = row;
+
+            HideUserLibraryContextMenu();
+            HideSessionsContextMenu();
+            HideSmartFolderContextMenu();
+
+            var clickPos = TryGetTappedPosition(e, SubItemContextMenusLayer);
+            if (clickPos.HasValue)
+            {
+                PositionContextMenuAtPoint(SessionRowContextMenu, clickPos.Value, SubItemContextMenusLayer, xOffset: 10, yOffset: 10);
+            }
+            else
+            {
+                var anchorPos = GetPositionRelativeTo(anchor, SubItemContextMenusLayer);
+                SessionRowContextMenu.TranslationX = anchorPos.X + anchor.Width + 8;
+                SessionRowContextMenu.TranslationY = anchorPos.Y;
+            }
+
+            SessionRowContextMenu.IsVisible = true;
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "OnSessionRowContextMenuTapped error", ex);
+        }
+    }
+
+    private void HideSessionRowContextMenu()
+    {
+        try
+        {
+            if (SessionRowContextMenu != null)
+                SessionRowContextMenu.IsVisible = false;
+        }
+        catch { }
+    }
+
+    private void OnSessionRowMenuEditTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            HideSessionRowContextMenu();
+
+            if (_contextMenuSessionRow == null)
+                return;
+
+            if (BindingContext is DashboardViewModel vm)
+            {
+                if (vm.OpenSessionEditPopupCommand?.CanExecute(_contextMenuSessionRow) ?? false)
+                    vm.OpenSessionEditPopupCommand.Execute(_contextMenuSessionRow);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "OnSessionRowMenuEditTapped error", ex);
+        }
+    }
+
+    private void OnSessionRowMenuCustomizeTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            HideSessionRowContextMenu();
+
+            if (_contextMenuSessionRow == null)
+                return;
+
+            if (BindingContext is DashboardViewModel vm)
+            {
+                if (vm.OpenIconColorPickerForSessionCommand?.CanExecute(_contextMenuSessionRow) ?? false)
+                    vm.OpenIconColorPickerForSessionCommand.Execute(_contextMenuSessionRow);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "OnSessionRowMenuCustomizeTapped error", ex);
+        }
+    }
+
+    private void OnSessionRowMenuDeleteTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            HideSessionRowContextMenu();
+
+            if (_contextMenuSessionRow == null)
+                return;
+
+            if (BindingContext is DashboardViewModel vm)
+            {
+                if (vm.DeleteSessionCommand?.CanExecute(_contextMenuSessionRow) ?? false)
+                    vm.DeleteSessionCommand.Execute(_contextMenuSessionRow);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "OnSessionRowMenuDeleteTapped error", ex);
+        }
+    }
+
+    private void OnSmartFolderContextMenuTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            if (SmartFolderContextMenu == null || SubItemContextMenusLayer == null)
+                return;
+
+            if (sender is not VisualElement anchor)
+                return;
+
+            if (anchor.BindingContext is not SmartFolderDefinition folder)
+                return;
+
+            if (SmartFolderContextMenu.IsVisible && ReferenceEquals(_contextMenuSmartFolder, folder))
+            {
+                HideSmartFolderContextMenu();
+                return;
+            }
+
+            _contextMenuSmartFolder = folder;
+
+            HideUserLibraryContextMenu();
+            HideSessionsContextMenu();
+            HideSessionRowContextMenu();
+
+            var clickPos = TryGetTappedPosition(e, SubItemContextMenusLayer);
+            if (clickPos.HasValue)
+            {
+                PositionContextMenuAtPoint(SmartFolderContextMenu, clickPos.Value, SubItemContextMenusLayer, xOffset: 10, yOffset: 10);
+            }
+            else
+            {
+                var anchorPos = GetPositionRelativeTo(anchor, SubItemContextMenusLayer);
+                SmartFolderContextMenu.TranslationX = anchorPos.X + anchor.Width + 8;
+                SmartFolderContextMenu.TranslationY = anchorPos.Y;
+            }
+
+            SmartFolderContextMenu.IsVisible = true;
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "OnSmartFolderContextMenuTapped error", ex);
+        }
+    }
+
+    private static Point? TryGetTappedPosition(TappedEventArgs e, VisualElement relativeTo)
+    {
+        try
+        {
+            // .NET MAUI ha ido introduciendo helpers tipo GetPosition(...)
+            // Dependiendo de la versión, puede devolver Point o Point?. Para evitar depender de firma exacta,
+            // usamos reflexión.
+            var methods = e.GetType().GetMethods(BindingFlags.Instance | BindingFlags.Public);
+            foreach (var method in methods)
+            {
+                if (!string.Equals(method.Name, "GetPosition", StringComparison.Ordinal))
+                    continue;
+
+                var parameters = method.GetParameters();
+                if (parameters.Length != 1)
+                    continue;
+
+                if (!parameters[0].ParameterType.IsInstanceOfType(relativeTo))
+                    continue;
+
+                var result = method.Invoke(e, new object?[] { relativeTo });
+                // Nota: si la API devuelve Point?, al boxearse llega como Point (HasValue) o null (sin valor).
+                if (result is Point p)
+                    return p;
+            }
+        }
+        catch { }
+
+        return null;
+    }
+
+    private static void PositionContextMenuAtPoint(VisualElement menu, Point point, VisualElement relativeTo, double xOffset, double yOffset)
+    {
+        var x = point.X + xOffset;
+        var y = point.Y + yOffset;
+
+        try
+        {
+            // Clamp a los límites visibles del RootGrid (si hay medidas ya calculadas)
+            var maxX = relativeTo.Width;
+            var maxY = relativeTo.Height;
+            var menuWidth = menu.WidthRequest > 0 ? menu.WidthRequest : menu.Width;
+            var menuHeight = menu.HeightRequest > 0 ? menu.HeightRequest : menu.Height;
+
+            if (maxX > 0 && menuWidth > 0)
+                x = Math.Max(0, Math.Min(x, maxX - menuWidth));
+
+            if (maxY > 0 && menuHeight > 0)
+                y = Math.Max(0, Math.Min(y, maxY - menuHeight));
+        }
+        catch { }
+
+        menu.TranslationX = x;
+        menu.TranslationY = y;
+    }
+
+    private void HideSmartFolderContextMenu()
+    {
+        try
+        {
+            if (SmartFolderContextMenu != null)
+                SmartFolderContextMenu.IsVisible = false;
+        }
+        catch { }
+    }
+
+    private void HideAllContextMenus()
+    {
+        HideUserLibraryContextMenu();
+        HideSessionsContextMenu();
+        HideSessionRowContextMenu();
+        HideSmartFolderContextMenu();
+    }
+
+    private void OnSmartFolderMenuEditTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            HideSmartFolderContextMenu();
+
+            if (_contextMenuSmartFolder == null)
+                return;
+
+            if (BindingContext is DashboardViewModel vm)
+            {
+                if (vm.RenameSmartFolderCommand?.CanExecute(_contextMenuSmartFolder) ?? false)
+                    vm.RenameSmartFolderCommand.Execute(_contextMenuSmartFolder);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "OnSmartFolderMenuEditTapped error", ex);
+        }
+    }
+
+    private void OnSmartFolderMenuCustomizeTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            HideSmartFolderContextMenu();
+
+            if (_contextMenuSmartFolder == null)
+                return;
+
+            if (BindingContext is DashboardViewModel vm)
+            {
+                if (vm.OpenIconColorPickerForSmartFolderCommand?.CanExecute(_contextMenuSmartFolder) ?? false)
+                    vm.OpenIconColorPickerForSmartFolderCommand.Execute(_contextMenuSmartFolder);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "OnSmartFolderMenuCustomizeTapped error", ex);
+        }
+    }
+
+    private void OnSmartFolderMenuDeleteTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            HideSmartFolderContextMenu();
+
+            if (_contextMenuSmartFolder == null)
+                return;
+
+            if (BindingContext is DashboardViewModel vm)
+            {
+                if (vm.DeleteSmartFolderCommand?.CanExecute(_contextMenuSmartFolder) ?? false)
+                    vm.DeleteSmartFolderCommand.Execute(_contextMenuSmartFolder);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "OnSmartFolderMenuDeleteTapped error", ex);
+        }
+    }
+
+    private static Point GetPositionRelativeTo(VisualElement element, VisualElement relativeTo)
+    {
+        var x = 0.0;
+        var y = 0.0;
+
+        VisualElement? current = element;
+        while (current != null && current != relativeTo)
+        {
+            x += current.X;
+            y += current.Y;
+            current = current.Parent as VisualElement;
+        }
+
+        return new Point(x, y);
+    }
+
     private void OnPreviewPlayerMediaOpened(object? sender, EventArgs e)
     {
         try
@@ -238,6 +740,10 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         base.OnAppearing();
         _isPageActive = true;
 
+#if MACCATALYST
+		TryAttachGlobalDismissRecognizer();
+#endif
+
         AppLog.Info(
             "DashboardPage",
             $"OnAppearing | IsVideoLessonsSelected={_viewModel.IsVideoLessonsSelected} | NavStack={Shell.Current?.Navigation?.NavigationStack?.Count} | ModalStack={Shell.Current?.Navigation?.ModalStack?.Count}");
@@ -288,6 +794,13 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         base.OnDisappearing();
         _isPageActive = false;
 
+        // Cerrar cualquier menú contextual abierto al abandonar la página
+        HideAllContextMenus();
+
+#if MACCATALYST
+		TryDetachGlobalDismissRecognizer();
+#endif
+
         AppLog.Info(
             "DashboardPage",
             $"OnDisappearing | NavStack={Shell.Current?.Navigation?.NavigationStack?.Count} | ModalStack={Shell.Current?.Navigation?.ModalStack?.Count}");
@@ -296,14 +809,114 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         CleanupAllVideos();
     }
 
+#if MACCATALYST
+    private void TryAttachGlobalDismissRecognizer()
+    {
+        try
+        {
+            if (_globalDismissTapRecognizer != null)
+                return;
+
+            UIView? hostView = null;
+            if (Handler?.PlatformView is UIViewController vc)
+                hostView = vc.View;
+            else if (Handler?.PlatformView is UIView v)
+                hostView = v;
+
+            if (hostView == null)
+                return;
+
+            _globalDismissHostView = hostView;
+            _globalDismissTapRecognizer = new UITapGestureRecognizer(OnGlobalNativeTapped)
+            {
+                CancelsTouchesInView = false,
+                DelaysTouchesBegan = false,
+                DelaysTouchesEnded = false,
+                // Permitir reconocer simultáneamente con otros gestos (no bloquear right-click)
+                ShouldRecognizeSimultaneously = (_, _) => true
+            };
+
+            hostView.AddGestureRecognizer(_globalDismissTapRecognizer);
+        }
+        catch { }
+    }
+
+    private void TryDetachGlobalDismissRecognizer()
+    {
+        try
+        {
+            if (_globalDismissHostView != null && _globalDismissTapRecognizer != null)
+                _globalDismissHostView.RemoveGestureRecognizer(_globalDismissTapRecognizer);
+        }
+        catch { }
+
+        try { _globalDismissTapRecognizer?.Dispose(); } catch { }
+        _globalDismissTapRecognizer = null;
+        _globalDismissHostView = null;
+    }
+
+    private void OnGlobalNativeTapped()
+    {
+        try
+        {
+            if (_globalDismissTapRecognizer == null || _globalDismissHostView == null)
+                return;
+
+            var anyVisible = (UserLibraryContextMenuOverlay?.IsVisible ?? false)
+                || (SessionsContextMenuOverlay?.IsVisible ?? false)
+                || (SessionRowContextMenu?.IsVisible ?? false)
+                || (SmartFolderContextMenu?.IsVisible ?? false);
+            if (!anyVisible)
+                return;
+
+            var host = _globalDismissHostView;
+            var location = _globalDismissTapRecognizer.LocationInView(host);
+
+            // Si el click es dentro de un menú visible, NO lo cerramos aquí (los items ya lo cierran al ejecutar).
+            if (IsPointInsideVisibleMenu(host, location, SessionRowContextMenu))
+                return;
+            if (IsPointInsideVisibleMenu(host, location, SmartFolderContextMenu))
+                return;
+            if (IsPointInsideVisibleMenu(host, location, UserLibraryContextMenu))
+                return;
+            if (IsPointInsideVisibleMenu(host, location, SessionsContextMenu))
+                return;
+
+            HideUserLibraryContextMenu();
+            HideSessionsContextMenu();
+            HideSessionRowContextMenu();
+            HideSmartFolderContextMenu();
+        }
+        catch { }
+    }
+
+    private static bool IsPointInsideVisibleMenu(UIView host, CGPoint locationInHost, VisualElement? menuElement)
+    {
+        try
+        {
+            if (menuElement == null || !menuElement.IsVisible)
+                return false;
+            if (menuElement.Handler?.PlatformView is not UIView menuView)
+                return false;
+
+            var pInMenu = menuView.ConvertPointFromView(locationInHost, host);
+            return menuView.PointInside(pInMenu, null);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+#endif
+
     public async Task PrepareForShellNavigationAsync()
     {
         try
         {
-            if (MainThread.IsMainThread)
+            if (Microsoft.Maui.ApplicationModel.MainThread.IsMainThread)
                 PrepareForShellNavigation();
             else
-                await MainThread.InvokeOnMainThreadAsync(PrepareForShellNavigation);
+                await Microsoft.Maui.ApplicationModel.MainThread.InvokeOnMainThreadAsync(PrepareForShellNavigation);
         }
         catch (Exception ex)
         {
@@ -420,7 +1033,7 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         if (targetX <= 0 && targetY <= 0)
         {
             var anchor = GetApproximatePositionRelativeToPage(e.SourceView);
-            targetX = anchor.X + Math.Max(0, e.SourceView.Width);
+            targetX = anchor.X + Math.Max(0, e.SourceView?.Width ?? 0);
             targetY = anchor.Y;
         }
 

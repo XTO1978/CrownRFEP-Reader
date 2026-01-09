@@ -98,6 +98,7 @@ public class SymbolIconHandler : ViewHandler<CustomSymbolIcon, FontIcon>
         ["arrow.down"] = "\uE74B",             // Down
         ["arrow.turn.down.right"] = "\uE7A6",  // RepeatAll (closest match)
         ["arrow.triangle.branch"] = "\uE8D4",  // BranchFork
+        ["arrow.clockwise"] = "\uE72C",       // Refresh
         
         // === MEDIA PLAYBACK ===
         ["play.fill"] = "\uE768",              // Play
@@ -118,11 +119,15 @@ public class SymbolIconHandler : ViewHandler<CustomSymbolIcon, FontIcon>
         // === FILES & FOLDERS ===
         ["folder"] = "\uE8B7",                 // Folder
         ["folder.fill"] = "\uED41",            // FolderFilled
+        ["folder.badge.plus"] = "\uE8F4",      // NewFolder
+        ["plus.rectangle.on.folder"] = "\uE8F4", // NewFolder (create new library)
+        ["arrow.triangle.merge"] = "\uE8C8",   // Merge (combine libraries)
         ["doc"] = "\uE8A5",                    // Document
         ["doc.fill"] = "\uE8A5",               // Document filled
         ["doc.text"] = "\uE8A5",               // Document with text
         ["square.and.arrow.down"] = "\uE896",  // Download
         ["square.and.arrow.up"] = "\uE898",    // Share/Upload
+        ["link"] = "\uE71B",                  // Link
         
         // === CHECKMARKS & STATUS ===
         ["checkmark"] = "\uE73E",              // Accept/Checkmark

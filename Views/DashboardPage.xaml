@@ -8,6 +8,7 @@
     xmlns:controls="clr-namespace:CrownRFEP_Reader.Views.Controls"
     xmlns:appcontrols="clr-namespace:CrownRFEP_Reader.Controls"
     xmlns:converters="clr-namespace:CrownRFEP_Reader.Converters"
+    xmlns:markup="clr-namespace:CrownRFEP_Reader.Markup"
     xmlns:models="clr-namespace:CrownRFEP_Reader.Models"
     xmlns:services="clr-namespace:CrownRFEP_Reader.Services"
     xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
@@ -129,9 +130,12 @@
                                     </OnPlatform>
                                 </Border.Padding>
                                 <Border.GestureRecognizers>
-                                <TapGestureRecognizer
-                                    Command="{Binding BindingContext.SelectSessionRowCommand, Source={x:Reference ThisPage}}"
-                                    CommandParameter="{Binding .}" />
+                                    <TapGestureRecognizer
+                                        Buttons="Primary"
+                                        Tapped="OnSessionRowPrimaryTapped" />
+                                    <TapGestureRecognizer
+                                        Buttons="Secondary"
+                                        Tapped="OnSessionRowContextMenuTapped" />
                             </Border.GestureRecognizers>
                             <Border.Behaviors>
                                 <behaviors:SidebarHoverBehavior />
@@ -144,35 +148,6 @@
                                     <Setter Property="BackgroundColor" Value="#FF2A2A2A" />
                                 </DataTrigger>
                             </Border.Triggers>
-                            <FlyoutBase.ContextFlyout>
-                                <MenuFlyout>
-                                    <MenuFlyoutItem
-                                        Text="Editar..."
-                                        Command="{Binding BindingContext.OpenSessionEditPopupCommand, Source={x:Reference ThisPage}}"
-                                        CommandParameter="{Binding .}">
-                                        <MenuFlyoutItem.IconImageSource>
-                                            <FontImageSource Glyph="&#x270F;" Color="White" Size="16" />
-                                        </MenuFlyoutItem.IconImageSource>
-                                    </MenuFlyoutItem>
-                                    <MenuFlyoutItem
-                                        Text="Personalizar..."
-                                        Command="{Binding BindingContext.OpenIconColorPickerForSessionCommand, Source={x:Reference ThisPage}}"
-                                        CommandParameter="{Binding .}">
-                                        <MenuFlyoutItem.IconImageSource>
-                                            <FontImageSource Glyph="&#x2699;" Color="White" Size="16" />
-                                        </MenuFlyoutItem.IconImageSource>
-                                    </MenuFlyoutItem>
-                                    <MenuFlyoutSeparator />
-                                    <MenuFlyoutItem
-                                        Text="Eliminar"
-                                        Command="{Binding BindingContext.DeleteSessionCommand, Source={x:Reference ThisPage}}"
-                                        CommandParameter="{Binding .}">
-                                        <MenuFlyoutItem.IconImageSource>
-                                            <FontImageSource Glyph="&#x1F5D1;" Color="#FFFF453A" Size="16" />
-                                        </MenuFlyoutItem.IconImageSource>
-                                    </MenuFlyoutItem>
-                                </MenuFlyout>
-                            </FlyoutBase.ContextFlyout>
                             <Grid
                                 ColumnDefinitions="Auto,*,Auto"
                                 VerticalOptions="Center"
@@ -228,6 +203,9 @@
         x:Name="RootGrid"
         Padding="0"
         RowDefinitions="Auto,*,Auto">
+        <Grid.GestureRecognizers>
+            <TapGestureRecognizer Buttons="Primary" Tapped="OnGlobalTapToDismissContextMenus" />
+        </Grid.GestureRecognizers>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="{StaticResource SidebarWidthDefault}" />
             <ColumnDefinition Width="8" />
@@ -313,6 +291,82 @@
                                 <On Platform="Default" Value="{StaticResource SpacingXSmall}" />
                             </OnPlatform>
                         </VerticalStackLayout.Spacing>
+
+                        <!--  Item padre: Mi biblioteca (colección del usuario con lectura/escritura)  -->
+                        <Border
+                            x:Name="UserLibraryHeaderBorder"
+                            Style="{StaticResource SidebarMenuItemBorder}"
+                            BackgroundColor="#FF0066"
+                            Stroke="Transparent"
+                            StrokeThickness="0"
+                            StrokeShape="RoundRectangle 6">
+                            <Border.Padding>
+                                <OnPlatform x:TypeArguments="Thickness">
+                                    <On Platform="iOS" Value="10,6,4,6" />
+                                    <On Platform="Default" Value="10,10,4,10" />
+                                </OnPlatform>
+                            </Border.Padding>
+                            <Grid ColumnDefinitions="*,Auto" VerticalOptions="Center" HorizontalOptions="Fill">
+                                <!--  Contenido principal del item: abre menú contextual  -->
+                                <Grid
+                                    Grid.Column="0"
+                                    ColumnDefinitions="Auto,*"
+                                    VerticalOptions="Center"
+                                    HorizontalOptions="Fill">
+                                    <Grid.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="OnUserLibraryMenuTapped" />
+                                    </Grid.GestureRecognizers>
+
+                                    <controls:SymbolIcon
+                                        Grid.Column="0"
+                                        Margin="4,0,0,0"
+                                        HeightRequest="{StaticResource IconSizeSidebarMenu}"
+                                        WidthRequest="{StaticResource IconSizeSidebarMenu}"
+                                        SymbolName="books.vertical"
+                                        TintColor="White"
+                                        VerticalOptions="Center" />
+                                    <Label
+                                        Grid.Column="1"
+                                        Margin="8,0,0,0"
+                                        FontFamily="{StaticResource AppFontEmphasis}"
+                                        FontSize="{StaticResource FontSizeBody}"
+                                        FontAttributes="Bold"
+                                        Text="Mi biblioteca"
+                                        TextColor="White"
+                                        VerticalOptions="Center" />
+                                </Grid>
+
+                                <!--  Icono selector a la derecha  -->
+                                <Border
+                                    Grid.Column="1"
+                                    Padding="2"
+                                    Margin="0,0,8,0"
+                                    BackgroundColor="Transparent"
+                                    StrokeThickness="0">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="OnUserLibraryMenuTapped" />
+                                    </Border.GestureRecognizers>
+                                    <controls:SymbolIcon
+                                        HeightRequest="{StaticResource IconSizeSmall}"
+                                        WidthRequest="{StaticResource IconSizeSmall}"
+                                        SymbolName="chevron.up.chevron.down"
+                                        TintColor="White"
+                                        VerticalOptions="Center" />
+                                </Border>
+                            </Grid>
+                        </Border>
+
+                        <VerticalStackLayout
+                            x:Name="UserLibraryItemsContainer"
+                            HorizontalOptions="Fill"
+                            IsVisible="{Binding IsUserLibraryExpanded}">
+                            <VerticalStackLayout.Spacing>
+                                <OnPlatform x:TypeArguments="x:Double">
+                                    <On Platform="iOS" Value="1" />
+                                    <On Platform="Default" Value="{StaticResource SpacingXSmall}" />
+                                </OnPlatform>
+                            </VerticalStackLayout.Spacing>
+
                         <Border
                             x:Name="AllGalleryHeaderBorder"
                             Style="{StaticResource SidebarMenuItemBorder}">
@@ -517,38 +571,12 @@
                                         </Border.Behaviors>
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer
-                                                Command="{Binding BindingContext.SelectSmartFolderCommand, Source={x:Reference ThisPage}}"
-                                                CommandParameter="{Binding .}" />
+                                                Buttons="Primary"
+                                                Tapped="OnSmartFolderPrimaryTapped" />
+                                            <TapGestureRecognizer
+                                                Buttons="Secondary"
+                                                Tapped="OnSmartFolderContextMenuTapped" />
                                         </Border.GestureRecognizers>
-                                        <FlyoutBase.ContextFlyout>
-                                            <MenuFlyout>
-                                                <MenuFlyoutItem
-                                                    Text="Renombrar"
-                                                    Command="{Binding BindingContext.RenameSmartFolderCommand, Source={x:Reference ThisPage}}"
-                                                    CommandParameter="{Binding .}">
-                                                    <MenuFlyoutItem.IconImageSource>
-                                                        <FontImageSource Glyph="&#x270F;" Color="White" Size="16" />
-                                                    </MenuFlyoutItem.IconImageSource>
-                                                </MenuFlyoutItem>
-                                                <MenuFlyoutItem
-                                                    Text="Personalizar..."
-                                                    Command="{Binding BindingContext.OpenIconColorPickerForSmartFolderCommand, Source={x:Reference ThisPage}}"
-                                                    CommandParameter="{Binding .}">
-                                                    <MenuFlyoutItem.IconImageSource>
-                                                        <FontImageSource Glyph="&#x2699;" Color="White" Size="16" />
-                                                    </MenuFlyoutItem.IconImageSource>
-                                                </MenuFlyoutItem>
-                                                <MenuFlyoutSeparator />
-                                                <MenuFlyoutItem
-                                                    Text="Eliminar"
-                                                    Command="{Binding BindingContext.DeleteSmartFolderCommand, Source={x:Reference ThisPage}}"
-                                                    CommandParameter="{Binding .}">
-                                                    <MenuFlyoutItem.IconImageSource>
-                                                        <FontImageSource Glyph="&#x1F5D1;" Color="#FFFF453A" Size="16" />
-                                                    </MenuFlyoutItem.IconImageSource>
-                                                </MenuFlyoutItem>
-                                            </MenuFlyout>
-                                        </FlyoutBase.ContextFlyout>
                                         <Grid ColumnDefinitions="Auto,*,Auto" VerticalOptions="Center" HorizontalOptions="Fill">
                                             <controls:SymbolIcon
                                                 Grid.Column="0"
@@ -632,7 +660,7 @@
                             <Border.Behaviors>
                                 <behaviors:SidebarHoverBehavior />
                             </Border.Behaviors>
-                            <Grid ColumnDefinitions="Auto,Auto,*,Auto" VerticalOptions="Center" HorizontalOptions="Fill">
+                            <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" VerticalOptions="Center" HorizontalOptions="Fill">
                                 <!-- Expansion toggle button (oculto en Windows por ahora) -->
                                 <Border
                                     Grid.Column="0"
@@ -676,8 +704,29 @@
                                     Margin="8,0,0,0"
                                     Style="{StaticResource SidebarMenuItemLabel}"
                                     Text="Sesiones" />
-                                <Label
+                                <!-- Add button - visible on hover via behavior -->
+                                <Border
+                                    x:Name="SessionsImportAddButton"
                                     Grid.Column="3"
+                                    Margin="8,0,0,0"
+                                    Padding="2"
+                                    BackgroundColor="Transparent"
+                                    Stroke="Transparent"
+                                    StrokeShape="RoundRectangle 4"
+                                    Opacity="0"
+                                    HorizontalOptions="End"
+                                    VerticalOptions="Center">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="OnSessionsMenuTapped" />
+                                    </Border.GestureRecognizers>
+                                    <controls:SymbolIcon
+                                        HeightRequest="{StaticResource IconSizeSmall}"
+                                        SymbolName="plus"
+                                        TintColor="#FF888888"
+                                        WidthRequest="{StaticResource IconSizeSmall}" />
+                                </Border>
+                                <Label
+                                    Grid.Column="4"
                                     Margin="0,0,8,0"
                                     FontFamily="{StaticResource AppFontMono}"
                                     FontSize="{StaticResource FontSizeSmall}"
@@ -746,6 +795,7 @@
                                     HeightRequest="4" />
                             </Grid>
                         </Border>
+                        </VerticalStackLayout>
                     </VerticalStackLayout>
                 </CollectionView.Header>
 
@@ -6402,5 +6452,356 @@
         <controls:AppFooter
             Grid.Row="2"
             Grid.ColumnSpan="5" />
+
+        <!--  Menú contextual (overlay) para Mi biblioteca  -->
+        <Grid
+            x:Name="UserLibraryContextMenuOverlay"
+            Grid.RowSpan="3"
+            Grid.ColumnSpan="5"
+            IsVisible="False"
+            InputTransparent="False"
+            ZIndex="999">
+            <!-- Tap fuera para cerrar -->
+            <BoxView BackgroundColor="#00000000">
+                <BoxView.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnUserLibraryContextMenuDismissTapped" />
+                </BoxView.GestureRecognizers>
+            </BoxView>
+
+            <Border
+                x:Name="UserLibraryContextMenu"
+                WidthRequest="300"
+                Style="{StaticResource ContextMenuOverlayBorder}">
+                <VerticalStackLayout Spacing="2">
+                    <!--  Crear nueva biblioteca  -->
+                    <Border Style="{StaticResource ContextMenuItemBorder}">
+                        <Border.Behaviors>
+                            <behaviors:SidebarHoverBehavior />
+                        </Border.Behaviors>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnUserLibraryMenuCreateTapped" />
+                        </Border.GestureRecognizers>
+                        <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                            <controls:SymbolIcon
+                                HeightRequest="18"
+                                WidthRequest="18"
+                                SymbolName="plus.rectangle.on.folder"
+                                TintColor="#FFAAAAAA"
+                                VerticalOptions="Center" />
+                            <Label 
+                                Text="Crear nueva biblioteca..." 
+                                TextColor="White" 
+                                FontSize="{StaticResource FontSizeBody}"
+                                VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                    </Border>
+
+                    <!--  Importar otra biblioteca  -->
+                    <Border Style="{StaticResource ContextMenuItemBorder}">
+                        <Border.Behaviors>
+                            <behaviors:SidebarHoverBehavior />
+                        </Border.Behaviors>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnUserLibraryMenuImportTapped" />
+                        </Border.GestureRecognizers>
+                        <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                            <controls:SymbolIcon
+                                HeightRequest="18"
+                                WidthRequest="18"
+                                SymbolName="folder.badge.plus"
+                                TintColor="#FFAAAAAA"
+                                VerticalOptions="Center" />
+                            <Label 
+                                Text="Importar otra biblioteca..." 
+                                TextColor="White" 
+                                FontSize="{StaticResource FontSizeBody}"
+                                VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                    </Border>
+
+                    <!--  Vaciar caché y recargar  -->
+                    <Border Style="{StaticResource ContextMenuItemBorder}">
+                        <Border.Behaviors>
+                            <behaviors:SidebarHoverBehavior />
+                        </Border.Behaviors>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnUserLibraryMenuRefreshTapped" />
+                        </Border.GestureRecognizers>
+                        <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                            <controls:SymbolIcon
+                                HeightRequest="18"
+                                WidthRequest="18"
+                                SymbolName="arrow.clockwise"
+                                TintColor="#FFAAAAAA"
+                                VerticalOptions="Center" />
+                            <Label 
+                                Text="Vaciar caché y recargar" 
+                                TextColor="White" 
+                                FontSize="{StaticResource FontSizeBody}"
+                                VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                    </Border>
+
+                    <!--  Combinar con otra biblioteca  -->
+                    <Border Style="{StaticResource ContextMenuItemBorder}">
+                        <Border.Behaviors>
+                            <behaviors:SidebarHoverBehavior />
+                        </Border.Behaviors>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnUserLibraryMenuMergeTapped" />
+                        </Border.GestureRecognizers>
+                        <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                            <controls:SymbolIcon
+                                HeightRequest="18"
+                                WidthRequest="18"
+                                SymbolName="arrow.triangle.merge"
+                                TintColor="#FFAAAAAA"
+                                VerticalOptions="Center" />
+                            <Label 
+                                Text="Combinar con otra biblioteca..." 
+                                TextColor="White" 
+                                FontSize="{StaticResource FontSizeBody}"
+                                VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                    </Border>
+                </VerticalStackLayout>
+            </Border>
+        </Grid>
+
+        <!--  Menú contextual (overlay) para Sesiones  -->
+        <Grid
+            x:Name="SessionsContextMenuOverlay"
+            Grid.RowSpan="3"
+            Grid.ColumnSpan="5"
+            IsVisible="False"
+            InputTransparent="False"
+            ZIndex="999">
+            <!-- Tap fuera para cerrar -->
+            <BoxView BackgroundColor="#00000000">
+                <BoxView.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnSessionsContextMenuDismissTapped" />
+                </BoxView.GestureRecognizers>
+            </BoxView>
+
+            <Border
+                x:Name="SessionsContextMenu"
+                WidthRequest="360"
+                Style="{StaticResource ContextMenuOverlayBorder}">
+                <VerticalStackLayout Spacing="2">
+                    <!--  Importar desde .crown  -->
+                    <Border Style="{StaticResource ContextMenuItemBorder}">
+                        <Border.Behaviors>
+                            <behaviors:SidebarHoverBehavior />
+                        </Border.Behaviors>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnSessionsMenuImportCrownTapped" />
+                        </Border.GestureRecognizers>
+                        <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                            <controls:SymbolIcon
+                                HeightRequest="18"
+                                WidthRequest="18"
+                                SymbolName="square.and.arrow.down"
+                                TintColor="#FFAAAAAA"
+                                VerticalOptions="Center" />
+                            <Label
+                                Text="Importar desde .crown"
+                                TextColor="White"
+                                FontSize="{StaticResource FontSizeBody}"
+                                VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                    </Border>
+
+                    <!--  Nueva sesión desde archivos de video  -->
+                    <Border Style="{StaticResource ContextMenuItemBorder}">
+                        <Border.Behaviors>
+                            <behaviors:SidebarHoverBehavior />
+                        </Border.Behaviors>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnSessionsMenuNewFromVideosTapped" />
+                        </Border.GestureRecognizers>
+                        <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                            <controls:SymbolIcon
+                                HeightRequest="18"
+                                WidthRequest="18"
+                                SymbolName="video.badge.plus"
+                                TintColor="#FFAAAAAA"
+                                VerticalOptions="Center" />
+                            <Label
+                                Text="Nueva sesión desde archivos de video"
+                                TextColor="White"
+                                FontSize="{StaticResource FontSizeBody}"
+                                VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                    </Border>
+                </VerticalStackLayout>
+            </Border>
+        </Grid>
+
+        <!--  Menús contextuales de subitems (capa que NO afecta al layout ni bloquea clicks fuera)  -->
+        <Grid
+            x:Name="SubItemContextMenusLayer"
+            Grid.Row="1"
+            Grid.RowSpan="2"
+            Grid.ColumnSpan="5"
+            InputTransparent="True"
+            CascadeInputTransparent="False"
+            ZIndex="999">
+
+            <!--  Menú contextual para subitem de Sesión  -->
+            <Border
+                x:Name="SessionRowContextMenu"
+                IsVisible="False"
+                WidthRequest="280"
+                Style="{StaticResource ContextMenuOverlayBorder}">
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Buttons="Primary" Tapped="OnContextMenuSurfaceTapped" />
+                </Border.GestureRecognizers>
+                <VerticalStackLayout Spacing="2">
+                    <Border Style="{StaticResource ContextMenuItemBorder}">
+                        <Border.Behaviors>
+                            <behaviors:SidebarHoverBehavior />
+                        </Border.Behaviors>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnSessionRowMenuEditTapped" />
+                        </Border.GestureRecognizers>
+                        <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                            <controls:SymbolIcon
+                                HeightRequest="18"
+                                WidthRequest="18"
+                                SymbolName="pencil"
+                                TintColor="#FFAAAAAA"
+                                VerticalOptions="Center" />
+                            <Label
+                                Text="Editar..."
+                                TextColor="White"
+                                FontSize="{StaticResource FontSizeBody}"
+                                VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                    </Border>
+
+                    <Border Style="{StaticResource ContextMenuItemBorder}">
+                        <Border.Behaviors>
+                            <behaviors:SidebarHoverBehavior />
+                        </Border.Behaviors>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnSessionRowMenuCustomizeTapped" />
+                        </Border.GestureRecognizers>
+                        <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                            <controls:SymbolIcon
+                                HeightRequest="18"
+                                WidthRequest="18"
+                                SymbolName="gearshape"
+                                TintColor="#FFAAAAAA"
+                                VerticalOptions="Center" />
+                            <Label
+                                Text="Personalizar..."
+                                TextColor="White"
+                                FontSize="{StaticResource FontSizeBody}"
+                                VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                    </Border>
+
+                    <Border Style="{StaticResource ContextMenuItemBorder}">
+                        <Border.Behaviors>
+                            <behaviors:SidebarHoverBehavior />
+                        </Border.Behaviors>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnSessionRowMenuDeleteTapped" />
+                        </Border.GestureRecognizers>
+                        <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                            <controls:SymbolIcon
+                                HeightRequest="18"
+                                WidthRequest="18"
+                                SymbolName="trash"
+                                TintColor="#FFFF453A"
+                                VerticalOptions="Center" />
+                            <Label
+                                Text="Eliminar"
+                                TextColor="White"
+                                FontSize="{StaticResource FontSizeBody}"
+                                VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                    </Border>
+                </VerticalStackLayout>
+            </Border>
+
+            <!--  Menú contextual para subitem de Carpeta inteligente  -->
+            <Border
+                x:Name="SmartFolderContextMenu"
+                IsVisible="False"
+                WidthRequest="300"
+                Style="{StaticResource ContextMenuOverlayBorder}">
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Buttons="Primary" Tapped="OnContextMenuSurfaceTapped" />
+                </Border.GestureRecognizers>
+                <VerticalStackLayout Spacing="2">
+                    <Border Style="{StaticResource ContextMenuItemBorder}">
+                        <Border.Behaviors>
+                            <behaviors:SidebarHoverBehavior />
+                        </Border.Behaviors>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnSmartFolderMenuEditTapped" />
+                        </Border.GestureRecognizers>
+                        <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                            <controls:SymbolIcon
+                                HeightRequest="18"
+                                WidthRequest="18"
+                                SymbolName="pencil"
+                                TintColor="#FFAAAAAA"
+                                VerticalOptions="Center" />
+                            <Label
+                                Text="Editar..."
+                                TextColor="White"
+                                FontSize="{StaticResource FontSizeBody}"
+                                VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                    </Border>
+
+                    <Border Style="{StaticResource ContextMenuItemBorder}">
+                        <Border.Behaviors>
+                            <behaviors:SidebarHoverBehavior />
+                        </Border.Behaviors>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnSmartFolderMenuCustomizeTapped" />
+                        </Border.GestureRecognizers>
+                        <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                            <controls:SymbolIcon
+                                HeightRequest="18"
+                                WidthRequest="18"
+                                SymbolName="gearshape"
+                                TintColor="#FFAAAAAA"
+                                VerticalOptions="Center" />
+                            <Label
+                                Text="Personalizar..."
+                                TextColor="White"
+                                FontSize="{StaticResource FontSizeBody}"
+                                VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                    </Border>
+
+                    <Border Style="{StaticResource ContextMenuItemBorder}">
+                        <Border.Behaviors>
+                            <behaviors:SidebarHoverBehavior />
+                        </Border.Behaviors>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnSmartFolderMenuDeleteTapped" />
+                        </Border.GestureRecognizers>
+                        <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                            <controls:SymbolIcon
+                                HeightRequest="18"
+                                WidthRequest="18"
+                                SymbolName="trash"
+                                TintColor="#FFFF453A"
+                                VerticalOptions="Center" />
+                            <Label
+                                Text="Eliminar"
+                                TextColor="White"
+                                FontSize="{StaticResource FontSizeBody}"
+                                VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                    </Border>
+                </VerticalStackLayout>
+            </Border>
+        </Grid>
     </Grid>
 </ContentPage>

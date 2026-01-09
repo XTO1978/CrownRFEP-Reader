@@ -170,6 +170,7 @@ public class DashboardViewModel : BaseViewModel
     private bool _isAllGallerySelected;
     private bool _isVideoLessonsSelected;
     private bool _isDiaryViewSelected;
+    private bool _isUserLibraryExpanded = true;
     private bool _isSessionsListExpanded = true;
     private bool _isLoadingSelectedSessionVideos;
 
@@ -969,6 +970,20 @@ public class DashboardViewModel : BaseViewModel
         }
     }
 
+    public bool IsUserLibraryExpanded
+    {
+        get => _isUserLibraryExpanded;
+        set
+        {
+            if (SetProperty(ref _isUserLibraryExpanded, value))
+            {
+                // La visibilidad se controla llenando/vaciando la colección
+                SyncVisibleSessionRows();
+                SyncVisibleRecentSessions();
+            }
+        }
+    }
+
     public string SelectedSessionTitle => IsDiaryViewSelected
         ? "Diario Personal"
         : (IsVideoLessonsSelected
@@ -1741,7 +1756,7 @@ public class DashboardViewModel : BaseViewModel
     {
         VisibleRecentSessions.Clear();
 
-        if (!IsSessionsListExpanded)
+        if (!IsUserLibraryExpanded || !IsSessionsListExpanded)
             return;
 
         foreach (var session in RecentSessions)
@@ -1758,7 +1773,7 @@ public class DashboardViewModel : BaseViewModel
         SessionRows.Clear();
 
         // La visibilidad se controla llenando/vaciando la colección
-        if (!IsSessionsListExpanded)
+        if (!IsUserLibraryExpanded || !IsSessionsListExpanded)
             return;
 
         var sessionsSnapshot = RecentSessions.ToList();
@@ -2669,6 +2684,8 @@ public class DashboardViewModel : BaseViewModel
     }
 
     public ICommand ImportCommand { get; }
+    public ICommand ImportCrownFileCommand { get; }
+    public ICommand CreateSessionFromVideosCommand { get; }
     public ICommand RefreshCommand { get; }
     public ICommand ViewSessionCommand { get; }
     public ICommand ViewAllSessionsCommand { get; }
@@ -2682,6 +2699,7 @@ public class DashboardViewModel : BaseViewModel
     public ICommand LoadMoreVideosCommand { get; }
     public ICommand ClearFiltersCommand { get; }
     public ICommand ToggleFilterItemCommand { get; }
+    public ICommand ToggleUserLibraryExpandedCommand { get; }
     public ICommand ToggleSessionsListExpandedCommand { get; }
     public ICommand ToggleSessionGroupExpandedCommand { get; }
     public ICommand SelectSessionRowCommand { get; }
@@ -2901,6 +2919,8 @@ public class DashboardViewModel : BaseViewModel
         Title = "Dashboard";
 
         ImportCommand = new AsyncRelayCommand(ShowImportOptionsAsync);
+        ImportCrownFileCommand = new AsyncRelayCommand(ImportCrownFileAsync);
+        CreateSessionFromVideosCommand = new AsyncRelayCommand(OpenImportPageForVideosAsync);
         RefreshCommand = new AsyncRelayCommand(LoadDataAsync);
         ViewSessionCommand = new AsyncRelayCommand<Session>(ViewSessionAsync);
         ViewAllSessionsCommand = new AsyncRelayCommand(ViewAllSessionsAsync);
@@ -2914,6 +2934,7 @@ public class DashboardViewModel : BaseViewModel
         LoadMoreVideosCommand = new AsyncRelayCommand(LoadMoreVideosAsync);
         ClearFiltersCommand = new RelayCommand(() => ClearFilters());
         ToggleFilterItemCommand = new RelayCommand<object?>(ToggleFilterItem);
+        ToggleUserLibraryExpandedCommand = new RelayCommand(() => IsUserLibraryExpanded = !IsUserLibraryExpanded);
         ToggleSessionsListExpandedCommand = new RelayCommand(() => IsSessionsListExpanded = !IsSessionsListExpanded);
         ToggleSessionGroupExpandedCommand = new RelayCommand<string>(ToggleSessionGroupExpanded);
         SelectSessionRowCommand = new RelayCommand<SessionRow>(row => { if (row != null) SelectedSessionListItem = row; });
@@ -4852,8 +4873,13 @@ public class DashboardViewModel : BaseViewModel
         }
         else if (action == "Crear sesión desde vídeos")
         {
-            await Shell.Current.GoToAsync(nameof(ImportPage));
+            await OpenImportPageForVideosAsync();
         }
+    }
+
+    private static async Task OpenImportPageForVideosAsync()
+    {
+        await Shell.Current.GoToAsync(nameof(ImportPage));
     }
 
     private async Task ImportCrownFileAsync()
