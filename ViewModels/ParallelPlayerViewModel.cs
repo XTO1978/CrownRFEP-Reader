@@ -496,6 +496,9 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
         if (Video1 == null || Video2 == null || IsExporting)
             return;
 
+        StatusBarService? statusBarService = null;
+        var startedStatusBarOperation = false;
+
         try
         {
             IsExporting = true;
@@ -507,6 +510,13 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
             var compositionService = services?.GetService<IVideoCompositionService>();
             var databaseService = services?.GetService<DatabaseService>();
             var exportNotifier = services?.GetService<VideoExportNotifier>();
+            statusBarService = services?.GetService<StatusBarService>();
+
+            if (statusBarService != null)
+            {
+                MainThread.BeginInvokeOnMainThread(() => statusBarService.StartOperation("Exportando vídeo paralelo..."));
+                startedStatusBarOperation = true;
+            }
             
             if (compositionService == null)
             {
@@ -586,6 +596,8 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
             if (IsLapSyncEnabled)
             {
                 ExportStatus = "Leyendo parciales...";
+                if (statusBarService != null)
+                    MainThread.BeginInvokeOnMainThread(() => statusBarService.UpdateProgress(0.0, "Leyendo parciales..."));
 
                 var timing1 = await databaseService.GetExecutionTimingEventsByVideoAsync(Video1.Id);
                 var timing2 = await databaseService.GetExecutionTimingEventsByVideoAsync(Video2.Id);
@@ -627,6 +639,8 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
             }
 
             ExportStatus = "Componiendo vídeos...";
+            if (statusBarService != null)
+                MainThread.BeginInvokeOnMainThread(() => statusBarService.UpdateProgress(0.0, "Componiendo vídeos..."));
 
             // Ejecutar la exportación
             var result = await compositionService.ExportParallelVideosAsync(
@@ -635,12 +649,17 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
                 {
                     ExportProgress = progress;
                     ExportStatus = $"Exportando... {progress:P0}";
+
+                    if (statusBarService != null)
+                        statusBarService.UpdateProgress(progress);
                 }));
 
             if (result.Success)
             {
                 ExportStatus = "Generando miniatura...";
                 ExportProgress = 0.90;
+                if (statusBarService != null)
+                    MainThread.BeginInvokeOnMainThread(() => statusBarService.UpdateProgress(0.90, "Generando miniatura..."));
 
                 // Generar miniatura para el video exportado
                 var thumbnailService = services?.GetService<ThumbnailService>();
@@ -684,6 +703,8 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
 
                 ExportStatus = "Guardando en biblioteca...";
                 ExportProgress = 0.95;
+                if (statusBarService != null)
+                    MainThread.BeginInvokeOnMainThread(() => statusBarService.UpdateProgress(0.95, "Guardando en biblioteca..."));
 
                 // Crear VideoClip para guardar en la base de datos
                 // IsComparisonVideo se calcula automáticamente a partir de ComparisonName
@@ -719,10 +740,17 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
 
                 ExportStatus = "¡Exportación completada!";
                 ExportProgress = 1.0;
+
+                if (statusBarService != null)
+                    MainThread.BeginInvokeOnMainThread(() => statusBarService.EndOperation("Vídeo paralelo generado"));
             }
             else
             {
                 ExportStatus = $"Error: {result.ErrorMessage}";
+
+                if (statusBarService != null)
+                    MainThread.BeginInvokeOnMainThread(() => statusBarService.EndOperation("Error exportando"));
+
                 if (Application.Current?.MainPage != null)
                 {
                     await Application.Current.MainPage.DisplayAlert(
@@ -735,6 +763,10 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
         catch (Exception ex)
         {
             ExportStatus = $"Error: {ex.Message}";
+
+            if (statusBarService != null)
+                MainThread.BeginInvokeOnMainThread(() => statusBarService.EndOperation("Error exportando"));
+
             if (Application.Current?.MainPage != null)
             {
                 await Application.Current.MainPage.DisplayAlert(
@@ -748,6 +780,17 @@ public class ParallelPlayerViewModel : INotifyPropertyChanged
             IsExporting = false;
             // Notificar cambio en CanExport
             OnPropertyChanged(nameof(CanExport));
+
+            if (statusBarService != null && startedStatusBarOperation)
+            {
+                // Si no se llamó a EndOperation en el flujo (p.ej. returns tempranos), limpiar.
+                // No tocar si ya se marcó como completado (EndOperation con mensaje muestra 3s).
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    if (statusBarService.IsOperationInProgress)
+                        statusBarService.EndOperation();
+                });
+            }
         }
     }
 

@@ -21,7 +21,7 @@
         </OnPlatform>
     </Shell.NavBarIsVisible>
 
-    <Grid RowDefinitions="*,Auto">
+    <Grid RowDefinitions="*,Auto,Auto">
         <!--  Contenedor de 4 vídeos (2x2)  -->
         <Grid Grid.Row="0" Margin="20,20,20,0"
               RowDefinitions="*,*"
@@ -810,5 +810,7 @@
                 </HorizontalStackLayout>
             </Grid>
         </Border>
+
+        <controls:AppFooter Grid.Row="2" />
     </Grid>
 </ContentPage>

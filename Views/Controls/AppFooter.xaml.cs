@@ -116,6 +116,13 @@ public partial class AppFooter : ContentView
                 ProgressLabel.Text = $"({_statusBarService.OperationProgressPercent}%)";
             else
                 ProgressLabel.Text = string.Empty;
+
+            OperationProgressBar.Progress = _statusBarService.OperationProgress;
+            OperationProgressBar.IsVisible = _statusBarService.OperationProgress > 0;
+        }
+        else
+        {
+            OperationProgressBar.IsVisible = false;
         }
 
         // Contadores

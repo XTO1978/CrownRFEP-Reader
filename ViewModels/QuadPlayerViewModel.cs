@@ -661,6 +661,17 @@ public class QuadPlayerViewModel : INotifyPropertyChanged
         if (Video1 == null || Video2 == null || Video3 == null || Video4 == null || IsExporting)
             return;
 
+        StatusBarService? statusBarService = null;
+        var startedStatusBarOperation = false;
+
+        static Page? TryGetCurrentPage()
+        {
+            var app = Application.Current;
+            if (app?.Windows?.Count > 0)
+                return app.Windows[0].Page;
+            return null;
+        }
+
         try
         {
             IsExporting = true;
@@ -672,6 +683,13 @@ public class QuadPlayerViewModel : INotifyPropertyChanged
             var compositionService = services?.GetService<IVideoCompositionService>();
             var databaseService = services?.GetService<DatabaseService>();
             var exportNotifier = services?.GetService<VideoExportNotifier>();
+            statusBarService = services?.GetService<StatusBarService>();
+
+            if (statusBarService != null)
+            {
+                MainThread.BeginInvokeOnMainThread(() => statusBarService.StartOperation("Exportando vídeo cuádruple..."));
+                startedStatusBarOperation = true;
+            }
 
             if (compositionService == null)
             {
@@ -766,6 +784,8 @@ public class QuadPlayerViewModel : INotifyPropertyChanged
             if (IsLapSyncEnabled)
             {
                 ExportStatus = "Leyendo parciales...";
+                if (statusBarService != null)
+                    MainThread.BeginInvokeOnMainThread(() => statusBarService.UpdateProgress(0.0, "Leyendo parciales..."));
 
                 var timing1 = await databaseService.GetExecutionTimingEventsByVideoAsync(Video1.Id);
                 var timing2 = await databaseService.GetExecutionTimingEventsByVideoAsync(Video2.Id);
@@ -823,6 +843,8 @@ public class QuadPlayerViewModel : INotifyPropertyChanged
             }
 
             ExportStatus = "Componiendo vídeos...";
+            if (statusBarService != null)
+                MainThread.BeginInvokeOnMainThread(() => statusBarService.UpdateProgress(0.0, "Componiendo vídeos..."));
 
             // Ejecutar la exportación
             var result = await compositionService.ExportQuadVideosAsync(
@@ -831,12 +853,17 @@ public class QuadPlayerViewModel : INotifyPropertyChanged
                 {
                     ExportProgress = progress;
                     ExportStatus = $"Exportando... {progress:P0}";
+
+                    if (statusBarService != null)
+                        MainThread.BeginInvokeOnMainThread(() => statusBarService.UpdateProgress(progress));
                 }));
 
             if (result.Success)
             {
                 ExportStatus = "Generando miniatura...";
                 ExportProgress = 0.90;
+                if (statusBarService != null)
+                    MainThread.BeginInvokeOnMainThread(() => statusBarService.UpdateProgress(0.90, "Generando miniatura..."));
 
                 // Generar miniatura para el video exportado
                 var thumbnailService = services?.GetService<ThumbnailService>();
@@ -880,6 +907,8 @@ public class QuadPlayerViewModel : INotifyPropertyChanged
 
                 ExportStatus = "Guardando en biblioteca...";
                 ExportProgress = 0.95;
+                if (statusBarService != null)
+                    MainThread.BeginInvokeOnMainThread(() => statusBarService.UpdateProgress(0.95, "Guardando en biblioteca..."));
 
                 // Crear VideoClip para guardar en la base de datos
                 var newClip = new VideoClip
@@ -914,13 +943,21 @@ public class QuadPlayerViewModel : INotifyPropertyChanged
 
                 ExportStatus = "¡Exportación completada!";
                 ExportProgress = 1.0;
+
+                if (statusBarService != null)
+                    MainThread.BeginInvokeOnMainThread(() => statusBarService.EndOperation("Vídeo cuádruple generado"));
             }
             else
             {
                 ExportStatus = $"Error: {result.ErrorMessage}";
-                if (Application.Current?.MainPage != null)
+
+                if (statusBarService != null)
+                    MainThread.BeginInvokeOnMainThread(() => statusBarService.EndOperation("Error exportando"));
+
+                var page = TryGetCurrentPage();
+                if (page != null)
                 {
-                    await Application.Current.MainPage.DisplayAlert(
+                    await page.DisplayAlert(
                         "Error de exportación",
                         result.ErrorMessage ?? "Error desconocido durante la exportación",
                         "OK");
@@ -930,9 +967,14 @@ public class QuadPlayerViewModel : INotifyPropertyChanged
         catch (Exception ex)
         {
             ExportStatus = $"Error: {ex.Message}";
-            if (Application.Current?.MainPage != null)
+
+            if (statusBarService != null)
+                MainThread.BeginInvokeOnMainThread(() => statusBarService.EndOperation("Error exportando"));
+
+            var page = TryGetCurrentPage();
+            if (page != null)
             {
-                await Application.Current.MainPage.DisplayAlert(
+                await page.DisplayAlert(
                     "Error",
                     $"Error durante la exportación: {ex.Message}",
                     "OK");
@@ -943,6 +985,10 @@ public class QuadPlayerViewModel : INotifyPropertyChanged
             IsExporting = false;
             // Notificar cambio en CanExport
             OnPropertyChanged(nameof(CanExport));
+
+            // Asegurar que no quede una operación "colgada" si salimos antes.
+            if (startedStatusBarOperation && statusBarService != null && statusBarService.IsOperationInProgress)
+                MainThread.BeginInvokeOnMainThread(() => statusBarService.EndOperation());
         }
     }
 

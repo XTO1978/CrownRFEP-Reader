@@ -31,7 +31,7 @@
         </ResourceDictionary>
     </ContentPage.Resources>
 
-    <Grid RowDefinitions="*,Auto">
+    <Grid RowDefinitions="*,Auto,Auto">
         <!--  Contenedor de vídeos  -->
         <Grid Grid.Row="0" Margin="20,20,20,0">
             <!--  Layout Horizontal  -->
@@ -1154,5 +1154,6 @@
 
             </Grid>
         </Border>
+        <controls:AppFooter Grid.Row="2" />
     </Grid>
 </ContentPage>
