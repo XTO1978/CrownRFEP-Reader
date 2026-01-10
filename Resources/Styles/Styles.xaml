@@ -431,7 +431,7 @@
     <Style TargetType="Border" x:Key="ContextMenuOverlayBorder">
         <Setter Property="Padding" Value="8" />
         <Setter Property="BackgroundColor" Value="#FF2A2A2A" />
-        <Setter Property="Stroke" Value="#FF404040" />
+        <Setter Property="Stroke" Value="#FF6A6A6A" />
         <Setter Property="StrokeThickness" Value="0.5" />
         <Setter Property="StrokeShape" Value="RoundRectangle 10" />
         <Setter Property="HorizontalOptions" Value="Start" />
@@ -440,11 +440,28 @@
 
     <!-- Fila/item clicable dentro del menú contextual -->
     <Style TargetType="Border" x:Key="ContextMenuItemBorder">
-        <Setter Property="Padding" Value="14,12" />
+        <Setter Property="Padding">
+            <Setter.Value>
+                <OnPlatform x:TypeArguments="Thickness">
+                    <On Platform="iOS" Value="10,2,4,2" />
+                    <On Platform="Default" Value="10,6,4,6" />
+                </OnPlatform>
+            </Setter.Value>
+        </Setter>
         <Setter Property="BackgroundColor" Value="Transparent" />
         <Setter Property="Stroke" Value="{x:Null}" />
         <Setter Property="StrokeThickness" Value="0" />
         <Setter Property="StrokeShape" Value="RoundRectangle 6" />
+    </Style>
+
+    <!-- Estilo para el Label de items del menú contextual -->
+    <Style TargetType="Label" x:Key="ContextMenuItemLabel">
+        <Setter Property="FontFamily" Value="{StaticResource AppFontBody}" />
+        <Setter Property="FontSize" Value="{StaticResource FontSizeSidebarSubItem}" />
+        <Setter Property="FontAttributes" Value="None" />
+        <Setter Property="TextColor" Value="White" />
+        <Setter Property="VerticalOptions" Value="Center" />
+        <Setter Property="VerticalTextAlignment" Value="Center" />
     </Style>
 
     <Style TargetType="ActivityIndicator">

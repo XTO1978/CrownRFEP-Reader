@@ -539,16 +539,6 @@
                                         TintColor="#FF888888"
                                         WidthRequest="{StaticResource IconSizeSmall}" />
                                 </Border>
-                                <Label
-                                    Grid.Column="4"
-                                    Margin="0,0,8,0"
-                                    FontFamily="{StaticResource AppFontMono}"
-                                    FontSize="{StaticResource FontSizeSmall}"
-                                    HorizontalOptions="End"
-                                    HorizontalTextAlignment="End"
-                                    TextColor="#FF888888"
-                                    Text="{Binding SmartFolders.Count}"
-                                    VerticalOptions="Center" />
                             </Grid>
                         </Border>
 
@@ -725,16 +715,6 @@
                                         TintColor="#FF888888"
                                         WidthRequest="{StaticResource IconSizeSmall}" />
                                 </Border>
-                                <Label
-                                    Grid.Column="4"
-                                    Margin="0,0,8,0"
-                                    FontFamily="{StaticResource AppFontMono}"
-                                    FontSize="{StaticResource FontSizeSmall}"
-                                    HorizontalOptions="End"
-                                    HorizontalTextAlignment="End"
-                                    TextColor="#FF888888"
-                                    Text="{Binding Stats.TotalSessions}"
-                                    VerticalOptions="Center" />
                             </Grid>
                         </Border>
 
@@ -6490,9 +6470,7 @@
                                 VerticalOptions="Center" />
                             <Label 
                                 Text="Crear nueva biblioteca..." 
-                                TextColor="White" 
-                                FontSize="{StaticResource FontSizeBody}"
-                                VerticalOptions="Center" />
+                                Style="{StaticResource ContextMenuItemLabel}" />
                         </HorizontalStackLayout>
                     </Border>
 
@@ -6513,9 +6491,7 @@
                                 VerticalOptions="Center" />
                             <Label 
                                 Text="Importar otra biblioteca..." 
-                                TextColor="White" 
-                                FontSize="{StaticResource FontSizeBody}"
-                                VerticalOptions="Center" />
+                                Style="{StaticResource ContextMenuItemLabel}" />
                         </HorizontalStackLayout>
                     </Border>
 
@@ -6536,9 +6512,7 @@
                                 VerticalOptions="Center" />
                             <Label 
                                 Text="Vaciar caché y recargar" 
-                                TextColor="White" 
-                                FontSize="{StaticResource FontSizeBody}"
-                                VerticalOptions="Center" />
+                                Style="{StaticResource ContextMenuItemLabel}" />
                         </HorizontalStackLayout>
                     </Border>
 
@@ -6559,9 +6533,7 @@
                                 VerticalOptions="Center" />
                             <Label 
                                 Text="Combinar con otra biblioteca..." 
-                                TextColor="White" 
-                                FontSize="{StaticResource FontSizeBody}"
-                                VerticalOptions="Center" />
+                                Style="{StaticResource ContextMenuItemLabel}" />
                         </HorizontalStackLayout>
                     </Border>
                 </VerticalStackLayout>
@@ -6605,9 +6577,7 @@
                                 VerticalOptions="Center" />
                             <Label
                                 Text="Importar desde .crown"
-                                TextColor="White"
-                                FontSize="{StaticResource FontSizeBody}"
-                                VerticalOptions="Center" />
+                                Style="{StaticResource ContextMenuItemLabel}" />
                         </HorizontalStackLayout>
                     </Border>
 
@@ -6628,9 +6598,7 @@
                                 VerticalOptions="Center" />
                             <Label
                                 Text="Nueva sesión desde archivos de video"
-                                TextColor="White"
-                                FontSize="{StaticResource FontSizeBody}"
-                                VerticalOptions="Center" />
+                                Style="{StaticResource ContextMenuItemLabel}" />
                         </HorizontalStackLayout>
                     </Border>
                 </VerticalStackLayout>
@@ -6673,9 +6641,7 @@
                                 VerticalOptions="Center" />
                             <Label
                                 Text="Editar..."
-                                TextColor="White"
-                                FontSize="{StaticResource FontSizeBody}"
-                                VerticalOptions="Center" />
+                                Style="{StaticResource ContextMenuItemLabel}" />
                         </HorizontalStackLayout>
                     </Border>
 
@@ -6695,11 +6661,18 @@
                                 VerticalOptions="Center" />
                             <Label
                                 Text="Personalizar..."
-                                TextColor="White"
-                                FontSize="{StaticResource FontSizeBody}"
-                                VerticalOptions="Center" />
+                                Style="{StaticResource ContextMenuItemLabel}" />
                         </HorizontalStackLayout>
                     </Border>
+
+                    <!-- Separador -->
+                    <Border 
+                        HeightRequest="1" 
+                        BackgroundColor="#FF3A3A3A" 
+                        Margin="4,6" 
+                        HorizontalOptions="Fill"
+                        Stroke="Transparent"
+                        StrokeThickness="0" />
 
                     <Border Style="{StaticResource ContextMenuItemBorder}">
                         <Border.Behaviors>
@@ -6717,9 +6690,7 @@
                                 VerticalOptions="Center" />
                             <Label
                                 Text="Eliminar"
-                                TextColor="White"
-                                FontSize="{StaticResource FontSizeBody}"
-                                VerticalOptions="Center" />
+                                Style="{StaticResource ContextMenuItemLabel}" />
                         </HorizontalStackLayout>
                     </Border>
                 </VerticalStackLayout>
@@ -6751,9 +6722,7 @@
                                 VerticalOptions="Center" />
                             <Label
                                 Text="Editar..."
-                                TextColor="White"
-                                FontSize="{StaticResource FontSizeBody}"
-                                VerticalOptions="Center" />
+                                Style="{StaticResource ContextMenuItemLabel}" />
                         </HorizontalStackLayout>
                     </Border>
 
@@ -6773,11 +6742,18 @@
                                 VerticalOptions="Center" />
                             <Label
                                 Text="Personalizar..."
-                                TextColor="White"
-                                FontSize="{StaticResource FontSizeBody}"
-                                VerticalOptions="Center" />
+                                Style="{StaticResource ContextMenuItemLabel}" />
                         </HorizontalStackLayout>
                     </Border>
+
+                    <!-- Separador -->
+                    <Border 
+                        HeightRequest="1" 
+                        BackgroundColor="#FF3A3A3A" 
+                        Margin="4,6" 
+                        HorizontalOptions="Fill"
+                        Stroke="Transparent"
+                        StrokeThickness="0" />
 
                     <Border Style="{StaticResource ContextMenuItemBorder}">
                         <Border.Behaviors>
@@ -6795,9 +6771,7 @@
                                 VerticalOptions="Center" />
                             <Label
                                 Text="Eliminar"
-                                TextColor="White"
-                                FontSize="{StaticResource FontSizeBody}"
-                                VerticalOptions="Center" />
+                                Style="{StaticResource ContextMenuItemLabel}" />
                         </HorizontalStackLayout>
                     </Border>
                 </VerticalStackLayout>
