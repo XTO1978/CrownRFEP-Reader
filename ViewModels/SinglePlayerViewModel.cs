@@ -1087,7 +1087,21 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         ShowSplitTimePanel = false;
         
         // Notificar al code-behind para cerrar paneles gestionados ahí (ej: DrawingTools)
-        CloseExternalPanelsRequested?.Invoke(this, EventArgs.Empty);
+        // Aseguramos hilo UI porque el handler toca elementos visuales.
+        if (CloseExternalPanelsRequested is not null)
+        {
+            if (MainThread.IsMainThread)
+            {
+                CloseExternalPanelsRequested.Invoke(this, EventArgs.Empty);
+            }
+            else
+            {
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    CloseExternalPanelsRequested?.Invoke(this, EventArgs.Empty);
+                });
+            }
+        }
     }
 
     /// <summary>

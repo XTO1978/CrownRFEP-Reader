@@ -1000,23 +1000,38 @@ public partial class SinglePlayerPage : ContentPage
     /// </summary>
     private void OnCloseExternalPanelsRequested(object? sender, EventArgs e)
     {
-        // Cerrar DrawingTools si está abierto
-        if (_isDrawingMode)
+        void Close()
         {
-            _isDrawingMode = false;
+            try
+            {
+                // Cerrar DrawingTools si está abierto
+                if (_isDrawingMode)
+                {
+                    _isDrawingMode = false;
 
-            if (DrawingToolsPanel != null)
-                DrawingToolsPanel.IsVisible = false;
+                    if (DrawingToolsPanel != null)
+                        DrawingToolsPanel.IsVisible = false;
 
-            if (AnalysisCanvas != null)
-                AnalysisCanvas.InputTransparent = true;
+                    if (AnalysisCanvas != null)
+                        AnalysisCanvas.InputTransparent = true;
 
-            if (ScrubOverlay != null)
-                ScrubOverlay.InputTransparent = false;
+                    if (ScrubOverlay != null)
+                        ScrubOverlay.InputTransparent = false;
 
-            if (InkOptionsPanel != null)
-                InkOptionsPanel.IsVisible = false;
+                    if (InkOptionsPanel != null)
+                        InkOptionsPanel.IsVisible = false;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error cerrando paneles externos: {ex}");
+            }
         }
+
+        if (MainThread.IsMainThread)
+            Close();
+        else
+            MainThread.BeginInvokeOnMainThread(Close);
     }
 
     private void OnToggleDrawingToolsTapped(object? sender, TappedEventArgs e)

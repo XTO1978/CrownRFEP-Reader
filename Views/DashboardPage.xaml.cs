@@ -370,10 +370,49 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         catch { }
     }
 
+    private static bool IsContextMenuButtonSender(object? sender)
+        => sender is VisualElement ve && string.Equals(ve.ClassId, "ContextMenuButton", StringComparison.Ordinal);
+
+    private static bool IsSecondaryTap(TappedEventArgs e)
+    {
+        try
+        {
+            var buttonsProp = e.GetType().GetProperty("Buttons", BindingFlags.Instance | BindingFlags.Public);
+            if (buttonsProp == null)
+                return true;
+
+            var buttonsValue = buttonsProp.GetValue(e);
+            if (buttonsValue == null)
+                return true;
+
+            // We avoid depending on a specific enum type across MAUI versions.
+            var text = buttonsValue.ToString();
+            if (!string.IsNullOrWhiteSpace(text) && text.Contains("Secondary", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            if (buttonsValue is int intMask)
+                return (intMask & 2) != 0;
+        }
+        catch
+        {
+            // If we can't determine it, don't block the menu.
+        }
+
+        return true;
+    }
+
     private void OnSessionRowContextMenuTapped(object? sender, TappedEventArgs e)
     {
         try
         {
+            // iOS: the context menu must only open from the explicit ellipsis button.
+            if (DeviceInfo.Platform == DevicePlatform.iOS && !IsContextMenuButtonSender(sender))
+                return;
+
+            // Non-iOS: if we can detect buttons, only honor Secondary taps.
+            if (DeviceInfo.Platform != DevicePlatform.iOS && !IsContextMenuButtonSender(sender) && !IsSecondaryTap(e))
+                return;
+
             if (SessionRowContextMenu == null || SubItemContextMenusLayer == null)
                 return;
 
@@ -492,6 +531,14 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
     {
         try
         {
+            // iOS: the context menu must only open from the explicit ellipsis button.
+            if (DeviceInfo.Platform == DevicePlatform.iOS && !IsContextMenuButtonSender(sender))
+                return;
+
+            // Non-iOS: if we can detect buttons, only honor Secondary taps.
+            if (DeviceInfo.Platform != DevicePlatform.iOS && !IsContextMenuButtonSender(sender) && !IsSecondaryTap(e))
+                return;
+
             if (SmartFolderContextMenu == null || SubItemContextMenusLayer == null)
                 return;
 

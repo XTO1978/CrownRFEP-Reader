@@ -125,7 +125,7 @@
                                 HorizontalOptions="Fill">
                                 <Border.Padding>
                                     <OnPlatform x:TypeArguments="Thickness">
-                                        <On Platform="iOS" Value="10,2,4,2" />
+                                        <On Platform="iOS" Value="10,8,4,8" />
                                         <On Platform="Default" Value="10,6,4,6" />
                                     </OnPlatform>
                                 </Border.Padding>
@@ -136,7 +136,7 @@
                                     <TapGestureRecognizer
                                         Buttons="Secondary"
                                         Tapped="OnSessionRowContextMenuTapped" />
-                            </Border.GestureRecognizers>
+                                </Border.GestureRecognizers>
                             <Border.Behaviors>
                                 <behaviors:SidebarHoverBehavior />
                             </Border.Behaviors>
@@ -149,7 +149,7 @@
                                 </DataTrigger>
                             </Border.Triggers>
                             <Grid
-                                ColumnDefinitions="Auto,*,Auto"
+                                ColumnDefinitions="Auto,*,Auto,Auto"
                                 VerticalOptions="Center"
                                 HorizontalOptions="Fill">
                                 <controls:SymbolIcon
@@ -190,6 +190,31 @@
                                     TextColor="#FF888888"
                                     Text="{Binding Session.VideoCount}"
                                     VerticalOptions="Center" />
+                                <Border
+                                    ClassId="ContextMenuButton"
+                                    Grid.Column="3"
+                                    Margin="0,0,4,0"
+                                    Padding="4"
+                                    BackgroundColor="Transparent"
+                                    StrokeThickness="0"
+                                    HorizontalOptions="End"
+                                    VerticalOptions="Center">
+                                    <Border.IsVisible>
+                                        <OnPlatform x:TypeArguments="x:Boolean">
+                                            <On Platform="iOS" Value="True" />
+                                            <On Platform="Default" Value="False" />
+                                        </OnPlatform>
+                                    </Border.IsVisible>
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="OnSessionRowContextMenuTapped" />
+                                    </Border.GestureRecognizers>
+                                    <controls:SymbolIcon
+                                        HeightRequest="{StaticResource IconSizeSmall}"
+                                        WidthRequest="{StaticResource IconSizeSmall}"
+                                        SymbolName="ellipsis.circle"
+                                        TintColor="#FF888888"
+                                        VerticalOptions="Center" />
+                                </Border>
                             </Grid>
                         </Border>
                         </Grid>
@@ -287,7 +312,7 @@
 
                         <VerticalStackLayout.Spacing>
                             <OnPlatform x:TypeArguments="x:Double">
-                                <On Platform="iOS" Value="1" />
+                                <On Platform="iOS" Value="6" />
                                 <On Platform="Default" Value="{StaticResource SpacingXSmall}" />
                             </OnPlatform>
                         </VerticalStackLayout.Spacing>
@@ -362,7 +387,7 @@
                             IsVisible="{Binding IsUserLibraryExpanded}">
                             <VerticalStackLayout.Spacing>
                                 <OnPlatform x:TypeArguments="x:Double">
-                                    <On Platform="iOS" Value="1" />
+                                    <On Platform="iOS" Value="6" />
                                     <On Platform="Default" Value="{StaticResource SpacingXSmall}" />
                                 </OnPlatform>
                             </VerticalStackLayout.Spacing>
@@ -372,7 +397,7 @@
                             Style="{StaticResource SidebarMenuItemBorder}">
                             <Border.Padding>
                                 <OnPlatform x:TypeArguments="Thickness">
-                                    <On Platform="iOS" Value="10,2,4,2" />
+                                    <On Platform="iOS" Value="10,8,4,8" />
                                     <On Platform="Default" Value="10,6,4,6" />
                                 </OnPlatform>
                             </Border.Padding>
@@ -422,7 +447,7 @@
                             Style="{StaticResource SidebarMenuItemBorder}">
                             <Border.Padding>
                                 <OnPlatform x:TypeArguments="Thickness">
-                                    <On Platform="iOS" Value="10,2,4,2" />
+                                    <On Platform="iOS" Value="10,8,4,8" />
                                     <On Platform="Default" Value="10,6,4,6" />
                                 </OnPlatform>
                             </Border.Padding>
@@ -473,7 +498,7 @@
                             Style="{StaticResource SidebarMenuItemBorder}">
                             <Border.Padding>
                                 <OnPlatform x:TypeArguments="Thickness">
-                                    <On Platform="iOS" Value="10,2,4,2" />
+                                    <On Platform="iOS" Value="10,8,4,8" />
                                     <On Platform="Default" Value="10,6,4,6" />
                                 </OnPlatform>
                             </Border.Padding>
@@ -567,7 +592,7 @@
                                                 Buttons="Secondary"
                                                 Tapped="OnSmartFolderContextMenuTapped" />
                                         </Border.GestureRecognizers>
-                                        <Grid ColumnDefinitions="Auto,*,Auto" VerticalOptions="Center" HorizontalOptions="Fill">
+                                        <Grid ColumnDefinitions="Auto,*,Auto,Auto" VerticalOptions="Center" HorizontalOptions="Fill">
                                             <controls:SymbolIcon
                                                 Grid.Column="0"
                                                 HeightRequest="{StaticResource IconSizeSidebarMenu}"
@@ -590,6 +615,31 @@
                                                 TextColor="#FF888888"
                                                 Text="{Binding MatchingVideoCount}"
                                                 VerticalOptions="Center" />
+                                            <Border
+                                                ClassId="ContextMenuButton"
+                                                Grid.Column="3"
+                                                Margin="0,0,4,0"
+                                                Padding="4"
+                                                BackgroundColor="Transparent"
+                                                StrokeThickness="0"
+                                                HorizontalOptions="End"
+                                                VerticalOptions="Center">
+                                                <Border.IsVisible>
+                                                    <OnPlatform x:TypeArguments="x:Boolean">
+                                                        <On Platform="iOS" Value="True" />
+                                                        <On Platform="Default" Value="False" />
+                                                    </OnPlatform>
+                                                </Border.IsVisible>
+                                                <Border.GestureRecognizers>
+                                                    <TapGestureRecognizer Tapped="OnSmartFolderContextMenuTapped" />
+                                                </Border.GestureRecognizers>
+                                                <controls:SymbolIcon
+                                                    HeightRequest="{StaticResource IconSizeSmall}"
+                                                    WidthRequest="{StaticResource IconSizeSmall}"
+                                                    SymbolName="ellipsis.circle"
+                                                    TintColor="#FF888888"
+                                                    VerticalOptions="Center" />
+                                            </Border>
                                         </Grid>
                                     </Border>
                                 </DataTemplate>
@@ -602,7 +652,7 @@
                             Style="{StaticResource SidebarMenuItemBorder}">
                             <Border.Padding>
                                 <OnPlatform x:TypeArguments="Thickness">
-                                    <On Platform="iOS" Value="10,2,4,2" />
+                                    <On Platform="iOS" Value="10,8,4,8" />
                                     <On Platform="Default" Value="10,6,4,6" />
                                 </OnPlatform>
                             </Border.Padding>
@@ -643,7 +693,7 @@
                             Style="{StaticResource SidebarMenuItemBorder}">
                             <Border.Padding>
                                 <OnPlatform x:TypeArguments="Thickness">
-                                    <On Platform="iOS" Value="10,2,4,2" />
+                                    <On Platform="iOS" Value="10,8,4,8" />
                                     <On Platform="Default" Value="10,6,4,6" />
                                 </OnPlatform>
                             </Border.Padding>
