@@ -166,16 +166,10 @@
                                                 Text="{Binding Session.Lugar}"
                                                 TextColor="White" />
                                             <Span
-                                                Text=" "
+                                                Text=" · "
                                                 TextColor="White" />
                                             <Span
-                                                Text="{Binding Session.TipoSesion}"
-                                                TextColor="White" />
-                                            <Span
-                                                Text=" "
-                                                TextColor="White" />
-                                            <Span
-                                                Text="{Binding Session.FechaDateTime, StringFormat='{0:dd/MM/yyyy}'}"
+                                                Text="{Binding Session.FechaDateTime, StringFormat='{0:dd/MM}'}"
                                                 TextColor="White" />
                                         </FormattedString>
                                     </Label.FormattedText>
@@ -436,7 +430,7 @@
                                     FontSize="{StaticResource FontSizeSmall}"
                                     HorizontalOptions="End"
                                     HorizontalTextAlignment="End"
-                                    Text="{Binding Stats.TotalVideos}"
+                                    Text="{Binding AllGalleryItemCount}"
                                     TextColor="#FF888888"
                                     VerticalOptions="Center" />
                             </Grid>
@@ -892,63 +886,12 @@
                             HorizontalOptions="Center"
                             Text="No hay sesiones"
                             TextColor="Gray" />
-                        <Label
-                            FontSize="{StaticResource FontSizeBody}"
-                            HorizontalOptions="Center"
-                            Text="Importa un archivo .crown para comenzar"
-                            TextColor="Gray" />
                     </VerticalStackLayout>
                 </CollectionView.EmptyView>
             </CollectionView>
 
             <!--  Acciones de sesión  -->
             <VerticalStackLayout Grid.Row="1" Spacing="{StaticResource SpacingSmall}" Margin="{StaticResource MarginVerticalSection}">
-                <Label
-                    FontFamily="{StaticResource AppFontBody}"
-                    FontSize="{StaticResource FontSizeBody}"
-                    FontAttributes="None"
-                    Text="Acciones de sesión"
-                    TextColor="#FF888888" />
-                <Grid ColumnDefinitions="*,*" ColumnSpacing="4">
-                    <Border
-                        Grid.Column="0"
-                        Padding="{StaticResource PaddingActionButton}"
-                        BackgroundColor="#FF404040"
-                        Stroke="Transparent"
-                        StrokeShape="RoundRectangle 4">
-                        <Border.GestureRecognizers>
-                            <TapGestureRecognizer Command="{Binding ImportCommand}" />
-                        </Border.GestureRecognizers>
-                        <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
-                            <controls:SymbolIcon
-                                HeightRequest="{StaticResource IconSizeMedium}"
-                                SymbolName="square.and.arrow.down"
-                                TintColor="White"
-                                WidthRequest="{StaticResource IconSizeMedium}"
-                                VerticalOptions="Center" />
-                            <Label Text="Importar" TextColor="White" VerticalOptions="Center" />
-                        </HorizontalStackLayout>
-                    </Border>
-                    <Border
-                        Grid.Column="1"
-                        Padding="{StaticResource PaddingActionButton}"
-                        BackgroundColor="#FF404040"
-                        Stroke="Transparent"
-                        StrokeShape="RoundRectangle 4">
-                        <Border.GestureRecognizers>
-                            <TapGestureRecognizer Command="{Binding DeleteSelectedSessionCommand}" />
-                        </Border.GestureRecognizers>
-                        <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
-                            <controls:SymbolIcon
-                                HeightRequest="{StaticResource IconSizeMedium}"
-                                SymbolName="trash"
-                                TintColor="#FFFF9696"
-                                WidthRequest="{StaticResource IconSizeMedium}"
-                                VerticalOptions="Center" />
-                            <Label Text="Eliminar" TextColor="#FFFF9696" VerticalOptions="Center" />
-                        </HorizontalStackLayout>
-                    </Border>
-                </Grid>
                 
                 <!--  Botón Nueva sesión (solo iOS)  -->
                 <Border
@@ -1901,7 +1844,7 @@
                                 VerticalOptions="Center">
                                 <RadioButton.ControlTemplate>
                                     <ControlTemplate>
-                                        <Grid>
+                                        <Grid x:DataType="RadioButton">
                                             <Ellipse
                                                 WidthRequest="18"
                                                 HeightRequest="18"
@@ -1909,12 +1852,28 @@
                                                 StrokeThickness="2"
                                                 Fill="Transparent" />
                                             <Ellipse
+                                                x:Name="CheckedDot"
                                                 WidthRequest="10"
                                                 HeightRequest="10"
                                                 Fill="#FF6DDDFF"
                                                 HorizontalOptions="Center"
                                                 VerticalOptions="Center"
-                                                IsVisible="{TemplateBinding IsChecked}" />
+                                                IsVisible="False" />
+
+                                            <VisualStateManager.VisualStateGroups>
+                                                <VisualStateGroup Name="CheckStates">
+                                                    <VisualState Name="Checked">
+                                                        <VisualState.Setters>
+                                                            <Setter TargetName="CheckedDot" Property="IsVisible" Value="True" />
+                                                        </VisualState.Setters>
+                                                    </VisualState>
+                                                    <VisualState Name="Unchecked">
+                                                        <VisualState.Setters>
+                                                            <Setter TargetName="CheckedDot" Property="IsVisible" Value="False" />
+                                                        </VisualState.Setters>
+                                                    </VisualState>
+                                                </VisualStateGroup>
+                                            </VisualStateManager.VisualStateGroups>
                                         </Grid>
                                     </ControlTemplate>
                                 </RadioButton.ControlTemplate>
@@ -1954,7 +1913,7 @@
                                 VerticalOptions="Center">
                                 <RadioButton.ControlTemplate>
                                     <ControlTemplate>
-                                        <Grid>
+                                        <Grid x:DataType="RadioButton">
                                             <Ellipse
                                                 WidthRequest="18"
                                                 HeightRequest="18"
@@ -1962,12 +1921,28 @@
                                                 StrokeThickness="2"
                                                 Fill="Transparent" />
                                             <Ellipse
+                                                x:Name="CheckedDot"
                                                 WidthRequest="10"
                                                 HeightRequest="10"
                                                 Fill="#FF6DDDFF"
                                                 HorizontalOptions="Center"
                                                 VerticalOptions="Center"
-                                                IsVisible="{TemplateBinding IsChecked}" />
+                                                IsVisible="False" />
+
+                                            <VisualStateManager.VisualStateGroups>
+                                                <VisualStateGroup Name="CheckStates">
+                                                    <VisualState Name="Checked">
+                                                        <VisualState.Setters>
+                                                            <Setter TargetName="CheckedDot" Property="IsVisible" Value="True" />
+                                                        </VisualState.Setters>
+                                                    </VisualState>
+                                                    <VisualState Name="Unchecked">
+                                                        <VisualState.Setters>
+                                                            <Setter TargetName="CheckedDot" Property="IsVisible" Value="False" />
+                                                        </VisualState.Setters>
+                                                    </VisualState>
+                                                </VisualStateGroup>
+                                            </VisualStateManager.VisualStateGroups>
                                         </Grid>
                                     </ControlTemplate>
                                 </RadioButton.ControlTemplate>
@@ -2007,7 +1982,7 @@
                                 VerticalOptions="Center">
                                 <RadioButton.ControlTemplate>
                                     <ControlTemplate>
-                                        <Grid>
+                                        <Grid x:DataType="RadioButton">
                                             <Ellipse
                                                 WidthRequest="18"
                                                 HeightRequest="18"
@@ -2015,12 +1990,28 @@
                                                 StrokeThickness="2"
                                                 Fill="Transparent" />
                                             <Ellipse
+                                                x:Name="CheckedDot"
                                                 WidthRequest="10"
                                                 HeightRequest="10"
                                                 Fill="#FF6DDDFF"
                                                 HorizontalOptions="Center"
                                                 VerticalOptions="Center"
-                                                IsVisible="{TemplateBinding IsChecked}" />
+                                                IsVisible="False" />
+
+                                            <VisualStateManager.VisualStateGroups>
+                                                <VisualStateGroup Name="CheckStates">
+                                                    <VisualState Name="Checked">
+                                                        <VisualState.Setters>
+                                                            <Setter TargetName="CheckedDot" Property="IsVisible" Value="True" />
+                                                        </VisualState.Setters>
+                                                    </VisualState>
+                                                    <VisualState Name="Unchecked">
+                                                        <VisualState.Setters>
+                                                            <Setter TargetName="CheckedDot" Property="IsVisible" Value="False" />
+                                                        </VisualState.Setters>
+                                                    </VisualState>
+                                                </VisualStateGroup>
+                                            </VisualStateManager.VisualStateGroups>
                                         </Grid>
                                     </ControlTemplate>
                                 </RadioButton.ControlTemplate>
@@ -2576,7 +2567,7 @@
                                 VerticalOptions="Center">
                                 <RadioButton.ControlTemplate>
                                     <ControlTemplate>
-                                        <Grid>
+                                        <Grid x:DataType="RadioButton">
                                             <Ellipse
                                                 WidthRequest="18"
                                                 HeightRequest="18"
@@ -2584,12 +2575,28 @@
                                                 StrokeThickness="2"
                                                 Fill="Transparent" />
                                             <Ellipse
+                                                x:Name="CheckedDot"
                                                 WidthRequest="10"
                                                 HeightRequest="10"
                                                 Fill="#FF6DDDFF"
                                                 HorizontalOptions="Center"
                                                 VerticalOptions="Center"
-                                                IsVisible="{TemplateBinding IsChecked}" />
+                                                IsVisible="False" />
+
+                                            <VisualStateManager.VisualStateGroups>
+                                                <VisualStateGroup Name="CheckStates">
+                                                    <VisualState Name="Checked">
+                                                        <VisualState.Setters>
+                                                            <Setter TargetName="CheckedDot" Property="IsVisible" Value="True" />
+                                                        </VisualState.Setters>
+                                                    </VisualState>
+                                                    <VisualState Name="Unchecked">
+                                                        <VisualState.Setters>
+                                                            <Setter TargetName="CheckedDot" Property="IsVisible" Value="False" />
+                                                        </VisualState.Setters>
+                                                    </VisualState>
+                                                </VisualStateGroup>
+                                            </VisualStateManager.VisualStateGroups>
                                         </Grid>
                                     </ControlTemplate>
                                 </RadioButton.ControlTemplate>
@@ -2604,7 +2611,7 @@
                                 VerticalOptions="Center">
                                 <RadioButton.ControlTemplate>
                                     <ControlTemplate>
-                                        <Grid>
+                                        <Grid x:DataType="RadioButton">
                                             <Ellipse
                                                 WidthRequest="18"
                                                 HeightRequest="18"
@@ -2612,12 +2619,28 @@
                                                 StrokeThickness="2"
                                                 Fill="Transparent" />
                                             <Ellipse
+                                                x:Name="CheckedDot"
                                                 WidthRequest="10"
                                                 HeightRequest="10"
                                                 Fill="#FF6DDDFF"
                                                 HorizontalOptions="Center"
                                                 VerticalOptions="Center"
-                                                IsVisible="{TemplateBinding IsChecked}" />
+                                                IsVisible="False" />
+
+                                            <VisualStateManager.VisualStateGroups>
+                                                <VisualStateGroup Name="CheckStates">
+                                                    <VisualState Name="Checked">
+                                                        <VisualState.Setters>
+                                                            <Setter TargetName="CheckedDot" Property="IsVisible" Value="True" />
+                                                        </VisualState.Setters>
+                                                    </VisualState>
+                                                    <VisualState Name="Unchecked">
+                                                        <VisualState.Setters>
+                                                            <Setter TargetName="CheckedDot" Property="IsVisible" Value="False" />
+                                                        </VisualState.Setters>
+                                                    </VisualState>
+                                                </VisualStateGroup>
+                                            </VisualStateManager.VisualStateGroups>
                                         </Grid>
                                     </ControlTemplate>
                                 </RadioButton.ControlTemplate>

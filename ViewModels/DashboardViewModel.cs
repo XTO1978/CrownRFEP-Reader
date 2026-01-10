@@ -440,8 +440,18 @@ public class DashboardViewModel : BaseViewModel
     public DashboardStats? Stats
     {
         get => _stats;
-        set => SetProperty(ref _stats, value);
+        set
+        {
+            if (SetProperty(ref _stats, value))
+            {
+                OnPropertyChanged(nameof(AllGalleryItemCount));
+            }
+        }
     }
+
+    // Contador para el item fijo "Galería General" en el sidebar.
+    // Usa cache cuando está disponible; si no, cae a Stats para evitar mostrar 0.
+    public int AllGalleryItemCount => _allVideosCache?.Count ?? Stats?.TotalVideos ?? 0;
 
     public Session? SelectedSession
     {
@@ -2674,7 +2684,7 @@ public class DashboardViewModel : BaseViewModel
             }
 
             var shown = SelectedSessionVideos.Count;
-            var total = TotalAvailableVideoCount;
+            var total = TotalFilteredVideoCount;
             return shown == total
                 ? $"{shown} vídeos"
                 : $"{shown} de {total} vídeos";
@@ -4266,6 +4276,8 @@ public class DashboardViewModel : BaseViewModel
         _allVideosCache = null;
         _filteredVideosCache = null;
         HasMoreVideos = false;
+
+        OnPropertyChanged(nameof(AllGalleryItemCount));
         
         // Limpiar filtros al cargar
         ClearFilters();
@@ -4283,6 +4295,8 @@ public class DashboardViewModel : BaseViewModel
             _allVideosCache = await _databaseService.GetAllVideoClipsAsync();
             System.Diagnostics.Debug.WriteLine($"[LoadAllVideosAsync] Videos loaded: {_allVideosCache?.Count ?? 0}");
             if (ct.IsCancellationRequested) return;
+
+            OnPropertyChanged(nameof(AllGalleryItemCount));
 
             // Crear diccionario de sesiones para asignar a cada clip
             var sessionIds = _allVideosCache?.Select(c => c.SessionId).Distinct().ToList() ?? new List<int>();
