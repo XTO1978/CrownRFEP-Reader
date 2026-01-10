@@ -2641,6 +2641,9 @@ public class DashboardViewModel : BaseViewModel
 
         try
         {
+            // Actualizar contadores de SmartFolders ya que los videos pueden haber cambiado
+            UpdateSmartFolderVideoCounts();
+            
             // Refrescar estadísticas según el contexto actual
             if (SelectedSession != null)
             {
