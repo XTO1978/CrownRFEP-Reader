@@ -237,6 +237,17 @@ public class WindowsVideoCompositionService : IVideoCompositionService
         int height,
         string prefix,
         CancellationToken cancellationToken)
+        => await CreatePillLabelImageAsync(text, backgroundColor, textColor, width, height, prefix, rounded: true, cancellationToken);
+
+    private static async Task<StorageFile> CreatePillLabelImageAsync(
+        string text,
+        SKColor backgroundColor,
+        SKColor textColor,
+        int width,
+        int height,
+        string prefix,
+        bool rounded,
+        CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -244,7 +255,7 @@ public class WindowsVideoCompositionService : IVideoCompositionService
         using var canvas = new SKCanvas(bitmap);
         canvas.Clear(SKColors.Transparent);
 
-        var radius = height / 2f;
+        var radius = rounded ? (height / 2f) : 0f;
         using (var bgPaint = new SKPaint { Color = backgroundColor, IsAntialias = true })
         {
             canvas.DrawRoundRect(new SKRect(0, 0, width, height), radius, radius, bgPaint);
@@ -778,7 +789,7 @@ public class WindowsVideoCompositionService : IVideoCompositionService
                         var lapBg1 = Darken(lapColor1, 0.35f);
                         var lapBg2 = Darken(lapColor2, 0.35f);
 
-                        var v1LapImg = await CreatePillLabelImageAsync(lapText1, lapBg1, lapColor1, v1LapW, vertLapH, "v1_lap", cancellationToken);
+                        var v1LapImg = await CreatePillLabelImageAsync(lapText1, lapBg1, lapColor1, v1LapW, vertLapH, "v1_lap", rounded: false, cancellationToken);
                         var v1LapClip = await MediaClip.CreateFromImageFileAsync(v1LapImg, segDuration);
                         overlayLayer.Overlays.Add(new MediaOverlay(v1LapClip) { Position = v1LapRect, Delay = cursor, Opacity = 1.0 });
 
@@ -789,7 +800,7 @@ public class WindowsVideoCompositionService : IVideoCompositionService
                             overlayLayer.Overlays.Add(new MediaOverlay(v1NameClip) { Position = v1NameRect, Delay = cursor, Opacity = 1.0 });
                         }
 
-                        var v2LapImg = await CreatePillLabelImageAsync(lapText2, lapBg2, lapColor2, v2LapW, vertLapH, "v2_lap", cancellationToken);
+                        var v2LapImg = await CreatePillLabelImageAsync(lapText2, lapBg2, lapColor2, v2LapW, vertLapH, "v2_lap", rounded: false, cancellationToken);
                         var v2LapClip = await MediaClip.CreateFromImageFileAsync(v2LapImg, segDuration);
                         overlayLayer.Overlays.Add(new MediaOverlay(v2LapClip) { Position = v2LapRect, Delay = cursor, Opacity = 1.0 });
 
