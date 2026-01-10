@@ -35,7 +35,7 @@
     <OnPlatform x:TypeArguments="x:String" x:Key="AppFontMono">
         <On Platform="iOS" Value="Menlo" />
         <On Platform="MacCatalyst" Value="Menlo" />
-        <On Platform="WinUI" Value="Cascadia Mono" />
+        <On Platform="WinUI" Value="Consolas" />
         <On Platform="Android" Value="monospace" />
         <On Platform="Default" Value="monospace" />
     </OnPlatform>

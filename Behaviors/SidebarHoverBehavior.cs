@@ -19,6 +19,10 @@ public class SidebarHoverBehavior : Behavior<Border>
     private UIHoverGestureRecognizer? _hoverRecognizer;
 #endif
 
+#if WINDOWS
+    private PointerGestureRecognizer? _pointerRecognizer;
+#endif
+
     private static Color HoverColor => Color.FromArgb("#FF404040"); // Gray600
     private static Color SelectionColor => Color.FromArgb("#FF2A2A2A"); // Más oscuro que hover
 
@@ -40,6 +44,18 @@ public class SidebarHoverBehavior : Behavior<Border>
             _hoverRecognizer.Dispose();
             _hoverRecognizer = null;
         }
+#endif
+
+#if WINDOWS
+        try
+        {
+            if (_pointerRecognizer != null)
+            {
+                bindable.GestureRecognizers.Remove(_pointerRecognizer);
+                _pointerRecognizer = null;
+            }
+        }
+        catch { }
 #endif
 
         base.OnDetachingFrom(bindable);
@@ -103,6 +119,32 @@ public class SidebarHoverBehavior : Behavior<Border>
         _hoverRecognizer.DelaysTouchesEnded = false;
 
         view.AddGestureRecognizer(_hoverRecognizer);
+#endif
+
+#if WINDOWS
+        if (_pointerRecognizer != null)
+            return;
+
+        _pointerRecognizer = new PointerGestureRecognizer();
+        _pointerRecognizer.PointerEntered += (_, __) =>
+        {
+            if (_isHovering)
+                return;
+
+            _isHovering = true;
+            ApplyHover(bindable);
+        };
+        _pointerRecognizer.PointerExited += (_, __) =>
+        {
+            _isHovering = false;
+            RemoveHover(bindable);
+        };
+
+        try
+        {
+            bindable.GestureRecognizers.Add(_pointerRecognizer);
+        }
+        catch { }
 #endif
     }
 

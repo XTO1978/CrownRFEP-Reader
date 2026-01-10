@@ -22,6 +22,8 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
     private readonly DashboardViewModel _viewModel;
     private NotifyCollectionChangedEventHandler? _smartFoldersChangedHandler;
 
+    private double _sidebarLastMeasuredWidth = -1;
+
     private SessionRow? _contextMenuSessionRow;
     private SmartFolderDefinition? _contextMenuSmartFolder;
     
@@ -54,8 +56,15 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         
         // Suscribirse a eventos de scrubbing
         VideoScrubBehavior.ScrubUpdated += OnScrubUpdated;
+
+        try
+        {
+            if (SubItemContextMenusLayer != null)
+                SubItemContextMenusLayer.IsVisible = false;
+        }
+        catch { }
         VideoScrubBehavior.ScrubEnded += OnScrubEnded;
-        
+
 #if IOS
         // Suscribirse a eventos de long press para preview en iOS
         LongPressVideoPreviewBehavior.VideoLongPressStarted += OnVideoLongPressStarted;
@@ -75,6 +84,9 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         {
             try
             {
+                if (OperatingSystem.IsWindows())
+                    return;
+
                 MainThread.BeginInvokeOnMainThread(() =>
                 {
                     try
@@ -86,9 +98,19 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
             }
             catch { }
         };
-        _viewModel.SmartFolders.CollectionChanged += _smartFoldersChangedHandler;
 
-        try { SidebarSessionsCollectionView?.InvalidateMeasure(); } catch { }
+        try
+        {
+            _viewModel.SmartFolders.CollectionChanged += _smartFoldersChangedHandler;
+        }
+        catch { }
+
+        try
+        {
+            if (!OperatingSystem.IsWindows())
+                SidebarSessionsCollectionView?.InvalidateMeasure();
+        }
+        catch { }
 
 
         try
@@ -123,6 +145,21 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         PreviewPlayer2Q.PositionChanged += OnPreviewPlayerPositionChanged;
         PreviewPlayer3Q.PositionChanged += OnPreviewPlayerPositionChanged;
         PreviewPlayer4Q.PositionChanged += OnPreviewPlayerPositionChanged;
+    }
+
+    private void UpdateSubItemContextMenusLayerVisibility()
+    {
+        try
+        {
+            if (SubItemContextMenusLayer == null)
+                return;
+
+            var anyVisible = (SessionRowContextMenu?.IsVisible ?? false)
+                || (SmartFolderContextMenu?.IsVisible ?? false);
+
+            SubItemContextMenusLayer.IsVisible = anyVisible;
+        }
+        catch { }
     }
 
     ~DashboardPage()
@@ -186,15 +223,114 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
             if (width <= 0)
                 return;
 
+            if (Math.Abs(_sidebarLastMeasuredWidth - width) <= 0.5)
+                return;
+
+            _sidebarLastMeasuredWidth = width;
+
             // Ajustar el header para que se re-mida con el ancho actual del sidebar.
             if (Math.Abs(SidebarFixedItemsHeader.WidthRequest - width) > 0.5)
                 SidebarFixedItemsHeader.WidthRequest = width;
+
+            // En WinUI, invalidaciones de medida dentro de SizeChanged pueden entrar en bucle (freeze).
+            if (OperatingSystem.IsWindows())
+                return;
 
             // Re-medición para que los layouts recalculen truncado y columnas.
             SidebarFixedItemsHeader.InvalidateMeasure();
             SidebarSessionsCollectionView.InvalidateMeasure();
         }
         catch { }
+    }
+
+    private void OnAllGalleryTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            if (BindingContext is DashboardViewModel vm)
+            {
+                vm.SelectAllGalleryCommand.Execute(null);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "OnAllGalleryTapped error", ex);
+        }
+    }
+
+    private void OnVideoLessonsTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            if (BindingContext is DashboardViewModel vm)
+            {
+                vm.ViewVideoLessonsCommand.Execute(null);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "OnVideoLessonsTapped error", ex);
+        }
+    }
+
+    private void OnDiaryTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            if (BindingContext is DashboardViewModel vm)
+            {
+                vm.ViewDiaryCommand.Execute(null);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "OnDiaryTapped error", ex);
+        }
+    }
+
+    private void OnTrashTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            if (BindingContext is DashboardViewModel vm)
+            {
+                vm.ViewTrashCommand.Execute(null);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "OnTrashTapped error", ex);
+        }
+    }
+
+    private void OnSmartFoldersToggleTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            if (BindingContext is DashboardViewModel vm)
+            {
+                vm.ToggleSmartFoldersExpansionCommand.Execute(null);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "OnSmartFoldersToggleTapped error", ex);
+        }
+    }
+
+    private void OnAddSmartFolderTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            if (BindingContext is DashboardViewModel vm)
+            {
+                vm.OpenSmartFolderSidebarPopupCommand.Execute(null);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "OnAddSmartFolderTapped error", ex);
+        }
     }
 
     private void OnUserLibraryMenuTapped(object? sender, TappedEventArgs e)
@@ -222,6 +358,7 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
             UserLibraryContextMenu.TranslationY = anchorPos.Y;
 
             UserLibraryContextMenuOverlay.IsVisible = true;
+            UpdateGlobalDismissOverlayVisibility();
         }
         catch (Exception ex)
         {
@@ -244,6 +381,8 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
                 UserLibraryContextMenuOverlay.IsVisible = false;
         }
         catch { }
+
+        UpdateGlobalDismissOverlayVisibility();
     }
 
     private void OnSessionsMenuTapped(object? sender, TappedEventArgs e)
@@ -271,6 +410,7 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
             SessionsContextMenu.TranslationY = anchorPos.Y;
 
             SessionsContextMenuOverlay.IsVisible = true;
+            UpdateGlobalDismissOverlayVisibility();
         }
         catch (Exception ex)
         {
@@ -324,6 +464,8 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
                 SessionsContextMenuOverlay.IsVisible = false;
         }
         catch { }
+
+        UpdateGlobalDismissOverlayVisibility();
     }
 
     private void OnGlobalTapToDismissContextMenus(object? sender, TappedEventArgs e)
@@ -447,6 +589,8 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
             }
 
             SessionRowContextMenu.IsVisible = true;
+            UpdateSubItemContextMenusLayerVisibility();
+            UpdateGlobalDismissOverlayVisibility();
         }
         catch (Exception ex)
         {
@@ -462,6 +606,9 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
                 SessionRowContextMenu.IsVisible = false;
         }
         catch { }
+
+        UpdateSubItemContextMenusLayerVisibility();
+        UpdateGlobalDismissOverlayVisibility();
     }
 
     private void OnSessionRowMenuEditTapped(object? sender, TappedEventArgs e)
@@ -573,6 +720,8 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
             }
 
             SmartFolderContextMenu.IsVisible = true;
+            UpdateSubItemContextMenusLayerVisibility();
+            UpdateGlobalDismissOverlayVisibility();
         }
         catch (Exception ex)
         {
@@ -644,6 +793,9 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
                 SmartFolderContextMenu.IsVisible = false;
         }
         catch { }
+
+        UpdateSubItemContextMenusLayerVisibility();
+        UpdateGlobalDismissOverlayVisibility();
     }
 
     private void HideAllContextMenus()
@@ -652,6 +804,26 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         HideSessionsContextMenu();
         HideSessionRowContextMenu();
         HideSmartFolderContextMenu();
+
+        UpdateSubItemContextMenusLayerVisibility();
+        UpdateGlobalDismissOverlayVisibility();
+    }
+
+    private void UpdateGlobalDismissOverlayVisibility()
+    {
+        try
+        {
+            if (GlobalDismissOverlay == null)
+                return;
+
+            var anyVisible = (UserLibraryContextMenuOverlay?.IsVisible ?? false)
+                || (SessionsContextMenuOverlay?.IsVisible ?? false)
+                || (SessionRowContextMenu?.IsVisible ?? false)
+                || (SmartFolderContextMenu?.IsVisible ?? false);
+
+            GlobalDismissOverlay.IsVisible = anyVisible;
+        }
+        catch { }
     }
 
     private void OnSmartFolderMenuEditTapped(object? sender, TappedEventArgs e)

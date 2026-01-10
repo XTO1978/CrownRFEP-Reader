@@ -38,8 +38,7 @@
                     <DataTemplate x:DataType="vm:SessionGroupHeaderRow">
                         <Grid 
                             BackgroundColor="Transparent"
-                            HorizontalOptions="Fill"
-                            IsVisible="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=IsSessionsExpanded}">
+                            HorizontalOptions="Fill">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="{OnPlatform iOS=24, WinUI=24, MacCatalyst=48, Default=48}" />
                                 <ColumnDefinition Width="*" />
@@ -109,8 +108,7 @@
                     <DataTemplate x:DataType="vm:SessionRow">
                         <Grid 
                             BackgroundColor="Transparent"
-                            HorizontalOptions="Fill"
-                            IsVisible="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=IsSessionsExpanded}">
+                            HorizontalOptions="Fill">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="{OnPlatform iOS=24, WinUI=24, MacCatalyst=48, Default=48}" />
                                 <ColumnDefinition Width="*" />
@@ -222,9 +220,6 @@
         x:Name="RootGrid"
         Padding="0"
         RowDefinitions="Auto,*,Auto">
-        <Grid.GestureRecognizers>
-            <TapGestureRecognizer Buttons="Primary" Tapped="OnGlobalTapToDismissContextMenus" />
-        </Grid.GestureRecognizers>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="{StaticResource SidebarWidthDefault}" />
             <ColumnDefinition Width="8" />
@@ -274,7 +269,7 @@
             Grid.Row="1"
             Grid.Column="0"
             BackgroundColor="#FF1E1E1E"
-            RowDefinitions="*,Auto">
+            RowDefinitions="Auto,*,Auto">
 
             <Grid.Padding>
                 <OnPlatform x:TypeArguments="Thickness">
@@ -283,33 +278,25 @@
                 </OnPlatform>
             </Grid.Padding>
 
-            <CollectionView
-                x:Name="SidebarSessionsCollectionView"
+            <!--  Items fijos del sidebar (fuera del CollectionView para que funcionen gestos en WinUI)  -->
+            <VerticalStackLayout
+                x:Name="SidebarFixedItemsHeader"
                 Grid.Row="0"
-                BackgroundColor="#00BBBABA"
-                ItemsSource="{Binding SessionRows}"
-                ItemTemplate="{StaticResource SessionsListRowTemplateSelector}"
-                SelectionMode="None">
+                HorizontalOptions="Fill">
 
-                <CollectionView.Margin>
+                <VerticalStackLayout.Margin>
                     <OnPlatform x:TypeArguments="Thickness">
                         <On Platform="iOS" Value="0,8,0,0" />
                         <On Platform="Default" Value="0,20,0,0" />
                     </OnPlatform>
-                </CollectionView.Margin>
+                </VerticalStackLayout.Margin>
 
-                <!--  Items fijos: Galería General + Videolecciones  -->
-                <CollectionView.Header>
-                    <VerticalStackLayout
-                        x:Name="SidebarFixedItemsHeader"
-                        HorizontalOptions="Fill">
-
-                        <VerticalStackLayout.Spacing>
-                            <OnPlatform x:TypeArguments="x:Double">
-                                <On Platform="iOS" Value="6" />
-                                <On Platform="Default" Value="{StaticResource SpacingXSmall}" />
-                            </OnPlatform>
-                        </VerticalStackLayout.Spacing>
+                <VerticalStackLayout.Spacing>
+                    <OnPlatform x:TypeArguments="x:Double">
+                        <On Platform="iOS" Value="6" />
+                        <On Platform="Default" Value="{StaticResource SpacingXSmall}" />
+                    </OnPlatform>
+                </VerticalStackLayout.Spacing>
 
                         <!--  Item padre: Mi biblioteca (colección del usuario con lectura/escritura)  -->
                         <Border
@@ -407,7 +394,7 @@
                                 </DataTrigger>
                             </Border.Triggers>
                             <Border.GestureRecognizers>
-                                <TapGestureRecognizer Command="{Binding SelectAllGalleryCommand}" />
+                                <TapGestureRecognizer Command="{Binding SelectAllGalleryCommand}" Tapped="OnAllGalleryTapped" />
                             </Border.GestureRecognizers>
                             <Grid ColumnDefinitions="Auto,*,Auto" Margin="18,0,0,0" VerticalOptions="Center" HorizontalOptions="Fill">
                                 <controls:SymbolIcon
@@ -457,7 +444,7 @@
                                 </DataTrigger>
                             </Border.Triggers>
                             <Border.GestureRecognizers>
-                                <TapGestureRecognizer Command="{Binding ViewVideoLessonsCommand}" />
+                                <TapGestureRecognizer Command="{Binding ViewVideoLessonsCommand}" Tapped="OnVideoLessonsTapped" />
                             </Border.GestureRecognizers>
                             <Grid ColumnDefinitions="Auto,*,Auto" Margin="18,0,0,0" VerticalOptions="Center" HorizontalOptions="Fill">
                                 <controls:SymbolIcon
@@ -499,7 +486,7 @@
                                 <behaviors:SidebarHoverBehavior />
                             </Border.Behaviors>
                             <Border.GestureRecognizers>
-                                <TapGestureRecognizer Command="{Binding ViewTrashCommand}" />
+                                <TapGestureRecognizer Command="{Binding ViewTrashCommand}" Tapped="OnTrashTapped" />
                             </Border.GestureRecognizers>
                             <Grid ColumnDefinitions="Auto,*,Auto" Margin="18,0,0,0" VerticalOptions="Center" HorizontalOptions="Fill">
                                 <controls:SymbolIcon
@@ -549,7 +536,7 @@
                                     BackgroundColor="Transparent"
                                     StrokeThickness="0">
                                     <Border.GestureRecognizers>
-                                        <TapGestureRecognizer Command="{Binding ToggleSmartFoldersExpansionCommand}" />
+                                        <TapGestureRecognizer Command="{Binding ToggleSmartFoldersExpansionCommand}" Tapped="OnSmartFoldersToggleTapped" />
                                     </Border.GestureRecognizers>
                                     <controls:SymbolIcon
                                         HeightRequest="{StaticResource IconSizeSmall}"
@@ -592,7 +579,7 @@
                                     HorizontalOptions="End"
                                     VerticalOptions="Center">
                                     <Border.GestureRecognizers>
-                                        <TapGestureRecognizer Command="{Binding OpenSmartFolderSidebarPopupCommand}" />
+                                        <TapGestureRecognizer Command="{Binding OpenSmartFolderSidebarPopupCommand}" Tapped="OnAddSmartFolderTapped" />
                                     </Border.GestureRecognizers>
                                     <controls:SymbolIcon
                                         HeightRequest="{StaticResource IconSizeSmall}"
@@ -682,6 +669,9 @@
                             </BindableLayout.ItemTemplate>
                         </VerticalStackLayout>
 
+                        </VerticalStackLayout>
+                        <!--  Cierra UserLibraryItemsContainer  -->
+
                         <!--  Diario Personal  -->
                         <Border
                             x:Name="DiaryHeaderBorder"
@@ -704,7 +694,7 @@
                                 </DataTrigger>
                             </Border.Triggers>
                             <Border.GestureRecognizers>
-                                <TapGestureRecognizer Command="{Binding ViewDiaryCommand}" />
+                                <TapGestureRecognizer Command="{Binding ViewDiaryCommand}" Tapped="OnDiaryTapped" />
                             </Border.GestureRecognizers>
                             <Grid ColumnDefinitions="Auto,*" Margin="18,0,0,0" VerticalOptions="Center" HorizontalOptions="Fill">
                                 <controls:SymbolIcon
@@ -861,9 +851,16 @@
                                     HeightRequest="4" />
                             </Grid>
                         </Border>
-                        </VerticalStackLayout>
-                    </VerticalStackLayout>
-                </CollectionView.Header>
+            </VerticalStackLayout>
+
+            <!--  CollectionView de sesiones (ahora en Row="1" para quedar debajo de los items fijos)  -->
+            <CollectionView
+                x:Name="SidebarSessionsCollectionView"
+                Grid.Row="1"
+                BackgroundColor="#00BBBABA"
+                ItemsSource="{Binding SessionRows}"
+                ItemTemplate="{StaticResource SessionsListRowTemplateSelector}"
+                SelectionMode="None">
 
                 <CollectionView.ItemsLayout>
                     <LinearItemsLayout Orientation="Vertical">
@@ -891,7 +888,7 @@
             </CollectionView>
 
             <!--  Acciones de sesión  -->
-            <VerticalStackLayout Grid.Row="1" Spacing="{StaticResource SpacingSmall}" Margin="{StaticResource MarginVerticalSection}">
+            <VerticalStackLayout Grid.Row="2" Spacing="{StaticResource SpacingSmall}" Margin="{StaticResource MarginVerticalSection}">
                 
                 <!--  Botón Nueva sesión (solo iOS)  -->
                 <Border
@@ -1035,7 +1032,7 @@
                                 <behaviors:HoverBackgroundBehavior />
                             </Border.Behaviors>
                             <Border.GestureRecognizers>
-                                <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=VideoTapCommand}" CommandParameter="{Binding .}" />
+                                <TapGestureRecognizer Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.VideoTapCommand}" CommandParameter="{Binding .}" />
                                 <DragGestureRecognizer CanDrag="True" DragStarting="OnDragStarting" />
                             </Border.GestureRecognizers>
                             <Border.Triggers>
@@ -1299,7 +1296,7 @@
                             </Border.Behaviors>
                             <Border.GestureRecognizers>
                                 <TapGestureRecognizer
-                                    Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=VideoLessonTapCommand}"
+                                    Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.VideoLessonTapCommand}"
                                     CommandParameter="{Binding .}" />
                             </Border.GestureRecognizers>
 
@@ -1355,7 +1352,7 @@
                                             StrokeThickness="0">
                                             <Border.GestureRecognizers>
                                                 <TapGestureRecognizer
-                                                    Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=ShareVideoLessonCommand}"
+                                                    Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.ShareVideoLessonCommand}"
                                                     CommandParameter="{Binding .}" />
                                             </Border.GestureRecognizers>
                                             <controls:SymbolIcon
@@ -1375,7 +1372,7 @@
                                             StrokeThickness="0">
                                             <Border.GestureRecognizers>
                                                 <TapGestureRecognizer
-                                                    Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=DeleteVideoLessonCommand}"
+                                                    Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.DeleteVideoLessonCommand}"
                                                     CommandParameter="{Binding .}" />
                                             </Border.GestureRecognizers>
                                             <controls:SymbolIcon
@@ -3297,7 +3294,7 @@
                                             TextColor="#FF6DDDFF" />
                                         
                                         <!--  ===== VISTA TIEMPOS ABSOLUTOS =====  -->
-                                        <VerticalStackLayout Spacing="4" IsVisible="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=ShowSectionTimesAbsolute}">
+                                        <VerticalStackLayout Spacing="4" IsVisible="{Binding Source={x:Reference ThisPage}, Path=BindingContext.ShowSectionTimesAbsolute}">
                                             <!--  Cabecera de tabla (absoluta)  -->
                                             <Grid ColumnDefinitions="2*,*,*,*,*" ColumnSpacing="4" Padding="4,2" BackgroundColor="#FF252525">
                                                 <Label Grid.Column="0" FontSize="{StaticResource FontSizeSmall}" FontAttributes="None" Text="ATLETA" TextColor="#FFCCCCCC" />
@@ -3327,7 +3324,7 @@
                                         </VerticalStackLayout>
                                         
                                         <!--  ===== VISTA DIFERENCIAS =====  -->
-                                        <VerticalStackLayout Spacing="4" IsVisible="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=ShowSectionTimesDifferences}">
+                                        <VerticalStackLayout Spacing="4" IsVisible="{Binding Source={x:Reference ThisPage}, Path=BindingContext.ShowSectionTimesDifferences}">
                                             <!--  Cabecera de tabla (diferencias)  -->
                                             <Grid ColumnDefinitions="2*,*,*,*" ColumnSpacing="4" Padding="4,2" BackgroundColor="#FF252525">
                                                 <Label Grid.Column="0" FontSize="{StaticResource FontSizeSmall}" FontAttributes="None" Text="ATLETA" TextColor="#FFCCCCCC" />
@@ -4085,7 +4082,7 @@
                                                 Stroke="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF6DDDFF|#FF404040}">
                                                 <Border.GestureRecognizers>
                                                     <TapGestureRecognizer 
-                                                        Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=SelectSessionTypeCommand}"
+                                                        Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.SelectSessionTypeCommand}"
                                                         CommandParameter="{Binding .}" />
                                                 </Border.GestureRecognizers>
                                                 <Label
@@ -4213,7 +4210,7 @@
                                                 Padding="12,6"
                                                 HeightRequest="{StaticResource ElementHeightDefault}"
                                                 HorizontalOptions="Start"
-                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=ViewSessionAsPlaylistCommand}"
+                                                Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.ViewSessionAsPlaylistCommand}"
                                                 CommandParameter="{Binding .}" />
                                         </VerticalStackLayout>
 
@@ -4415,7 +4412,7 @@
                                             FontAttributes="None"
                                             CornerRadius="8"
                                             HeightRequest="{StaticResource ElementHeightLarge}"
-                                            Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=SaveCalendarDiaryCommand}"
+                                            Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.SaveCalendarDiaryCommand}"
                                             CommandParameter="{Binding .}"
                                             IsVisible="{Binding HasValoraciones, Converter={toolkit:InvertedBoolConverter}}" />
 
@@ -5229,7 +5226,7 @@
                                         Stroke="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF6DDDFF|#FF404040}">
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer 
-                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=SelectSessionTypeCommand}"
+                                                Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.SelectSessionTypeCommand}"
                                                 CommandParameter="{Binding .}" />
                                         </Border.GestureRecognizers>
                                         <Label
@@ -5794,12 +5791,12 @@
                                         HeightRequest="40">
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer
-                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=SelectPickerIconCommand}"
+                                                Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.SelectPickerIconCommand}"
                                                 CommandParameter="{Binding Name}" />
                                         </Border.GestureRecognizers>
                                         <controls:SymbolIcon
                                             SymbolName="{Binding Name}"
-                                            TintColor="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=SelectedPickerColor, Converter={StaticResource HexStringToColorConverter}}"
+                                            TintColor="{Binding Source={x:Reference ThisPage}, Path=BindingContext.SelectedPickerColor, Converter={StaticResource HexStringToColorConverter}}"
                                             WidthRequest="20"
                                             HeightRequest="20"
                                             HorizontalOptions="Center"
@@ -5890,7 +5887,7 @@
                                             StrokeShape="RoundRectangle 4">
                                             <Border.GestureRecognizers>
                                                 <TapGestureRecognizer
-                                                    Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=SelectBatchAthleteCommand}"
+                                                    Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.SelectBatchAthleteCommand}"
                                                     CommandParameter="{Binding .}" />
                                             </Border.GestureRecognizers>
                                             <Label
@@ -6006,7 +6003,7 @@
                                         StrokeShape="RoundRectangle 4">
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer
-                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=ToggleBatchTagCommand}"
+                                                Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.ToggleBatchTagCommand}"
                                                 CommandParameter="{Binding .}" />
                                         </Border.GestureRecognizers>
                                         <Label
@@ -6396,7 +6393,7 @@
                                             StrokeShape="RoundRectangle 4">
                                             <Border.GestureRecognizers>
                                                 <TapGestureRecognizer 
-                                                    Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=SelectDetailedTimesAthleteCommand}"
+                                                    Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.SelectDetailedTimesAthleteCommand}"
                                                     CommandParameter="{Binding .}" />
                                             </Border.GestureRecognizers>
                                             <Label
@@ -6547,6 +6544,20 @@
         <controls:AppFooter
             Grid.Row="2"
             Grid.ColumnSpan="5" />
+
+        <!--  Capa global para cerrar menús contextuales (solo visible cuando hay algún menú abierto)  -->
+        <BoxView
+            x:Name="GlobalDismissOverlay"
+            Grid.RowSpan="3"
+            Grid.ColumnSpan="5"
+            BackgroundColor="#00000000"
+            IsVisible="False"
+            InputTransparent="False"
+            ZIndex="998">
+            <BoxView.GestureRecognizers>
+                <TapGestureRecognizer Buttons="Primary" Tapped="OnGlobalTapToDismissContextMenus" />
+            </BoxView.GestureRecognizers>
+        </BoxView>
 
         <!--  Menú contextual (overlay) para Mi biblioteca  -->
         <Grid
@@ -6726,9 +6737,17 @@
             Grid.Row="1"
             Grid.RowSpan="2"
             Grid.ColumnSpan="5"
-            InputTransparent="True"
-            CascadeInputTransparent="False"
+            IsVisible="False"
+            BackgroundColor="#00000000"
+            InputTransparent="False"
             ZIndex="999">
+
+            <!-- Tap fuera para cerrar (no interfiere con el menú: el menú consume su propio tap) -->
+            <BoxView BackgroundColor="#00000000">
+                <BoxView.GestureRecognizers>
+                    <TapGestureRecognizer Buttons="Primary" Tapped="OnGlobalTapToDismissContextMenus" />
+                </BoxView.GestureRecognizers>
+            </BoxView>
 
             <!--  Menú contextual para subitem de Sesión  -->
             <Border
