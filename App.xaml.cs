@@ -76,6 +76,16 @@ public partial class App : Application
 			{
 				UIScaleHelper.Instance.Initialize(scalingService);
 			}
+
+			// Purgado best-effort de papelera (30 días)
+			var trashService = activationState.Context.Services.GetService<ITrashService>();
+			if (trashService != null)
+			{
+				_ = Task.Run(async () =>
+				{
+					try { await trashService.PurgeExpiredAsync(); } catch { }
+				});
+			}
 		}
 
 #if MACCATALYST

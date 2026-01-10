@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:CrownRFEP_Reader.ViewModels"
+             xmlns:models="clr-namespace:CrownRFEP_Reader.Models"
+             xmlns:controls="clr-namespace:CrownRFEP_Reader.Views.Controls"
+             x:Class="CrownRFEP_Reader.Views.TrashPage"
+             x:DataType="vm:TrashViewModel"
+             BackgroundColor="#FF121212"
+             Title="Papelera">
+
+    <Grid RowDefinitions="Auto,Auto,Auto,*" Padding="0" BackgroundColor="#FF121212">
+
+        <controls:TopTabsBar 
+            Grid.Row="0" 
+            HorizontalOptions="Center" 
+            VerticalOptions="Start"
+            InputTransparent="False"
+            ZIndex="100"/>
+
+        <!-- Título y acciones -->
+        <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto,Auto" Margin="30,15,30,5">
+            <HorizontalStackLayout Spacing="10">
+                <Label Text="Papelera" 
+                       FontSize="24"
+                       VerticalOptions="Center" TextColor="White"/>
+            </HorizontalStackLayout>
+
+            <Button Grid.Column="1"
+                    Text="Refrescar"
+                    Command="{Binding RefreshCommand}"
+                    BackgroundColor="#FF2A2A2A"
+                    TextColor="White"
+                    FontSize="14"
+                    Padding="16,6"
+                    Margin="0,0,10,0"
+                    CornerRadius="4"/>
+
+            <Button Grid.Column="2"
+                    Text="{Binding CurrentSelectedCount, StringFormat='Restaurar ({0})'}"
+                    Command="{Binding RestoreSelectedCommand}"
+                    IsEnabled="{Binding CanOperateCurrentTab}"
+                    BackgroundColor="#FF2A2A2A"
+                    TextColor="#FF6DDDFF"
+                    FontSize="14"
+                    Padding="16,6"
+                    Margin="0,0,10,0"
+                    CornerRadius="4"/>
+
+            <Button Grid.Column="3"
+                    Text="{Binding CurrentSelectedCount, StringFormat='Eliminar ({0})'}"
+                    Command="{Binding DeleteSelectedPermanentlyCommand}"
+                    IsEnabled="{Binding CanOperateCurrentTab}"
+                    BackgroundColor="#FF2A2A2A"
+                    TextColor="#FFFF6B6B"
+                    FontSize="14"
+                    Padding="16,6"
+                    CornerRadius="4"/>
+        </Grid>
+
+        <!-- Tabs de navegación -->
+        <HorizontalStackLayout Grid.Row="2" Margin="30,10" Spacing="8">
+            <Button Text="{Binding TrashedSessionsCount, StringFormat='Sesiones ({0})'}"
+                    Command="{Binding SelectTabCommand}"
+                    CommandParameter="0"
+                    BackgroundColor="{Binding IsSessionsTab, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF6DDDFF|#FF2A2A2A'}"
+                    TextColor="{Binding IsSessionsTab, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF000000|#FFFFFFFF'}"
+                    FontSize="13"
+                    Padding="14,8"
+                    CornerRadius="4"/>
+
+                <Button Text="{Binding TrashedVideosCount, StringFormat='Vídeos ({0})'}"
+                    Command="{Binding SelectTabCommand}"
+                    CommandParameter="1"
+                    BackgroundColor="{Binding IsVideosTab, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF6DDDFF|#FF2A2A2A'}"
+                    TextColor="{Binding IsVideosTab, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF000000|#FFFFFFFF'}"
+                    FontSize="13"
+                    Padding="14,8"
+                    CornerRadius="4"/>
+        </HorizontalStackLayout>
+
+        <!-- Contenido de tabs -->
+        <Grid Grid.Row="3" Margin="30,10,30,20">
+
+            <!-- Tab Sesiones -->
+            <Border IsVisible="{Binding IsSessionsTab}"
+                    BackgroundColor="#FF1A1A1A"
+                    StrokeThickness="0"
+                    StrokeShape="RoundRectangle 8">
+                <Grid RowDefinitions="Auto,*">
+                    <Border BackgroundColor="#FF232323" StrokeThickness="0" Padding="0">
+                        <Grid ColumnDefinitions="50,80,*" Padding="12,10">
+                            <Label Text="✓" TextColor="White" HorizontalOptions="Center"/>
+                            <Label Grid.Column="1" Text="ID" TextColor="White"/>
+                            <Label Grid.Column="2" Text="Sesión" TextColor="White"/>
+                        </Grid>
+                    </Border>
+
+                    <ScrollView Grid.Row="1">
+                        <VerticalStackLayout BindableLayout.ItemsSource="{Binding TrashedSessions}" Spacing="0">
+                            <BindableLayout.EmptyView>
+                                <Label Text="No hay sesiones en la papelera" TextColor="Gray" HorizontalOptions="Center" Margin="40"/>
+                            </BindableLayout.EmptyView>
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate x:DataType="models:Session">
+                                    <Border StrokeThickness="0" BackgroundColor="Transparent">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer 
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:TrashViewModel}}, Path=ToggleSessionSelectionCommand}"
+                                                CommandParameter="{Binding .}"/>
+                                        </Border.GestureRecognizers>
+                                        <Grid ColumnDefinitions="50,80,*" Padding="12,10">
+                                            <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                                      InputTransparent="True"
+                                                      HorizontalOptions="Center" VerticalOptions="Center" Color="#FF6DDDFF"/>
+                                            <Border Grid.Column="1" BackgroundColor="#FF2A2A2A" StrokeThickness="0"
+                                                    StrokeShape="RoundRectangle 4" WidthRequest="45" HeightRequest="28" HorizontalOptions="Start">
+                                                <Label Text="{Binding Id}" TextColor="White" HorizontalOptions="Center" VerticalOptions="Center"/>
+                                            </Border>
+                                            <Label Grid.Column="2" Text="{Binding DisplayName}" TextColor="White" FontSize="14" VerticalOptions="Center" LineBreakMode="TailTruncation"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </VerticalStackLayout>
+                    </ScrollView>
+                </Grid>
+            </Border>
+
+            <!-- Tab Vídeos -->
+            <Border IsVisible="{Binding IsVideosTab}"
+                    BackgroundColor="#FF1A1A1A"
+                    StrokeThickness="0"
+                    StrokeShape="RoundRectangle 8">
+                <Grid RowDefinitions="Auto,*">
+                    <Border BackgroundColor="#FF232323" StrokeThickness="0" Padding="0">
+                        <Grid ColumnDefinitions="50,80,*" Padding="12,10">
+                            <Label Text="✓" TextColor="White" HorizontalOptions="Center"/>
+                            <Label Grid.Column="1" Text="ID" TextColor="White"/>
+                            <Label Grid.Column="2" Text="Vídeo" TextColor="White"/>
+                        </Grid>
+                    </Border>
+
+                    <ScrollView Grid.Row="1">
+                        <VerticalStackLayout BindableLayout.ItemsSource="{Binding TrashedVideos}" Spacing="0">
+                            <BindableLayout.EmptyView>
+                                <Label Text="No hay vídeos en la papelera" TextColor="Gray" HorizontalOptions="Center" Margin="40"/>
+                            </BindableLayout.EmptyView>
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate x:DataType="models:VideoClip">
+                                    <Border StrokeThickness="0" BackgroundColor="Transparent">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer 
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:TrashViewModel}}, Path=ToggleVideoSelectionCommand}"
+                                                CommandParameter="{Binding .}"/>
+                                        </Border.GestureRecognizers>
+                                        <Grid ColumnDefinitions="50,80,*" Padding="12,10">
+                                            <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                                      InputTransparent="True"
+                                                      HorizontalOptions="Center" VerticalOptions="Center" Color="#FF6DDDFF"/>
+                                            <Border Grid.Column="1" BackgroundColor="#FF2A2A2A" StrokeThickness="0"
+                                                    StrokeShape="RoundRectangle 4" WidthRequest="45" HeightRequest="28" HorizontalOptions="Start">
+                                                <Label Text="{Binding Id}" TextColor="White" HorizontalOptions="Center" VerticalOptions="Center"/>
+                                            </Border>
+                                            <Label Grid.Column="2" Text="{Binding DisplayLine1}" TextColor="White" FontSize="14" VerticalOptions="Center" LineBreakMode="TailTruncation"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </VerticalStackLayout>
+                    </ScrollView>
+                </Grid>
+            </Border>
+
+        </Grid>
+    </Grid>
+</ContentPage>

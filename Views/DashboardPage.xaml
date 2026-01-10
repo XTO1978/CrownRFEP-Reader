@@ -492,6 +492,48 @@
                             </Grid>
                         </Border>
 
+                        <Border
+                            x:Name="TrashHeaderBorder"
+                            Style="{StaticResource SidebarMenuItemBorder}">
+                            <Border.Padding>
+                                <OnPlatform x:TypeArguments="Thickness">
+                                    <On Platform="iOS" Value="10,8,4,8" />
+                                    <On Platform="Default" Value="10,6,4,6" />
+                                </OnPlatform>
+                            </Border.Padding>
+                            <Border.Behaviors>
+                                <behaviors:SidebarHoverBehavior />
+                            </Border.Behaviors>
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding ViewTrashCommand}" />
+                            </Border.GestureRecognizers>
+                            <Grid ColumnDefinitions="Auto,*,Auto" Margin="18,0,0,0" VerticalOptions="Center" HorizontalOptions="Fill">
+                                <controls:SymbolIcon
+                                    Grid.Column="0"
+                                    Margin="4,0,0,0"
+                                    HeightRequest="{StaticResource IconSizeSidebarMenu}"
+                                    SymbolName="trash"
+                                    TintColor="White"
+                                    VerticalOptions="Center"
+                                    WidthRequest="{StaticResource IconSizeSidebarMenu}" />
+                                <Label
+                                    Grid.Column="1"
+                                    Margin="8,0,0,0"
+                                    Style="{StaticResource SidebarMenuItemLabel}"
+                                    Text="Papelera" />
+                                <Label
+                                    Grid.Column="2"
+                                    Margin="0,0,8,0"
+                                    FontFamily="{StaticResource AppFontMono}"
+                                    FontSize="{StaticResource FontSizeSmall}"
+                                    HorizontalOptions="End"
+                                    HorizontalTextAlignment="End"
+                                    Text="{Binding TrashItemCount}"
+                                    TextColor="#FF888888"
+                                    VerticalOptions="Center" />
+                            </Grid>
+                        </Border>
+
                         <!--  Carpetas inteligentes  -->
                         <Border
                             x:Name="SmartFoldersHeaderBorder"

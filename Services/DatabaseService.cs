@@ -63,7 +63,7 @@ public class DatabaseService
         var athletes = await db.Table<Athlete>().ToListAsync();
         var categories = await db.Table<Category>().ToListAsync();
         var tags = await db.Table<Tag>().ToListAsync();
-        var sessions = await db.Table<Session>().ToListAsync();
+        var sessions = await db.Table<Session>().Where(s => s.IsDeleted == 0).ToListAsync();
         var eventTags = await db.Table<EventTagDefinition>().ToListAsync();
 
         _athleteCache = athletes.ToDictionary(a => a.Id, a => a);
@@ -124,6 +124,12 @@ public class DatabaseService
         // Migraciones ligeras: columnas nuevas en videoClip
         await EnsureColumnExistsAsync(_database, "videoClip", "localClipPath", "TEXT");
         await EnsureColumnExistsAsync(_database, "videoClip", "localThumbnailPath", "TEXT");
+
+        // Papelera (soft-delete)
+        await EnsureColumnExistsAsync(_database, "sesion", "is_deleted", "INTEGER DEFAULT 0");
+        await EnsureColumnExistsAsync(_database, "sesion", "deleted_at_utc", "INTEGER DEFAULT 0");
+        await EnsureColumnExistsAsync(_database, "videoClip", "is_deleted", "INTEGER DEFAULT 0");
+        await EnsureColumnExistsAsync(_database, "videoClip", "deleted_at_utc", "INTEGER DEFAULT 0");
 
         // Migraciones ligeras: columnas nuevas en userProfile
         await EnsureColumnExistsAsync(_database, "userProfile", "referenceAthleteId", "INTEGER");
@@ -418,12 +424,17 @@ public class DatabaseService
     public async Task<List<Session>> GetAllSessionsAsync()
     {
         var db = await GetConnectionAsync();
-        var sessions = await db.Table<Session>().OrderByDescending(s => s.Fecha).ToListAsync();
+        var sessions = await db.Table<Session>()
+            .Where(s => s.IsDeleted == 0)
+            .OrderByDescending(s => s.Fecha)
+            .ToListAsync();
         
         // Cargar el conteo de videos para cada sesión
         foreach (var session in sessions)
         {
-            session.VideoCount = await db.Table<VideoClip>().Where(v => v.SessionId == session.Id).CountAsync();
+            session.VideoCount = await db.Table<VideoClip>()
+                .Where(v => v.SessionId == session.Id && v.IsDeleted == 0)
+                .CountAsync();
         }
         
         return sessions;
@@ -432,7 +443,7 @@ public class DatabaseService
     public async Task<Session?> GetSessionByIdAsync(int id)
     {
         var db = await GetConnectionAsync();
-        return await db.Table<Session>().FirstOrDefaultAsync(s => s.Id == id);
+        return await db.Table<Session>().FirstOrDefaultAsync(s => s.Id == id && s.IsDeleted == 0);
     }
 
     public async Task<int> SaveSessionAsync(Session session)
@@ -780,7 +791,7 @@ public class DatabaseService
     {
         var db = await GetConnectionAsync();
         var clips = await db.Table<VideoClip>()
-            .Where(v => v.SessionId == sessionId)
+            .Where(v => v.SessionId == sessionId && v.IsDeleted == 0)
             .OrderByDescending(v => v.CreationDate)
             .ToListAsync();
 
@@ -826,19 +837,19 @@ public class DatabaseService
     public async Task<VideoClip?> GetVideoClipByIdAsync(int videoId)
     {
         var db = await GetConnectionAsync();
-        return await db.Table<VideoClip>().FirstOrDefaultAsync(v => v.Id == videoId);
+        return await db.Table<VideoClip>().FirstOrDefaultAsync(v => v.Id == videoId && v.IsDeleted == 0);
     }
 
     public async Task<List<VideoClip>> GetVideoClipsByAthleteAsync(int athleteId)
     {
         var db = await GetConnectionAsync();
         var clips = await db.Table<VideoClip>()
-            .Where(v => v.AtletaId == athleteId)
+            .Where(v => v.AtletaId == athleteId && v.IsDeleted == 0)
             .OrderByDescending(v => v.CreationDate)
             .ToListAsync();
 
         // Hidratar rutas locales por sesión (para que el reproductor encuentre los archivos)
-        var sessions = await db.Table<Session>().ToListAsync();
+        var sessions = await db.Table<Session>().Where(s => s.IsDeleted == 0).ToListAsync();
         var sessionById = sessions.ToDictionary(s => s.Id, s => s);
         foreach (var clip in clips)
         {
@@ -868,6 +879,7 @@ public class DatabaseService
     {
         var db = await GetConnectionAsync();
         var clips = await db.Table<VideoClip>()
+            .Where(v => v.IsDeleted == 0)
             .OrderByDescending(v => v.CreationDate)
             .ToListAsync();
 
@@ -1445,13 +1457,13 @@ public class DatabaseService
     public async Task<int> GetTotalSessionsCountAsync()
     {
         var db = await GetConnectionAsync();
-        return await db.Table<Session>().CountAsync();
+        return await db.Table<Session>().Where(s => s.IsDeleted == 0).CountAsync();
     }
 
     public async Task<int> GetTotalVideosCountAsync()
     {
         var db = await GetConnectionAsync();
-        return await db.Table<VideoClip>().CountAsync();
+        return await db.Table<VideoClip>().Where(v => v.IsDeleted == 0).CountAsync();
     }
 
     // ==================== BORRADO ====================

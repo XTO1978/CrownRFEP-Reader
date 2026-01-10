@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using System.Threading;
 using System.Windows.Input;
 using CrownRFEP_Reader.Models;
 using CrownRFEP_Reader.Services;
@@ -158,6 +159,8 @@ public class IconPickerItem : INotifyPropertyChanged
 public class DashboardViewModel : BaseViewModel
 {
     private readonly DatabaseService _databaseService;
+    private readonly ITrashService _trashService;
+        private int _trashItemCount;
     private readonly CrownFileService _crownFileService;
     private readonly StatisticsService _statisticsService;
     private readonly ThumbnailService _thumbnailService;
@@ -212,6 +215,11 @@ public class DashboardViewModel : BaseViewModel
     private int _newSmartFolderLiveMatchCount;
     private SmartFolderDefinition? _activeSmartFolder;
     private List<VideoClip>? _smartFolderFilteredVideosCache;
+
+    // Evita que al limpiar filtros se disparen ApplyFiltersAsync múltiples veces.
+    private bool _suppressFilterSelectionChanged;
+    // Versión para descartar cálculos de filtros fuera de orden (race conditions).
+    private int _filtersVersion;
 
     // Popup de personalización de icono/color
     private bool _showIconColorPickerPopup;
@@ -2694,6 +2702,7 @@ public class DashboardViewModel : BaseViewModel
     public ICommand DeleteSelectedSessionCommand { get; }
     public ICommand SelectAllGalleryCommand { get; }
     public ICommand ViewVideoLessonsCommand { get; }
+    public ICommand ViewTrashCommand { get; }
     public ICommand ViewDiaryCommand { get; }
     public ICommand SelectDiaryDateCommand { get; }
     public ICommand LoadMoreVideosCommand { get; }
@@ -2879,6 +2888,7 @@ public class DashboardViewModel : BaseViewModel
 
     public DashboardViewModel(
         DatabaseService databaseService,
+        ITrashService trashService,
         CrownFileService crownFileService,
         StatisticsService statisticsService,
         ThumbnailService thumbnailService,
@@ -2888,6 +2898,7 @@ public class DashboardViewModel : BaseViewModel
         ImportProgressService? importProgressService = null)
     {
         _databaseService = databaseService;
+        _trashService = trashService;
         _crownFileService = crownFileService;
         _statisticsService = statisticsService;
         _thumbnailService = thumbnailService;
@@ -2929,6 +2940,7 @@ public class DashboardViewModel : BaseViewModel
         DeleteSelectedSessionCommand = new AsyncRelayCommand(DeleteSelectedSessionAsync);
         SelectAllGalleryCommand = new AsyncRelayCommand(SelectAllGalleryAsync);
         ViewVideoLessonsCommand = new AsyncRelayCommand(ViewVideoLessonsAsync);
+        ViewTrashCommand = new AsyncRelayCommand(ViewTrashAsync);
         ViewDiaryCommand = new RelayCommand(() => IsDiaryViewSelected = true);
         SelectDiaryDateCommand = new RelayCommand<DateTime>(date => SelectedDiaryDate = date);
         LoadMoreVideosCommand = new AsyncRelayCommand(LoadMoreVideosAsync);
@@ -3126,6 +3138,26 @@ public class DashboardViewModel : BaseViewModel
             _modifiedVideoIds.Add(videoId);
             _hasStatsUpdatePending = true;
         });
+    }
+
+    public int TrashItemCount
+    {
+        get => _trashItemCount;
+        private set => SetProperty(ref _trashItemCount, value);
+    }
+
+    private async Task RefreshTrashItemCountAsync()
+    {
+        try
+        {
+            var sessions = await _trashService.GetTrashedSessionsAsync();
+            var videos = await _trashService.GetTrashedVideosAsync();
+            TrashItemCount = (sessions?.Count ?? 0) + (videos?.Count ?? 0);
+        }
+        catch
+        {
+            // Best-effort: no bloquear la UI por fallos de conteo.
+        }
     }
 
     private async Task ExportDetailedTimesHtmlAsync()
@@ -3850,8 +3882,8 @@ public class DashboardViewModel : BaseViewModel
         // Confirmar eliminación
         var confirm = await Shell.Current.DisplayAlert(
             "Eliminar vídeos",
-            $"¿Estás seguro de que quieres eliminar {selectedVideos.Count} vídeo(s)?\n\nEsta acción no se puede deshacer.",
-            "Eliminar",
+            $"¿Mover {selectedVideos.Count} vídeo(s) a la papelera?\n\nPodrás restaurarlos desde la Papelera durante 30 días.",
+            "Mover a papelera",
             "Cancelar");
         
         if (!confirm)
@@ -3859,43 +3891,16 @@ public class DashboardViewModel : BaseViewModel
         
         try
         {
-            int deletedCount = 0;
-            
             foreach (var video in selectedVideos)
             {
-                // Eliminar archivo de vídeo local
-                var videoPath = !string.IsNullOrWhiteSpace(video.LocalClipPath) && File.Exists(video.LocalClipPath)
-                    ? video.LocalClipPath
-                    : video.ClipPath;
-                    
-                if (!string.IsNullOrWhiteSpace(videoPath) && File.Exists(videoPath))
-                {
-                    try { File.Delete(videoPath); } catch { }
-                }
-                
-                // Eliminar thumbnail local
-                var thumbPath = !string.IsNullOrWhiteSpace(video.LocalThumbnailPath) && File.Exists(video.LocalThumbnailPath)
-                    ? video.LocalThumbnailPath
-                    : video.ThumbnailPath;
-                    
-                if (!string.IsNullOrWhiteSpace(thumbPath) && File.Exists(thumbPath))
-                {
-                    try { File.Delete(thumbPath); } catch { }
-                }
-                
-                // Eliminar de la base de datos
-                var db = await _databaseService.GetConnectionAsync();
-                await db.DeleteAsync(video);
-                
-                deletedCount++;
+                await _trashService.MoveVideoToTrashAsync(video.Id);
             }
             
             // Limpiar selección
             _selectedVideoIds.Clear();
             OnPropertyChanged(nameof(SelectedVideoCount));
-            
-            // Mostrar confirmación
-            await Shell.Current.DisplayAlert("Eliminación completada", $"Se eliminaron {deletedCount} vídeo(s).", "OK");
+
+            await RefreshTrashItemCountAsync();
             
             // Refrescar galería
             if (SelectedSession != null)
@@ -4021,11 +4026,19 @@ public class DashboardViewModel : BaseViewModel
 
     private void ClearFilters(bool skipApplyFilters = false)
     {
-        // Limpiar selección múltiple
-        foreach (var place in FilterPlaces) place.IsSelected = false;
-        foreach (var athlete in FilterAthletes) athlete.IsSelected = false;
-        foreach (var section in FilterSections) section.IsSelected = false;
-        foreach (var tag in FilterTagItems) tag.IsSelected = false;
+        _suppressFilterSelectionChanged = true;
+        try
+        {
+            // Limpiar selección múltiple
+            foreach (var place in FilterPlaces) place.IsSelected = false;
+            foreach (var athlete in FilterAthletes) athlete.IsSelected = false;
+            foreach (var section in FilterSections) section.IsSelected = false;
+            foreach (var tag in FilterTagItems) tag.IsSelected = false;
+        }
+        finally
+        {
+            _suppressFilterSelectionChanged = false;
+        }
         
         // Limpiar filtros simples
         _selectedFilterDateFrom = null;
@@ -4069,6 +4082,8 @@ public class DashboardViewModel : BaseViewModel
     {
         if (!IsAllGallerySelected || _allVideosCache == null)
             return;
+
+        var version = Interlocked.Increment(ref _filtersVersion);
 
         // Si hay una carpeta inteligente activa, usar sus videos filtrados como base
         var allVideos = _activeSmartFolder != null && _smartFolderFilteredVideosCache != null
@@ -4127,6 +4142,10 @@ public class DashboardViewModel : BaseViewModel
             var snapshot = BuildGalleryStatsSnapshot(list);
             return (list, snapshot);
         });
+
+        // Si durante el cálculo se disparó otra ejecución más reciente, descartamos esta.
+        if (version != Volatile.Read(ref _filtersVersion))
+            return;
 
         _filteredVideosCache = filteredList;
         
@@ -4454,6 +4473,9 @@ public class DashboardViewModel : BaseViewModel
 
     private void OnFilterSelectionChanged(object? sender, EventArgs e)
     {
+        if (_suppressFilterSelectionChanged)
+            return;
+
         OnPropertyChanged(nameof(SelectedPlacesSummary));
         OnPropertyChanged(nameof(SelectedAthletesSummary));
         OnPropertyChanged(nameof(SelectedSectionsSummary));
@@ -4513,7 +4535,7 @@ public class DashboardViewModel : BaseViewModel
 
         var confirm = await Shell.Current.DisplayAlert(
             "Eliminar sesión",
-            $"¿Seguro que quieres eliminar la sesión '{session.DisplayName}'?\n\nSe borrarán sus vídeos, inputs y valoraciones.",
+            $"¿Seguro que quieres mover a la papelera la sesión '{session.DisplayName}'?\n\nPodrás restaurarla durante 30 días.",
             "Eliminar",
             "Cancelar");
 
@@ -4524,7 +4546,7 @@ public class DashboardViewModel : BaseViewModel
         try
         {
             IsBusy = true;
-            await _databaseService.DeleteSessionCascadeAsync(session.Id, deleteSessionFiles: true);
+            await _trashService.MoveSessionToTrashAsync(session.Id);
             SelectedSession = null;
             deleted = true;
         }
@@ -4582,6 +4604,8 @@ public class DashboardViewModel : BaseViewModel
             {
                 await SelectAllGalleryAsync();
             }
+
+            await RefreshTrashItemCountAsync();
         }
         catch (Exception ex)
         {
@@ -5007,6 +5031,11 @@ public class DashboardViewModel : BaseViewModel
             if (_selectedSessionVideosCts?.Token.IsCancellationRequested != true)
                 IsLoadingSelectedSessionVideos = false;
         }
+    }
+
+    private static async Task ViewTrashAsync()
+    {
+        await Shell.Current.GoToAsync(nameof(TrashPage));
     }
 
     private async Task ViewAthletesAsync()
@@ -5978,6 +6007,7 @@ public class DashboardViewModel : BaseViewModel
         {
             Name = name,
             MatchMode = NewSmartFolderMatchMode == "Any" ? "Any" : "All",
+            MatchingVideoCount = NewSmartFolderLiveMatchCount,
             Criteria = NewSmartFolderCriteria
                 .Select(c => new SmartFolderCriterion
                 {
@@ -5990,6 +6020,9 @@ public class DashboardViewModel : BaseViewModel
         };
 
         SmartFolders.Add(definition);
+
+        // Asegurar que los contadores se ajustan al estado actual de la caché.
+        UpdateSmartFolderVideoCounts();
         SaveSmartFoldersToPreferences();
         CloseSmartFolderSidebarPopup();
     }
@@ -6020,6 +6053,8 @@ public class DashboardViewModel : BaseViewModel
 
     private async Task ApplySmartFolderFilterAsync(SmartFolderDefinition definition)
     {
+        var version = Interlocked.Increment(ref _filtersVersion);
+
         var source = _allVideosCache;
         if (source == null)
             return;
@@ -6053,6 +6088,9 @@ public class DashboardViewModel : BaseViewModel
         _filteredVideosCache = filtered;
         _smartFolderFilteredVideosCache = filtered; // Guardar cache de videos filtrados por carpeta inteligente
 
+        if (version != Volatile.Read(ref _filtersVersion))
+            return;
+
         _currentPage = 0;
         var firstBatch = filtered.Take(PageSize).ToList();
         await MainThread.InvokeOnMainThreadAsync(async () =>
@@ -6063,6 +6101,9 @@ public class DashboardViewModel : BaseViewModel
         HasMoreVideos = filtered.Count > PageSize;
 
         var snapshot = await Task.Run(() => BuildGalleryStatsSnapshot(filtered));
+
+        if (version != Volatile.Read(ref _filtersVersion))
+            return;
         await ApplyGalleryStatsSnapshotAsync(snapshot, CancellationToken.None);
 
         // Actualizar Stats con los datos filtrados de la carpeta inteligente
@@ -6469,13 +6510,13 @@ public class DashboardViewModel : BaseViewModel
         var session = row.Session;
         var confirm = await page.DisplayAlert(
             "Eliminar sesión",
-            $"¿Seguro que quieres eliminar la sesión \"{session.DisplayName}\"?\n\nEsto eliminará también todos los videos asociados.",
+            $"¿Seguro que quieres mover a la papelera la sesión \"{session.DisplayName}\"?\n\nPodrás restaurarla durante 30 días.",
             "Eliminar",
             "Cancelar");
 
         if (confirm)
         {
-            await _databaseService.DeleteSessionAsync(session);
+            await _trashService.MoveSessionToTrashAsync(session.Id);
             RecentSessions.Remove(session);
             _sessionCustomizations.Remove(session.Id);
             SaveSessionCustomizationsToPreferences();

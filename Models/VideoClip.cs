@@ -45,6 +45,13 @@ public class VideoClip : INotifyPropertyChanged
     [Column("clipSize")]
     public long ClipSize { get; set; }
 
+    // Papelera (soft-delete)
+    [Column("is_deleted")]
+    public int IsDeleted { get; set; }
+
+    [Column("deleted_at_utc")]
+    public long DeletedAtUtc { get; set; }
+
     // Propiedades adicionales del JSON de exportación
     /// <summary>
     /// Indica si es un video de comparación (calculado a partir de ComparisonName)

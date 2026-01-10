@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Windows.Input;
 using CrownRFEP_Reader.Models;
 using CrownRFEP_Reader.Services;
@@ -9,9 +10,10 @@ namespace CrownRFEP_Reader.ViewModels;
 /// <summary>
 /// ViewModel para la lista de sesiones
 /// </summary>
-public class SessionsViewModel : BaseViewModel
+public sealed class SessionsViewModel : BaseViewModel
 {
     private readonly DatabaseService _databaseService;
+    private readonly ITrashService _trashService;
     private string _searchText = "";
     private Session? _selectedSession;
 
@@ -47,9 +49,10 @@ public class SessionsViewModel : BaseViewModel
     /// </summary>
     public bool CanRecordVideo => DeviceInfo.Platform == DevicePlatform.iOS;
 
-    public SessionsViewModel(DatabaseService databaseService)
+    public SessionsViewModel(DatabaseService databaseService, ITrashService trashService)
     {
         _databaseService = databaseService;
+        _trashService = trashService;
         Title = "Sesiones";
 
         RefreshCommand = new AsyncRelayCommand(LoadSessionsAsync);
@@ -147,19 +150,18 @@ public class SessionsViewModel : BaseViewModel
         if (session == null) return;
 
         var confirm = await Shell.Current.DisplayAlert(
-            "Confirmar Eliminación",
-            $"¿Estás seguro de que deseas eliminar la sesión '{session.DisplayName}'?\nEsta acción no se puede deshacer.",
-            "Eliminar",
+            "Mover a papelera",
+            $"¿Mover la sesión '{session.DisplayName}' a la papelera?\n\nPodrás restaurarla desde la Papelera durante 30 días.",
+            "Mover a papelera",
             "Cancelar");
 
         if (!confirm) return;
 
         try
         {
-            await _databaseService.DeleteSessionAsync(session);
+            await _trashService.MoveSessionToTrashAsync(session.Id);
             Sessions.Remove(session);
             FilteredSessions.Remove(session);
-            await Shell.Current.DisplayAlert("Éxito", "Sesión eliminada correctamente", "OK");
         }
         catch (Exception ex)
         {

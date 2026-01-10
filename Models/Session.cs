@@ -12,6 +12,7 @@ public class Session : INotifyPropertyChanged
 {
     private string _icon = "oar.2.crossed";
     private string _iconColor = "#FFFFFFFF";
+    private bool _isSelected;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -43,6 +44,13 @@ public class Session : INotifyPropertyChanged
     [Column("isMerged")]
     public int IsMerged { get; set; }
 
+    // Papelera (soft-delete)
+    [Column("is_deleted")]
+    public int IsDeleted { get; set; }
+
+    [Column("deleted_at_utc")]
+    public long DeletedAtUtc { get; set; }
+
     // Propiedades computadas
     [Ignore]
     public DateTime FechaDateTime => DateTimeOffset.FromUnixTimeSeconds(Fecha).LocalDateTime;
@@ -62,7 +70,16 @@ public class Session : INotifyPropertyChanged
     public int VideoCount { get; set; }
 
     [Ignore]
-    public bool IsSelected { get; set; }
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set
+        {
+            if (_isSelected == value) return;
+            _isSelected = value;
+            OnPropertyChanged();
+        }
+    }
 
     /// <summary>
     /// SF Symbol name for the session icon (stored in Preferences, not DB)
