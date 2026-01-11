@@ -9,6 +9,7 @@ using CrownRFEP_Reader.Models;
 using CrownRFEP_Reader.Services;
 using CrownRFEP_Reader.Views;
 using Microsoft.Maui.Controls;
+using Microsoft.Maui.Devices;
 using Microsoft.Maui.Storage;
 
 namespace CrownRFEP_Reader.ViewModels;
@@ -177,6 +178,7 @@ public class DashboardViewModel : BaseViewModel
     private bool _isSessionsListExpanded = true;
     private bool _isLoadingSelectedSessionVideos;
 
+    private GridLength _mainPanelWidth = new(2.5, GridUnitType.Star);
     private GridLength _rightPanelWidth = new(1.2, GridUnitType.Star);
     private GridLength _rightSplitterWidth = new(8);
     private string _importProgressText = "";
@@ -247,6 +249,7 @@ public class DashboardViewModel : BaseViewModel
     private bool _isStatsTabSelected;
     private bool _isCrudTechTabSelected = true;
     private bool _isDiaryTabSelected;
+    private bool _isQuickAnalysisIsolatedMode;
 
     // Diario de sesión
     private SessionDiary? _currentSessionDiary;
@@ -955,6 +958,12 @@ public class DashboardViewModel : BaseViewModel
         set => SetProperty(ref _rightPanelWidth, value);
     }
 
+    public GridLength MainPanelWidth
+    {
+        get => _mainPanelWidth;
+        set => SetProperty(ref _mainPanelWidth, value);
+    }
+
     public GridLength RightSplitterWidth
     {
         get => _rightSplitterWidth;
@@ -965,11 +974,30 @@ public class DashboardViewModel : BaseViewModel
     {
         if (IsVideoLessonsSelected)
         {
+            MainPanelWidth = new GridLength(2.5, GridUnitType.Star);
             RightSplitterWidth = new GridLength(0);
             RightPanelWidth = new GridLength(0);
         }
+        else if (IsDiaryViewSelected)
+        {
+            // En Diario, el modo aislado no aplica.
+            MainPanelWidth = new GridLength(2.5, GridUnitType.Star);
+            RightSplitterWidth = new GridLength(8);
+            RightPanelWidth = new GridLength(1.2, GridUnitType.Star);
+        }
+        else if (_isQuickAnalysisIsolatedMode)
+        {
+            // Modo aislado:
+            // - El sidebar izquierdo se mantiene fijo.
+            // - Del espacio restante, la columna derecha (reproductores) ocupa 1/2 (1*)
+            //   y el contenido principal el otro 1/2 (1*).
+            // Nota: los anchos pueden ser ajustados por el usuario mediante el splitter;
+            // aquí solo nos aseguramos de que el splitter esté visible.
+            RightSplitterWidth = new GridLength(8);
+        }
         else
         {
+            MainPanelWidth = new GridLength(2.5, GridUnitType.Star);
             RightSplitterWidth = new GridLength(8);
             RightPanelWidth = new GridLength(1.2, GridUnitType.Star);
         }
@@ -1288,6 +1316,10 @@ public class DashboardViewModel : BaseViewModel
             if (SetProperty(ref _isHorizontalOrientation, value))
             {
                 OnPropertyChanged(nameof(IsVerticalOrientation));
+                if (_isQuickAnalysisIsolatedMode)
+                {
+                    UpdateRightPanelLayout();
+                }
             }
         }
     }
@@ -1325,6 +1357,11 @@ public class DashboardViewModel : BaseViewModel
                     ParallelVideo3 = null;
                     ParallelVideo4 = null;
                 }
+
+                if (_isQuickAnalysisIsolatedMode)
+                {
+                    UpdateRightPanelLayout();
+                }
             }
         }
     }
@@ -1344,6 +1381,11 @@ public class DashboardViewModel : BaseViewModel
                 // Limpiar slots 3 y 4 si pasamos a paralelo
                 ParallelVideo3 = null;
                 ParallelVideo4 = null;
+
+                if (_isQuickAnalysisIsolatedMode)
+                {
+                    UpdateRightPanelLayout();
+                }
             }
         }
     }
@@ -1361,7 +1403,45 @@ public class DashboardViewModel : BaseViewModel
                     OnPropertyChanged(nameof(IsSingleVideoMode));
                 }
                 OnPropertyChanged(nameof(IsParallelVideoMode));
+
+                if (_isQuickAnalysisIsolatedMode)
+                {
+                    UpdateRightPanelLayout();
+                }
             }
+        }
+    }
+
+    public bool IsQuickAnalysisIsolatedMode
+    {
+        get => _isQuickAnalysisIsolatedMode;
+        set
+        {
+            if (SetProperty(ref _isQuickAnalysisIsolatedMode, value))
+            {
+                if (value)
+                {
+                    // Valor por defecto al activar: 50/50 del espacio restante.
+                    // A partir de aquí, el usuario puede ajustarlo con el splitter.
+                    MainPanelWidth = new GridLength(1, GridUnitType.Star);
+                    RightPanelWidth = new GridLength(1, GridUnitType.Star);
+                }
+                UpdateRightPanelLayout();
+                OnPropertyChanged(nameof(VideoGalleryColumnSpan));
+            }
+        }
+    }
+
+    public int VideoGalleryColumnSpan
+    {
+        get
+        {
+            if (_isQuickAnalysisIsolatedMode)
+                return 2;
+
+            // Mantener el comportamiento actual del recurso GalleryColumnCount:
+            // iOS => 3, resto => 4.
+            return DeviceInfo.Current.Platform == DevicePlatform.iOS ? 3 : 4;
         }
     }
 
@@ -1585,7 +1665,6 @@ public class DashboardViewModel : BaseViewModel
 
         OnPropertyChanged(nameof(SelectedVideoCount));
     }
-
     private void SelectAllFilteredVideos()
     {
         var source = _filteredVideosCache ?? _allVideosCache;
@@ -2799,6 +2878,7 @@ public class DashboardViewModel : BaseViewModel
     public ICommand ClearParallelAnalysisCommand { get; }
     public ICommand DropOnScreen1Command { get; }
     public ICommand DropOnScreen2Command { get; }
+    public ICommand ToggleQuickAnalysisIsolatedModeCommand { get; }
     
     // Comandos de edición en lote
     public ICommand CloseBatchEditPopupCommand { get; }
@@ -3098,6 +3178,7 @@ public class DashboardViewModel : BaseViewModel
         ClearParallelAnalysisCommand = new RelayCommand(ClearParallelAnalysis);
         DropOnScreen1Command = new RelayCommand<VideoClip>(video => ParallelVideo1 = video);
         DropOnScreen2Command = new RelayCommand<VideoClip>(video => ParallelVideo2 = video);
+        ToggleQuickAnalysisIsolatedModeCommand = new RelayCommand(() => IsQuickAnalysisIsolatedMode = !IsQuickAnalysisIsolatedMode);
         
         // Comandos de edición en lote
         CloseBatchEditPopupCommand = new RelayCommand(() => ShowBatchEditPopup = false);

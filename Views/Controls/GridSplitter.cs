@@ -28,6 +28,22 @@ public class GridSplitter : ContentView
     public static readonly BindableProperty MinRightWidthProperty =
         BindableProperty.Create(nameof(MinRightWidth), typeof(double), typeof(GridSplitter), 100.0);
 
+    public static readonly BindableProperty LeftColumnWidthProperty =
+        BindableProperty.Create(
+            nameof(LeftColumnWidth),
+            typeof(GridLength),
+            typeof(GridSplitter),
+            GridLength.Auto,
+            defaultBindingMode: BindingMode.TwoWay);
+
+    public static readonly BindableProperty RightColumnWidthProperty =
+        BindableProperty.Create(
+            nameof(RightColumnWidth),
+            typeof(GridLength),
+            typeof(GridSplitter),
+            GridLength.Auto,
+            defaultBindingMode: BindingMode.TwoWay);
+
     /// <summary>
     /// Índice de la columna a la izquierda del splitter
     /// </summary>
@@ -62,6 +78,24 @@ public class GridSplitter : ContentView
     {
         get => (double)GetValue(MinRightWidthProperty);
         set => SetValue(MinRightWidthProperty, value);
+    }
+
+    /// <summary>
+    /// Permite enlazar (TwoWay) el ancho de la columna izquierda para persistir el ajuste del usuario.
+    /// </summary>
+    public GridLength LeftColumnWidth
+    {
+        get => (GridLength)GetValue(LeftColumnWidthProperty);
+        set => SetValue(LeftColumnWidthProperty, value);
+    }
+
+    /// <summary>
+    /// Permite enlazar (TwoWay) el ancho de la columna derecha para persistir el ajuste del usuario.
+    /// </summary>
+    public GridLength RightColumnWidth
+    {
+        get => (GridLength)GetValue(RightColumnWidthProperty);
+        set => SetValue(RightColumnWidthProperty, value);
     }
 
     public GridSplitter()
@@ -224,8 +258,22 @@ public class GridSplitter : ContentView
                     
                     if (lIdx >= 0 && rIdx < _parentGrid.ColumnDefinitions.Count)
                     {
-                        _parentGrid.ColumnDefinitions[lIdx].Width = new GridLength(_pendingLeftWidth, GridUnitType.Absolute);
-                        _parentGrid.ColumnDefinitions[rIdx].Width = new GridLength(_pendingRightWidth, GridUnitType.Absolute);
+                        var newLeft = new GridLength(_pendingLeftWidth, GridUnitType.Absolute);
+                        var newRight = new GridLength(_pendingRightWidth, GridUnitType.Absolute);
+
+                        // Si hay bindings TwoWay, actualizamos el VM para que el cambio persista.
+                        // Si no hay bindings, aplicamos directamente al Grid.
+                        var hasWidthBindings = IsSet(LeftColumnWidthProperty) && IsSet(RightColumnWidthProperty);
+                        if (hasWidthBindings)
+                        {
+                            LeftColumnWidth = newLeft;
+                            RightColumnWidth = newRight;
+                        }
+                        else
+                        {
+                            _parentGrid.ColumnDefinitions[lIdx].Width = newLeft;
+                            _parentGrid.ColumnDefinitions[rIdx].Width = newRight;
+                        }
                     }
                 }
 

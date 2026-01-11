@@ -223,7 +223,7 @@
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="{StaticResource SidebarWidthDefault}" />
             <ColumnDefinition Width="8" />
-            <ColumnDefinition Width="2.5*" />
+            <ColumnDefinition Width="{Binding MainPanelWidth}" />
             <ColumnDefinition Width="{Binding RightSplitterWidth}" />
             <ColumnDefinition Width="{Binding RightPanelWidth}" />
         </Grid.ColumnDefinitions>
@@ -258,11 +258,16 @@
             Grid.Row="1"
             Grid.Column="3"
             LeftColumnIndex="2"
+            LeftColumnWidth="{Binding MainPanelWidth, Mode=TwoWay}"
             MinLeftWidth="300"
             MinRightWidth="200"
             RightColumnIndex="4"
-            IsVisible="{Binding IsVideoLessonsSelected, Converter={toolkit:InvertedBoolConverter}}"
-            WidthRequest="8" />
+            RightColumnWidth="{Binding RightPanelWidth, Mode=TwoWay}"
+            WidthRequest="8">
+            <controls:GridSplitter.IsVisible>
+                <Binding Path="IsVideoLessonsSelected" Converter="{toolkit:InvertedBoolConverter}" />
+            </controls:GridSplitter.IsVisible>
+        </controls:GridSplitter>
 
         <!--  Lista de sesiones recientes + acciones en la parte baja  -->
         <Grid
@@ -1017,7 +1022,7 @@
                     <GridItemsLayout
                         HorizontalItemSpacing="{StaticResource SpacingXSmall}"
                         Orientation="Vertical"
-                        Span="{StaticResource GalleryColumnCount}"
+                        Span="{Binding VideoGalleryColumnSpan}"
                         VerticalItemSpacing="{StaticResource SpacingSmall}" />
                 </CollectionView.ItemsLayout>
 
@@ -1433,7 +1438,10 @@
                 <!--  Pestañas: Acciones / Estadísticas / Diario  -->
                 <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
                     <Grid.IsVisible>
-                        <Binding Path="IsDiaryViewSelected" Converter="{toolkit:InvertedBoolConverter}" />
+                        <MultiBinding Converter="{StaticResource AllTrueConverter}">
+                            <Binding Path="IsDiaryViewSelected" Converter="{toolkit:InvertedBoolConverter}" />
+                            <Binding Path="IsQuickAnalysisIsolatedMode" Converter="{toolkit:InvertedBoolConverter}" />
+                        </MultiBinding>
                     </Grid.IsVisible>
                     <Border
                         Padding="10,8"
@@ -1593,7 +1601,7 @@
                             <Binding Path="IsDiaryViewSelected" Converter="{toolkit:InvertedBoolConverter}" />
                         </MultiBinding>
                     </VerticalStackLayout.IsVisible>
-                    <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                    <HorizontalStackLayout Spacing="12" VerticalOptions="Center" IsVisible="{Binding IsQuickAnalysisIsolatedMode, Converter={toolkit:InvertedBoolConverter}}">
                         <controls:SymbolIcon
                             HeightRequest="{StaticResource IconSizeLarge}"
                             SymbolName="film.stack"
@@ -1610,9 +1618,10 @@
                     <Label
                         FontSize="{StaticResource FontSizeBody}"
                         Text="Selección de vídeos"
-                        TextColor="#FFCCCCCC" />
+                        TextColor="#FFCCCCCC"
+                        IsVisible="{Binding IsQuickAnalysisIsolatedMode, Converter={toolkit:InvertedBoolConverter}}" />
 
-                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8" IsVisible="{Binding IsQuickAnalysisIsolatedMode, Converter={toolkit:InvertedBoolConverter}}">
                         <!--  Toggle: Selección múltiple  -->
                         <Border
                             Padding="10,8"
@@ -1682,9 +1691,10 @@
                         Margin="0,12,0,0"
                         FontSize="{StaticResource FontSizeBody}"
                         Text="Acciones en lote"
-                        TextColor="#FFCCCCCC" />
+                        TextColor="#FFCCCCCC"
+                        IsVisible="{Binding IsQuickAnalysisIsolatedMode, Converter={toolkit:InvertedBoolConverter}}" />
 
-                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="8">
+                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="8" IsVisible="{Binding IsQuickAnalysisIsolatedMode, Converter={toolkit:InvertedBoolConverter}}">
                         <!--  Botón: Reproducir como playlist  -->
                         <Border
                             Grid.Row="0"
@@ -1778,7 +1788,8 @@
                     <Border
                         HeightRequest="1"
                         BackgroundColor="#FF464646"
-                        Stroke="Transparent">
+                        Stroke="Transparent"
+                        IsVisible="{Binding IsQuickAnalysisIsolatedMode, Converter={toolkit:InvertedBoolConverter}}">
                         <Border.Margin>
                             <OnPlatform x:TypeArguments="Thickness">
                                 <On Platform="WinUI" Value="0,4,0,0" />
@@ -1787,7 +1798,7 @@
                         </Border.Margin>
                     </Border>
 
-                    <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                    <HorizontalStackLayout Spacing="12" VerticalOptions="Center" IsVisible="{Binding IsQuickAnalysisIsolatedMode, Converter={toolkit:InvertedBoolConverter}}">
                         <HorizontalStackLayout.Margin>
                             <OnPlatform x:TypeArguments="Thickness">
                                 <On Platform="WinUI" Value="0,8,0,0" />
@@ -1806,18 +1817,53 @@
                             TextColor="White" />
                     </HorizontalStackLayout>
 
-                    <!--  Sección: Análisis rápido  -->
-                    <Label
-                        FontSize="{StaticResource FontSizeBody}"
-                        Text="Análisis rápido"
-                        TextColor="#FFCCCCCC">
-                        <Label.Margin>
+                    <!--  Sección: Análisis rápido + botón Modo aislado  -->
+                    <Grid ColumnDefinitions="*,Auto" VerticalOptions="Center">
+                        <Grid.Margin>
                             <OnPlatform x:TypeArguments="Thickness">
                                 <On Platform="WinUI" Value="0,4,0,0" />
                                 <On Platform="Default" Value="0,12,0,0" />
                             </OnPlatform>
-                        </Label.Margin>
-                    </Label>
+                        </Grid.Margin>
+                        <Label
+                            Grid.Column="0"
+                            FontSize="{StaticResource FontSizeBody}"
+                            Text="Análisis rápido"
+                            TextColor="#FFCCCCCC"
+                            IsVisible="{Binding IsQuickAnalysisIsolatedMode, Converter={toolkit:InvertedBoolConverter}}" />
+
+                        <Border
+                            Grid.Column="1"
+                            Padding="10,8"
+                            BackgroundColor="#FF404040"
+                            Stroke="Transparent"
+                            StrokeShape="RoundRectangle 6">
+                            <Border.Triggers>
+                                <DataTrigger TargetType="Border" Binding="{Binding IsQuickAnalysisIsolatedMode}" Value="True">
+                                    <Setter Property="BackgroundColor" Value="#FF6DDDFF" />
+                                </DataTrigger>
+                            </Border.Triggers>
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding ToggleQuickAnalysisIsolatedModeCommand}" />
+                            </Border.GestureRecognizers>
+                            <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
+                                <controls:SymbolIcon
+                                    HeightRequest="{StaticResource IconSizeMedium}"
+                                    SymbolName="eye"
+                                    TintColor="White"
+                                    WidthRequest="{StaticResource IconSizeMedium}"
+                                    VerticalOptions="Center" />
+                                <Label Text="Modo aislado" TextColor="White" VerticalOptions="Center">
+                                    <Label.IsVisible>
+                                        <OnPlatform x:TypeArguments="x:Boolean">
+                                            <On Platform="iOS" Value="False" />
+                                            <On Platform="Default" Value="True" />
+                                        </OnPlatform>
+                                    </Label.IsVisible>
+                                </Label>
+                            </HorizontalStackLayout>
+                        </Border>
+                    </Grid>
 
                     <!--  Toggle: Único / Paralelo / Cuádruple  -->
                     <HorizontalStackLayout Spacing="16" HorizontalOptions="Center">
@@ -2647,7 +2693,7 @@
                     </HorizontalStackLayout>
 
                     <!--  Botones Reproducir y Limpiar  -->
-                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8" IsVisible="{Binding IsQuickAnalysisIsolatedMode, Converter={toolkit:InvertedBoolConverter}}">
                         <Border
                             Padding="10,8"
                             BackgroundColor="#FF404040"
