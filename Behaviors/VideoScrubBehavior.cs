@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-#if MACCATALYST
+#if MACCATALYST || IOS
 using UIKit;
 using Foundation;
 #endif
@@ -26,6 +26,14 @@ public class VideoScrubBehavior : Behavior<View>
     /// Sensibilidad del scrubbing: milisegundos a avanzar/retroceder por cada pixel de arrastre horizontal.
     /// </summary>
     public double MillisecondsPerPixel { get; set; } = 5;
+
+#if MACCATALYST || IOS
+    private UIView? _nativeView;
+#if MACCATALYST
+    private UIPanGestureRecognizer? _scrollRecognizer;
+#endif
+    private UIPanGestureRecognizer? _panRecognizer;
+#endif
 
 #if WINDOWS
     private UIElement? _winElement;
@@ -54,7 +62,7 @@ public class VideoScrubBehavior : Behavior<View>
         base.OnAttachedTo(bindable);
         _attachedView = bindable;
         
-#if MACCATALYST
+    #if MACCATALYST || IOS
         bindable.HandlerChanged += OnHandlerChanged;
 #endif
 
@@ -68,8 +76,9 @@ public class VideoScrubBehavior : Behavior<View>
     {
         base.OnDetachingFrom(bindable);
         
-#if MACCATALYST
+    #if MACCATALYST || IOS
         bindable.HandlerChanged -= OnHandlerChanged;
+        DetachNativeGestures();
 #endif
 
     #if WINDOWS
@@ -80,34 +89,44 @@ public class VideoScrubBehavior : Behavior<View>
         _attachedView = null;
     }
 
-#if MACCATALYST
+#if MACCATALYST || IOS
     private void OnHandlerChanged(object? sender, EventArgs e)
     {
         if (_attachedView?.Handler?.PlatformView is UIView uiView)
         {
-            // Añadir reconocedor de scroll (trackpad con dos dedos)
-            var scrollRecognizer = new UIPanGestureRecognizer(HandleScrollGesture);
-            scrollRecognizer.MinimumNumberOfTouches = 2;
-            scrollRecognizer.MaximumNumberOfTouches = 2;
-            uiView.AddGestureRecognizer(scrollRecognizer);
-            
-            // Añadir reconocedor de pan (mouse con click)
-            var panRecognizer = new UIPanGestureRecognizer(HandlePanGesture);
-            panRecognizer.MinimumNumberOfTouches = 1;
-            panRecognizer.MaximumNumberOfTouches = 1;
-            panRecognizer.AllowedScrollTypesMask = UIScrollTypeMask.Discrete | UIScrollTypeMask.Continuous;
-            uiView.AddGestureRecognizer(panRecognizer);
+            if (ReferenceEquals(_nativeView, uiView))
+                return;
+
+            DetachNativeGestures();
+            _nativeView = uiView;
+
+#if MACCATALYST
+            // Trackpad con dos dedos
+            _scrollRecognizer = new UIPanGestureRecognizer(HandleGesture)
+            {
+                MinimumNumberOfTouches = 2,
+                MaximumNumberOfTouches = 2
+            };
+            uiView.AddGestureRecognizer(_scrollRecognizer);
+
+            // Mouse con click (1 dedo)
+            _panRecognizer = new UIPanGestureRecognizer(HandleGesture)
+            {
+                MinimumNumberOfTouches = 1,
+                MaximumNumberOfTouches = 1,
+                AllowedScrollTypesMask = UIScrollTypeMask.Discrete | UIScrollTypeMask.Continuous
+            };
+            uiView.AddGestureRecognizer(_panRecognizer);
+#else
+            // iOS: scrubbing con 1 dedo
+            _panRecognizer = new UIPanGestureRecognizer(HandleGesture)
+            {
+                MinimumNumberOfTouches = 1,
+                MaximumNumberOfTouches = 1
+            };
+            uiView.AddGestureRecognizer(_panRecognizer);
+#endif
         }
-    }
-
-    private void HandleScrollGesture(UIPanGestureRecognizer recognizer)
-    {
-        HandleGesture(recognizer);
-    }
-
-    private void HandlePanGesture(UIPanGestureRecognizer recognizer)
-    {
-        HandleGesture(recognizer);
     }
 
     private void HandleGesture(UIPanGestureRecognizer recognizer)
@@ -154,6 +173,31 @@ public class VideoScrubBehavior : Behavior<View>
                     ScrubEnded?.Invoke(this, new VideoScrubEventArgs(VideoIndex, 0, false));
                 });
                 break;
+        }
+    }
+
+    private void DetachNativeGestures()
+    {
+        try
+        {
+            if (_nativeView == null)
+                return;
+
+#if MACCATALYST
+            if (_scrollRecognizer != null)
+                _nativeView.RemoveGestureRecognizer(_scrollRecognizer);
+            _scrollRecognizer = null;
+#endif
+
+            if (_panRecognizer != null)
+                _nativeView.RemoveGestureRecognizer(_panRecognizer);
+            _panRecognizer = null;
+
+            _nativeView = null;
+        }
+        catch
+        {
+            _nativeView = null;
         }
     }
 #endif

@@ -267,6 +267,21 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         catch { }
     }
 
+    private void OnQuickAnalysisPlayPauseTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            if (!_isPageActive)
+                return;
+
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                try { TogglePlayPause(); } catch { }
+            });
+        }
+        catch { }
+    }
+
     private void OnVideoGallerySizeChanged(object? sender, EventArgs e)
     {
         try
