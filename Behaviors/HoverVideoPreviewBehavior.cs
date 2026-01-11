@@ -40,8 +40,21 @@ public class HoverVideoPreviewBehavior : Behavior<View>
 
         // Fallback: PointerGestureRecognizer
         var pointer = new PointerGestureRecognizer();
-        pointer.PointerEntered += (_, _) => OnPointerEntered(bindable);
-        pointer.PointerExited += (_, _) => OnPointerExited(bindable);
+        pointer.PointerEntered += (_, e) =>
+        {
+            try { _lastPointerLocationInSourceView = e.GetPosition(bindable); } catch { _lastPointerLocationInSourceView = null; }
+            OnPointerEntered(bindable);
+        };
+        pointer.PointerMoved += (_, e) =>
+        {
+            try { _lastPointerLocationInSourceView = e.GetPosition(bindable); } catch { _lastPointerLocationInSourceView = null; }
+            TryRaiseMoved(bindable);
+        };
+        pointer.PointerExited += (_, _) =>
+        {
+            _lastPointerLocationInSourceView = null;
+            OnPointerExited(bindable);
+        };
         bindable.GestureRecognizers.Add(pointer);
 
         TryAttachPlatformHover(bindable);

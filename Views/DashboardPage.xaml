@@ -2131,8 +2131,11 @@
                                     x:Name="ScrubOverlaySingle"
                                     BackgroundColor="Transparent"
                                     IsVisible="{Binding HasParallelVideo1}">
+                                    <BoxView.GestureRecognizers>
+                                        <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen1" />
+                                    </BoxView.GestureRecognizers>
                                     <BoxView.Behaviors>
-                                        <behaviors:VideoScrubBehavior VideoIndex="0" />
+                                        <behaviors:VideoScrubBehavior VideoIndex="0" MillisecondsPerPixel="{OnPlatform WinUI=200, Default=5}" />
                                     </BoxView.Behaviors>
                                 </BoxView>
                             </Grid>
@@ -2199,8 +2202,11 @@
                                     <BoxView
                                         BackgroundColor="Transparent"
                                         IsVisible="{Binding HasParallelVideo1}">
+                                        <BoxView.GestureRecognizers>
+                                            <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen1" />
+                                        </BoxView.GestureRecognizers>
                                         <BoxView.Behaviors>
-                                            <behaviors:VideoScrubBehavior VideoIndex="1" />
+                                            <behaviors:VideoScrubBehavior VideoIndex="1" MillisecondsPerPixel="{OnPlatform WinUI=200, Default=5}" />
                                         </BoxView.Behaviors>
                                     </BoxView>
                                 </Grid>
@@ -2250,8 +2256,11 @@
                                     <BoxView
                                         BackgroundColor="Transparent"
                                         IsVisible="{Binding HasParallelVideo2}">
+                                        <BoxView.GestureRecognizers>
+                                            <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen2" />
+                                        </BoxView.GestureRecognizers>
                                         <BoxView.Behaviors>
-                                            <behaviors:VideoScrubBehavior VideoIndex="2" />
+                                            <behaviors:VideoScrubBehavior VideoIndex="2" MillisecondsPerPixel="{OnPlatform WinUI=200, Default=5}" />
                                         </BoxView.Behaviors>
                                     </BoxView>
                                 </Grid>
@@ -2319,8 +2328,11 @@
                                     <BoxView
                                         BackgroundColor="Transparent"
                                         IsVisible="{Binding HasParallelVideo1}">
+                                        <BoxView.GestureRecognizers>
+                                            <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen1" />
+                                        </BoxView.GestureRecognizers>
                                         <BoxView.Behaviors>
-                                            <behaviors:VideoScrubBehavior VideoIndex="1" />
+                                            <behaviors:VideoScrubBehavior VideoIndex="1" MillisecondsPerPixel="{OnPlatform WinUI=200, Default=5}" />
                                         </BoxView.Behaviors>
                                     </BoxView>
                                 </Grid>
@@ -2370,8 +2382,11 @@
                                     <BoxView
                                         BackgroundColor="Transparent"
                                         IsVisible="{Binding HasParallelVideo2}">
+                                        <BoxView.GestureRecognizers>
+                                            <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen2" />
+                                        </BoxView.GestureRecognizers>
                                         <BoxView.Behaviors>
-                                            <behaviors:VideoScrubBehavior VideoIndex="2" />
+                                            <behaviors:VideoScrubBehavior VideoIndex="2" MillisecondsPerPixel="{OnPlatform WinUI=200, Default=5}" />
                                         </BoxView.Behaviors>
                                     </BoxView>
                                 </Grid>
@@ -2432,8 +2447,11 @@
                                     <BoxView
                                         BackgroundColor="Transparent"
                                         IsVisible="{Binding HasParallelVideo1}">
+                                        <BoxView.GestureRecognizers>
+                                            <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen1" />
+                                        </BoxView.GestureRecognizers>
                                         <BoxView.Behaviors>
-                                            <behaviors:VideoScrubBehavior VideoIndex="1" />
+                                            <behaviors:VideoScrubBehavior VideoIndex="1" MillisecondsPerPixel="{OnPlatform WinUI=200, Default=5}" />
                                         </BoxView.Behaviors>
                                     </BoxView>
                                 </Grid>
@@ -2485,8 +2503,11 @@
                                     <BoxView
                                         BackgroundColor="Transparent"
                                         IsVisible="{Binding HasParallelVideo2}">
+                                        <BoxView.GestureRecognizers>
+                                            <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen2" />
+                                        </BoxView.GestureRecognizers>
                                         <BoxView.Behaviors>
-                                            <behaviors:VideoScrubBehavior VideoIndex="2" />
+                                            <behaviors:VideoScrubBehavior VideoIndex="2" MillisecondsPerPixel="{OnPlatform WinUI=200, Default=5}" />
                                         </BoxView.Behaviors>
                                     </BoxView>
                                 </Grid>
@@ -2538,8 +2559,11 @@
                                     <BoxView
                                         BackgroundColor="Transparent"
                                         IsVisible="{Binding HasParallelVideo3}">
+                                        <BoxView.GestureRecognizers>
+                                            <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen3" />
+                                        </BoxView.GestureRecognizers>
                                         <BoxView.Behaviors>
-                                            <behaviors:VideoScrubBehavior VideoIndex="3" />
+                                            <behaviors:VideoScrubBehavior VideoIndex="3" MillisecondsPerPixel="{OnPlatform WinUI=200, Default=5}" />
                                         </BoxView.Behaviors>
                                     </BoxView>
                                 </Grid>
@@ -2591,8 +2615,11 @@
                                     <BoxView
                                         BackgroundColor="Transparent"
                                         IsVisible="{Binding HasParallelVideo4}">
+                                        <BoxView.GestureRecognizers>
+                                            <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen4" />
+                                        </BoxView.GestureRecognizers>
                                         <BoxView.Behaviors>
-                                            <behaviors:VideoScrubBehavior VideoIndex="4" />
+                                            <behaviors:VideoScrubBehavior VideoIndex="4" MillisecondsPerPixel="{OnPlatform WinUI=200, Default=5}" />
                                         </BoxView.Behaviors>
                                     </BoxView>
                                 </Grid>
@@ -5155,6 +5182,7 @@
             Grid.ColumnSpan="5"
             Margin="0"
             BackgroundColor="#FF121212"
+            InputTransparent="True"
             HorizontalOptions="Start"
             IsVisible="{Binding HasHoverVideo}"
             Stroke="#FF3A3A3A"

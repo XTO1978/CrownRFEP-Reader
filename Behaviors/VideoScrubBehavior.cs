@@ -5,6 +5,11 @@ using UIKit;
 using Foundation;
 #endif
 
+#if WINDOWS
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Input;
+#endif
+
 namespace CrownRFEP_Reader.Behaviors;
 
 /// <summary>
@@ -16,6 +21,18 @@ public class VideoScrubBehavior : Behavior<View>
     private double _lastScrollX;
     private DateTime _lastSeekTime = DateTime.MinValue;
     private const int ThrottleMs = 50; // Limitar seeks a 20 por segundo
+
+    /// <summary>
+    /// Sensibilidad del scrubbing: milisegundos a avanzar/retroceder por cada pixel de arrastre horizontal.
+    /// </summary>
+    public double MillisecondsPerPixel { get; set; } = 5;
+
+#if WINDOWS
+    private UIElement? _winElement;
+    private bool _isWinScrubbing;
+    private uint _winPointerId;
+    private double _winLastX;
+#endif
 
     /// <summary>
     /// Evento que se dispara cuando el usuario hace scrub
@@ -40,6 +57,11 @@ public class VideoScrubBehavior : Behavior<View>
 #if MACCATALYST
         bindable.HandlerChanged += OnHandlerChanged;
 #endif
+
+    #if WINDOWS
+        bindable.HandlerChanged += OnHandlerChanged;
+        TryAttachWindowsPointerHandlers();
+    #endif
     }
 
     protected override void OnDetachingFrom(View bindable)
@@ -49,6 +71,11 @@ public class VideoScrubBehavior : Behavior<View>
 #if MACCATALYST
         bindable.HandlerChanged -= OnHandlerChanged;
 #endif
+
+    #if WINDOWS
+        bindable.HandlerChanged -= OnHandlerChanged;
+        DetachWindowsPointerHandlers();
+    #endif
         
         _attachedView = null;
     }
@@ -110,8 +137,8 @@ public class VideoScrubBehavior : Behavior<View>
                 var deltaX = translation.X - _lastScrollX;
                 _lastScrollX = translation.X;
                 
-                // Notificar el cambio (sensibilidad: 1 pixel = 5ms)
-                var deltaMs = deltaX * 5;
+                // Notificar el cambio
+                var deltaMs = deltaX * MillisecondsPerPixel;
                 
                 MainThread.BeginInvokeOnMainThread(() =>
                 {
@@ -128,6 +155,144 @@ public class VideoScrubBehavior : Behavior<View>
                 });
                 break;
         }
+    }
+#endif
+
+#if WINDOWS
+    private void OnHandlerChanged(object? sender, EventArgs e)
+    {
+        TryAttachWindowsPointerHandlers();
+    }
+
+    private void TryAttachWindowsPointerHandlers()
+    {
+        if (_attachedView?.Handler?.PlatformView is not UIElement element)
+            return;
+
+        if (ReferenceEquals(_winElement, element))
+            return;
+
+        DetachWindowsPointerHandlers();
+
+        _winElement = element;
+        _winElement.PointerPressed += OnWinPointerPressed;
+        _winElement.PointerMoved += OnWinPointerMoved;
+        _winElement.PointerReleased += OnWinPointerReleased;
+        _winElement.PointerCanceled += OnWinPointerReleased;
+        _winElement.PointerCaptureLost += OnWinPointerCaptureLost;
+    }
+
+    private void DetachWindowsPointerHandlers()
+    {
+        if (_winElement == null)
+            return;
+
+        _winElement.PointerPressed -= OnWinPointerPressed;
+        _winElement.PointerMoved -= OnWinPointerMoved;
+        _winElement.PointerReleased -= OnWinPointerReleased;
+        _winElement.PointerCanceled -= OnWinPointerReleased;
+        _winElement.PointerCaptureLost -= OnWinPointerCaptureLost;
+        _winElement = null;
+
+        _isWinScrubbing = false;
+        _winPointerId = 0;
+        _winLastX = 0;
+    }
+
+    private void OnWinPointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        try
+        {
+            if (_winElement == null)
+                return;
+
+            var point = e.GetCurrentPoint(_winElement);
+            if (!point.Properties.IsLeftButtonPressed)
+                return;
+
+            _isWinScrubbing = true;
+            _winPointerId = e.Pointer.PointerId;
+            _winLastX = point.Position.X;
+            _lastSeekTime = DateTime.MinValue;
+            _lastScrollX = 0;
+
+            _winElement.CapturePointer(e.Pointer);
+            e.Handled = true;
+
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                ScrubUpdated?.Invoke(this, new VideoScrubEventArgs(VideoIndex, 0, true));
+            });
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[VideoScrubBehavior] Win PointerPressed error: {ex}");
+        }
+    }
+
+    private void OnWinPointerMoved(object sender, PointerRoutedEventArgs e)
+    {
+        if (!_isWinScrubbing || _winElement == null)
+            return;
+
+        if (e.Pointer.PointerId != _winPointerId)
+            return;
+
+        var point = e.GetCurrentPoint(_winElement);
+        if (!point.Properties.IsLeftButtonPressed)
+            return;
+
+        // Throttle para evitar demasiadas llamadas
+        var now = DateTime.Now;
+        if ((now - _lastSeekTime).TotalMilliseconds < ThrottleMs)
+            return;
+
+        _lastSeekTime = now;
+
+        var currentX = point.Position.X;
+        var deltaX = currentX - _winLastX;
+        _winLastX = currentX;
+
+        // Sensibilidad configurable
+        var deltaMs = deltaX * MillisecondsPerPixel;
+
+        e.Handled = true;
+
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            ScrubUpdated?.Invoke(this, new VideoScrubEventArgs(VideoIndex, deltaMs, false));
+        });
+    }
+
+    private void OnWinPointerReleased(object sender, PointerRoutedEventArgs e)
+    {
+        if (!_isWinScrubbing)
+            return;
+
+        if (e.Pointer.PointerId != _winPointerId)
+            return;
+
+        FinishWindowsScrub();
+        e.Handled = true;
+    }
+
+    private void OnWinPointerCaptureLost(object sender, PointerRoutedEventArgs e)
+    {
+        if (!_isWinScrubbing)
+            return;
+
+        FinishWindowsScrub();
+    }
+
+    private void FinishWindowsScrub()
+    {
+        _isWinScrubbing = false;
+        _winPointerId = 0;
+
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            ScrubEnded?.Invoke(this, new VideoScrubEventArgs(VideoIndex, 0, false));
+        });
     }
 #endif
 }

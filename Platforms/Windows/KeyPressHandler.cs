@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Controls;
 using Windows.System;
 
 namespace CrownRFEP_Reader.Platforms.Windows;
@@ -76,6 +77,11 @@ public static class KeyPressHandler
         if (e.Handled)
             return;
 
+        // No interceptar teclas si el foco está en un control de entrada de texto
+        // (evita que la barra espaciadora deje de escribir espacios en dashboards/formularios).
+        if (IsTextInputFocused())
+            return;
+
         switch (e.Key)
         {
             case VirtualKey.Space:
@@ -118,6 +124,22 @@ public static class KeyPressHandler
                     e.Handled = true;
                 }
                 break;
+        }
+    }
+
+    private static bool IsTextInputFocused()
+    {
+        try
+        {
+            var focused = FocusManager.GetFocusedElement();
+            return focused is TextBox
+                || focused is PasswordBox
+                || focused is RichEditBox
+                || focused is AutoSuggestBox;
+        }
+        catch
+        {
+            return false;
         }
     }
 

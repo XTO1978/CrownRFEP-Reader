@@ -15,6 +15,10 @@ using UIKit;
 using CrownRFEP_Reader.Platforms.MacCatalyst;
 #endif
 
+#if WINDOWS
+using CrownRFEP_Reader.Platforms.Windows;
+#endif
+
 namespace CrownRFEP_Reader.Views;
 
 public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
@@ -75,8 +79,6 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 #endif
         
 #if MACCATALYST
-        // Suscribirse a eventos de teclado
-        KeyPressHandler.SpaceBarPressed += OnSpaceBarPressed;
 #endif
 
 		// Hover preview: usamos PrecisionVideoPlayer (AVPlayerLayer). Autoplay+loop aquí.
@@ -1019,7 +1021,7 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         catch { }
     }
 
-#if MACCATALYST
+#if MACCATALYST || WINDOWS
     private void OnSpaceBarPressed(object? sender, EventArgs e)
     {
         // Solo responder si la página está activa
@@ -1035,6 +1037,13 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 
 #if MACCATALYST
 		TryAttachGlobalDismissRecognizer();
+#endif
+
+#if MACCATALYST || WINDOWS
+#if WINDOWS
+    KeyPressHandler.EnsureAttached();
+#endif
+    KeyPressHandler.SpaceBarPressed += OnSpaceBarPressed;
 #endif
 
         AppLog.Info(
@@ -1092,6 +1101,10 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 
 #if MACCATALYST
 		TryDetachGlobalDismissRecognizer();
+#endif
+
+#if MACCATALYST || WINDOWS
+    KeyPressHandler.SpaceBarPressed -= OnSpaceBarPressed;
 #endif
 
         AppLog.Info(
@@ -1308,6 +1321,9 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 
         var targetX = 0.0;
         var targetY = 0.0;
+        var hasPointerLocation = false;
+        var pointerX = 0.0;
+        var pointerY = 0.0;
 
 #if MACCATALYST
         // Preferimos coordenadas reales del puntero si están disponibles
@@ -1319,38 +1335,148 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
             var pInRoot = sourceUIView.ConvertPointToView(p, rootUIView);
             targetX = pInRoot.X;
             targetY = pInRoot.Y;
+            hasPointerLocation = true;
+            pointerX = targetX;
+            pointerY = targetY;
+        }
+#endif
+
+#if WINDOWS
+        // WinUI: convertir coordenadas del puntero (dentro del icono) al RootGrid
+        if (e.PointerLocationInSourceView is Point pointerInSourceWin)
+        {
+            var sourceUi = e.SourceView?.Handler?.PlatformView as Microsoft.UI.Xaml.UIElement;
+            var rootUi = RootGrid?.Handler?.PlatformView as Microsoft.UI.Xaml.UIElement;
+            if (sourceUi != null && rootUi != null)
+            {
+                try
+                {
+                    var transform = sourceUi.TransformToVisual(rootUi);
+                    var pInRoot = transform.TransformPoint(new Windows.Foundation.Point(pointerInSourceWin.X, pointerInSourceWin.Y));
+                    targetX = pInRoot.X;
+                    targetY = pInRoot.Y;
+                    hasPointerLocation = true;
+                    pointerX = targetX;
+                    pointerY = targetY;
+                }
+                catch
+                {
+                    // fallback below
+                }
+            }
         }
 #endif
 
         // Fallback: anclar al borde derecho del icono del ojo
         if (targetX <= 0 && targetY <= 0)
         {
-            var anchor = GetApproximatePositionRelativeToPage(e.SourceView);
-            targetX = anchor.X + Math.Max(0, e.SourceView?.Width ?? 0);
-            targetY = anchor.Y;
+            var fallbackX = 0.0;
+            var fallbackY = 0.0;
+
+#if WINDOWS
+            // WinUI: anclar con transform real (incluye offsets de scroll/virtualización)
+            var sourceUiFallback = e.SourceView?.Handler?.PlatformView as Microsoft.UI.Xaml.UIElement;
+            var rootUiFallback = RootGrid?.Handler?.PlatformView as Microsoft.UI.Xaml.UIElement;
+            if (sourceUiFallback != null && rootUiFallback != null)
+            {
+                try
+                {
+                    var transform = sourceUiFallback.TransformToVisual(rootUiFallback);
+                    var origin = transform.TransformPoint(new Windows.Foundation.Point(0, 0));
+                    fallbackX = origin.X + Math.Max(0, e.SourceView?.Width ?? 0);
+                    fallbackY = origin.Y;
+                }
+                catch
+                {
+                    fallbackX = 0;
+                    fallbackY = 0;
+                }
+            }
+#endif
+
+            if (fallbackX <= 0 && fallbackY <= 0)
+            {
+                var anchor = GetApproximatePositionRelativeToPage(e.SourceView);
+                fallbackX = anchor.X + Math.Max(0, e.SourceView?.Width ?? 0);
+                fallbackY = anchor.Y;
+            }
+
+            targetX = fallbackX;
+            targetY = fallbackY;
         }
 
-        // Offset tipo menú contextual
-        targetX += 12;
-        targetY += 12;
+        const double margin = 12;
+        const double pad = 12;
 
-        // Clamp para no salirse por la derecha/abajo
-        var previewWidth = HoverPreviewContainer.WidthRequest > 0 ? HoverPreviewContainer.WidthRequest : 480;
+        // Tamaño estimado del popup (si aún no ha medido, usamos 16:9 + 1 fila)
+        var previewWidth = HoverPreviewContainer.Width > 0
+            ? HoverPreviewContainer.Width
+            : (HoverPreviewContainer.WidthRequest > 0 ? HoverPreviewContainer.WidthRequest : 480);
+
         var previewHeight = HoverPreviewContainer.Height > 0
             ? HoverPreviewContainer.Height
-            : (previewWidth / 1.777) + 44; // 16:9 + fila de texto
+            : (previewWidth / 1.777) + 44;
 
         var containerWidth = RootGrid?.Width > 0 ? RootGrid.Width : this.Width;
         var containerHeight = RootGrid?.Height > 0 ? RootGrid.Height : this.Height;
 
-        var maxX = Math.Max(0, containerWidth - previewWidth - 12);
-        var maxY = Math.Max(0, containerHeight - previewHeight - 12);
+        var maxX = Math.Max(margin, containerWidth - previewWidth - margin);
+        var maxY = Math.Max(margin, containerHeight - previewHeight - margin);
 
-        targetX = Math.Clamp(targetX, 12, maxX);
-        targetY = Math.Clamp(targetY, 12, maxY);
+        // Intentar colocar en una esquina alrededor del puntero/ancla para evitar cubrir el puntero
+        var candidates = new (double X, double Y)[]
+        {
+            (targetX + pad, targetY + pad),
+            (targetX - previewWidth - pad, targetY + pad),
+            (targetX + pad, targetY - previewHeight - pad),
+            (targetX - previewWidth - pad, targetY - previewHeight - pad),
+        };
 
-        HoverPreviewContainer.TranslationX = targetX;
-        HoverPreviewContainer.TranslationY = targetY;
+        var placedX = candidates[0].X;
+        var placedY = candidates[0].Y;
+        var found = false;
+
+        foreach (var c in candidates)
+        {
+            if (c.X >= margin && c.X <= maxX && c.Y >= margin && c.Y <= maxY)
+            {
+                placedX = c.X;
+                placedY = c.Y;
+                found = true;
+                break;
+            }
+        }
+
+        if (!found)
+        {
+            // Clamp básico
+            placedX = Math.Clamp(placedX, margin, maxX);
+            placedY = Math.Clamp(placedY, margin, maxY);
+
+            // Si el clamping lo mete debajo del puntero, intentamos empujarlo al otro lado
+            if (hasPointerLocation)
+            {
+                var overlapsPointer = pointerX >= placedX && pointerX <= (placedX + previewWidth)
+                    && pointerY >= placedY && pointerY <= (placedY + previewHeight);
+
+                if (overlapsPointer)
+                {
+                    var tryLeftX = Math.Clamp(pointerX - previewWidth - pad, margin, maxX);
+                    var tryTopY = Math.Clamp(pointerY - previewHeight - pad, margin, maxY);
+
+                    // Preferimos mover en X; si no resuelve, movemos en Y.
+                    placedX = tryLeftX;
+                    overlapsPointer = pointerX >= placedX && pointerX <= (placedX + previewWidth)
+                        && pointerY >= placedY && pointerY <= (placedY + previewHeight);
+
+                    if (overlapsPointer)
+                        placedY = tryTopY;
+                }
+            }
+        }
+
+        HoverPreviewContainer.TranslationX = placedX;
+        HoverPreviewContainer.TranslationY = placedY;
     }
 
     private static Point GetApproximatePositionRelativeToPage(VisualElement? element)
