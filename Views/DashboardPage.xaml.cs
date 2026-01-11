@@ -37,6 +37,9 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
     // Indica si esta página está activa
     private bool _isPageActive;
 
+    private double _lastVideoGalleryMeasuredWidth = -1;
+    private int _lastVideoGalleryComputedSpan = -1;
+
 #if MACCATALYST
 	private UITapGestureRecognizer? _globalDismissTapRecognizer;
 	private UIView? _globalDismissHostView;
@@ -124,6 +127,22 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         }
         catch { }
 
+        try
+        {
+            if (VideoGallery != null)
+            {
+                VideoGallery.SizeChanged += OnVideoGallerySizeChanged;
+                OnVideoGallerySizeChanged(VideoGallery, EventArgs.Empty);
+            }
+
+            if (VideoLessonsGallery != null)
+            {
+                VideoLessonsGallery.SizeChanged += OnVideoGallerySizeChanged;
+                OnVideoGallerySizeChanged(VideoLessonsGallery, EventArgs.Empty);
+            }
+        }
+        catch { }
+
                 // Preview players (drop zones): cuando abren media, ocultamos miniatura.
                 PreviewPlayerSingle.MediaOpened += OnPreviewPlayerMediaOpened;
                 PreviewPlayer1H.MediaOpened += OnPreviewPlayerMediaOpened;
@@ -191,6 +210,9 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 
         try { SidebarSessionsCollectionView.SizeChanged -= OnSidebarSessionsSizeChanged; } catch { }
 
+        try { VideoGallery.SizeChanged -= OnVideoGallerySizeChanged; } catch { }
+        try { VideoLessonsGallery.SizeChanged -= OnVideoGallerySizeChanged; } catch { }
+
         try { PreviewPlayerSingle.MediaOpened -= OnPreviewPlayerMediaOpened; } catch { }
         try { PreviewPlayer1H.MediaOpened -= OnPreviewPlayerMediaOpened; } catch { }
         try { PreviewPlayer2H.MediaOpened -= OnPreviewPlayerMediaOpened; } catch { }
@@ -241,6 +263,58 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
             SidebarSessionsCollectionView.InvalidateMeasure();
         }
         catch { }
+    }
+
+    private void OnVideoGallerySizeChanged(object? sender, EventArgs e)
+    {
+        try
+        {
+            if (BindingContext is not DashboardViewModel vm)
+                return;
+
+            if (sender is not VisualElement element)
+                return;
+
+            var width = element.Width;
+            if (width <= 0)
+                return;
+
+            // Evitar recalcular en bucle por micro-variaciones.
+            if (Math.Abs(_lastVideoGalleryMeasuredWidth - width) <= 0.5)
+                return;
+
+            _lastVideoGalleryMeasuredWidth = width;
+
+            var span = CalculateVideoGallerySpan(width);
+            if (span == _lastVideoGalleryComputedSpan)
+                return;
+
+            _lastVideoGalleryComputedSpan = span;
+
+            if (vm.VideoGalleryColumnSpan != span)
+                vm.VideoGalleryColumnSpan = span;
+        }
+        catch { }
+    }
+
+    private static int CalculateVideoGallerySpan(double availableWidth)
+    {
+        // Objetivo: variar columnas según el ancho real disponible.
+        // - Máximo 4, mínimo 1.
+        // - Elegimos el mayor número de columnas que deje un ancho mínimo por item.
+        const int maxSpan = 4;
+        const double minItemWidth = 170; // ajustado para mantener 4 columnas en anchos habituales
+        const double itemSpacing = 6;    // aproximación (SpacingXSmall es 4/6 según plataforma)
+
+        for (var span = maxSpan; span >= 1; span--)
+        {
+            var totalSpacing = itemSpacing * (span - 1);
+            var itemWidth = (availableWidth - totalSpacing) / span;
+            if (itemWidth >= minItemWidth)
+                return span;
+        }
+
+        return 1;
     }
 
     private void OnAllGalleryTapped(object? sender, TappedEventArgs e)

@@ -251,6 +251,8 @@ public class DashboardViewModel : BaseViewModel
     private bool _isDiaryTabSelected;
     private bool _isQuickAnalysisIsolatedMode;
 
+    private int _videoGalleryColumnSpan = DeviceInfo.Current.Platform == DevicePlatform.iOS ? 3 : 4;
+
     // Diario de sesión
     private SessionDiary? _currentSessionDiary;
     private bool _isEditingDiary;
@@ -1427,21 +1429,17 @@ public class DashboardViewModel : BaseViewModel
                     RightPanelWidth = new GridLength(1, GridUnitType.Star);
                 }
                 UpdateRightPanelLayout();
-                OnPropertyChanged(nameof(VideoGalleryColumnSpan));
             }
         }
     }
 
     public int VideoGalleryColumnSpan
     {
-        get
+        get => _videoGalleryColumnSpan;
+        set
         {
-            if (_isQuickAnalysisIsolatedMode)
-                return 2;
-
-            // Mantener el comportamiento actual del recurso GalleryColumnCount:
-            // iOS => 3, resto => 4.
-            return DeviceInfo.Current.Platform == DevicePlatform.iOS ? 3 : 4;
+            var clamped = Math.Clamp(value, 1, 4);
+            SetProperty(ref _videoGalleryColumnSpan, clamped);
         }
     }
 

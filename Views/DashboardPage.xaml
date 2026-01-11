@@ -1285,7 +1285,7 @@
                     <GridItemsLayout
                         HorizontalItemSpacing="{StaticResource SpacingXSmall}"
                         Orientation="Vertical"
-                        Span="{StaticResource GalleryColumnCount}"
+                        Span="{Binding VideoGalleryColumnSpan}"
                         VerticalItemSpacing="{StaticResource SpacingSmall}" />
                 </CollectionView.ItemsLayout>
 
