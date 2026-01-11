@@ -926,11 +926,27 @@ public class WindowsVideoCompositionService : IVideoCompositionService
             // Crear overlay layer para ambos videos
             var overlayTrack = new MediaOverlayLayer();
             
+            // Configurar posiciones según el layout.
+            // Para mantener paridad con el modo SyncByLaps:
+            // - Horizontal: dejar una barra negra inferior para los nombres.
+            // - Vertical: nombres sobre los vídeos (esquinas), sin barra.
+            var uiScale2 = outputHeight / 1080.0;
+            var bottomBarH2 = parameters.IsHorizontalLayout
+                ? (int)Math.Clamp(Math.Round(160 * uiScale2), 110, 260)
+                : 0;
+            var videoAreaH2 = (double)outputHeight - bottomBarH2;
+            var bottomBarY2 = videoAreaH2;
+
+            var panel1Rect = parameters.IsHorizontalLayout
+                ? new WinFoundation.Rect(0, 0, (double)outputWidth / 2.0, videoAreaH2)
+                : new WinFoundation.Rect(0, 0, outputWidth, (double)outputHeight / 2.0);
+            var panel2Rect = parameters.IsHorizontalLayout
+                ? new WinFoundation.Rect((double)outputWidth / 2.0, 0, (double)outputWidth / 2.0, videoAreaH2)
+                : new WinFoundation.Rect(0, (double)outputHeight / 2.0, outputWidth, (double)outputHeight / 2.0);
+
             // Configurar posición del video 1 según el layout
             var overlay1 = new MediaOverlay(clip1);
-            overlay1.Position = parameters.IsHorizontalLayout
-                ? new WinFoundation.Rect(0, 0, (double)outputWidth / 2.0, outputHeight)
-                : new WinFoundation.Rect(0, 0, outputWidth, (double)outputHeight / 2.0);
+            overlay1.Position = panel1Rect;
             overlay1.Delay = TimeSpan.Zero;
             overlay1.Opacity = 1.0; // Asegurar opacidad completa
             overlayTrack.Overlays.Add(overlay1);
@@ -939,69 +955,89 @@ public class WindowsVideoCompositionService : IVideoCompositionService
             
             // Configurar posición del video 2 según el layout
             var overlay2 = new MediaOverlay(clip2);
-            overlay2.Position = parameters.IsHorizontalLayout
-                ? new WinFoundation.Rect((double)outputWidth / 2.0, 0, (double)outputWidth / 2.0, outputHeight)
-                : new WinFoundation.Rect(0, (double)outputHeight / 2.0, outputWidth, (double)outputHeight / 2.0);
+            overlay2.Position = panel2Rect;
             overlay2.Delay = TimeSpan.Zero;
             overlay2.Opacity = 1.0; // Asegurar opacidad completa
             overlayTrack.Overlays.Add(overlay2);
             
             System.Diagnostics.Debug.WriteLine($"[WindowsVideoComposition] Overlay2 added - Position: {overlay2.Position}, Opacity: {overlay2.Opacity}");
 
-            // Overlays de info por vídeo (equivalente a macOS)
-            var infoText1 = BuildInfoText(parameters.Video1Category, parameters.Video1Section, parameters.Video1Time, parameters.Video1Penalties);
-            var infoText2 = BuildInfoText(parameters.Video2Category, parameters.Video2Section, parameters.Video2Time, parameters.Video2Penalties);
-
-            var panelWidthPx = parameters.IsHorizontalLayout ? (int)(outputWidth / 2) : (int)outputWidth;
-            var panelHeightPx = parameters.IsHorizontalLayout ? (int)outputHeight : (int)(outputHeight / 2);
-            var scale2 = panelHeightPx / 1080.0;
-            var labelH = (int)Math.Max(80, Math.Round(85 * scale2));
-
-            var labelW1 = !string.IsNullOrWhiteSpace(parameters.Video1AthleteName)
-                ? ComputeOverlayWidthApprox(parameters.Video1AthleteName!, infoText1, scale2, panelWidthPx)
-                : Math.Max(140, panelWidthPx - (int)Math.Round(20 * scale2));
-            var labelW2 = !string.IsNullOrWhiteSpace(parameters.Video2AthleteName)
-                ? ComputeOverlayWidthApprox(parameters.Video2AthleteName!, infoText2, scale2, panelWidthPx)
-                : Math.Max(140, panelWidthPx - (int)Math.Round(20 * scale2));
-
-            if (!string.IsNullOrWhiteSpace(parameters.Video1AthleteName))
+            // Labels de atletas: mismo formato y colocación que en SyncByLaps.
+            if (parameters.IsHorizontalLayout)
             {
-                var labelFile1 = await CreateAthleteInfoOverlayImageAsync(
-                    parameters.Video1AthleteName!,
-                    infoText1,
-                    labelW1,
-                    labelH,
-                    "p_v1_label",
-                    cancellationToken);
-                var labelClip1 = await MediaClip.CreateFromImageFileAsync(labelFile1, minDuration);
-                overlayTrack.Overlays.Add(new MediaOverlay(labelClip1)
+                var barPanelW2 = (double)outputWidth / 2.0;
+                var nameH2 = (int)Math.Max(26, Math.Round(30 * uiScale2));
+                var nameW2 = (int)Math.Min(barPanelW2 * 0.80, barPanelW2 - (20 * uiScale2));
+                nameW2 = Math.Max(1, nameW2);
+                var nameY2 = bottomBarY2 + (bottomBarH2 * 0.68);
+
+                if (!string.IsNullOrWhiteSpace(parameters.Video1AthleteName))
                 {
-                    Position = parameters.IsHorizontalLayout
-                        ? new WinFoundation.Rect(0 + 10, 0 + outputHeight - labelH - 10, labelW1, labelH)
-                        : new WinFoundation.Rect(0 + 10, 0 + (outputHeight / 2) - labelH - 10, labelW1, labelH),
-                    Delay = TimeSpan.Zero,
-                    Opacity = 1.0
-                });
+                    var nameImg = await CreatePlainTextImageAsync(parameters.Video1AthleteName!.Trim(), SKColors.White, nameW2, nameH2, "p_v1_name", cancellationToken);
+                    var nameClip = await MediaClip.CreateFromImageFileAsync(nameImg, minDuration);
+                    overlayTrack.Overlays.Add(new MediaOverlay(nameClip)
+                    {
+                        Position = new WinFoundation.Rect(0 + (barPanelW2 - nameW2) / 2.0, nameY2, nameW2, nameH2),
+                        Delay = TimeSpan.Zero,
+                        Opacity = 1.0
+                    });
+                }
+
+                if (!string.IsNullOrWhiteSpace(parameters.Video2AthleteName))
+                {
+                    var nameImg = await CreatePlainTextImageAsync(parameters.Video2AthleteName!.Trim(), SKColors.White, nameW2, nameH2, "p_v2_name", cancellationToken);
+                    var nameClip = await MediaClip.CreateFromImageFileAsync(nameImg, minDuration);
+                    overlayTrack.Overlays.Add(new MediaOverlay(nameClip)
+                    {
+                        Position = new WinFoundation.Rect(((double)outputWidth / 2.0) + (barPanelW2 - nameW2) / 2.0, nameY2, nameW2, nameH2),
+                        Delay = TimeSpan.Zero,
+                        Opacity = 1.0
+                    });
+                }
             }
-
-            if (!string.IsNullOrWhiteSpace(parameters.Video2AthleteName))
+            else
             {
-                var labelFile2 = await CreateAthleteInfoOverlayImageAsync(
-                    parameters.Video2AthleteName!,
-                    infoText2,
-                    labelW2,
-                    labelH,
-                    "p_v2_label",
-                    cancellationToken);
-                var labelClip2 = await MediaClip.CreateFromImageFileAsync(labelFile2, minDuration);
-                overlayTrack.Overlays.Add(new MediaOverlay(labelClip2)
+                // Modo vertical (stacked): colocar nombres igual que en SyncByLaps (debajo del pill, aunque aquí no haya pill).
+                var pad = Math.Max(12.0, Math.Round(18 * uiScale2));
+                var gap = Math.Max(6.0, Math.Round(8 * uiScale2));
+
+                var vertLapH = (int)Math.Clamp(Math.Round(46 * uiScale2), 34, 84);
+                var vertNameH = (int)Math.Clamp(Math.Round(22 * uiScale2), 18, 50);
+                var vertNameMaxW = (int)Math.Min(Math.Round(420 * uiScale2), Math.Round(outputWidth * 0.48));
+                vertNameMaxW = (int)Math.Min(vertNameMaxW, outputWidth - (pad * 2.0));
+
+                var v1Name = string.IsNullOrWhiteSpace(parameters.Video1AthleteName) ? "" : parameters.Video1AthleteName!.Trim();
+                var v2Name = string.IsNullOrWhiteSpace(parameters.Video2AthleteName) ? "" : parameters.Video2AthleteName!.Trim();
+                var v1NameW = string.IsNullOrWhiteSpace(v1Name) ? 0 : ComputePlainTextWidthTight(v1Name, vertNameH, vertNameMaxW);
+                var v2NameW = string.IsNullOrWhiteSpace(v2Name) ? 0 : ComputePlainTextWidthTight(v2Name, vertNameH, vertNameMaxW);
+
+                var posTop = panel1Rect;
+                var posBottom = panel2Rect;
+
+                var blockH = vertLapH + gap + vertNameH;
+
+                var rightNameX1 = posTop.X + posTop.Width - pad - Math.Max(1, v1NameW);
+                var rightNameX2 = posBottom.X + posBottom.Width - pad - Math.Max(1, v2NameW);
+
+                var v1BlockTop = (posTop.Y + posTop.Height) - pad - blockH;
+                var v2BlockTop = posBottom.Y + pad;
+
+                var v1NameRect = new WinFoundation.Rect(rightNameX1, v1BlockTop + vertLapH + gap, Math.Max(1, v1NameW), vertNameH);
+                var v2NameRect = new WinFoundation.Rect(rightNameX2, v2BlockTop + vertLapH + gap, Math.Max(1, v2NameW), vertNameH);
+
+                if (!string.IsNullOrWhiteSpace(v1Name))
                 {
-                    Position = parameters.IsHorizontalLayout
-                        ? new WinFoundation.Rect((double)outputWidth / 2.0 + 10, 0 + outputHeight - labelH - 10, labelW2, labelH)
-                        : new WinFoundation.Rect(0 + 10, outputHeight - labelH - 10, labelW2, labelH),
-                    Delay = TimeSpan.Zero,
-                    Opacity = 1.0
-                });
+                    var v1NameImg = await CreatePlainTextImageAsync(v1Name, SKColors.White, Math.Max(1, v1NameW), vertNameH, "p_v1_name_v", cancellationToken);
+                    var v1NameClip = await MediaClip.CreateFromImageFileAsync(v1NameImg, minDuration);
+                    overlayTrack.Overlays.Add(new MediaOverlay(v1NameClip) { Position = v1NameRect, Delay = TimeSpan.Zero, Opacity = 1.0 });
+                }
+
+                if (!string.IsNullOrWhiteSpace(v2Name))
+                {
+                    var v2NameImg = await CreatePlainTextImageAsync(v2Name, SKColors.White, Math.Max(1, v2NameW), vertNameH, "p_v2_name_v", cancellationToken);
+                    var v2NameClip = await MediaClip.CreateFromImageFileAsync(v2NameImg, minDuration);
+                    overlayTrack.Overlays.Add(new MediaOverlay(v2NameClip) { Position = v2NameRect, Delay = TimeSpan.Zero, Opacity = 1.0 });
+                }
             }
 
             composition.OverlayLayers.Add(overlayTrack);
@@ -1542,41 +1578,59 @@ public class WindowsVideoCompositionService : IVideoCompositionService
             };
             overlayTrack.Overlays.Add(overlay4);
 
-            // Overlays de info por vídeo (equivalente a macOS)
-            var q1Info = BuildInfoText(parameters.Video1Category, parameters.Video1Section, parameters.Video1Time, parameters.Video1Penalties);
-            var q2Info = BuildInfoText(parameters.Video2Category, parameters.Video2Section, parameters.Video2Time, parameters.Video2Penalties);
-            var q3Info = BuildInfoText(parameters.Video3Category, parameters.Video3Section, parameters.Video3Time, parameters.Video3Penalties);
-            var q4Info = BuildInfoText(parameters.Video4Category, parameters.Video4Section, parameters.Video4Time, parameters.Video4Penalties);
-
             var panelW2 = (int)Math.Round(quadHalfW);
             var panelH2 = (int)Math.Round(quadHalfH);
-            var scaleQ = panelH2 / 1080.0;
-            // Altura mínima suficiente para 2 líneas (info + nombre) sin recortes.
-            var labelHQ = (int)Math.Max(60, Math.Round(85 * scaleQ));
+            // Labels de atletas (solo nombre) con el mismo estilo/posición que en SyncByLaps.
+            var quadUiScale2 = Math.Clamp(panelH2 / 540.0, 0.60, 1.40);
+            var quadPad2 = Math.Max(10.0, Math.Round(14 * quadUiScale2));
+            var quadGap2 = Math.Max(6.0, Math.Round(8 * quadUiScale2));
+            var quadLapH2 = (int)Math.Clamp(Math.Round(44 * quadUiScale2), 32, 72);
+            var quadNameH2 = (int)Math.Clamp(Math.Round(20 * quadUiScale2), 16, 44);
 
-            async Task AddQuadLabelAsync(string? athleteName, string info, double x, double y, bool alignRight, bool anchorTop)
+            var quadNameMaxW2 = (int)Math.Min(Math.Round(panelW2 * 0.92), Math.Round(520 * quadUiScale2));
+            quadNameMaxW2 = Math.Max(1, Math.Min(quadNameMaxW2, (int)Math.Round(panelW2 - (quadPad2 * 2.0))));
+
+            var quadPanel1 = new WinFoundation.Rect(0, 0, quadHalfW, quadHalfH);
+            var quadPanel2 = new WinFoundation.Rect(quadHalfW, 0, quadHalfW, quadHalfH);
+            var quadPanel3 = new WinFoundation.Rect(0, quadHalfH, quadHalfW, quadHalfH);
+            var quadPanel4 = new WinFoundation.Rect(quadHalfW, quadHalfH, quadHalfW, quadHalfH);
+
+            async Task AddQuadNameAsync(WinFoundation.Rect panel, string? athleteName, bool anchorRight, bool anchorTop, string prefix)
             {
                 var name = (athleteName ?? string.Empty).Trim();
-                if (string.IsNullOrWhiteSpace(name) && string.IsNullOrWhiteSpace(info))
+                if (string.IsNullOrWhiteSpace(name))
                     return;
 
-                var labelW = Math.Min(ComputeOverlayWidthApprox(name, info, scaleQ, panelW2), panelW2 - 20);
-                var file = await CreateAthleteInfoOverlayImageAsync(name, info, labelW, labelHQ, "quad_label", cancellationToken);
-                var clip = await MediaClip.CreateFromImageFileAsync(file, minDuration);
-                var px = alignRight ? (x + panelW2 - 10 - labelW) : (x + 10);
-                var py = anchorTop ? (y + 10) : (y + panelH2 - labelHQ - 10);
-                overlayTrack.Overlays.Add(new MediaOverlay(clip)
+                var nameW = ComputePlainTextWidthTight(name, quadNameH2, quadNameMaxW2);
+                var blockH = quadLapH2 + quadGap2 + quadNameH2;
+
+                var yTop = anchorTop
+                    ? (panel.Y + quadPad2)
+                    : (panel.Y + panel.Height - quadPad2 - blockH);
+                var yMin = panel.Y + quadPad2;
+                var yMax = panel.Y + panel.Height - quadPad2 - blockH;
+                yTop = Math.Clamp(yTop, yMin, yMax);
+
+                var xMin = panel.X + quadPad2;
+                var xMax = panel.X + panel.Width - quadPad2 - nameW;
+                var x = anchorRight ? xMax : xMin;
+                x = Math.Clamp(x, xMin, xMax);
+
+                var nameImg = await CreatePlainTextImageAsync(name, SKColors.White, nameW, quadNameH2, prefix, cancellationToken);
+                var nameClip = await MediaClip.CreateFromImageFileAsync(nameImg, minDuration);
+                overlayTrack.Overlays.Add(new MediaOverlay(nameClip)
                 {
-                    Position = new WinFoundation.Rect(px, py, labelW, labelHQ),
+                    Position = new WinFoundation.Rect(x, yTop + quadLapH2 + quadGap2, nameW, quadNameH2),
                     Delay = TimeSpan.Zero,
                     Opacity = 1.0
                 });
             }
 
-            await AddQuadLabelAsync(parameters.Video1AthleteName, q1Info, 0, 0, alignRight: true, anchorTop: false);
-            await AddQuadLabelAsync(parameters.Video2AthleteName, q2Info, quadHalfW, 0, alignRight: false, anchorTop: false);
-            await AddQuadLabelAsync(parameters.Video3AthleteName, q3Info, 0, quadHalfH, alignRight: true, anchorTop: true);
-            await AddQuadLabelAsync(parameters.Video4AthleteName, q4Info, quadHalfW, quadHalfH, alignRight: false, anchorTop: true);
+            // Column 0: bottom-right. Column 1: bottom-left. Fila inferior anclada arriba para alinear en la junta central.
+            await AddQuadNameAsync(quadPanel1, parameters.Video1AthleteName, anchorRight: true, anchorTop: false, "q_name_1_nosync");
+            await AddQuadNameAsync(quadPanel2, parameters.Video2AthleteName, anchorRight: false, anchorTop: false, "q_name_2_nosync");
+            await AddQuadNameAsync(quadPanel3, parameters.Video3AthleteName, anchorRight: true, anchorTop: true, "q_name_3_nosync");
+            await AddQuadNameAsync(quadPanel4, parameters.Video4AthleteName, anchorRight: false, anchorTop: true, "q_name_4_nosync");
 
             composition.OverlayLayers.Add(overlayTrack);
             
