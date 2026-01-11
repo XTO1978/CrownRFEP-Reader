@@ -12,6 +12,10 @@ public class GridSplitter : ContentView
     private double _rightColumnStartWidth;
     private double _pendingLeftWidth;
     private double _pendingRightWidth;
+    private bool _leftStartWasStar;
+    private bool _rightStartWasStar;
+    private bool _leftStartWasAbsolute;
+    private bool _rightStartWasAbsolute;
     private Grid? _parentGrid;
     private BoxView? _previewLine;
     private readonly BoxView _visualIndicator;
@@ -194,6 +198,25 @@ public class GridSplitter : ContentView
                 var leftIdx = LeftColumnIndex;
                 var rightIdx = RightColumnIndex;
 
+                _leftStartWasStar = false;
+                _rightStartWasStar = false;
+                _leftStartWasAbsolute = false;
+                _rightStartWasAbsolute = false;
+
+                if (leftIdx >= 0 && leftIdx < _parentGrid.ColumnDefinitions.Count)
+                {
+                    var w = _parentGrid.ColumnDefinitions[leftIdx].Width;
+                    _leftStartWasStar = w.IsStar;
+                    _leftStartWasAbsolute = w.IsAbsolute;
+                }
+
+                if (rightIdx >= 0 && rightIdx < _parentGrid.ColumnDefinitions.Count)
+                {
+                    var w = _parentGrid.ColumnDefinitions[rightIdx].Width;
+                    _rightStartWasStar = w.IsStar;
+                    _rightStartWasAbsolute = w.IsAbsolute;
+                }
+
                 if (leftIdx >= 0 && leftIdx < _parentGrid.ColumnDefinitions.Count)
                 {
                     _leftColumnStartWidth = GetColumnActualWidth(_parentGrid, leftIdx);
@@ -258,8 +281,43 @@ public class GridSplitter : ContentView
                     
                     if (lIdx >= 0 && rIdx < _parentGrid.ColumnDefinitions.Count)
                     {
-                        var newLeft = new GridLength(_pendingLeftWidth, GridUnitType.Absolute);
-                        var newRight = new GridLength(_pendingRightWidth, GridUnitType.Absolute);
+                        GridLength newLeft;
+                        GridLength newRight;
+
+                        // Si ambas columnas eran Star, devolvemos Star (ratio) para que el Grid
+                        // siga rellenando el ancho disponible y no queden huecos ni overflow.
+                        if (_leftStartWasStar && _rightStartWasStar)
+                        {
+                            var total = _pendingLeftWidth + _pendingRightWidth;
+                            if (total <= 0)
+                            {
+                                newLeft = new GridLength(1, GridUnitType.Star);
+                                newRight = new GridLength(1, GridUnitType.Star);
+                            }
+                            else
+                            {
+                                newLeft = new GridLength(_pendingLeftWidth / total, GridUnitType.Star);
+                                newRight = new GridLength(_pendingRightWidth / total, GridUnitType.Star);
+                            }
+                        }
+                        // Si una era Absolute y la otra Star, mantenemos la fija en Absolute
+                        // y dejamos la otra en Star para que absorba el resto.
+                        else if (_leftStartWasAbsolute && _rightStartWasStar)
+                        {
+                            newLeft = new GridLength(_pendingLeftWidth, GridUnitType.Absolute);
+                            newRight = new GridLength(1, GridUnitType.Star);
+                        }
+                        else if (_leftStartWasStar && _rightStartWasAbsolute)
+                        {
+                            newLeft = new GridLength(1, GridUnitType.Star);
+                            newRight = new GridLength(_pendingRightWidth, GridUnitType.Absolute);
+                        }
+                        else
+                        {
+                            // Fallback: usar absolutos.
+                            newLeft = new GridLength(_pendingLeftWidth, GridUnitType.Absolute);
+                            newRight = new GridLength(_pendingRightWidth, GridUnitType.Absolute);
+                        }
 
                         // Si hay bindings TwoWay, actualizamos el VM para que el cambio persista.
                         // Si no hay bindings, aplicamos directamente al Grid.

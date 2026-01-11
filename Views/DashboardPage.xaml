@@ -325,7 +325,8 @@
                                     VerticalOptions="Center"
                                     HorizontalOptions="Fill">
                                     <Grid.GestureRecognizers>
-                                        <TapGestureRecognizer Tapped="OnUserLibraryMenuTapped" />
+                                        <TapGestureRecognizer Buttons="Primary" Tapped="OnUserLibraryMenuTapped" />
+                                        <TapGestureRecognizer Buttons="Secondary" Tapped="OnUserLibraryMenuTapped" />
                                     </Grid.GestureRecognizers>
 
                                     <controls:SymbolIcon
@@ -355,7 +356,8 @@
                                     BackgroundColor="Transparent"
                                     StrokeThickness="0">
                                     <Border.GestureRecognizers>
-                                        <TapGestureRecognizer Tapped="OnUserLibraryMenuTapped" />
+                                        <TapGestureRecognizer Buttons="Primary" Tapped="OnUserLibraryMenuTapped" />
+                                        <TapGestureRecognizer Buttons="Secondary" Tapped="OnUserLibraryMenuTapped" />
                                     </Border.GestureRecognizers>
                                     <controls:SymbolIcon
                                         HeightRequest="{StaticResource IconSizeSmall}"
@@ -580,9 +582,14 @@
                                     BackgroundColor="Transparent"
                                     Stroke="Transparent"
                                     StrokeShape="RoundRectangle 4"
-                                    Opacity="0"
                                     HorizontalOptions="End"
                                     VerticalOptions="Center">
+                                    <Border.Opacity>
+                                        <OnPlatform x:TypeArguments="x:Double">
+                                            <On Platform="iOS" Value="1" />
+                                            <On Platform="Default" Value="0" />
+                                        </OnPlatform>
+                                    </Border.Opacity>
                                     <Border.GestureRecognizers>
                                         <TapGestureRecognizer Command="{Binding OpenSmartFolderSidebarPopupCommand}" Tapped="OnAddSmartFolderTapped" />
                                     </Border.GestureRecognizers>
@@ -732,6 +739,9 @@
                                 <behaviors:SidebarHoverBehavior />
                             </Border.Behaviors>
                             <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" VerticalOptions="Center" HorizontalOptions="Fill">
+                                <Grid.GestureRecognizers>
+                                    <TapGestureRecognizer Buttons="Secondary" Tapped="OnSessionsMenuTapped" />
+                                </Grid.GestureRecognizers>
                                 <!-- Expansion toggle button (oculto en Windows por ahora) -->
                                 <Border
                                     Grid.Column="0"
@@ -784,11 +794,17 @@
                                     BackgroundColor="Transparent"
                                     Stroke="Transparent"
                                     StrokeShape="RoundRectangle 4"
-                                    Opacity="0"
                                     HorizontalOptions="End"
                                     VerticalOptions="Center">
+                                    <Border.Opacity>
+                                        <OnPlatform x:TypeArguments="x:Double">
+                                            <On Platform="iOS" Value="1" />
+                                            <On Platform="Default" Value="0" />
+                                        </OnPlatform>
+                                    </Border.Opacity>
                                     <Border.GestureRecognizers>
-                                        <TapGestureRecognizer Tapped="OnSessionsMenuTapped" />
+                                        <TapGestureRecognizer Buttons="Primary" Tapped="OnSessionsMenuTapped" />
+                                        <TapGestureRecognizer Buttons="Secondary" Tapped="OnSessionsMenuTapped" />
                                     </Border.GestureRecognizers>
                                     <controls:SymbolIcon
                                         HeightRequest="{StaticResource IconSizeSmall}"
@@ -2160,7 +2176,7 @@
                                         <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen1" />
                                     </BoxView.GestureRecognizers>
                                     <BoxView.Behaviors>
-                                        <behaviors:VideoScrubBehavior VideoIndex="0" MillisecondsPerPixel="{OnPlatform WinUI=200, Default=5}" />
+                                        <behaviors:VideoScrubBehavior VideoIndex="0" MillisecondsPerPixel="{OnPlatform WinUI=200, iOS=25, Default=5}" />
                                     </BoxView.Behaviors>
                                 </BoxView>
                             </Grid>
@@ -2231,7 +2247,7 @@
                                             <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen1" />
                                         </BoxView.GestureRecognizers>
                                         <BoxView.Behaviors>
-                                            <behaviors:VideoScrubBehavior VideoIndex="1" MillisecondsPerPixel="{OnPlatform WinUI=200, Default=5}" />
+                                            <behaviors:VideoScrubBehavior VideoIndex="1" MillisecondsPerPixel="{OnPlatform WinUI=200, iOS=25, Default=5}" />
                                         </BoxView.Behaviors>
                                     </BoxView>
                                 </Grid>
@@ -2285,7 +2301,7 @@
                                             <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen2" />
                                         </BoxView.GestureRecognizers>
                                         <BoxView.Behaviors>
-                                            <behaviors:VideoScrubBehavior VideoIndex="2" MillisecondsPerPixel="{OnPlatform WinUI=200, Default=5}" />
+                                            <behaviors:VideoScrubBehavior VideoIndex="2" MillisecondsPerPixel="{OnPlatform WinUI=200, iOS=25, Default=5}" />
                                         </BoxView.Behaviors>
                                     </BoxView>
                                 </Grid>
@@ -2357,7 +2373,7 @@
                                             <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen1" />
                                         </BoxView.GestureRecognizers>
                                         <BoxView.Behaviors>
-                                            <behaviors:VideoScrubBehavior VideoIndex="1" MillisecondsPerPixel="{OnPlatform WinUI=200, Default=5}" />
+                                            <behaviors:VideoScrubBehavior VideoIndex="1" MillisecondsPerPixel="{OnPlatform WinUI=200, iOS=25, Default=5}" />
                                         </BoxView.Behaviors>
                                     </BoxView>
                                 </Grid>
@@ -2411,7 +2427,7 @@
                                             <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen2" />
                                         </BoxView.GestureRecognizers>
                                         <BoxView.Behaviors>
-                                            <behaviors:VideoScrubBehavior VideoIndex="2" MillisecondsPerPixel="{OnPlatform WinUI=200, Default=5}" />
+                                            <behaviors:VideoScrubBehavior VideoIndex="2" MillisecondsPerPixel="{OnPlatform WinUI=200, iOS=25, Default=5}" />
                                         </BoxView.Behaviors>
                                     </BoxView>
                                 </Grid>
@@ -2476,7 +2492,7 @@
                                             <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen1" />
                                         </BoxView.GestureRecognizers>
                                         <BoxView.Behaviors>
-                                            <behaviors:VideoScrubBehavior VideoIndex="1" MillisecondsPerPixel="{OnPlatform WinUI=200, Default=5}" />
+                                            <behaviors:VideoScrubBehavior VideoIndex="1" MillisecondsPerPixel="{OnPlatform WinUI=200, iOS=25, Default=5}" />
                                         </BoxView.Behaviors>
                                     </BoxView>
                                 </Grid>
@@ -2532,7 +2548,7 @@
                                             <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen2" />
                                         </BoxView.GestureRecognizers>
                                         <BoxView.Behaviors>
-                                            <behaviors:VideoScrubBehavior VideoIndex="2" MillisecondsPerPixel="{OnPlatform WinUI=200, Default=5}" />
+                                            <behaviors:VideoScrubBehavior VideoIndex="2" MillisecondsPerPixel="{OnPlatform WinUI=200, iOS=25, Default=5}" />
                                         </BoxView.Behaviors>
                                     </BoxView>
                                 </Grid>
@@ -2588,7 +2604,7 @@
                                             <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen3" />
                                         </BoxView.GestureRecognizers>
                                         <BoxView.Behaviors>
-                                            <behaviors:VideoScrubBehavior VideoIndex="3" MillisecondsPerPixel="{OnPlatform WinUI=200, Default=5}" />
+                                            <behaviors:VideoScrubBehavior VideoIndex="3" MillisecondsPerPixel="{OnPlatform WinUI=200, iOS=25, Default=5}" />
                                         </BoxView.Behaviors>
                                     </BoxView>
                                 </Grid>
@@ -2644,7 +2660,7 @@
                                             <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen4" />
                                         </BoxView.GestureRecognizers>
                                         <BoxView.Behaviors>
-                                            <behaviors:VideoScrubBehavior VideoIndex="4" MillisecondsPerPixel="{OnPlatform WinUI=200, Default=5}" />
+                                            <behaviors:VideoScrubBehavior VideoIndex="4" MillisecondsPerPixel="{OnPlatform WinUI=200, iOS=25, Default=5}" />
                                         </BoxView.Behaviors>
                                     </BoxView>
                                 </Grid>
@@ -6651,8 +6667,8 @@
             Grid.ColumnSpan="5"
             BackgroundColor="#00000000"
             IsVisible="False"
-            InputTransparent="False"
-            ZIndex="998">
+            InputTransparent="{OnPlatform iOS=False, Default=True}"
+            ZIndex="999">
             <BoxView.GestureRecognizers>
                 <TapGestureRecognizer Buttons="Primary" Tapped="OnGlobalTapToDismissContextMenus" />
             </BoxView.GestureRecognizers>
@@ -6664,10 +6680,11 @@
             Grid.RowSpan="3"
             Grid.ColumnSpan="5"
             IsVisible="False"
-            InputTransparent="False"
-            ZIndex="999">
+            InputTransparent="True"
+            CascadeInputTransparent="False"
+            ZIndex="1000">
             <!-- Tap fuera para cerrar -->
-            <BoxView BackgroundColor="#00000000">
+            <BoxView BackgroundColor="#00000000" InputTransparent="True">
                 <BoxView.GestureRecognizers>
                     <TapGestureRecognizer Tapped="OnUserLibraryContextMenuDismissTapped" />
                 </BoxView.GestureRecognizers>
@@ -6676,6 +6693,7 @@
             <Border
                 x:Name="UserLibraryContextMenu"
                 WidthRequest="300"
+                InputTransparent="False"
                 Style="{StaticResource ContextMenuOverlayBorder}">
                 <VerticalStackLayout Spacing="2">
                     <!--  Crear nueva biblioteca  -->
@@ -6771,10 +6789,11 @@
             Grid.RowSpan="3"
             Grid.ColumnSpan="5"
             IsVisible="False"
-            InputTransparent="False"
-            ZIndex="999">
+            InputTransparent="True"
+            CascadeInputTransparent="False"
+            ZIndex="1000">
             <!-- Tap fuera para cerrar -->
-            <BoxView BackgroundColor="#00000000">
+            <BoxView BackgroundColor="#00000000" InputTransparent="True">
                 <BoxView.GestureRecognizers>
                     <TapGestureRecognizer Tapped="OnSessionsContextMenuDismissTapped" />
                 </BoxView.GestureRecognizers>
@@ -6783,6 +6802,7 @@
             <Border
                 x:Name="SessionsContextMenu"
                 WidthRequest="360"
+                InputTransparent="False"
                 Style="{StaticResource ContextMenuOverlayBorder}">
                 <VerticalStackLayout Spacing="2">
                     <!--  Importar desde .crown  -->
@@ -6837,12 +6857,12 @@
             Grid.RowSpan="2"
             Grid.ColumnSpan="5"
             IsVisible="False"
-            BackgroundColor="#00000000"
-            InputTransparent="False"
-            ZIndex="999">
+            InputTransparent="True"
+            CascadeInputTransparent="False"
+            ZIndex="1000">
 
             <!-- Tap fuera para cerrar (no interfiere con el menú: el menú consume su propio tap) -->
-            <BoxView BackgroundColor="#00000000">
+            <BoxView BackgroundColor="#00000000" InputTransparent="True">
                 <BoxView.GestureRecognizers>
                     <TapGestureRecognizer Buttons="Primary" Tapped="OnGlobalTapToDismissContextMenus" />
                 </BoxView.GestureRecognizers>
@@ -6853,6 +6873,7 @@
                 x:Name="SessionRowContextMenu"
                 IsVisible="False"
                 WidthRequest="280"
+                InputTransparent="False"
                 Style="{StaticResource ContextMenuOverlayBorder}">
                 <Border.GestureRecognizers>
                     <TapGestureRecognizer Buttons="Primary" Tapped="OnContextMenuSurfaceTapped" />
@@ -6898,6 +6919,29 @@
                         </HorizontalStackLayout>
                     </Border>
 
+
+                    <Border
+                        IsVisible="{OnPlatform iOS=True, MacCatalyst=True, WinUI=True, Default=False}"
+                        Style="{StaticResource ContextMenuItemBorder}">
+                        <Border.Behaviors>
+                            <behaviors:SidebarHoverBehavior />
+                        </Border.Behaviors>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnSessionRowMenuExportTapped" />
+                        </Border.GestureRecognizers>
+                        <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                            <controls:SymbolIcon
+                                HeightRequest="18"
+                                WidthRequest="18"
+                                SymbolName="square.and.arrow.up"
+                                TintColor="#FFAAAAAA"
+                                VerticalOptions="Center" />
+                            <Label
+                                Text="Exportar"
+                                Style="{StaticResource ContextMenuItemLabel}" />
+                        </HorizontalStackLayout>
+                    </Border>
+
                     <!-- Separador -->
                     <Border 
                         HeightRequest="1" 
@@ -6934,6 +6978,7 @@
                 x:Name="SmartFolderContextMenu"
                 IsVisible="False"
                 WidthRequest="300"
+                InputTransparent="False"
                 Style="{StaticResource ContextMenuOverlayBorder}">
                 <Border.GestureRecognizers>
                     <TapGestureRecognizer Buttons="Primary" Tapped="OnContextMenuSurfaceTapped" />

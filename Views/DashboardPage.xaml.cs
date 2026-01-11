@@ -17,6 +17,8 @@ using CrownRFEP_Reader.Platforms.MacCatalyst;
 
 #if WINDOWS
 using CrownRFEP_Reader.Platforms.Windows;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Input;
 #endif
 
 namespace CrownRFEP_Reader.Views;
@@ -46,7 +48,13 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 
 #if MACCATALYST
 	private UITapGestureRecognizer? _globalDismissTapRecognizer;
+    private UILongPressGestureRecognizer? _globalDismissPressRecognizer;
 	private UIView? _globalDismissHostView;
+#endif
+
+#if WINDOWS
+    private FrameworkElement? _windowsGlobalDismissHostElement;
+    private PointerEventHandler? _windowsGlobalDismissPointerHandler;
 #endif
 
     public DashboardPage(DashboardViewModel viewModel)
@@ -663,6 +671,10 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 
             _contextMenuSessionRow = row;
 
+            // En desktop y también en iOS: el botón derecho/menú debe seleccionar el subitem.
+            if (BindingContext is DashboardViewModel vm && vm.SelectSessionRowCommand?.CanExecute(row) == true)
+                vm.SelectSessionRowCommand.Execute(row);
+
             HideUserLibraryContextMenu();
             HideSessionsContextMenu();
             HideSmartFolderContextMenu();
@@ -765,6 +777,31 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         }
     }
 
+    private void OnSessionRowMenuExportTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            HideSessionRowContextMenu();
+
+            if (_contextMenuSessionRow == null)
+                return;
+
+            if (BindingContext is not DashboardViewModel vm)
+                return;
+
+            // Asegurar que ExportSelectedSessionCommand exporta la sesión del subitem pulsado.
+            if (vm.SelectSessionRowCommand?.CanExecute(_contextMenuSessionRow) == true)
+                vm.SelectSessionRowCommand.Execute(_contextMenuSessionRow);
+
+            if (vm.ExportSelectedSessionCommand?.CanExecute(null) == true)
+                vm.ExportSelectedSessionCommand.Execute(null);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "OnSessionRowMenuExportTapped error", ex);
+        }
+    }
+
     private void OnSmartFolderContextMenuTapped(object? sender, TappedEventArgs e)
     {
         try
@@ -793,6 +830,10 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
             }
 
             _contextMenuSmartFolder = folder;
+
+            // El menú contextual debe seleccionar el item.
+            if (BindingContext is DashboardViewModel vm && vm.SelectSmartFolderCommand?.CanExecute(folder) == true)
+                vm.SelectSmartFolderCommand.Execute(folder);
 
             HideUserLibraryContextMenu();
             HideSessionsContextMenu();
@@ -906,6 +947,14 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         {
             if (GlobalDismissOverlay == null)
                 return;
+
+            // En MacCatalyst y Windows usamos detectores globales nativos para cerrar menús,
+            // y evitamos una capa que bloquee clicks secundarios.
+            if (DeviceInfo.Platform == DevicePlatform.MacCatalyst || DeviceInfo.Platform == DevicePlatform.WinUI)
+            {
+                GlobalDismissOverlay.IsVisible = false;
+                return;
+            }
 
             var anyVisible = (UserLibraryContextMenuOverlay?.IsVisible ?? false)
                 || (SessionsContextMenuOverlay?.IsVisible ?? false)
@@ -1050,8 +1099,15 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         base.OnAppearing();
         _isPageActive = true;
 
+        // Asegura que no queda ningún menú contextual visible al volver a la página.
+        HideAllContextMenus();
+
 #if MACCATALYST
 		TryAttachGlobalDismissRecognizer();
+#endif
+
+#if WINDOWS
+        TryAttachWindowsGlobalDismissPointerHandler();
 #endif
 
 #if MACCATALYST || WINDOWS
@@ -1118,6 +1174,10 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 		TryDetachGlobalDismissRecognizer();
 #endif
 
+#if WINDOWS
+        TryDetachWindowsGlobalDismissPointerHandler();
+#endif
+
 #if MACCATALYST || WINDOWS
     KeyPressHandler.SpaceBarPressed -= OnSpaceBarPressed;
 #endif
@@ -1130,12 +1190,100 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         CleanupAllVideos();
     }
 
+#if WINDOWS
+    private void TryAttachWindowsGlobalDismissPointerHandler()
+    {
+        try
+        {
+            if (_windowsGlobalDismissHostElement != null)
+                return;
+
+            if (RootGrid?.Handler?.PlatformView is not FrameworkElement rootElement)
+                return;
+
+            _windowsGlobalDismissHostElement = rootElement;
+            _windowsGlobalDismissPointerHandler = new PointerEventHandler(OnWindowsGlobalPointerPressed);
+
+            // Escuchar incluso si algún control marca el evento como handled.
+            rootElement.AddHandler(UIElement.PointerPressedEvent, _windowsGlobalDismissPointerHandler, handledEventsToo: true);
+        }
+        catch { }
+    }
+
+    private void TryDetachWindowsGlobalDismissPointerHandler()
+    {
+        try
+        {
+            if (_windowsGlobalDismissHostElement != null && _windowsGlobalDismissPointerHandler != null)
+                _windowsGlobalDismissHostElement.RemoveHandler(UIElement.PointerPressedEvent, _windowsGlobalDismissPointerHandler);
+        }
+        catch { }
+
+        _windowsGlobalDismissHostElement = null;
+        _windowsGlobalDismissPointerHandler = null;
+    }
+
+    private void OnWindowsGlobalPointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        try
+        {
+            var anyVisible = (UserLibraryContextMenuOverlay?.IsVisible ?? false)
+                || (SessionsContextMenuOverlay?.IsVisible ?? false)
+                || (SessionRowContextMenu?.IsVisible ?? false)
+                || (SmartFolderContextMenu?.IsVisible ?? false);
+            if (!anyVisible)
+                return;
+
+            if (RootGrid?.Handler?.PlatformView is not FrameworkElement rootElement)
+                return;
+
+            var pos = e.GetCurrentPoint(rootElement).Position;
+            var point = new Microsoft.Maui.Graphics.Point(pos.X, pos.Y);
+
+            // Si el click es dentro de un menú visible, NO lo cerramos aquí.
+            if (IsPointInsideVisibleMenu(point, SessionRowContextMenu))
+                return;
+            if (IsPointInsideVisibleMenu(point, SmartFolderContextMenu))
+                return;
+            if (IsPointInsideVisibleMenu(point, UserLibraryContextMenu))
+                return;
+            if (IsPointInsideVisibleMenu(point, SessionsContextMenu))
+                return;
+
+            HideUserLibraryContextMenu();
+            HideSessionsContextMenu();
+            HideSessionRowContextMenu();
+            HideSmartFolderContextMenu();
+        }
+        catch { }
+    }
+
+    private static bool IsPointInsideVisibleMenu(Microsoft.Maui.Graphics.Point point, VisualElement? menu)
+    {
+        if (menu == null || !menu.IsVisible)
+            return false;
+
+        // Los menús se posicionan por TranslationX/Y en coordenadas del root.
+        var left = menu.TranslationX;
+        var top = menu.TranslationY;
+
+        var width = menu.Width > 0 ? menu.Width : menu.WidthRequest;
+        var height = menu.Height > 0 ? menu.Height : menu.HeightRequest;
+
+        if (width <= 0 || height <= 0)
+            return false;
+
+        return point.X >= left && point.X <= (left + width)
+            && point.Y >= top && point.Y <= (top + height);
+    }
+#endif
+
 #if MACCATALYST
     private void TryAttachGlobalDismissRecognizer()
     {
         try
         {
-            if (_globalDismissTapRecognizer != null)
+            if (_globalDismissTapRecognizer != null || _globalDismissPressRecognizer != null)
                 return;
 
             UIView? hostView = null;
@@ -1157,7 +1305,37 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
                 ShouldRecognizeSimultaneously = (_, _) => true
             };
 
+            // Detecta el "press" desde el inicio (más fiable que Tap cuando otros controles consumen el click).
+            _globalDismissPressRecognizer = new UILongPressGestureRecognizer(OnGlobalNativePressed)
+            {
+                MinimumPressDuration = 0,
+                CancelsTouchesInView = false,
+                DelaysTouchesBegan = false,
+                DelaysTouchesEnded = false,
+                ShouldRecognizeSimultaneously = (_, _) => true
+            };
+
+            // En MacCatalyst, muchos eventos de ratón llegan como IndirectPointer.
+            // Permitimos explícitamente esos touch types para que el cierre funcione en toda la UI.
+            try
+            {
+                _globalDismissTapRecognizer.AllowedTouchTypes = new Foundation.NSNumber[]
+                {
+                    Foundation.NSNumber.FromInt32((int)UITouchType.Direct),
+                    Foundation.NSNumber.FromInt32((int)UITouchType.Indirect),
+                    Foundation.NSNumber.FromInt32(5) // UITouchType.IndirectPointer (iOS 13.4+)
+                };
+                _globalDismissPressRecognizer.AllowedTouchTypes = new Foundation.NSNumber[]
+                {
+                    Foundation.NSNumber.FromInt32((int)UITouchType.Direct),
+                    Foundation.NSNumber.FromInt32((int)UITouchType.Indirect),
+                    Foundation.NSNumber.FromInt32(5)
+                };
+            }
+            catch { }
+
             hostView.AddGestureRecognizer(_globalDismissTapRecognizer);
+            hostView.AddGestureRecognizer(_globalDismissPressRecognizer);
         }
         catch { }
     }
@@ -1166,13 +1344,20 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
     {
         try
         {
-            if (_globalDismissHostView != null && _globalDismissTapRecognizer != null)
-                _globalDismissHostView.RemoveGestureRecognizer(_globalDismissTapRecognizer);
+            if (_globalDismissHostView != null)
+            {
+                if (_globalDismissTapRecognizer != null)
+                    _globalDismissHostView.RemoveGestureRecognizer(_globalDismissTapRecognizer);
+                if (_globalDismissPressRecognizer != null)
+                    _globalDismissHostView.RemoveGestureRecognizer(_globalDismissPressRecognizer);
+            }
         }
         catch { }
 
         try { _globalDismissTapRecognizer?.Dispose(); } catch { }
+        try { _globalDismissPressRecognizer?.Dispose(); } catch { }
         _globalDismissTapRecognizer = null;
+        _globalDismissPressRecognizer = null;
         _globalDismissHostView = null;
     }
 
@@ -1194,6 +1379,45 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
             var location = _globalDismissTapRecognizer.LocationInView(host);
 
             // Si el click es dentro de un menú visible, NO lo cerramos aquí (los items ya lo cierran al ejecutar).
+            if (IsPointInsideVisibleMenu(host, location, SessionRowContextMenu))
+                return;
+            if (IsPointInsideVisibleMenu(host, location, SmartFolderContextMenu))
+                return;
+            if (IsPointInsideVisibleMenu(host, location, UserLibraryContextMenu))
+                return;
+            if (IsPointInsideVisibleMenu(host, location, SessionsContextMenu))
+                return;
+
+            HideUserLibraryContextMenu();
+            HideSessionsContextMenu();
+            HideSessionRowContextMenu();
+            HideSmartFolderContextMenu();
+        }
+        catch { }
+    }
+
+    private void OnGlobalNativePressed(UILongPressGestureRecognizer recognizer)
+    {
+        try
+        {
+            if (_globalDismissHostView == null)
+                return;
+
+            // Solo al comenzar, para no disparar repetidamente.
+            if (recognizer.State != UIGestureRecognizerState.Began)
+                return;
+
+            var anyVisible = (UserLibraryContextMenuOverlay?.IsVisible ?? false)
+                || (SessionsContextMenuOverlay?.IsVisible ?? false)
+                || (SessionRowContextMenu?.IsVisible ?? false)
+                || (SmartFolderContextMenu?.IsVisible ?? false);
+            if (!anyVisible)
+                return;
+
+            var host = _globalDismissHostView;
+            var location = recognizer.LocationInView(host);
+
+            // Si el click es dentro de un menú visible, NO lo cerramos aquí.
             if (IsPointInsideVisibleMenu(host, location, SessionRowContextMenu))
                 return;
             if (IsPointInsideVisibleMenu(host, location, SmartFolderContextMenu))
