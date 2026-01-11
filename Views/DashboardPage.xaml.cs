@@ -43,6 +43,8 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
     // Indica si esta página está activa
     private bool _isPageActive;
 
+    private bool _isPageLoaded;
+
     private double _lastVideoGalleryMeasuredWidth = -1;
     private int _lastVideoGalleryComputedSpan = -1;
 
@@ -92,6 +94,9 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 		// Hover preview: usamos PrecisionVideoPlayer (AVPlayerLayer). Autoplay+loop aquí.
 		HoverPreviewPlayer.MediaOpened += OnHoverPreviewOpened;
 		HoverPreviewPlayer.MediaEnded += OnHoverPreviewEnded;
+
+        Loaded += OnPageLoaded;
+        Unloaded += OnPageUnloaded;
 
         _smartFoldersChangedHandler = (_, __) =>
         {
@@ -174,6 +179,64 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         PreviewPlayer2Q.PositionChanged += OnPreviewPlayerPositionChanged;
         PreviewPlayer3Q.PositionChanged += OnPreviewPlayerPositionChanged;
         PreviewPlayer4Q.PositionChanged += OnPreviewPlayerPositionChanged;
+    }
+
+    protected override void OnHandlerChanged()
+    {
+        base.OnHandlerChanged();
+        // En el arranque, a veces OnAppearing ocurre antes de que existan los PlatformView.
+        // Reintentar aquí aumenta la fiabilidad del cierre “tap/click fuera”.
+        EnsureGlobalDismissHandlersAttached();
+    }
+
+    private void OnPageLoaded(object? sender, EventArgs e)
+    {
+        _isPageLoaded = true;
+        EnsureGlobalDismissHandlersAttached();
+    }
+
+    private void OnPageUnloaded(object? sender, EventArgs e)
+    {
+        _isPageLoaded = false;
+    }
+
+    private void EnsureGlobalDismissHandlersAttached(int retries = 10)
+    {
+        try
+        {
+            var allAttached = true;
+
+#if MACCATALYST
+            if (_globalDismissTapRecognizer == null && _globalDismissPressRecognizer == null)
+                TryAttachGlobalDismissRecognizer();
+            allAttached &= (_globalDismissTapRecognizer != null || _globalDismissPressRecognizer != null);
+#endif
+
+#if WINDOWS
+            if (_windowsGlobalDismissHostElement == null)
+                TryAttachWindowsGlobalDismissPointerHandler();
+            allAttached &= (_windowsGlobalDismissHostElement != null);
+#endif
+
+            if (allAttached)
+                return;
+
+            if (retries <= 0)
+                return;
+
+            // Solo reintentar mientras la página esté “en vida” (visible o cargada).
+            if (!_isPageActive && !_isPageLoaded)
+                return;
+
+            try
+            {
+                Dispatcher.DispatchDelayed(
+                    TimeSpan.FromMilliseconds(150),
+                    () => EnsureGlobalDismissHandlersAttached(retries - 1));
+            }
+            catch { }
+        }
+        catch { }
     }
 
     private void UpdateSubItemContextMenusLayerVisibility()
@@ -1103,12 +1166,15 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         HideAllContextMenus();
 
 #if MACCATALYST
-		TryAttachGlobalDismissRecognizer();
+        TryAttachGlobalDismissRecognizer();
 #endif
 
 #if WINDOWS
         TryAttachWindowsGlobalDismissPointerHandler();
 #endif
+
+        // Extra: en el arranque, puede que el Handler/PlatformView aún no esté listo.
+        EnsureGlobalDismissHandlersAttached();
 
 #if MACCATALYST || WINDOWS
 #if WINDOWS
