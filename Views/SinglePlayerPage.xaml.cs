@@ -75,9 +75,22 @@ public partial class SinglePlayerPage : ContentPage
 
         AppLog.Info("SinglePlayerPage", "CTOR");
 
-#if WINDOWS || IOS
-        // En Windows e iOS: controles de reproducción como overlay en Row 0, anclados abajo
-        // En Windows la navegación está integrada en el mismo PlayerControlsBorder
+#if WINDOWS || MACCATALYST
+        // En Windows y MacCatalyst: layout de 5 columnas
+        // Controles de reproducción en Row 1, debajo del player
+        if (PlayerControlsBorder != null)
+        {
+            Grid.SetRow(PlayerControlsBorder, 1);
+            Grid.SetColumn(PlayerControlsBorder, 2);
+            PlayerControlsBorder.VerticalOptions = LayoutOptions.Start;
+        }
+        // Configurar el área de video para que solo ocupe Row 0
+        if (VideoAreaBorder != null)
+        {
+            Grid.SetRowSpan(VideoAreaBorder, 1);
+        }
+#elif IOS
+        // En iOS: controles de reproducción como overlay en Row 0, anclados abajo
         if (PlayerControlsBorder != null)
         {
             Grid.SetRow(PlayerControlsBorder, 0);

@@ -11,6 +11,7 @@ public class VideoClip : INotifyPropertyChanged
 {
     private bool _isSelected;
     private bool _hasTiming;
+    private bool _isCurrentlyPlaying;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -231,6 +232,24 @@ public class VideoClip : INotifyPropertyChanged
             {
                 _hasTiming = value;
                 OnPropertyChanged(nameof(HasTiming));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Indica si el vídeo está siendo reproducido actualmente en el reproductor.
+    /// Se usa para resaltar el video activo en la galería del SinglePlayerPage.
+    /// </summary>
+    [Ignore]
+    public bool IsCurrentlyPlaying
+    {
+        get => _isCurrentlyPlaying;
+        set
+        {
+            if (_isCurrentlyPlaying != value)
+            {
+                _isCurrentlyPlaying = value;
+                OnPropertyChanged(nameof(IsCurrentlyPlaying));
             }
         }
     }

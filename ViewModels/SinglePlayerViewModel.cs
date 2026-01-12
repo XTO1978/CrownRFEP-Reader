@@ -118,6 +118,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         NextVideoCommand = new Command(GoToNextVideo, () => CanGoNext);
         ToggleFiltersCommand = new Command(() => ShowFilters = !ShowFilters);
         ClearFiltersCommand = new Command(ClearFilters);
+        SelectGalleryVideoCommand = new Command<VideoClip>(async (v) => await SelectGalleryVideoAsync(v));
         
         // Comandos de asignación de atleta
         ToggleAthleteAssignPanelCommand = new Command(async () => await ToggleAthleteAssignPanelAsync());
@@ -356,9 +357,9 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     public bool IsComparisonVideo => _videoClip?.IsComparisonVideo ?? false;
     
     /// <summary>
-    /// Aspecto del video: AspectFit para comparaciones, AspectFill para videos normales
+    /// Aspecto del video: siempre AspectFit para mantener las proporciones originales
     /// </summary>
-    public Aspect VideoAspect => IsComparisonVideo ? Aspect.AspectFit : Aspect.AspectFill;
+    public Aspect VideoAspect => Aspect.AspectFit;
 
     public string AthleteName => _videoClip?.Atleta?.NombreCompleto ?? "—";
     
@@ -491,6 +492,11 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     public bool CanGoNext => _currentPlaylistIndex < _filteredPlaylist.Count - 1;
     
     public bool HasPlaylist => _filteredPlaylist.Count > 1;
+
+    /// <summary>
+    /// Lista de videos de la sesión filtrada para mostrar en la galería
+    /// </summary>
+    public List<VideoClip> PlaylistVideos => _filteredPlaylist;
 
     // Propiedades para asignación de atleta
     public bool ShowAthleteAssignPanel
@@ -878,6 +884,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     public ICommand NextVideoCommand { get; }
     public ICommand ToggleFiltersCommand { get; }
     public ICommand ClearFiltersCommand { get; }
+    public ICommand SelectGalleryVideoCommand { get; }
     
     // Comandos de asignación de atleta
     public ICommand ToggleAthleteAssignPanelCommand { get; }
@@ -971,6 +978,9 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         var firstVideo = _filteredPlaylist[_currentPlaylistIndex];
         await LoadVideoDataAsync(firstVideo);
         VideoClip = firstVideo;
+        
+        // Actualizar indicador de video en reproducción
+        UpdateCurrentlyPlayingIndicator(firstVideo);
         
         UpdatePlaylistProperties();
         
@@ -1332,6 +1342,18 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         _ = NavigateToCurrentPlaylistVideoAsync();
     }
 
+    private async Task SelectGalleryVideoAsync(VideoClip? video)
+    {
+        if (video == null) return;
+        
+        var index = _filteredPlaylist.FindIndex(v => v.Id == video.Id);
+        if (index >= 0)
+        {
+            _currentPlaylistIndex = index;
+            await NavigateToCurrentPlaylistVideoAsync();
+        }
+    }
+
     private async Task NavigateToCurrentPlaylistVideoAsync()
     {
         if (_currentPlaylistIndex < 0 || _currentPlaylistIndex >= _filteredPlaylist.Count)
@@ -1341,6 +1363,9 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         
         // Cargar datos actualizados del video desde la base de datos
         await LoadVideoDataAsync(newVideo);
+        
+        // Actualizar indicador de video en reproducción
+        UpdateCurrentlyPlayingIndicator(newVideo);
         
         // Actualizar las propiedades del video
         _videoClip = newVideo;
@@ -1394,10 +1419,22 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(CanGoPrevious));
         OnPropertyChanged(nameof(CanGoNext));
         OnPropertyChanged(nameof(HasPlaylist));
+        OnPropertyChanged(nameof(PlaylistVideos));
         
         // Actualizar estado de comandos
         ((Command)PreviousVideoCommand).ChangeCanExecute();
         ((Command)NextVideoCommand).ChangeCanExecute();
+    }
+
+    /// <summary>
+    /// Actualiza el indicador IsCurrentlyPlaying en todos los videos de la playlist
+    /// </summary>
+    private void UpdateCurrentlyPlayingIndicator(VideoClip? currentVideo)
+    {
+        foreach (var video in _filteredPlaylist)
+        {
+            video.IsCurrentlyPlaying = currentVideo != null && video.Id == currentVideo.Id;
+        }
     }
 
     protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
