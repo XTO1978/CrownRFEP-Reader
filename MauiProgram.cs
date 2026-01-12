@@ -81,6 +81,46 @@ public static class MauiProgram
 					// No hacer nada aquí - el background se maneja en XAML
 				});
 #endif
+
+#if WINDOWS
+				// Personalizar thumb del Slider: rectángulo de 2px de ancho con gris oscuro
+				SliderHandler.Mapper.AppendToMapping("RectangularThumb", (handler, view) =>
+				{
+					if (handler.PlatformView is Microsoft.UI.Xaml.Controls.Slider slider)
+					{
+						slider.Loaded += (s, e) =>
+						{
+							try
+							{
+								// Buscar el Thumb en el ControlTemplate
+								var thumb = FindVisualChild<Microsoft.UI.Xaml.Controls.Primitives.Thumb>(slider);
+								if (thumb != null)
+								{
+									thumb.Width = 2;
+									thumb.Height = 20;
+									thumb.Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(
+										Microsoft.UI.ColorHelper.FromArgb(255, 138, 138, 138)); // #FF8A8A8A
+								}
+							}
+							catch { }
+						};
+					}
+				});
+#endif
+
+#if MACCATALYST
+				// Personalizar thumb del Slider para MacCatalyst: rectángulo de 6px de ancho con gris oscuro
+				SliderHandler.Mapper.AppendToMapping("RectangularThumb", (handler, view) =>
+				{
+					if (handler.PlatformView is UISlider slider)
+					{
+						// Crear imagen del thumb rectangular (2x20 px)
+						var thumbImage = CreateRectangularThumbImage(2, 20, UIColor.FromRGB(138, 138, 138));
+						slider.SetThumbImage(thumbImage, UIControlState.Normal);
+						slider.SetThumbImage(thumbImage, UIControlState.Highlighted);
+					}
+				});
+#endif
 			})
 			.ConfigureFonts(fonts =>
 			{
@@ -217,6 +257,53 @@ public static class MauiProgram
 		{
 			// Best-effort: no bloquear arranque por configuración de audio.
 		}
+	}
+#endif
+
+#if WINDOWS
+	/// <summary>
+	/// Busca un hijo visual de tipo T dentro del árbol visual de un DependencyObject.
+	/// </summary>
+	private static T? FindVisualChild<T>(Microsoft.UI.Xaml.DependencyObject parent) where T : Microsoft.UI.Xaml.DependencyObject
+	{
+		int childCount = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChildrenCount(parent);
+		for (int i = 0; i < childCount; i++)
+		{
+			var child = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChild(parent, i);
+			if (child is T typedChild)
+				return typedChild;
+			
+			var result = FindVisualChild<T>(child);
+			if (result != null)
+				return result;
+		}
+		return null;
+	}
+#endif
+
+#if MACCATALYST
+	/// <summary>
+	/// Crea una imagen rectangular para usar como thumb del Slider en MacCatalyst.
+	/// </summary>
+	private static UIImage CreateRectangularThumbImage(nfloat width, nfloat height, UIColor color)
+	{
+		var size = new CoreGraphics.CGSize(width, height);
+		UIGraphics.BeginImageContextWithOptions(size, false, 0);
+		
+		var context = UIGraphics.GetCurrentContext();
+		if (context != null)
+		{
+			color.SetFill();
+			// Rectángulo con esquinas ligeramente redondeadas (2px)
+			var rect = new CoreGraphics.CGRect(0, 0, width, height);
+			var path = UIBezierPath.FromRoundedRect(rect, 2);
+			path.Fill();
+		}
+		
+		var image = UIGraphics.GetImageFromCurrentImageContext();
+		UIGraphics.EndImageContext();
+		
+		return image ?? new UIImage();
 	}
 #endif
 }

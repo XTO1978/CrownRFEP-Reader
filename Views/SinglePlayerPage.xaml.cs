@@ -1298,10 +1298,11 @@ public partial class SinglePlayerPage : ContentPage
         System.Diagnostics.Debug.WriteLine($"[SinglePlayerPage] OnPositionChanged: {position}");
         MainThread.BeginInvokeOnMainThread(() =>
         {
-            if (!_isPageActive || _isDraggingSlider) return;
+            if (!_isPageActive) return;
             _viewModel.CurrentPosition = position;
             
             // Actualizar el slider directamente (sin binding para evitar conflictos)
+            // Se actualiza incluso durante scrubbing para reflejar la posición real
             if (_viewModel.Duration.TotalSeconds > 0)
             {
                 var progress = position.TotalSeconds / _viewModel.Duration.TotalSeconds;
@@ -1310,6 +1311,10 @@ public partial class SinglePlayerPage : ContentPage
 #if IOS
                 if (ProgressSliderIOS != null)
                     ProgressSliderIOS.Value = progress;
+#endif
+#if WINDOWS || MACCATALYST
+                if (ProgressSliderWindows != null)
+                    ProgressSliderWindows.Value = progress;
 #endif
             }
         });
@@ -1487,6 +1492,22 @@ public partial class SinglePlayerPage : ContentPage
                 var newPosition = TimeSpan.FromMilliseconds(_currentScrubPosition);
                 MediaPlayer?.SeekTo(newPosition);
                 _viewModel.CurrentPosition = newPosition;
+                
+                // Actualizar el slider directamente durante el scrubbing
+                if (_viewModel.Duration.TotalSeconds > 0)
+                {
+                    var progress = newPosition.TotalSeconds / _viewModel.Duration.TotalSeconds;
+                    if (ProgressSlider != null)
+                        ProgressSlider.Value = progress;
+#if IOS
+                    if (ProgressSliderIOS != null)
+                        ProgressSliderIOS.Value = progress;
+#endif
+#if WINDOWS || MACCATALYST
+                    if (ProgressSliderWindows != null)
+                        ProgressSliderWindows.Value = progress;
+#endif
+                }
             }
         });
     }
