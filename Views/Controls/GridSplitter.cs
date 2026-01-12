@@ -156,11 +156,12 @@ public class GridSplitter : ContentView
                 VerticalOptions = LayoutOptions.Fill,
                 HorizontalOptions = LayoutOptions.Start,
                 InputTransparent = true,
-                ZIndex = 1000
+                ZIndex = 9999
             };
             
-            // Añadir a todas las filas del grid
-            Grid.SetRow(_previewLine, 1);
+            // Añadir a todas las filas y columnas del grid para garantizar que esté por encima de todo
+            Grid.SetRow(_previewLine, 0);
+            Grid.SetRowSpan(_previewLine, _parentGrid.RowDefinitions.Count > 0 ? _parentGrid.RowDefinitions.Count : 1);
             Grid.SetColumnSpan(_previewLine, _parentGrid.ColumnDefinitions.Count);
             _parentGrid.Children.Add(_previewLine);
         }
