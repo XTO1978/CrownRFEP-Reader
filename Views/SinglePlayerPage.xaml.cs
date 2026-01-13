@@ -60,6 +60,9 @@ public partial class SinglePlayerPage : ContentPage
     private bool _isScrubbing;
     private bool _wasPlayingBeforeScrub;
     private double _currentScrubPosition;
+    
+    // Scrubbing para reproductores de comparación
+    private readonly Dictionary<int, double> _comparisonScrubPositions = new();
 
     private static readonly Color DefaultInkColor = Color.FromArgb("#FFFF7043");
     private const float DefaultInkThickness = 3f;
@@ -715,6 +718,10 @@ public partial class SinglePlayerPage : ContentPage
         // Suscribirse a eventos de scrubbing (trackpad/mouse wheel)
         VideoScrubBehavior.ScrubUpdated += OnScrubUpdated;
         VideoScrubBehavior.ScrubEnded += OnScrubEnded;
+        
+        // Suscribirse a cambios de layout de comparación
+        _viewModel.ComparisonLayoutChanged += OnComparisonLayoutChanged;
+        _viewModel.ComparisonSlotCleared += OnComparisonSlotCleared;
 
     #if MACCATALYST || WINDOWS
     #if WINDOWS
@@ -741,6 +748,10 @@ public partial class SinglePlayerPage : ContentPage
         // Desuscribirse de eventos de scrubbing
         VideoScrubBehavior.ScrubUpdated -= OnScrubUpdated;
         VideoScrubBehavior.ScrubEnded -= OnScrubEnded;
+        
+        // Desuscribirse de cambios de layout de comparación
+        _viewModel.ComparisonLayoutChanged -= OnComparisonLayoutChanged;
+        _viewModel.ComparisonSlotCleared -= OnComparisonSlotCleared;
 
 #if MACCATALYST || WINDOWS
         KeyPressHandler.SpaceBarPressed -= OnSpaceBarPressed;
@@ -832,6 +843,59 @@ public partial class SinglePlayerPage : ContentPage
             MediaPlayer.MediaEnded -= OnMediaEnded;
             MediaPlayer.MediaEnded += OnMediaEnded;
         }
+        
+        // Handlers para reproductores de comparación
+        SetupComparisonMediaHandlers();
+    }
+
+    private void SetupComparisonMediaHandlers()
+    {
+        if (MediaPlayer2 != null)
+        {
+            MediaPlayer2.PositionChanged -= OnPositionChanged2;
+            MediaPlayer2.PositionChanged += OnPositionChanged2;
+        }
+        if (MediaPlayer3 != null)
+        {
+            MediaPlayer3.PositionChanged -= OnPositionChanged3;
+            MediaPlayer3.PositionChanged += OnPositionChanged3;
+        }
+        if (MediaPlayer4 != null)
+        {
+            MediaPlayer4.PositionChanged -= OnPositionChanged4;
+            MediaPlayer4.PositionChanged += OnPositionChanged4;
+        }
+    }
+
+    private void OnPositionChanged2(object? sender, TimeSpan position)
+    {
+        if (!_isPageActive) return;
+        _viewModel.ComparisonPosition2 = position;
+    }
+
+    private void OnPositionChanged3(object? sender, TimeSpan position)
+    {
+        if (!_isPageActive) return;
+        _viewModel.ComparisonPosition3 = position;
+    }
+
+    private void OnPositionChanged4(object? sender, TimeSpan position)
+    {
+        if (!_isPageActive) return;
+        _viewModel.ComparisonPosition4 = position;
+    }
+
+    private void CleanupComparisonMediaHandlers()
+    {
+        if (MediaPlayer2 != null)
+            MediaPlayer2.PositionChanged -= OnPositionChanged2;
+        if (MediaPlayer3 != null)
+            MediaPlayer3.PositionChanged -= OnPositionChanged3;
+        if (MediaPlayer4 != null)
+            MediaPlayer4.PositionChanged -= OnPositionChanged4;
+        
+        // Desuscribir evento de tamaño del grid de comparación
+        ComparisonGrid.SizeChanged -= OnComparisonGridSizeChanged;
     }
 
     private void CleanupResources()
@@ -927,7 +991,13 @@ public partial class SinglePlayerPage : ContentPage
             MediaPlayer.MediaOpened -= OnMediaOpened;
             MediaPlayer.PositionChanged -= OnPositionChanged;
             MediaPlayer.MediaEnded -= OnMediaEnded;
+        }
 
+        // Desuscribirse de reproductores de comparación
+        CleanupComparisonMediaHandlers();
+        
+        if (MediaPlayer != null)
+        {
 #if WINDOWS
             try
             {
@@ -1349,45 +1419,160 @@ public partial class SinglePlayerPage : ContentPage
             _viewModel.IsDraggingSlider = false; // También resetear en el ViewModel
         }
         
-        MediaPlayer?.Play();
+        // Reproducir todos los players activos
+        PlayAllPlayers();
     }
 
     private void OnPauseRequested(object? sender, EventArgs e)
     {
         if (!_isPageActive) return;
-        MediaPlayer?.Pause();
+        // Pausar todos los players
+        PauseAllPlayers();
     }
 
     private void OnStopRequested(object? sender, EventArgs e)
     {
         if (!_isPageActive) return;
-        MediaPlayer?.Stop();
+        // Detener todos los players
+        StopAllPlayers();
     }
 
     private void OnSeekRequested(object? sender, double seconds)
     {
         if (!_isPageActive) return;
         var position = TimeSpan.FromSeconds(seconds);
-        MediaPlayer?.SeekTo(position);
+        // Seek en todos los players
+        SeekAllPlayersTo(position);
         _viewModel.CurrentPosition = position;
     }
 
     private void OnFrameForwardRequested(object? sender, EventArgs e)
     {
         if (!_isPageActive) return;
-        MediaPlayer?.StepForward();
+        // Frame forward en todos los players
+        FrameForwardAllPlayers();
     }
 
     private void OnFrameBackwardRequested(object? sender, EventArgs e)
     {
         if (!_isPageActive) return;
-        MediaPlayer?.StepBackward();
+        // Frame backward en todos los players
+        FrameBackwardAllPlayers();
     }
 
     private void OnSpeedChangeRequested(object? sender, double speed)
     {
-        if (!_isPageActive || MediaPlayer == null) return;
-        MediaPlayer.Speed = speed;
+        if (!_isPageActive) return;
+        // Cambiar velocidad en todos los players
+        SetSpeedAllPlayers(speed);
+    }
+
+    #endregion
+
+    #region Métodos de reproducción sincronizada
+
+    private void PlayAllPlayers()
+    {
+        MediaPlayer?.Play();
+        
+        // Reproducir también los players de comparación si están activos
+        if (_viewModel.IsMultiVideoLayout)
+        {
+            if (_viewModel.HasComparisonVideo2)
+                MediaPlayer2?.Play();
+            if (_viewModel.HasComparisonVideo3)
+                MediaPlayer3?.Play();
+            if (_viewModel.HasComparisonVideo4)
+                MediaPlayer4?.Play();
+        }
+    }
+
+    private void PauseAllPlayers()
+    {
+        MediaPlayer?.Pause();
+        
+        if (_viewModel.IsMultiVideoLayout)
+        {
+            if (_viewModel.HasComparisonVideo2)
+                MediaPlayer2?.Pause();
+            if (_viewModel.HasComparisonVideo3)
+                MediaPlayer3?.Pause();
+            if (_viewModel.HasComparisonVideo4)
+                MediaPlayer4?.Pause();
+        }
+    }
+
+    private void StopAllPlayers()
+    {
+        MediaPlayer?.Stop();
+        
+        if (_viewModel.IsMultiVideoLayout)
+        {
+            MediaPlayer2?.Stop();
+            MediaPlayer3?.Stop();
+            MediaPlayer4?.Stop();
+        }
+    }
+
+    private void SeekAllPlayersTo(TimeSpan position)
+    {
+        MediaPlayer?.SeekTo(position);
+        
+        if (_viewModel.IsMultiVideoLayout)
+        {
+            if (_viewModel.HasComparisonVideo2)
+                MediaPlayer2?.SeekTo(position);
+            if (_viewModel.HasComparisonVideo3)
+                MediaPlayer3?.SeekTo(position);
+            if (_viewModel.HasComparisonVideo4)
+                MediaPlayer4?.SeekTo(position);
+        }
+    }
+
+    private void FrameForwardAllPlayers()
+    {
+        MediaPlayer?.StepForward();
+        
+        if (_viewModel.IsMultiVideoLayout)
+        {
+            if (_viewModel.HasComparisonVideo2)
+                MediaPlayer2?.StepForward();
+            if (_viewModel.HasComparisonVideo3)
+                MediaPlayer3?.StepForward();
+            if (_viewModel.HasComparisonVideo4)
+                MediaPlayer4?.StepForward();
+        }
+    }
+
+    private void FrameBackwardAllPlayers()
+    {
+        MediaPlayer?.StepBackward();
+        
+        if (_viewModel.IsMultiVideoLayout)
+        {
+            if (_viewModel.HasComparisonVideo2)
+                MediaPlayer2?.StepBackward();
+            if (_viewModel.HasComparisonVideo3)
+                MediaPlayer3?.StepBackward();
+            if (_viewModel.HasComparisonVideo4)
+                MediaPlayer4?.StepBackward();
+        }
+    }
+
+    private void SetSpeedAllPlayers(double speed)
+    {
+        if (MediaPlayer != null)
+            MediaPlayer.Speed = speed;
+        
+        if (_viewModel.IsMultiVideoLayout)
+        {
+            if (_viewModel.HasComparisonVideo2 && MediaPlayer2 != null)
+                MediaPlayer2.Speed = speed;
+            if (_viewModel.HasComparisonVideo3 && MediaPlayer3 != null)
+                MediaPlayer3.Speed = speed;
+            if (_viewModel.HasComparisonVideo4 && MediaPlayer4 != null)
+                MediaPlayer4.Speed = speed;
+        }
     }
 
     #endregion
@@ -1462,70 +1647,123 @@ public partial class SinglePlayerPage : ContentPage
 
     private void OnScrubUpdated(object? sender, VideoScrubEventArgs e)
     {
-        // Solo procesar si es nuestro video (index 0)
-        if (e.VideoIndex != 0) return;
-        
         MainThread.BeginInvokeOnMainThread(() =>
         {
-            if (e.IsStart)
+            // Determinar qué reproductor afectar según VideoIndex
+            if (e.VideoIndex == 0)
             {
-                // Inicio del scrubbing: pausar si está reproduciendo
-                _isScrubbing = true;
-                _wasPlayingBeforeScrub = _viewModel.IsPlaying;
-                _currentScrubPosition = _viewModel.CurrentPosition.TotalMilliseconds;
-                
-                if (_wasPlayingBeforeScrub)
-                {
-                    MediaPlayer?.Pause();
-                    _viewModel.IsPlaying = false;
-                }
+                HandleMainPlayerScrub(e);
             }
             else
             {
-                // Durante el scrubbing: actualizar posición
-                _currentScrubPosition += e.DeltaMilliseconds;
-                
-                // Limitar a los bordes del video
-                var maxMs = _viewModel.Duration.TotalMilliseconds;
-                _currentScrubPosition = Math.Max(0, Math.Min(_currentScrubPosition, maxMs));
-                
-                var newPosition = TimeSpan.FromMilliseconds(_currentScrubPosition);
-                MediaPlayer?.SeekTo(newPosition);
-                _viewModel.CurrentPosition = newPosition;
-                
-                // Actualizar el slider directamente durante el scrubbing
-                if (_viewModel.Duration.TotalSeconds > 0)
-                {
-                    var progress = newPosition.TotalSeconds / _viewModel.Duration.TotalSeconds;
-                    if (ProgressSlider != null)
-                        ProgressSlider.Value = progress;
-#if IOS
-                    if (ProgressSliderIOS != null)
-                        ProgressSliderIOS.Value = progress;
-#endif
-#if WINDOWS || MACCATALYST
-                    if (ProgressSliderWindows != null)
-                        ProgressSliderWindows.Value = progress;
-#endif
-                }
+                HandleComparisonPlayerScrub(e);
             }
         });
     }
 
-    private void OnScrubEnded(object? sender, VideoScrubEventArgs e)
+    private void HandleMainPlayerScrub(VideoScrubEventArgs e)
     {
-        // Solo procesar si es nuestro video (index 0)
-        if (e.VideoIndex != 0) return;
-        
-        MainThread.BeginInvokeOnMainThread(() =>
+        if (e.IsStart)
         {
-            _isScrubbing = false;
+            // Inicio del scrubbing: pausar si está reproduciendo
+            _isScrubbing = true;
+            _wasPlayingBeforeScrub = _viewModel.IsPlaying;
+            _currentScrubPosition = _viewModel.CurrentPosition.TotalMilliseconds;
             
-            // Reanudar reproducción si estaba reproduciendo antes
             if (_wasPlayingBeforeScrub)
             {
-                MediaPlayer?.Play();
-                _viewModel.IsPlaying = true;
+                MediaPlayer?.Pause();
+                _viewModel.IsPlaying = false;
+            }
+        }
+        else
+        {
+            // Durante el scrubbing: actualizar posición
+            _currentScrubPosition += e.DeltaMilliseconds;
+            
+            // Limitar a los bordes del video
+            var maxMs = _viewModel.Duration.TotalMilliseconds;
+            _currentScrubPosition = Math.Max(0, Math.Min(_currentScrubPosition, maxMs));
+            
+            var newPosition = TimeSpan.FromMilliseconds(_currentScrubPosition);
+            MediaPlayer?.SeekTo(newPosition);
+            _viewModel.CurrentPosition = newPosition;
+            
+            // Actualizar el slider directamente durante el scrubbing
+            if (_viewModel.Duration.TotalSeconds > 0)
+            {
+                var progress = newPosition.TotalSeconds / _viewModel.Duration.TotalSeconds;
+                if (ProgressSlider != null)
+                    ProgressSlider.Value = progress;
+#if IOS
+                if (ProgressSliderIOS != null)
+                    ProgressSliderIOS.Value = progress;
+#endif
+#if WINDOWS || MACCATALYST
+                if (ProgressSliderWindows != null)
+                    ProgressSliderWindows.Value = progress;
+#endif
+            }
+        }
+    }
+
+    private void HandleComparisonPlayerScrub(VideoScrubEventArgs e)
+    {
+        // Obtener el reproductor correcto según VideoIndex
+        var player = e.VideoIndex switch
+        {
+            2 => MediaPlayer2,
+            3 => MediaPlayer3,
+            4 => MediaPlayer4,
+            _ => null
+        };
+        
+        if (player == null) return;
+        
+        if (e.IsStart)
+        {
+            // Inicializar posición de scrubbing para este reproductor
+            var currentPos = player.Position.TotalMilliseconds;
+            _comparisonScrubPositions[e.VideoIndex] = currentPos;
+            player.Pause();
+        }
+        else
+        {
+            // Actualizar posición durante el scrubbing
+            if (!_comparisonScrubPositions.ContainsKey(e.VideoIndex))
+                _comparisonScrubPositions[e.VideoIndex] = player.Position.TotalMilliseconds;
+            
+            _comparisonScrubPositions[e.VideoIndex] += e.DeltaMilliseconds;
+            
+            // Limitar a los bordes del video
+            var maxMs = player.Duration.TotalMilliseconds;
+            _comparisonScrubPositions[e.VideoIndex] = Math.Max(0, Math.Min(_comparisonScrubPositions[e.VideoIndex], maxMs));
+            
+            var newPosition = TimeSpan.FromMilliseconds(_comparisonScrubPositions[e.VideoIndex]);
+            player.SeekTo(newPosition);
+        }
+    }
+
+    private void OnScrubEnded(object? sender, VideoScrubEventArgs e)
+    {
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            if (e.VideoIndex == 0)
+            {
+                // Reproductor principal
+                _isScrubbing = false;
+                
+                // Reanudar reproducción si estaba reproduciendo antes
+                if (_wasPlayingBeforeScrub)
+                {
+                    MediaPlayer?.Play();
+                    _viewModel.IsPlaying = true;
+                }
+            }
+            else
+            {
+                // Reproductores de comparación: limpiar estado de scrubbing
+                _comparisonScrubPositions.Remove(e.VideoIndex);
             }
         });
     }
@@ -1616,6 +1854,256 @@ public partial class SinglePlayerPage : ContentPage
             var selected = options.FirstOrDefault(o => o.DisplayName == result);
             if (selected != null)
                 _viewModel.SelectedCategory = selected;
+        }
+    }
+
+    #endregion
+
+    #region Comparación de videos
+
+    private void OnComparisonLayoutChanged(object? sender, ComparisonLayout layout)
+    {
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            ConfigureComparisonGrid(layout);
+        });
+    }
+
+    private void OnComparisonSlotCleared(object? sender, int slot)
+    {
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            // Detener el reproductor correspondiente cuando se limpia el slot
+            switch (slot)
+            {
+                case 2:
+                    MediaPlayer2?.Stop();
+                    break;
+                case 3:
+                    MediaPlayer3?.Stop();
+                    break;
+                case 4:
+                    MediaPlayer4?.Stop();
+                    break;
+            }
+        });
+    }
+
+    private void ConfigureComparisonGrid(ComparisonLayout layout)
+    {
+        // Configurar las filas y columnas del Grid según el layout
+        ComparisonGrid.RowDefinitions.Clear();
+        ComparisonGrid.ColumnDefinitions.Clear();
+        
+        // Desuscribir el evento de tamaño si estaba suscrito y resetear padding
+        ComparisonGrid.SizeChanged -= OnComparisonGridSizeChanged;
+        ComparisonGrid.Padding = new Thickness(0);
+
+        switch (layout)
+        {
+            case ComparisonLayout.Single:
+                // Una sola celda
+                ComparisonGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Star });
+                ComparisonGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star });
+                
+                // Solo mostrar slot 1
+                VideoSlot1.IsVisible = true;
+                VideoSlot2.IsVisible = false;
+                VideoSlot3.IsVisible = false;
+                VideoSlot4.IsVisible = false;
+                
+                Grid.SetRow(VideoSlot1, 0);
+                Grid.SetColumn(VideoSlot1, 0);
+                break;
+
+            case ComparisonLayout.Horizontal2x1:
+                // Dos columnas lado a lado
+                ComparisonGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Star });
+                ComparisonGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star });
+                ComparisonGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star });
+                
+                VideoSlot1.IsVisible = true;
+                VideoSlot2.IsVisible = true;
+                VideoSlot3.IsVisible = false;
+                VideoSlot4.IsVisible = false;
+                
+                Grid.SetRow(VideoSlot1, 0);
+                Grid.SetColumn(VideoSlot1, 0);
+                Grid.SetRow(VideoSlot2, 0);
+                Grid.SetColumn(VideoSlot2, 1);
+                break;
+
+            case ComparisonLayout.Vertical1x2:
+                // Dos filas una encima de otra
+                ComparisonGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Star });
+                ComparisonGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Star });
+                ComparisonGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star });
+                
+                VideoSlot1.IsVisible = true;
+                VideoSlot2.IsVisible = false;
+                VideoSlot3.IsVisible = true;
+                VideoSlot4.IsVisible = false;
+                
+                Grid.SetRow(VideoSlot1, 0);
+                Grid.SetColumn(VideoSlot1, 0);
+                Grid.SetRow(VideoSlot3, 1);
+                Grid.SetColumn(VideoSlot3, 0);
+                break;
+
+            case ComparisonLayout.Quad2x2:
+                // Cuadrícula 2x2 con proporciones de video (16:9)
+                // Usamos Auto height que se ajustará según el contenido
+                ComparisonGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Star });
+                ComparisonGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Star });
+                ComparisonGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star });
+                ComparisonGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star });
+                
+                VideoSlot1.IsVisible = true;
+                VideoSlot2.IsVisible = true;
+                VideoSlot3.IsVisible = true;
+                VideoSlot4.IsVisible = true;
+                
+                Grid.SetRow(VideoSlot1, 0);
+                Grid.SetColumn(VideoSlot1, 0);
+                Grid.SetRow(VideoSlot2, 0);
+                Grid.SetColumn(VideoSlot2, 1);
+                Grid.SetRow(VideoSlot3, 1);
+                Grid.SetColumn(VideoSlot3, 0);
+                Grid.SetRow(VideoSlot4, 1);
+                Grid.SetColumn(VideoSlot4, 1);
+                
+                // Suscribirse al evento de tamaño para mantener aspect ratio 16:9
+                ComparisonGrid.SizeChanged += OnComparisonGridSizeChanged;
+                
+                // Aplicar proporciones iniciales si ya hay tamaño
+                if (ComparisonGrid.Width > 0)
+                    ApplyVideoAspectRatio();
+                break;
+        }
+    }
+
+    private void OnComparisonGridSizeChanged(object? sender, EventArgs e)
+    {
+        ApplyVideoAspectRatio();
+    }
+
+    private void ApplyVideoAspectRatio()
+    {
+        // Ratio 16:9 para cada celda de video
+        const double aspectRatio = 16.0 / 9.0;
+        
+        var gridWidth = ComparisonGrid.Width;
+        var gridHeight = ComparisonGrid.Height;
+        
+        if (gridWidth <= 0 || gridHeight <= 0) return;
+        
+        // Cada celda ocupa la mitad del ancho
+        var cellWidth = gridWidth / 2;
+        // Altura ideal para mantener 16:9
+        var idealCellHeight = cellWidth / aspectRatio;
+        // Altura total necesaria para 2 filas
+        var totalIdealHeight = idealCellHeight * 2;
+        
+        if (totalIdealHeight <= gridHeight)
+        {
+            // El contenido cabe - centrar verticalmente con las proporciones correctas
+            var verticalPadding = (gridHeight - totalIdealHeight) / 2;
+            ComparisonGrid.Padding = new Thickness(0, verticalPadding, 0, verticalPadding);
+            
+            // Actualizar las filas a altura fija
+            if (ComparisonGrid.RowDefinitions.Count >= 2)
+            {
+                ComparisonGrid.RowDefinitions[0].Height = new GridLength(idealCellHeight);
+                ComparisonGrid.RowDefinitions[1].Height = new GridLength(idealCellHeight);
+            }
+        }
+        else
+        {
+            // El contenido no cabe - ajustar al alto disponible y reducir ancho
+            ComparisonGrid.Padding = new Thickness(0);
+            var actualCellHeight = gridHeight / 2;
+            var actualCellWidth = actualCellHeight * aspectRatio;
+            var horizontalPadding = (gridWidth - (actualCellWidth * 2)) / 2;
+            
+            if (horizontalPadding > 0)
+            {
+                ComparisonGrid.Padding = new Thickness(horizontalPadding, 0, horizontalPadding, 0);
+            }
+            
+            // Usar filas Star para distribuir equitativamente
+            if (ComparisonGrid.RowDefinitions.Count >= 2)
+            {
+                ComparisonGrid.RowDefinitions[0].Height = GridLength.Star;
+                ComparisonGrid.RowDefinitions[1].Height = GridLength.Star;
+            }
+        }
+    }
+
+    #endregion
+
+    #region Drag and Drop de Videos
+
+    private void OnVideoDragStarting(object? sender, DragStartingEventArgs e)
+    {
+        if (sender is GestureRecognizer recognizer && 
+            recognizer.Parent is VisualElement element &&
+            element.BindingContext is VideoClip video)
+        {
+            e.Data.Properties["VideoClip"] = video;
+            e.Data.Text = video.DisplayLine1 ?? video.ClipPath ?? "";
+        }
+    }
+
+    private void OnVideoDragOver(object? sender, DragEventArgs e)
+    {
+        // Mostrar indicador visual de que se puede soltar aquí
+        if (sender is Border border)
+        {
+            border.BackgroundColor = Color.FromArgb("#FF2A3A4A");
+        }
+        e.AcceptedOperation = DataPackageOperation.Copy;
+    }
+
+    private void OnVideoDragLeave(object? sender, DragEventArgs e)
+    {
+        // Restaurar color original
+        if (sender is Border border)
+        {
+            border.BackgroundColor = Color.FromArgb("#FF1A1A1A");
+        }
+    }
+
+    private void OnVideoDropSlot2(object? sender, DropEventArgs e)
+    {
+        HandleVideoDrop(sender, e, 2);
+    }
+
+    private void OnVideoDropSlot3(object? sender, DropEventArgs e)
+    {
+        HandleVideoDrop(sender, e, 3);
+    }
+
+    private void OnVideoDropSlot4(object? sender, DropEventArgs e)
+    {
+        HandleVideoDrop(sender, e, 4);
+    }
+
+    private void HandleVideoDrop(object? sender, DropEventArgs e, int slotNumber)
+    {
+        // Restaurar color del border
+        if (sender is Border border)
+        {
+            border.BackgroundColor = Color.FromArgb("#FF1A1A1A");
+        }
+
+        // Obtener el video arrastrado
+        if (e.Data.Properties.TryGetValue("VideoClip", out var data) && data is VideoClip video)
+        {
+            // Asignar el video al slot correspondiente
+            if (BindingContext is SinglePlayerViewModel viewModel)
+            {
+                viewModel.DropVideoToSlotCommand.Execute((slotNumber, video));
+            }
         }
     }
 

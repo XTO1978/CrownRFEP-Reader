@@ -9,6 +9,21 @@ using System.Windows.Input;
 namespace CrownRFEP_Reader.ViewModels;
 
 /// <summary>
+/// Configuración de layout para comparación de videos.
+/// </summary>
+public enum ComparisonLayout
+{
+    /// <summary>Un solo video (sin comparación)</summary>
+    Single,
+    /// <summary>Dos videos en horizontal (lado a lado)</summary>
+    Horizontal2x1,
+    /// <summary>Dos videos en vertical (uno encima del otro)</summary>
+    Vertical1x2,
+    /// <summary>Cuatro videos en cuadrícula 2x2</summary>
+    Quad2x2
+}
+
+/// <summary>
 /// ViewModel para el reproductor de vídeo individual con control preciso frame-by-frame.
 /// Incluye sistema de filtrado y playlist para navegar entre videos de una sesión.
 /// </summary>
@@ -98,6 +113,16 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     // Historial de configuraciones de parciales
     private readonly ObservableCollection<LapConfigHistory> _recentLapConfigs = new();
 
+    // Comparación de videos
+    private bool _showComparisonPanel;
+    private ComparisonLayout _comparisonLayout = ComparisonLayout.Single;
+    
+    // Videos adicionales para comparación
+    private VideoClip? _comparisonVideo2;
+    private VideoClip? _comparisonVideo3;
+    private VideoClip? _comparisonVideo4;
+    private int _selectedComparisonSlot = 0; // 0 = ninguno, 2-4 = slot de video
+
     public SinglePlayerViewModel(DatabaseService databaseService)
     {
         _databaseService = databaseService;
@@ -183,6 +208,14 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         MarkAssistedPointCommand = new Command(MarkAssistedPoint, () => IsAssistedModeEnabled && AssistedLapState != AssistedLapState.Configuring && AssistedLapState != AssistedLapState.Completed);
         ResetAssistedCaptureCommand = new Command(ResetAssistedCapture);
         ApplyLapConfigCommand = new Command<LapConfigHistory>(ApplyLapConfig);
+        
+        // Comandos de comparación de videos
+        ToggleComparisonPanelCommand = new Command(ToggleComparisonPanel);
+        SetComparisonLayoutCommand = new Command<string>(SetComparisonLayout);
+        SelectComparisonSlotCommand = new Command<int>(SelectComparisonSlot);
+        ClearComparisonSlotCommand = new Command<object>(ClearComparisonSlot);
+        AssignVideoToComparisonSlotCommand = new Command<VideoClip>(AssignVideoToComparisonSlot);
+        DropVideoToSlotCommand = new Command<object>(AssignVideoToComparisonSlotWithSlot);
         
         // Cargar historial de configuraciones
         _ = LoadRecentLapConfigsAsync();
@@ -357,9 +390,9 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     public bool IsComparisonVideo => _videoClip?.IsComparisonVideo ?? false;
     
     /// <summary>
-    /// Aspecto del video: siempre AspectFit para mantener las proporciones originales
+    /// Aspecto del video: AspectFill en layout 2x2, AspectFit en el resto
     /// </summary>
-    public Aspect VideoAspect => Aspect.AspectFit;
+    public Aspect VideoAspect => _comparisonLayout == ComparisonLayout.Quad2x2 ? Aspect.AspectFill : Aspect.AspectFit;
 
     public string AthleteName => _videoClip?.Atleta?.NombreCompleto ?? "—";
     
@@ -661,6 +694,191 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         set { _showSplitTimePanel = value; OnPropertyChanged(); }
     }
 
+    // Propiedades para Comparación de videos
+    public bool ShowComparisonPanel
+    {
+        get => _showComparisonPanel;
+        set { _showComparisonPanel = value; OnPropertyChanged(); }
+    }
+
+    public ComparisonLayout ComparisonLayout
+    {
+        get => _comparisonLayout;
+        set 
+        { 
+            _comparisonLayout = value; 
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(IsSingleLayout));
+            OnPropertyChanged(nameof(IsHorizontal2x1Layout));
+            OnPropertyChanged(nameof(IsVertical1x2Layout));
+            OnPropertyChanged(nameof(IsQuad2x2Layout));
+            OnPropertyChanged(nameof(ComparisonLayoutText));
+            OnPropertyChanged(nameof(VideoAspect));
+        }
+    }
+
+    public bool IsSingleLayout => _comparisonLayout == ComparisonLayout.Single;
+    public bool IsHorizontal2x1Layout => _comparisonLayout == ComparisonLayout.Horizontal2x1;
+    public bool IsVertical1x2Layout => _comparisonLayout == ComparisonLayout.Vertical1x2;
+    public bool IsQuad2x2Layout => _comparisonLayout == ComparisonLayout.Quad2x2;
+    public bool IsMultiVideoLayout => _comparisonLayout != ComparisonLayout.Single;
+
+    public string ComparisonLayoutText => _comparisonLayout switch
+    {
+        ComparisonLayout.Single => "1 video",
+        ComparisonLayout.Horizontal2x1 => "2x1 Horizontal",
+        ComparisonLayout.Vertical1x2 => "1x2 Vertical",
+        ComparisonLayout.Quad2x2 => "2x2 Cuadrícula",
+        _ => "1 video"
+    };
+
+    // Propiedades para videos de comparación
+    public VideoClip? ComparisonVideo2
+    {
+        get => _comparisonVideo2;
+        set
+        {
+            _comparisonVideo2 = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(HasComparisonVideo2));
+            OnPropertyChanged(nameof(ComparisonVideo2Path));
+        }
+    }
+
+    public VideoClip? ComparisonVideo3
+    {
+        get => _comparisonVideo3;
+        set
+        {
+            _comparisonVideo3 = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(HasComparisonVideo3));
+            OnPropertyChanged(nameof(ComparisonVideo3Path));
+        }
+    }
+
+    public VideoClip? ComparisonVideo4
+    {
+        get => _comparisonVideo4;
+        set
+        {
+            _comparisonVideo4 = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(HasComparisonVideo4));
+            OnPropertyChanged(nameof(ComparisonVideo4Path));
+        }
+    }
+
+    public bool HasComparisonVideo2 => _comparisonVideo2 != null;
+    public bool HasComparisonVideo3 => _comparisonVideo3 != null;
+    public bool HasComparisonVideo4 => _comparisonVideo4 != null;
+    
+    public string? ComparisonVideo2Path => _comparisonVideo2?.LocalClipPath;
+    public string? ComparisonVideo3Path => _comparisonVideo3?.LocalClipPath;
+    public string? ComparisonVideo4Path => _comparisonVideo4?.LocalClipPath;
+
+    // Propiedades para mostrar delta de sincronización en el footer
+    private TimeSpan _comparisonPosition2;
+    private TimeSpan _comparisonPosition3;
+    private TimeSpan _comparisonPosition4;
+
+    public TimeSpan ComparisonPosition2
+    {
+        get => _comparisonPosition2;
+        set
+        {
+            _comparisonPosition2 = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(SyncDeltaText));
+            OnPropertyChanged(nameof(SyncStatusText));
+        }
+    }
+
+    public TimeSpan ComparisonPosition3
+    {
+        get => _comparisonPosition3;
+        set
+        {
+            _comparisonPosition3 = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(SyncDeltaText));
+        }
+    }
+
+    public TimeSpan ComparisonPosition4
+    {
+        get => _comparisonPosition4;
+        set
+        {
+            _comparisonPosition4 = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(SyncDeltaText));
+        }
+    }
+
+    /// <summary>
+    /// Texto que muestra el delta de tiempo entre reproductores sincronizados
+    /// </summary>
+    public string SyncDeltaText
+    {
+        get
+        {
+            if (!IsMultiVideoLayout) return "";
+            
+            var deltas = new List<string>();
+            var mainMs = CurrentPosition.TotalMilliseconds;
+
+            if (HasComparisonVideo2)
+            {
+                var delta2 = _comparisonPosition2.TotalMilliseconds - mainMs;
+                deltas.Add($"Δ2: {(delta2 >= 0 ? "+" : "")}{delta2:F0}ms");
+            }
+            if (HasComparisonVideo3)
+            {
+                var delta3 = _comparisonPosition3.TotalMilliseconds - mainMs;
+                deltas.Add($"Δ3: {(delta3 >= 0 ? "+" : "")}{delta3:F0}ms");
+            }
+            if (HasComparisonVideo4)
+            {
+                var delta4 = _comparisonPosition4.TotalMilliseconds - mainMs;
+                deltas.Add($"Δ4: {(delta4 >= 0 ? "+" : "")}{delta4:F0}ms");
+            }
+
+            return deltas.Count > 0 ? string.Join(" | ", deltas) : "";
+        }
+    }
+
+    /// <summary>
+    /// Texto de estado de sincronización para el footer
+    /// </summary>
+    public string SyncStatusText
+    {
+        get
+        {
+            if (!IsMultiVideoLayout) return "";
+            
+            var videoCount = 1;
+            if (HasComparisonVideo2) videoCount++;
+            if (HasComparisonVideo3) videoCount++;
+            if (HasComparisonVideo4) videoCount++;
+
+            return $"Comparación: {videoCount} videos | {ComparisonLayoutText}";
+        }
+    }
+
+    public int SelectedComparisonSlot
+    {
+        get => _selectedComparisonSlot;
+        set
+        {
+            _selectedComparisonSlot = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(IsSelectingComparisonVideo));
+        }
+    }
+
+    public bool IsSelectingComparisonVideo => _selectedComparisonSlot > 0;
+
     public TimeSpan? SplitStartTime
     {
         get => _splitStartTime;
@@ -934,6 +1152,14 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     public ICommand ResetAssistedCaptureCommand { get; }
     public ICommand ApplyLapConfigCommand { get; }
 
+    // Comandos de comparación de videos
+    public ICommand ToggleComparisonPanelCommand { get; }
+    public ICommand SetComparisonLayoutCommand { get; }
+    public ICommand SelectComparisonSlotCommand { get; }
+    public ICommand ClearComparisonSlotCommand { get; }
+    public ICommand AssignVideoToComparisonSlotCommand { get; }
+    public ICommand DropVideoToSlotCommand { get; }
+
     #endregion
 
     #region Eventos
@@ -1095,6 +1321,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         ShowTagsAssignPanel = false;
         ShowTagEventsPanel = false;
         ShowSplitTimePanel = false;
+        ShowComparisonPanel = false;
         
         // Notificar al code-behind para cerrar paneles gestionados ahí (ej: DrawingTools)
         // Aseguramos hilo UI porque el handler toca elementos visuales.
@@ -1346,6 +1573,14 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     {
         if (video == null) return;
         
+        // Si estamos seleccionando un video para un slot de comparación
+        if (SelectedComparisonSlot > 0)
+        {
+            AssignVideoToComparisonSlot(video);
+            return;
+        }
+        
+        // Comportamiento normal: cambiar el video principal
         var index = _filteredPlaylist.FindIndex(v => v.Id == video.Id);
         if (index >= 0)
         {
@@ -2846,6 +3081,133 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             System.Diagnostics.Debug.WriteLine($"Error guardando split: {ex.Message}");
         }
     }
+
+    #endregion
+
+    #region Comparación de videos
+
+    private void ToggleComparisonPanel()
+    {
+        var wasOpen = ShowComparisonPanel;
+        
+        // Cerrar todos los paneles
+        CloseAllPanels();
+        
+        ShowComparisonPanel = !wasOpen;
+    }
+
+    private void SetComparisonLayout(string layoutName)
+    {
+        var newLayout = layoutName switch
+        {
+            "Single" => ComparisonLayout.Single,
+            "Horizontal2x1" => ComparisonLayout.Horizontal2x1,
+            "Vertical1x2" => ComparisonLayout.Vertical1x2,
+            "Quad2x2" => ComparisonLayout.Quad2x2,
+            _ => ComparisonLayout.Single
+        };
+
+        ComparisonLayout = newLayout;
+        ShowComparisonPanel = false;
+        
+        // Limpiar videos de comparación si volvemos a Single
+        if (newLayout == ComparisonLayout.Single)
+        {
+            ClearAllComparisonVideos();
+        }
+        
+        // Notificar a la vista que debe reconfigurarse
+        ComparisonLayoutChanged?.Invoke(this, newLayout);
+    }
+
+    private void SelectComparisonSlot(int slot)
+    {
+        // El slot indica qué cuadrante queremos asignar (2, 3, 4)
+        SelectedComparisonSlot = slot;
+    }
+
+    private void ClearComparisonSlot(object? parameter)
+    {
+        int slot = 0;
+        if (parameter is int intSlot)
+            slot = intSlot;
+        else if (parameter is string strSlot && int.TryParse(strSlot, out var parsed))
+            slot = parsed;
+        
+        if (slot == 0) return;
+        
+        switch (slot)
+        {
+            case 2:
+                ComparisonVideo2 = null;
+                ComparisonSlotCleared?.Invoke(this, 2);
+                break;
+            case 3:
+                ComparisonVideo3 = null;
+                ComparisonSlotCleared?.Invoke(this, 3);
+                break;
+            case 4:
+                ComparisonVideo4 = null;
+                ComparisonSlotCleared?.Invoke(this, 4);
+                break;
+        }
+        SelectedComparisonSlot = 0;
+        
+        // Actualizar texto de estado
+        OnPropertyChanged(nameof(SyncStatusText));
+    }
+
+    /// <summary>
+    /// Evento que se dispara cuando se limpia un slot de comparación (para detener el reproductor).
+    /// </summary>
+    public event EventHandler<int>? ComparisonSlotCleared;
+
+    private void AssignVideoToComparisonSlot(VideoClip video)
+    {
+        if (SelectedComparisonSlot <= 0) return;
+        
+        AssignVideoToSlot(SelectedComparisonSlot, video);
+        SelectedComparisonSlot = 0;
+    }
+
+    private void AssignVideoToComparisonSlotWithSlot(object? parameter)
+    {
+        if (parameter is ValueTuple<int, VideoClip> tuple)
+        {
+            var (slotNumber, video) = tuple;
+            AssignVideoToSlot(slotNumber, video);
+        }
+    }
+
+    private void AssignVideoToSlot(int slotNumber, VideoClip video)
+    {
+        switch (slotNumber)
+        {
+            case 2:
+                ComparisonVideo2 = video;
+                break;
+            case 3:
+                ComparisonVideo3 = video;
+                break;
+            case 4:
+                ComparisonVideo4 = video;
+                break;
+        }
+    }
+
+    private void ClearAllComparisonVideos()
+    {
+        ComparisonVideo2 = null;
+        ComparisonVideo3 = null;
+        ComparisonVideo4 = null;
+        SelectedComparisonSlot = 0;
+    }
+
+    /// <summary>
+    /// Evento que se dispara cuando cambia el layout de comparación.
+    /// La vista se suscribe para actualizar los reproductores.
+    /// </summary>
+    public event EventHandler<ComparisonLayout>? ComparisonLayoutChanged;
 
     #endregion
 }
