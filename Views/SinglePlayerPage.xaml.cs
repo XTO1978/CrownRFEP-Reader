@@ -1494,9 +1494,23 @@ public partial class SinglePlayerPage : ContentPage
 
     private void PlayAllPlayers()
     {
+        // En modo comparación: alinear todos a la misma posición antes de reproducir,
+        // para que el arranque sea lo más simultáneo/preciso posible.
+        if (_viewModel.IsMultiVideoLayout)
+        {
+            var startPosition = _viewModel.CurrentPosition;
+
+            if (_viewModel.HasComparisonVideo2)
+                MediaPlayer2?.SeekTo(startPosition);
+            if (_viewModel.HasComparisonVideo3)
+                MediaPlayer3?.SeekTo(startPosition);
+            if (_viewModel.HasComparisonVideo4)
+                MediaPlayer4?.SeekTo(startPosition);
+        }
+
+        // Lanzar Play (rápido, sin await) en todos los reproductores activos.
         MediaPlayer?.Play();
-        
-        // Reproducir también los players de comparación si están activos
+
         if (_viewModel.IsMultiVideoLayout)
         {
             if (_viewModel.HasComparisonVideo2)

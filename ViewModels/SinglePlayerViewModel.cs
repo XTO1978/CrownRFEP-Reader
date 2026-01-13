@@ -1180,8 +1180,11 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(IsHorizontal2x1Layout));
             OnPropertyChanged(nameof(IsVertical1x2Layout));
             OnPropertyChanged(nameof(IsQuad2x2Layout));
+            OnPropertyChanged(nameof(IsMultiVideoLayout));
             OnPropertyChanged(nameof(ComparisonLayoutText));
             OnPropertyChanged(nameof(VideoAspect));
+            OnPropertyChanged(nameof(SyncStatusText));
+            OnPropertyChanged(nameof(SyncDeltaText));
         }
     }
 
@@ -1250,6 +1253,14 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     private TimeSpan _comparisonPosition3;
     private TimeSpan _comparisonPosition4;
 
+    // Baseline para calcular desfase desde el último Play
+    private bool _hasSyncBaseline;
+    private DateTime _lastSyncPlayUtc;
+    private TimeSpan _syncBaselineMain;
+    private TimeSpan _syncBaseline2;
+    private TimeSpan _syncBaseline3;
+    private TimeSpan _syncBaseline4;
+
     public TimeSpan ComparisonPosition2
     {
         get => _comparisonPosition2;
@@ -1284,6 +1295,33 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         }
     }
 
+    private void CaptureSyncBaselineForPlay()
+    {
+        _hasSyncBaseline = true;
+        _lastSyncPlayUtc = DateTime.UtcNow;
+
+        _syncBaselineMain = CurrentPosition;
+        _syncBaseline2 = _comparisonPosition2;
+        _syncBaseline3 = _comparisonPosition3;
+        _syncBaseline4 = _comparisonPosition4;
+
+        OnPropertyChanged(nameof(SyncDeltaText));
+        OnPropertyChanged(nameof(SyncStatusText));
+    }
+
+    private void ClearSyncBaseline()
+    {
+        _hasSyncBaseline = false;
+        _lastSyncPlayUtc = default;
+        _syncBaselineMain = TimeSpan.Zero;
+        _syncBaseline2 = TimeSpan.Zero;
+        _syncBaseline3 = TimeSpan.Zero;
+        _syncBaseline4 = TimeSpan.Zero;
+
+        OnPropertyChanged(nameof(SyncDeltaText));
+        OnPropertyChanged(nameof(SyncStatusText));
+    }
+
     /// <summary>
     /// Texto que muestra el delta de tiempo entre reproductores sincronizados
     /// </summary>
@@ -1292,23 +1330,32 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         get
         {
             if (!IsMultiVideoLayout) return "";
-            
+
+            // Queremos el desfase DESDE el último Play: diferencia de progreso desde el instante
+            // en el que el usuario pulsó Play (baseline).
+            if (!_hasSyncBaseline) return "";
+
             var deltas = new List<string>();
-            var mainMs = CurrentPosition.TotalMilliseconds;
+
+            var mainProgress = CurrentPosition - _syncBaselineMain;
+            var mainProgressMs = mainProgress.TotalMilliseconds;
 
             if (HasComparisonVideo2)
             {
-                var delta2 = _comparisonPosition2.TotalMilliseconds - mainMs;
+                var p2 = _comparisonPosition2 - _syncBaseline2;
+                var delta2 = p2.TotalMilliseconds - mainProgressMs;
                 deltas.Add($"Δ2: {(delta2 >= 0 ? "+" : "")}{delta2:F0}ms");
             }
             if (HasComparisonVideo3)
             {
-                var delta3 = _comparisonPosition3.TotalMilliseconds - mainMs;
+                var p3 = _comparisonPosition3 - _syncBaseline3;
+                var delta3 = p3.TotalMilliseconds - mainProgressMs;
                 deltas.Add($"Δ3: {(delta3 >= 0 ? "+" : "")}{delta3:F0}ms");
             }
             if (HasComparisonVideo4)
             {
-                var delta4 = _comparisonPosition4.TotalMilliseconds - mainMs;
+                var p4 = _comparisonPosition4 - _syncBaseline4;
+                var delta4 = p4.TotalMilliseconds - mainProgressMs;
                 deltas.Add($"Δ4: {(delta4 >= 0 ? "+" : "")}{delta4:F0}ms");
             }
 
@@ -1330,7 +1377,10 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             if (HasComparisonVideo3) videoCount++;
             if (HasComparisonVideo4) videoCount++;
 
-            return $"Comparación: {videoCount} videos | {ComparisonLayoutText}";
+            if (!_hasSyncBaseline)
+                return $"Comparación: {videoCount} videos | {ComparisonLayoutText}";
+
+            return $"Sync desde Play | {videoCount} videos | {ComparisonLayoutText}";
         }
     }
 
@@ -2045,7 +2095,10 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     {
         IsPlaying = !IsPlaying;
         if (IsPlaying)
+        {
+            CaptureSyncBaselineForPlay();
             PlayRequested?.Invoke(this, EventArgs.Empty);
+        }
         else
             PauseRequested?.Invoke(this, EventArgs.Empty);
     }
@@ -2054,6 +2107,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     {
         IsPlaying = false;
         CurrentPosition = TimeSpan.Zero;
+        ClearSyncBaseline();
         StopRequested?.Invoke(this, EventArgs.Empty);
     }
 
@@ -2061,6 +2115,8 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     {
         var newPosition = CurrentPosition.TotalSeconds + seconds;
         newPosition = Math.Max(0, Math.Min(newPosition, Duration.TotalSeconds));
+        // Un seek rompe la referencia del "desde Play".
+        ClearSyncBaseline();
         SeekRequested?.Invoke(this, newPosition);
     }
 

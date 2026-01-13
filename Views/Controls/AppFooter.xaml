@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentView
     x:Class="CrownRFEP_Reader.Views.Controls.AppFooter"
+    x:Name="ThisFooter"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:controls="clr-namespace:CrownRFEP_Reader.Views.Controls"
@@ -92,6 +93,37 @@
 
             <!--  Spacer central  -->
             <BoxView Grid.Column="2" Color="{StaticResource OffBlack}" />
+
+            <!--  Información de sincronización de videos (opcional, desde SinglePlayerPage)  -->
+            <HorizontalStackLayout
+                x:Name="SyncInfoPanel"
+                Grid.Column="2"
+                Spacing="16"
+                HorizontalOptions="Center"
+                VerticalOptions="Center"
+                IsVisible="{Binding ShowSyncInfo, Source={x:Reference ThisFooter}}">
+                <HorizontalStackLayout Spacing="6">
+                    <controls:SymbolIcon
+                        SymbolName="arrow.triangle.2.circlepath"
+                        TintColor="#FF4CAF50"
+                        HeightRequest="{StaticResource IconSizeSmall}"
+                        WidthRequest="{StaticResource IconSizeSmall}"
+                        VerticalOptions="Center" />
+                    <Label
+                        x:Name="SyncStatusLabel"
+                        FontSize="{StaticResource FontSizeSmall}"
+                        Text="{Binding SyncStatusText, Source={x:Reference ThisFooter}}"
+                        TextColor="#FF8A8A8A"
+                        VerticalOptions="Center" />
+                </HorizontalStackLayout>
+                <Label
+                    x:Name="SyncDeltaLabel"
+                    FontSize="{StaticResource FontSizeSmall}"
+                    FontFamily="{StaticResource AppFontMono}"
+                    Text="{Binding SyncDeltaText, Source={x:Reference ThisFooter}}"
+                    TextColor="#FFFFAB40"
+                    VerticalOptions="Center" />
+            </HorizontalStackLayout>
 
             <!--  Contador de vídeos  -->
             <HorizontalStackLayout

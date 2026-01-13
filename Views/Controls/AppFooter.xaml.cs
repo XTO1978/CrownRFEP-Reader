@@ -12,6 +12,94 @@ public partial class AppFooter : ContentView
     private Label? _popupLogCountLabel;
     private Label? _popupLastActivityLabel;
 
+    // ==================== BINDABLE PROPERTIES PARA SINCRONIZACIÓN ====================
+    
+    /// <summary>
+    /// Indica si se muestra la información de sincronización de videos
+    /// </summary>
+    public static readonly BindableProperty ShowSyncInfoProperty = BindableProperty.Create(
+        nameof(ShowSyncInfo),
+        typeof(bool),
+        typeof(AppFooter),
+        false,
+        propertyChanged: OnShowSyncInfoChanged);
+
+    public bool ShowSyncInfo
+    {
+        get => (bool)GetValue(ShowSyncInfoProperty);
+        set => SetValue(ShowSyncInfoProperty, value);
+    }
+
+    /// <summary>
+    /// Texto de estado de sincronización
+    /// </summary>
+    public static readonly BindableProperty SyncStatusTextProperty = BindableProperty.Create(
+        nameof(SyncStatusText),
+        typeof(string),
+        typeof(AppFooter),
+        string.Empty,
+        propertyChanged: OnSyncTextChanged);
+
+    public string SyncStatusText
+    {
+        get => (string)GetValue(SyncStatusTextProperty);
+        set => SetValue(SyncStatusTextProperty, value);
+    }
+
+    /// <summary>
+    /// Texto de delta de sincronización
+    /// </summary>
+    public static readonly BindableProperty SyncDeltaTextProperty = BindableProperty.Create(
+        nameof(SyncDeltaText),
+        typeof(string),
+        typeof(AppFooter),
+        string.Empty,
+        propertyChanged: OnSyncTextChanged);
+
+    public string SyncDeltaText
+    {
+        get => (string)GetValue(SyncDeltaTextProperty);
+        set => SetValue(SyncDeltaTextProperty, value);
+    }
+
+    private static void OnShowSyncInfoChanged(BindableObject bindable, object oldValue, object newValue)
+    {
+        if (bindable is AppFooter footer)
+        {
+            footer.UpdateSyncInfoVisibility();
+        }
+    }
+
+    private static void OnSyncTextChanged(BindableObject bindable, object oldValue, object newValue)
+    {
+        if (bindable is AppFooter footer)
+        {
+            footer.UpdateSyncLabels();
+        }
+    }
+
+    private void UpdateSyncInfoVisibility()
+    {
+        if (SyncInfoPanel != null)
+        {
+            SyncInfoPanel.IsVisible = ShowSyncInfo;
+        }
+    }
+
+    private void UpdateSyncLabels()
+    {
+        if (SyncStatusLabel != null)
+        {
+            SyncStatusLabel.Text = SyncStatusText;
+        }
+        if (SyncDeltaLabel != null)
+        {
+            SyncDeltaLabel.Text = SyncDeltaText;
+        }
+    }
+
+    // ==================== FIN BINDABLE PROPERTIES ====================
+
     public AppFooter()
     {
         InitializeComponent();
