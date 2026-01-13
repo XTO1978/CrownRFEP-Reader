@@ -48,7 +48,7 @@ public sealed class ReplayKitCameraPreviewHandler : ViewHandler<ReplayKitCameraP
         if (view.IsActive)
             handler.EnsurePreview(handler.PlatformView);
         else
-            handler.StopAll();
+            handler.StopAll(handler.PlatformView);
     }
 
     private void EnsurePreview(UIView platformView)
@@ -311,7 +311,7 @@ public sealed class ReplayKitCameraPreviewHandler : ViewHandler<ReplayKitCameraP
         _captureSession = null;
     }
 
-    private void StopAll()
+    private void StopAll(UIView? platformView)
     {
         _attachTimer?.Invalidate();
         _attachTimer = null;
@@ -320,9 +320,9 @@ public sealed class ReplayKitCameraPreviewHandler : ViewHandler<ReplayKitCameraP
         StopFallbackCamera();
 
         // Quitamos subviews (por si el preview de ReplayKit estaba incrustado)
-        if (PlatformView != null)
+        if (platformView != null)
         {
-            foreach (var sub in PlatformView.Subviews)
+            foreach (var sub in platformView.Subviews)
                 sub.RemoveFromSuperview();
         }
     }
@@ -346,7 +346,7 @@ public sealed class ReplayKitCameraPreviewHandler : ViewHandler<ReplayKitCameraP
 
         try
         {
-            StopAll();
+            StopAll(platformView);
         }
         catch (Exception ex)
         {

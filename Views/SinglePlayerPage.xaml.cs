@@ -713,6 +713,21 @@ public partial class SinglePlayerPage : ContentPage
             $"OnAppearing | IsRecording={_videoLessonRecorder.IsRecording} | VideoPath='{_viewModel.VideoPath}' | NavStack={Shell.Current?.Navigation?.NavigationStack?.Count} | ModalStack={Shell.Current?.Navigation?.ModalStack?.Count}");
         SetupMediaHandlers();
 
+        // Asegurar que siempre hay un VideoClip (con Id) y recargar eventos al re-entrar.
+        // Hacerlo secuencial para evitar carreras (Refresh antes de que exista _videoClip).
+        MainThread.BeginInvokeOnMainThread(async () =>
+        {
+            try
+            {
+                await _viewModel.EnsureInitializedFromVideoPathAsync();
+                await _viewModel.RefreshTagEventsAsync();
+            }
+            catch (Exception ex)
+            {
+                AppLog.Error("SinglePlayerPage", "OnAppearing: Ensure/RefreshTagEvents failed", ex);
+            }
+        });
+
         SyncVideoLessonUiFromRecorder();
         
         // Suscribirse a eventos de scrubbing (trackpad/mouse wheel)

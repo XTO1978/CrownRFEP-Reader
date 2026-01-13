@@ -12,6 +12,10 @@ public class DatabaseService
     private readonly string _dbPath;
     private StatusBarService? _statusBarService;
     
+    // ID único de instancia para diagnóstico de singleton
+    private static int _instanceCounter;
+    private readonly int _instanceId;
+    
     // Caché de datos relacionados para evitar consultas repetidas
     private Dictionary<int, Athlete>? _athleteCache;
     private Dictionary<int, Category>? _categoryCache;
@@ -23,7 +27,9 @@ public class DatabaseService
 
     public DatabaseService()
     {
+        _instanceId = System.Threading.Interlocked.Increment(ref _instanceCounter);
         _dbPath = Path.Combine(FileSystem.AppDataDirectory, "CrownApp.db");
+        System.Diagnostics.Debug.WriteLine($"[DatabaseService] CREATED instance #{_instanceId} | dbPath={_dbPath}");
     }
 
     public DatabaseService(string dbPath)
@@ -82,15 +88,91 @@ public class DatabaseService
     public async Task<SQLiteAsyncConnection> GetConnectionAsync()
     {
         if (_database != null)
+        {
+#if DEBUG
+            System.Diagnostics.Debug.WriteLine($"[DatabaseService] Using existing connection: {_dbPath}");
+#endif
             return _database;
+        }
 
         LogInfo("Conectando a base de datos...");
+    #if DEBUG
+        System.Diagnostics.Debug.WriteLine($"[DatabaseService] Creating NEW connection: {_dbPath}");
+    #endif
+        // Conexión estándar (históricamente estable en el proyecto)
         _database = new SQLiteAsyncConnection(_dbPath, SQLiteOpenFlags.ReadWrite | SQLiteOpenFlags.Create | SQLiteOpenFlags.SharedCache);
         
         await InitializeDatabaseAsync();
         LogSuccess("Base de datos conectada");
         
         return _database;
+    }
+
+    /// <summary>
+    /// Intenta resolver un VideoClip a partir de una ruta absoluta (LocalClipPath) o, como fallback,
+    /// por nombre de archivo (ClipPath) o coincidencia parcial en LocalClipPath.
+    /// Útil cuando se navega a SinglePlayerPage solo con ?videoPath=...
+    /// </summary>
+    public async Task<VideoClip?> FindVideoClipByAnyPathAsync(string videoPath)
+    {
+        if (string.IsNullOrWhiteSpace(videoPath))
+            return null;
+
+        var original = videoPath;
+
+        // Normalizar: aceptar rutas tipo file:///...
+        var normalized = videoPath.Trim();
+        if (normalized.StartsWith("file://", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                if (Uri.TryCreate(normalized, UriKind.Absolute, out var uri) && uri.IsFile)
+                    normalized = uri.LocalPath;
+            }
+            catch
+            {
+                // Ignorar
+            }
+        }
+
+        try { normalized = Uri.UnescapeDataString(normalized); } catch { }
+        normalized = normalized.Replace('\\', '/');
+
+        var db = await GetConnectionAsync();
+
+        // 1) Match exacto por LocalClipPath
+        var exact = await db.Table<VideoClip>().FirstOrDefaultAsync(v => v.LocalClipPath == normalized);
+        if (exact != null)
+            return exact;
+
+        // 1b) Intento extra con el valor original (por si ya venía correcto)
+        if (!string.Equals(original, normalized, StringComparison.Ordinal))
+        {
+            var exactOriginal = await db.Table<VideoClip>().FirstOrDefaultAsync(v => v.LocalClipPath == original);
+            if (exactOriginal != null)
+                return exactOriginal;
+        }
+
+        // 2) Fallback por nombre de archivo
+        var fileName = Path.GetFileName(normalized);
+        if (string.IsNullOrWhiteSpace(fileName))
+            return null;
+
+        // 2a) ClipPath suele ser filename, pero en algunos flujos puede venir como ruta.
+        var byClipPath = await db.Table<VideoClip>().FirstOrDefaultAsync(v => v.ClipPath == fileName);
+        if (byClipPath != null)
+            return byClipPath;
+
+        var byClipPathAsPath = await db.Table<VideoClip>().FirstOrDefaultAsync(v => v.ClipPath == normalized);
+        if (byClipPathAsPath != null)
+            return byClipPathAsPath;
+
+        // 3) Fallback: LocalClipPath contiene el nombre
+        var like = await db.QueryAsync<VideoClip>(
+            "SELECT * FROM videoClip WHERE localClipPath LIKE ? ORDER BY CreationDate DESC LIMIT 1",
+            $"%{fileName}%");
+
+        return like.FirstOrDefault();
     }
 
     private async Task InitializeDatabaseAsync()
@@ -1110,15 +1192,16 @@ public class DatabaseService
         var existingTags = await db.Table<Tag>().ToListAsync();
         var existingIds = existingTags.Select(t => t.Id).ToHashSet();
         
-        // Obtener InputTypeIds que están siendo usados en inputs
-        var inputs = await db.Table<Input>().ToListAsync();
+        // Obtener InputTypeIds que están siendo usados en inputs de TAGS (IsEvent = 0)
+        // Importante: no tocar inputs de eventos (IsEvent = 1), ya que su InputTypeId apunta a EventTagDefinition.
+        var inputs = await db.Table<Input>().Where(i => i.IsEvent == 0).ToListAsync();
         var usedTagIds = inputs
             .Where(i => i.InputTypeId > 0)
             .Select(i => i.InputTypeId)
             .Distinct()
             .ToHashSet();
         
-        // Limpiar inputs que referencian tags que no existen (datos huérfanos)
+        // Limpiar inputs de TAGS que referencian tags que no existen (datos huérfanos)
         foreach (var input in inputs.Where(i => i.InputTypeId > 0 && !existingIds.Contains(i.InputTypeId)))
         {
             await db.DeleteAsync(input);
@@ -1142,7 +1225,7 @@ public class DatabaseService
         {
             // Verificar si este tag tiene referencias en input
             var hasReferences = await db.ExecuteScalarAsync<int>(
-                "SELECT COUNT(*) FROM input WHERE InputTypeID = ?", genericTag.Id);
+                "SELECT COUNT(*) FROM input WHERE InputTypeID = ? AND IsEvent = 0", genericTag.Id);
             
             if (hasReferences == 0)
             {
@@ -1153,7 +1236,7 @@ public class DatabaseService
             else
             {
                 // Tiene referencias pero es un tag genérico, eliminar las referencias y el tag
-                await db.ExecuteAsync("DELETE FROM input WHERE InputTypeID = ?", genericTag.Id);
+                await db.ExecuteAsync("DELETE FROM input WHERE InputTypeID = ? AND IsEvent = 0", genericTag.Id);
                 await db.DeleteAsync(genericTag);
                 System.Diagnostics.Debug.WriteLine($"[CleanDuplicateTags] Eliminado tag genérico con referencias huérfanas: ID={genericTag.Id}, Nombre='{genericTag.NombreTag}'");
             }
@@ -1178,7 +1261,7 @@ public class DatabaseService
             {
                 // Actualizar referencias en inputs
                 await db.ExecuteAsync(
-                    "UPDATE input SET InputTypeID = ? WHERE InputTypeID = ?",
+                    "UPDATE input SET InputTypeID = ? WHERE InputTypeID = ? AND IsEvent = 0",
                     toKeep.Id, tag.Id);
                 
                 // Eliminar el duplicado
@@ -1318,10 +1401,21 @@ public class DatabaseService
     {
         var db = await GetConnectionAsync();
         
+        // Diagnóstico: tamaño del archivo
+        long fileSize = 0;
+        try { fileSize = new FileInfo(_dbPath).Length; } catch { }
+        
+        // Diagnóstico global
+        var globalTotal = await db.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM input");
+        var maxId = await db.ExecuteScalarAsync<int>("SELECT COALESCE(MAX(id),0) FROM input");
+        var globalEvents = await db.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM input WHERE IsEvent=1");
+        
         // Eventos: inputs con IsEvent == 1
         var inputs = await db.Table<Input>()
             .Where(i => i.VideoId == videoId && i.IsEvent == 1)
             .ToListAsync();
+
+        AppLog.Info("DatabaseService", $"GetTagEventsForVideoAsync: dbPath={_dbPath}, fileSize={fileSize}, videoId={videoId}, events={inputs.Count}, globalTotal={globalTotal}, maxId={maxId}, globalEvents={globalEvents}");
         
         if (inputs.Count == 0)
             return new List<TagEvent>();
@@ -1329,19 +1423,39 @@ public class DatabaseService
         // Obtener catálogo de tipos de evento (separado de tags)
         var allEventDefs = await db.Table<EventTagDefinition>().ToListAsync();
         var eventDict = allEventDefs.ToDictionary(t => t.Id, t => t.Nombre ?? "");
+
+#if DEBUG
+        System.Diagnostics.Debug.WriteLine($"[GetTagEventsForVideoAsync] EventTagDefinitions count: {allEventDefs.Count}");
+        foreach (var def in allEventDefs)
+        {
+            System.Diagnostics.Debug.WriteLine($"  EventTagDef Id={def.Id}, Nombre={def.Nombre}");
+        }
+#endif
         
-        // Crear lista de eventos ordenados por timestamp
+        // Crear lista de eventos ordenados por timestamp.
+        // IMPORTANTE: no filtrar por catálogo; si el tipo no existe (o fue borrado) lo mostramos igual
+        // para que el evento "persista" visualmente como ocurre con los tags asignados.
         var events = inputs
-            .Where(i => eventDict.ContainsKey(i.InputTypeId) && !string.IsNullOrEmpty(eventDict[i.InputTypeId]))
-            .Select(i => new TagEvent
+            .Select(i =>
             {
-                InputId = i.Id,
-                TagId = i.InputTypeId,
-                TagName = eventDict[i.InputTypeId],
-                TimestampMs = i.TimeStamp
+                var name = eventDict.TryGetValue(i.InputTypeId, out var n) ? n : null;
+                if (string.IsNullOrWhiteSpace(name))
+                    name = $"Evento {i.InputTypeId}";
+
+                return new TagEvent
+                {
+                    InputId = i.Id,
+                    TagId = i.InputTypeId,
+                    TagName = name,
+                    TimestampMs = i.TimeStamp
+                };
             })
             .OrderBy(e => e.TimestampMs)
             .ToList();
+
+#if DEBUG
+        System.Diagnostics.Debug.WriteLine($"[GetTagEventsForVideoAsync] Final events count after filtering: {events.Count}");
+#endif
         
         return events;
     }
@@ -1353,19 +1467,47 @@ public class DatabaseService
     {
         var db = await GetConnectionAsync();
         
+        // Diagnóstico: tamaño del archivo ANTES
+        long fileSizeBefore = 0;
+        try { fileSizeBefore = new FileInfo(_dbPath).Length; } catch { }
+        
+        // Diagnóstico: estado previo
+        var beforeTotal = await db.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM input");
+        var maxIdBefore = await db.ExecuteScalarAsync<int>("SELECT COALESCE(MAX(id),0) FROM input");
+        AppLog.Info("DatabaseService", $"AddTagEventAsync BEFORE: dbPath={_dbPath}, fileSize={fileSizeBefore}, videoId={videoId}, totalInputs={beforeTotal}, maxId={maxIdBefore}");
+        
         var input = new Input
         {
             VideoId = videoId,
-            // Para eventos (IsEvent=1), InputTypeId referencia event_tags
             InputTypeId = tagId,
             TimeStamp = timestampMs,
             SessionId = sessionId,
             AthleteId = athleteId,
             InputDateTime = DateTimeOffset.Now.ToUnixTimeSeconds(),
-            IsEvent = 1  // Marcar como evento
+            IsEvent = 1
         };
         
         await db.InsertAsync(input);
+        
+        // Forzar checkpoint WAL si existe
+        try { await db.ExecuteAsync("PRAGMA wal_checkpoint(TRUNCATE)"); } catch { }
+        
+        // Verificar el registro recién insertado
+        var insertedRow = await db.FindAsync<Input>(input.Id);
+        var insertedExists = insertedRow != null;
+        var insertedIsEvent = insertedRow?.IsEvent ?? -1;
+        
+        // Forzar escritura a disco con SELECT inmediato
+        var afterTotal = await db.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM input");
+        var maxIdAfter = await db.ExecuteScalarAsync<int>("SELECT COALESCE(MAX(id),0) FROM input");
+        var eventCount = await db.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM input WHERE IsEvent=1");
+        
+        // Diagnóstico: tamaño del archivo DESPUÉS
+        long fileSizeAfter = 0;
+        try { fileSizeAfter = new FileInfo(_dbPath).Length; } catch { }
+        
+        AppLog.Info("DatabaseService", $"AddTagEventAsync AFTER: dbPath={_dbPath}, fileSize={fileSizeAfter} (delta={fileSizeAfter-fileSizeBefore}), videoId={videoId}, inputId={input.Id}, totalInputs={afterTotal}, maxId={maxIdAfter}, eventCount={eventCount}, insertedExists={insertedExists}, insertedIsEvent={insertedIsEvent}");
+        
         return input.Id;
     }
 

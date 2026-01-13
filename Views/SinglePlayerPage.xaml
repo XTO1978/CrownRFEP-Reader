@@ -121,10 +121,204 @@
                     <On Platform="Default" Value="False" />
                 </OnPlatform>
             </Border.IsVisible>
-            <Grid RowDefinitions="Auto,*,Auto">
-                <!-- Cabecera con título y contador -->
+            <Grid RowDefinitions="Auto,Auto,*,Auto">
+                <!-- Información del video actual (cabecera) -->
                 <Border
                     Grid.Row="0"
+                    Padding="12,10"
+                    BackgroundColor="#FF202020"
+                    StrokeThickness="0">
+                    <VerticalStackLayout Spacing="8">
+                        <!-- Título: Atleta y Sección -->
+                        <Grid ColumnDefinitions="*,Auto">
+                            <VerticalStackLayout Spacing="2">
+                                <Label
+                                    FontAttributes="Bold"
+                                    FontSize="{StaticResource FontSizeBody}"
+                                    Text="{Binding AthleteName, FallbackValue='Sin atleta asignado'}"
+                                    TextColor="White"
+                                    LineBreakMode="TailTruncation" />
+                                <Label
+                                    FontSize="{StaticResource FontSizeSmall}"
+                                    Text="{Binding SectionText, FallbackValue='Sin tramo'}"
+                                    TextColor="#FF888888"
+                                    LineBreakMode="TailTruncation" />
+                            </VerticalStackLayout>
+                            <!-- Badge de sección -->
+                            <Border
+                                Grid.Column="1"
+                                Padding="8,4"
+                                BackgroundColor="#FF3A3A3A"
+                                StrokeShape="RoundRectangle 6"
+                                StrokeThickness="0"
+                                VerticalOptions="Start">
+                                <Label
+                                    FontSize="{StaticResource FontSizeSmall}"
+                                    FontAttributes="Bold"
+                                    Text="{Binding VideoClip.Section, StringFormat='S{0}'}"
+                                    TextColor="#FFB1B1B1" />
+                            </Border>
+                        </Grid>
+                        
+                        <!-- Fila 1: Fecha/hora y Duración -->
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                            <HorizontalStackLayout Spacing="6">
+                                <controls:SymbolIcon
+                                    HeightRequest="12"
+                                    WidthRequest="12"
+                                    SymbolName="calendar"
+                                    TintColor="#FF888888" />
+                                <Label
+                                    FontSize="{StaticResource FontSizeSmall}"
+                                    Text="{Binding VideoClip.CreationDateTime, StringFormat='{0:dd/MM/yyyy HH:mm}'}"
+                                    TextColor="#FFAAAAAA" />
+                            </HorizontalStackLayout>
+                            <HorizontalStackLayout Grid.Column="1" Spacing="6">
+                                <controls:SymbolIcon
+                                    HeightRequest="12"
+                                    WidthRequest="12"
+                                    SymbolName="clock"
+                                    TintColor="#FF888888" />
+                                <Label
+                                    FontSize="{StaticResource FontSizeSmall}"
+                                    FontFamily="{StaticResource AppFontMono}"
+                                    Text="{Binding VideoDurationText}"
+                                    TextColor="#FFAAAAAA" />
+                            </HorizontalStackLayout>
+                        </Grid>
+                        
+                        <!-- Fila 2: Tamaño del archivo -->
+                        <HorizontalStackLayout Spacing="6">
+                            <controls:SymbolIcon
+                                HeightRequest="12"
+                                WidthRequest="12"
+                                SymbolName="doc"
+                                TintColor="#FF888888" />
+                            <Label
+                                FontSize="{StaticResource FontSizeSmall}"
+                                Text="{Binding VideoSizeText}"
+                                TextColor="#FFAAAAAA" />
+                        </HorizontalStackLayout>
+                        
+                        <!-- Fila 3: Etiquetas (si hay) -->
+                        <HorizontalStackLayout Spacing="6" IsVisible="{Binding HasTags}">
+                            <controls:SymbolIcon
+                                HeightRequest="12"
+                                WidthRequest="12"
+                                SymbolName="tag.fill"
+                                TintColor="#FF66BB6A" />
+                            <Label
+                                FontSize="{StaticResource FontSizeSmall}"
+                                Text="{Binding TagsText}"
+                                TextColor="#FF66BB6A"
+                                LineBreakMode="TailTruncation"
+                                MaxLines="1" />
+                        </HorizontalStackLayout>
+                        
+                        <!-- Fila 4: Eventos (si hay) - Lista completa expandible -->
+                        <VerticalStackLayout IsVisible="{Binding HasTagEvents}" Spacing="6">
+                            <HorizontalStackLayout Spacing="6">
+                                <controls:SymbolIcon
+                                    HeightRequest="12"
+                                    WidthRequest="12"
+                                    SymbolName="clock.badge.checkmark"
+                                    TintColor="#FFFF7043" />
+                                <Label
+                                    FontSize="{StaticResource FontSizeSmall}"
+                                    FontAttributes="Bold"
+                                    Text="EVENTOS MARCADOS"
+                                    TextColor="#FFFF7043" />
+                                <Label
+                                    FontSize="{StaticResource FontSizeSmall}"
+                                    Text="{Binding TagEventsCountText}"
+                                    TextColor="#FFFF7043" />
+                            </HorizontalStackLayout>
+                            
+                            <!-- Lista de eventos con timestamp -->
+                            <VerticalStackLayout
+                                BindableLayout.ItemsSource="{Binding TagEvents}"
+                                Spacing="4"
+                                Margin="0,4,0,0">
+                                <BindableLayout.ItemTemplate>
+                                    <DataTemplate x:DataType="models:TagEvent">
+                                        <Border
+                                            Padding="6,4"
+                                            BackgroundColor="#FF2A2A2A"
+                                            StrokeShape="RoundRectangle 4"
+                                            StrokeThickness="0">
+                                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="6">
+                                                <!--  Timestamp clickable  -->
+                                                <Border
+                                                    Grid.Column="0"
+                                                    Padding="5,2"
+                                                    BackgroundColor="#FF3A3A3A"
+                                                    StrokeShape="RoundRectangle 3"
+                                                    StrokeThickness="0">
+                                                    <Border.GestureRecognizers>
+                                                        <TapGestureRecognizer 
+                                                            Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.SeekToTagEventCommand}"
+                                                            CommandParameter="{Binding .}" />
+                                                    </Border.GestureRecognizers>
+                                                    <HorizontalStackLayout Spacing="3">
+                                                        <controls:SymbolIcon
+                                                            HeightRequest="{StaticResource IconSizeXSmall}"
+                                                            SymbolName="play.fill"
+                                                            TintColor="#FF6DDDFF"
+                                                            WidthRequest="{StaticResource IconSizeXSmall}" />
+                                                        <Label
+                                                            Text="{Binding TimestampFormatted}"
+                                                            FontSize="{StaticResource FontSizeCaption}"
+                                                            FontAttributes="Bold"
+                                                            TextColor="#FF6DDDFF" />
+                                                    </HorizontalStackLayout>
+                                                </Border>
+                                                
+                                                <!--  Nombre del tag (naranja para eventos)  -->
+                                                <Border
+                                                    Grid.Column="1"
+                                                    Padding="6,2"
+                                                    BackgroundColor="#FFFF7043"
+                                                    StrokeShape="RoundRectangle 8"
+                                                    StrokeThickness="0"
+                                                    HorizontalOptions="Start">
+                                                    <Label
+                                                        Text="{Binding TagName}"
+                                                        FontSize="{StaticResource FontSizeCaption}"
+                                                        TextColor="White"
+                                                        MaximumWidthRequest="100"
+                                                        LineBreakMode="TailTruncation" />
+                                                </Border>
+                                                
+                                                <!--  Botón eliminar  -->
+                                                <Border
+                                                    Grid.Column="2"
+                                                    Padding="4"
+                                                    BackgroundColor="#44FF5555"
+                                                    StrokeShape="RoundRectangle 3"
+                                                    StrokeThickness="0">
+                                                    <Border.GestureRecognizers>
+                                                        <TapGestureRecognizer 
+                                                            Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.DeleteTagEventCommand}"
+                                                            CommandParameter="{Binding .}" />
+                                                    </Border.GestureRecognizers>
+                                                    <controls:SymbolIcon
+                                                        HeightRequest="{StaticResource IconSizeXSmall}"
+                                                        SymbolName="trash.fill"
+                                                        TintColor="#FFFF6B6B"
+                                                        WidthRequest="{StaticResource IconSizeXSmall}" />
+                                                </Border>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </BindableLayout.ItemTemplate>
+                            </VerticalStackLayout>
+                        </VerticalStackLayout>
+                    </VerticalStackLayout>
+                </Border>
+                
+                <!-- Cabecera con título y contador de galería -->
+                <Border
+                    Grid.Row="1"
                     Padding="12,10"
                     BackgroundColor="#FF252525"
                     StrokeThickness="0">
@@ -178,7 +372,7 @@
                 <!-- Lista de videos -->
                 <CollectionView
                     x:Name="PlaylistGallery"
-                    Grid.Row="1"
+                    Grid.Row="2"
                     ItemsSource="{Binding PlaylistVideos}"
                     SelectionMode="None"
                     Margin="0">
@@ -282,8 +476,8 @@
                     </CollectionView.EmptyView>
                 </CollectionView>
                 
-                <!-- ===================== FOOTER DE NAVEGACIÓN (Row 2) ===================== -->
-                <VerticalStackLayout Grid.Row="2" Spacing="8" Padding="12,12,12,8">
+                <!-- ===================== FOOTER DE NAVEGACIÓN (Row 3) ===================== -->
+                <VerticalStackLayout Grid.Row="3" Spacing="8" Padding="12,12,12,8">
                     <BoxView HeightRequest="1" BackgroundColor="#FF3A3A3A" Margin="0,0,0,4" />
                     
                     <Label
@@ -3661,70 +3855,6 @@
                             FontAttributes="Bold"
                             Text="{Binding ComparisonLayoutText}"
                             TextColor="#FF9C27B0" />
-                    </VerticalStackLayout>
-
-                    <BoxView HeightRequest="1" BackgroundColor="#FF3A3A3A" />
-
-                    <!-- Información del video actual (resumen) -->
-                    <VerticalStackLayout Spacing="6">
-                        <Label
-                            FontSize="{StaticResource FontSizeSmall}"
-                            Text="VIDEO ACTUAL"
-                            TextColor="#FF888888" />
-                        
-                        <!-- Atleta actual -->
-                        <HorizontalStackLayout Spacing="8">
-                            <controls:SymbolIcon
-                                HeightRequest="{StaticResource IconSizeSmall}"
-                                SymbolName="person.fill"
-                                TintColor="#FF888888"
-                                WidthRequest="{StaticResource IconSizeSmall}" />
-                            <Label
-                                FontSize="{StaticResource FontSizeSmall}"
-                                Text="{Binding AthleteName, FallbackValue='Sin asignar'}"
-                                TextColor="#FFCCCCCC"
-                                LineBreakMode="TailTruncation" />
-                        </HorizontalStackLayout>
-                        
-                        <!-- Sección actual -->
-                        <HorizontalStackLayout Spacing="8">
-                            <controls:SymbolIcon
-                                HeightRequest="{StaticResource IconSizeSmall}"
-                                SymbolName="arrow.triangle.branch"
-                                TintColor="#FF888888"
-                                WidthRequest="{StaticResource IconSizeSmall}" />
-                            <Label
-                                FontSize="{StaticResource FontSizeSmall}"
-                                Text="{Binding SectionText, FallbackValue='Sin tramo'}"
-                                TextColor="#FFCCCCCC"
-                                LineBreakMode="TailTruncation" />
-                        </HorizontalStackLayout>
-                        
-                        <!-- Etiquetas -->
-                        <HorizontalStackLayout Spacing="8" IsVisible="{Binding HasTags}">
-                            <controls:SymbolIcon
-                                HeightRequest="{StaticResource IconSizeSmall}"
-                                SymbolName="tag.fill"
-                                TintColor="#FF66BB6A"
-                                WidthRequest="{StaticResource IconSizeSmall}" />
-                            <Label
-                                FontSize="{StaticResource FontSizeSmall}"
-                                Text="Etiquetas asignadas"
-                                TextColor="#FF66BB6A" />
-                        </HorizontalStackLayout>
-                        
-                        <!-- Eventos -->
-                        <HorizontalStackLayout Spacing="8" IsVisible="{Binding HasEventTags}">
-                            <controls:SymbolIcon
-                                HeightRequest="{StaticResource IconSizeSmall}"
-                                SymbolName="clock.badge.checkmark"
-                                TintColor="#FFFF7043"
-                                WidthRequest="{StaticResource IconSizeSmall}" />
-                            <Label
-                                FontSize="{StaticResource FontSizeSmall}"
-                                Text="Eventos marcados"
-                                TextColor="#FFFF7043" />
-                        </HorizontalStackLayout>
                     </VerticalStackLayout>
 
                     <!-- ===================== PANELES DE HERRAMIENTAS (inline) ===================== -->

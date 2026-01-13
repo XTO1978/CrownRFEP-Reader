@@ -4,6 +4,7 @@ using CrownRFEP_Reader.ViewModels;
 using CrownRFEP_Reader.Controls;
 using CrownRFEP_Reader.Services;
 using System.Collections.Specialized;
+using System.Collections.Generic;
 using System.Reflection;
 
 #if MACCATALYST
@@ -1385,17 +1386,30 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
             // Permitimos explícitamente esos touch types para que el cierre funcione en toda la UI.
             try
             {
-                _globalDismissTapRecognizer.AllowedTouchTypes = new Foundation.NSNumber[]
+                var allowedTouchTypes = new List<Foundation.NSNumber>
                 {
                     Foundation.NSNumber.FromInt32((int)UITouchType.Direct),
-                    Foundation.NSNumber.FromInt32((int)UITouchType.Indirect),
-                    Foundation.NSNumber.FromInt32(5) // UITouchType.IndirectPointer (iOS 13.4+)
+                    Foundation.NSNumber.FromInt32((int)UITouchType.Indirect)
+                };
+
+                // Evitar valores hardcodeados (en algunos runtimes 5 dispara NSInvalidArgumentException).
+                // Si el enum existe en este target, lo añadimos por nombre.
+                if (Enum.TryParse<UITouchType>("IndirectPointer", out var indirectPointer))
+                    allowedTouchTypes.Add(Foundation.NSNumber.FromInt32((int)indirectPointer));
+
+                _globalDismissTapRecognizer.AllowedTouchTypes = new Foundation.NSNumber[]
+                {
+                    allowedTouchTypes[0],
+                    allowedTouchTypes[1],
+                    // Si existe IndirectPointer, irá como 3er elemento
+                    // (si no existe, repetimos Indirect para no dejar array vacío)
+                    allowedTouchTypes.Count > 2 ? allowedTouchTypes[2] : allowedTouchTypes[1]
                 };
                 _globalDismissPressRecognizer.AllowedTouchTypes = new Foundation.NSNumber[]
                 {
-                    Foundation.NSNumber.FromInt32((int)UITouchType.Direct),
-                    Foundation.NSNumber.FromInt32((int)UITouchType.Indirect),
-                    Foundation.NSNumber.FromInt32(5)
+                    allowedTouchTypes[0],
+                    allowedTouchTypes[1],
+                    allowedTouchTypes.Count > 2 ? allowedTouchTypes[2] : allowedTouchTypes[1]
                 };
             }
             catch { }

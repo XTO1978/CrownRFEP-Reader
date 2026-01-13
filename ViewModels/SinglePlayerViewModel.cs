@@ -33,6 +33,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
 
     private readonly DatabaseService _databaseService;
+    private readonly SemaphoreSlim _videoPathInitLock = new(1, 1);
     
     private string _videoPath = "";
     private string _videoTitle = "";
@@ -234,8 +235,124 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
                 _videoPath = decodedPath;
                 OnPropertyChanged();
                 VideoTitle = Path.GetFileNameWithoutExtension(decodedPath);
+
+                // Cuando entramos por navegación tipo ?videoPath=..., el VM puede venir “vacío”.
+                // Resolvemos el VideoClip (con Id) y cargamos eventos/tags/playlist.
+                _ = SafeEnsureInitializedFromVideoPathAsync();
             }
         }
+    }
+
+    private static string NormalizeVideoPathForComparison(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return "";
+
+        var trimmed = path.Trim();
+        if (trimmed.StartsWith("file://", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                if (Uri.TryCreate(trimmed, UriKind.Absolute, out var uri) && uri.IsFile)
+                    trimmed = uri.LocalPath;
+            }
+            catch
+            {
+                // Ignorar y seguir con el string original
+            }
+        }
+
+        try
+        {
+            trimmed = Uri.UnescapeDataString(trimmed);
+        }
+        catch
+        {
+            // Ignorar
+        }
+
+        return trimmed.Replace('\\', '/');
+    }
+
+    public async Task EnsureInitializedFromVideoPathAsync()
+    {
+        var path = _videoPath;
+        if (string.IsNullOrWhiteSpace(path))
+            return;
+
+        var normalizedPath = NormalizeVideoPathForComparison(path);
+
+        // Si ya tenemos un clip válido y corresponde al path, solo refrescar eventos.
+        if (_videoClip is { Id: > 0 } existing
+            && string.Equals(NormalizeVideoPathForComparison(existing.LocalClipPath), normalizedPath, StringComparison.Ordinal))
+        {
+            await RefreshTagEventsAsync();
+            return;
+        }
+
+        await _videoPathInitLock.WaitAsync();
+        try
+        {
+            // Re-check tras lock
+            if (_videoClip is { Id: > 0 } again
+                && string.Equals(NormalizeVideoPathForComparison(again.LocalClipPath), normalizedPath, StringComparison.Ordinal))
+            {
+                await RefreshTagEventsAsync();
+                return;
+            }
+
+            var clip = await _databaseService.FindVideoClipByAnyPathAsync(normalizedPath);
+            if (clip == null || clip.Id <= 0)
+                return;
+
+            // Asegurar path actualizado (por si venía vacío en BD)
+            clip.LocalClipPath = path;
+
+            // Inicializar como flujo normal (carga sesión/playlist + LoadTagEventsAsync)
+            if (MainThread.IsMainThread)
+            {
+                await InitializeWithVideoAsync(clip);
+            }
+            else
+            {
+                await MainThread.InvokeOnMainThreadAsync(async () =>
+                {
+                    await InitializeWithVideoAsync(clip);
+                });
+            }
+        }
+        finally
+        {
+            _videoPathInitLock.Release();
+        }
+    }
+
+    private Task SafeEnsureInitializedFromVideoPathAsync()
+    {
+        try
+        {
+            // No usar Task.Run aquí: en MAUI a veces rompe el orden de inicialización/navegación.
+            // Ejecutar la cadena desde el hilo UI.
+            MainThread.BeginInvokeOnMainThread(async () =>
+            {
+                try
+                {
+                    await EnsureInitializedFromVideoPathAsync();
+                }
+                catch (Exception ex)
+                {
+#if DEBUG
+                    System.Diagnostics.Debug.WriteLine($"[SinglePlayerViewModel] EnsureInitializedFromVideoPathAsync failed: {ex}");
+#endif
+                }
+            });
+        }
+        catch
+        {
+            // Ignorar: BeginInvoke puede fallar si aún no hay dispatcher.
+        }
+
+        return Task.CompletedTask;
     }
 
     public string VideoTitle
@@ -1222,6 +1339,30 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     /// </summary>
     public async Task InitializeWithVideoAsync(VideoClip video)
     {
+        // Algunos flujos pueden pasar un VideoClip “parcial” (Id=0).
+        // Sin Id no podemos recargar eventos/tags desde la BD, así que resolvemos por ruta.
+        if (video.Id <= 0)
+        {
+            var candidatePath = !string.IsNullOrWhiteSpace(video.LocalClipPath) ? video.LocalClipPath : video.ClipPath;
+            if (!string.IsNullOrWhiteSpace(candidatePath))
+            {
+                try
+                {
+                    var resolved = await _databaseService.FindVideoClipByAnyPathAsync(candidatePath);
+                    if (resolved != null && resolved.Id > 0)
+                    {
+                        if (!string.IsNullOrWhiteSpace(video.LocalClipPath))
+                            resolved.LocalClipPath = video.LocalClipPath;
+                        video = resolved;
+                    }
+                }
+                catch
+                {
+                    // Ignorar: continuamos con el objeto original
+                }
+            }
+        }
+
         // Cargar datos actualizados del video desde la base de datos
         await LoadVideoDataAsync(video);
         
@@ -1287,15 +1428,18 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             var events = await _databaseService.GetTagEventsForVideoAsync(video.Id);
             var allEventDefs = await _databaseService.GetAllEventTagsAsync();
             var eventDict = allEventDefs.ToDictionary(t => t.Id, t => t);
-            
+
+            // Importante: NO filtrar si falta la definición en event_tags.
+            // Si el input existe en BD, queremos reflejarlo siempre.
             video.EventTags = events
                 .Select(e => e.TagId)
                 .Distinct()
-                .Where(id => eventDict.ContainsKey(id))
                 .Select(id => new Tag
                 {
                     Id = id,
-                    NombreTag = eventDict[id].Nombre,
+                    NombreTag = eventDict.TryGetValue(id, out var def)
+                        ? (def.Nombre ?? $"Evento {id}")
+                        : $"Evento {id}",
                     IsEventTag = true
                 })
                 .ToList();
@@ -2086,11 +2230,39 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     private async Task LoadTagEventsAsync()
     {
-        if (_videoClip == null) return;
+        // Si entramos sin clip o sin Id, intentar resolver por VideoPath.
+        if (_videoClip == null || _videoClip.Id <= 0)
+        {
+            if (!string.IsNullOrWhiteSpace(VideoPath))
+            {
+                try
+                {
+                    var resolved = await _databaseService.FindVideoClipByAnyPathAsync(VideoPath);
+                    if (resolved != null && resolved.Id > 0)
+                    {
+                        resolved.LocalClipPath = VideoPath;
+                        VideoClip = resolved;
+                    }
+                }
+                catch
+                {
+                    // Ignorar
+                }
+            }
+        }
+
+        if (_videoClip == null || _videoClip.Id <= 0)
+        {
+            AppLog.Warn("SinglePlayerViewModel", $"LoadTagEventsAsync: no VideoClip/Id (VideoPath='{VideoPath}')");
+            return;
+        }
         
         try
         {
+            AppLog.Info("SinglePlayerViewModel", $"LoadTagEventsAsync: loading events for videoId={_videoClip.Id} | path='{_videoClip.LocalClipPath}'");
             var events = await _databaseService.GetTagEventsForVideoAsync(_videoClip.Id);
+            AppLog.Info("SinglePlayerViewModel", $"LoadTagEventsAsync: got {events.Count} events for videoId={_videoClip.Id}");
+            
             await MainThread.InvokeOnMainThreadAsync(() =>
             {
                 TagEvents = new ObservableCollection<TagEvent>(events);
@@ -2101,8 +2273,19 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Error al cargar eventos: {ex.Message}");
+            AppLog.Error("SinglePlayerViewModel", "LoadTagEventsAsync failed", ex);
         }
+    }
+
+    /// <summary>
+    /// Método público para refrescar los eventos desde fuera del ViewModel (ej. OnAppearing)
+    /// </summary>
+    public async Task RefreshTagEventsAsync()
+    {
+        if (_videoClip == null || _videoClip.Id <= 0)
+            return;
+        
+        await LoadTagEventsAsync();
     }
 
     private void RefreshTimelineMarkers()
