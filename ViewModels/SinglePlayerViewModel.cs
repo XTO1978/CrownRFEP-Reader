@@ -34,6 +34,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     private readonly DatabaseService _databaseService;
     private readonly StatisticsService _statisticsService;
+    private readonly ITableExportService _tableExportService;
     private readonly SemaphoreSlim _videoPathInitLock = new(1, 1);
     
     private string _videoPath = "";
@@ -129,11 +130,30 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     private bool _isToolsTabSelected = true;
     private bool _isStatsTabSelected;
     private bool _isDiaryTabSelected;
+    
+    // Diario de sesión
+    private SessionDiary? _currentSessionDiary;
+    private bool _isEditingDiary;
+    private int _diaryValoracionFisica = 3;
+    private int _diaryValoracionMental = 3;
+    private int _diaryValoracionTecnica = 3;
+    private string _diaryNotas = "";
+    private double _avgValoracionFisica;
+    private double _avgValoracionMental;
+    private double _avgValoracionTecnica;
+    private int _avgValoracionCount;
+    private int _selectedEvolutionPeriod = 1; // 0=Semana, 1=Mes, 2=Año, 3=Todo
+    private ObservableCollection<SessionDiary> _valoracionEvolution = new();
+    private ObservableCollection<int> _evolutionFisicaValues = new();
+    private ObservableCollection<int> _evolutionMentalValues = new();
+    private ObservableCollection<int> _evolutionTecnicaValues = new();
+    private ObservableCollection<string> _evolutionLabels = new();
 
-    public SinglePlayerViewModel(DatabaseService databaseService, StatisticsService statisticsService)
+    public SinglePlayerViewModel(DatabaseService databaseService, StatisticsService statisticsService, ITableExportService tableExportService)
     {
         _databaseService = databaseService;
         _statisticsService = statisticsService;
+        _tableExportService = tableExportService;
         
         // Comandos de reproducción
         PlayPauseCommand = new Command(TogglePlayPause);
@@ -224,11 +244,66 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         ClearComparisonSlotCommand = new Command<object>(ClearComparisonSlot);
         AssignVideoToComparisonSlotCommand = new Command<VideoClip>(AssignVideoToComparisonSlot);
         DropVideoToSlotCommand = new Command<object>(AssignVideoToComparisonSlotWithSlot);
+        DropVideoIdToSlotCommand = new Command<object>(async obj => await AssignVideoIdToComparisonSlotAsync(obj));
         
         // Comandos de navegación de pestañas del panel lateral
         SelectToolsTabCommand = new Command(() => IsToolsTabSelected = true);
         SelectStatsTabCommand = new Command(() => IsStatsTabSelected = true);
-        SelectDiaryTabCommand = new Command(() => IsDiaryTabSelected = true);
+        SelectDiaryTabCommand = new Command(async () => 
+        {
+            IsDiaryTabSelected = true;
+            await LoadSessionDiaryAsync();
+        });
+        
+        // Comandos del diario de sesión
+        SaveDiaryCommand = new Command(async () => await SaveDiaryAsync());
+        EditDiaryCommand = new Command(() => IsEditingDiary = true);
+        SetEvolutionPeriodCommand = new Command<string>(async (period) => 
+        {
+            if (int.TryParse(period, out var p))
+            {
+                SelectedEvolutionPeriod = p;
+                await LoadValoracionEvolutionAsync();
+            }
+        });
+        
+        // Comando para seleccionar video desde la tabla de tiempos
+        SelectVideoByIdCommand = new Command<int>(async (videoId) => await SelectVideoByIdAsync(videoId));
+        
+        // Comandos del popup de tiempos detallados
+        OpenDetailedTimesPopupCommand = new Command(async () => await OpenDetailedTimesPopupAsync());
+        CloseDetailedTimesPopupCommand = new Command(() => ShowDetailedTimesPopup = false);
+        ToggleAthleteDropdownCommand = new Command(() => IsAthleteDropdownExpanded = !IsAthleteDropdownExpanded);
+        SelectDetailedTimesAthleteCommand = new Command<AthletePickerItem>(athlete =>
+        {
+            SelectedDetailedTimesAthlete = athlete;
+            IsAthleteDropdownExpanded = false;
+        });
+        ClearDetailedTimesAthleteCommand = new Command(() =>
+        {
+            SelectedDetailedTimesAthlete = null;
+        });
+        ToggleReportOptionsPanelCommand = new Command(() => ShowReportOptionsPanel = !ShowReportOptionsPanel);
+        ApplyFullAnalysisPresetCommand = new Command(() =>
+        {
+            ReportOptions = ReportOptions.FullAnalysis();
+            OnPropertyChanged(nameof(ReportOptions));
+            RegenerateDetailedTimesHtml();
+        });
+        ApplyQuickSummaryPresetCommand = new Command(() =>
+        {
+            ReportOptions = ReportOptions.QuickSummary();
+            OnPropertyChanged(nameof(ReportOptions));
+            RegenerateDetailedTimesHtml();
+        });
+        ApplyAthleteReportPresetCommand = new Command(() =>
+        {
+            ReportOptions = ReportOptions.AthleteReport();
+            OnPropertyChanged(nameof(ReportOptions));
+            RegenerateDetailedTimesHtml();
+        });
+        ExportDetailedTimesHtmlCommand = new Command(async () => await ExportDetailedTimesHtmlAsync());
+        ExportDetailedTimesPdfCommand = new Command(async () => await ExportDetailedTimesPdfAsync());
         
         // Cargar historial de configuraciones
         _ = LoadRecentLapConfigsAsync();
@@ -830,6 +905,100 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     /// <summary>Indica si hay etiquetas de sesión para mostrar en gráfico (estadísticas)</summary>
     public bool HasSessionLabelStats => TopLabelTagNames.Count > 0;
 
+    // ==================== POPUP TABLA DETALLADA DE TIEMPOS ====================
+    
+    private bool _showDetailedTimesPopup;
+    /// <summary>Indica si se muestra el popup de tiempos detallados</summary>
+    public bool ShowDetailedTimesPopup
+    {
+        get => _showDetailedTimesPopup;
+        set { _showDetailedTimesPopup = value; OnPropertyChanged(); }
+    }
+
+    private string _detailedTimesHtml = string.Empty;
+    /// <summary>HTML del informe de tiempos detallados</summary>
+    public string DetailedTimesHtml
+    {
+        get => _detailedTimesHtml;
+        set { _detailedTimesHtml = value; OnPropertyChanged(); }
+    }
+    
+    /// <summary>Secciones con tiempos detallados (incluye Laps)</summary>
+    public ObservableCollection<SectionWithDetailedAthleteRows> DetailedSectionTimes { get; } = new();
+    
+    // ---- Opciones de visibilidad del informe ----
+    private ReportOptions _reportOptions = ReportOptions.FullAnalysis();
+    /// <summary>Opciones de visibilidad para el informe de sesión</summary>
+    public ReportOptions ReportOptions
+    {
+        get => _reportOptions;
+        set
+        {
+            _reportOptions = value;
+            OnPropertyChanged();
+            RegenerateDetailedTimesHtml();
+        }
+    }
+    
+    private bool _showReportOptionsPanel;
+    /// <summary>Indica si se muestra el panel de opciones del informe</summary>
+    public bool ShowReportOptionsPanel
+    {
+        get => _showReportOptionsPanel;
+        set { _showReportOptionsPanel = value; OnPropertyChanged(); }
+    }
+
+    /// <summary>Lista de atletas disponibles para selección en el popup</summary>
+    public ObservableCollection<AthletePickerItem> DetailedTimesAthletes { get; } = new();
+
+    private AthletePickerItem? _selectedDetailedTimesAthlete;
+    /// <summary>Atleta seleccionado para marcar en los gráficos del popup</summary>
+    public AthletePickerItem? SelectedDetailedTimesAthlete
+    {
+        get => _selectedDetailedTimesAthlete;
+        set
+        {
+            _selectedDetailedTimesAthlete = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(HasSelectedDetailedTimesAthlete));
+            OnPropertyChanged(nameof(SelectedDetailedTimesAthleteName));
+            RegenerateDetailedTimesHtml();
+        }
+    }
+
+    /// <summary>Indica si hay un atleta seleccionado para el gráfico</summary>
+    public bool HasSelectedDetailedTimesAthlete => SelectedDetailedTimesAthlete != null;
+
+    /// <summary>Nombre del atleta seleccionado (para mostrar en el botón)</summary>
+    public string SelectedDetailedTimesAthleteName => SelectedDetailedTimesAthlete?.DisplayName ?? "Selecciona atleta";
+
+    private bool _isAthleteDropdownExpanded;
+    /// <summary>Indica si el dropdown de atletas está expandido</summary>
+    public bool IsAthleteDropdownExpanded
+    {
+        get => _isAthleteDropdownExpanded;
+        set { _isAthleteDropdownExpanded = value; OnPropertyChanged(); }
+    }
+    
+    private bool _isLoadingDetailedTimes;
+    /// <summary>Indica si se están cargando los tiempos detallados</summary>
+    public bool IsLoadingDetailedTimes
+    {
+        get => _isLoadingDetailedTimes;
+        set { _isLoadingDetailedTimes = value; OnPropertyChanged(); }
+    }
+
+    private bool _isExportingDetailedTimes;
+    /// <summary>Indica si se está exportando el informe</summary>
+    public bool IsExportingDetailedTimes
+    {
+        get => _isExportingDetailedTimes;
+        set { _isExportingDetailedTimes = value; OnPropertyChanged(); }
+    }
+    
+    /// <summary>Indica si hay tiempos detallados con parciales</summary>
+    public bool HasDetailedTimesWithLaps => DetailedSectionTimes.Any(s => s.HasAnyLaps);
+
     // Propiedades para asignación de atleta
     public bool ShowAthleteAssignPanel
     {
@@ -1233,6 +1402,110 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         }
     }
 
+    // ===== Propiedades del Diario de Sesión =====
+    
+    public int DiaryValoracionFisica
+    {
+        get => _diaryValoracionFisica;
+        set { _diaryValoracionFisica = Math.Clamp(value, 1, 5); OnPropertyChanged(); }
+    }
+
+    public int DiaryValoracionMental
+    {
+        get => _diaryValoracionMental;
+        set { _diaryValoracionMental = Math.Clamp(value, 1, 5); OnPropertyChanged(); }
+    }
+
+    public int DiaryValoracionTecnica
+    {
+        get => _diaryValoracionTecnica;
+        set { _diaryValoracionTecnica = Math.Clamp(value, 1, 5); OnPropertyChanged(); }
+    }
+
+    public string DiaryNotas
+    {
+        get => _diaryNotas;
+        set { _diaryNotas = value ?? ""; OnPropertyChanged(); }
+    }
+
+    public double AvgValoracionFisica
+    {
+        get => _avgValoracionFisica;
+        set { _avgValoracionFisica = value; OnPropertyChanged(); }
+    }
+
+    public double AvgValoracionMental
+    {
+        get => _avgValoracionMental;
+        set { _avgValoracionMental = value; OnPropertyChanged(); }
+    }
+
+    public double AvgValoracionTecnica
+    {
+        get => _avgValoracionTecnica;
+        set { _avgValoracionTecnica = value; OnPropertyChanged(); }
+    }
+
+    public int AvgValoracionCount
+    {
+        get => _avgValoracionCount;
+        set { _avgValoracionCount = value; OnPropertyChanged(); }
+    }
+
+    public int SelectedEvolutionPeriod
+    {
+        get => _selectedEvolutionPeriod;
+        set { _selectedEvolutionPeriod = value; OnPropertyChanged(); }
+    }
+
+    public ObservableCollection<SessionDiary> ValoracionEvolution
+    {
+        get => _valoracionEvolution;
+        set { _valoracionEvolution = value; OnPropertyChanged(); }
+    }
+
+    public ObservableCollection<int> EvolutionFisicaValues
+    {
+        get => _evolutionFisicaValues;
+        set { _evolutionFisicaValues = value; OnPropertyChanged(); }
+    }
+
+    public ObservableCollection<int> EvolutionMentalValues
+    {
+        get => _evolutionMentalValues;
+        set { _evolutionMentalValues = value; OnPropertyChanged(); }
+    }
+
+    public ObservableCollection<int> EvolutionTecnicaValues
+    {
+        get => _evolutionTecnicaValues;
+        set { _evolutionTecnicaValues = value; OnPropertyChanged(); }
+    }
+
+    public ObservableCollection<string> EvolutionLabels
+    {
+        get => _evolutionLabels;
+        set { _evolutionLabels = value; OnPropertyChanged(); }
+    }
+
+    public bool HasDiaryData => _currentSessionDiary != null;
+
+    public bool IsEditingDiary
+    {
+        get => _isEditingDiary;
+        set 
+        { 
+            _isEditingDiary = value; 
+            OnPropertyChanged(); 
+            OnPropertyChanged(nameof(ShowDiaryResults));
+            OnPropertyChanged(nameof(ShowDiaryForm));
+        }
+    }
+
+    public bool ShowDiaryResults => HasDiaryData && !IsEditingDiary;
+
+    public bool ShowDiaryForm => !HasDiaryData || IsEditingDiary;
+
     public TimeSpan? SplitStartTime
     {
         get => _splitStartTime;
@@ -1513,11 +1786,33 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     public ICommand ClearComparisonSlotCommand { get; }
     public ICommand AssignVideoToComparisonSlotCommand { get; }
     public ICommand DropVideoToSlotCommand { get; }
+    public ICommand DropVideoIdToSlotCommand { get; }
 
     // Comandos de navegación de pestañas del panel lateral
     public ICommand SelectToolsTabCommand { get; }
     public ICommand SelectStatsTabCommand { get; }
     public ICommand SelectDiaryTabCommand { get; }
+    
+    // Comandos del diario de sesión
+    public ICommand SaveDiaryCommand { get; }
+    public ICommand EditDiaryCommand { get; }
+    public ICommand SetEvolutionPeriodCommand { get; }
+    
+    // Comando para seleccionar video desde la tabla de tiempos
+    public ICommand SelectVideoByIdCommand { get; }
+
+    // Comandos del popup de tiempos detallados
+    public ICommand OpenDetailedTimesPopupCommand { get; }
+    public ICommand CloseDetailedTimesPopupCommand { get; }
+    public ICommand ToggleAthleteDropdownCommand { get; }
+    public ICommand SelectDetailedTimesAthleteCommand { get; }
+    public ICommand ClearDetailedTimesAthleteCommand { get; }
+    public ICommand ToggleReportOptionsPanelCommand { get; }
+    public ICommand ApplyFullAnalysisPresetCommand { get; }
+    public ICommand ApplyQuickSummaryPresetCommand { get; }
+    public ICommand ApplyAthleteReportPresetCommand { get; }
+    public ICommand ExportDetailedTimesHtmlCommand { get; }
+    public ICommand ExportDetailedTimesPdfCommand { get; }
 
     #endregion
 
@@ -1904,6 +2199,372 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         }
     }
 
+    #region Session Diary Methods
+
+    private async Task LoadSessionDiaryAsync()
+    {
+        var sessionId = _videoClip?.SessionId ?? 0;
+        if (sessionId <= 0) return;
+
+        try
+        {
+            // Obtener el atleta de referencia del perfil de usuario
+            var profile = await _databaseService.GetUserProfileAsync();
+            if (profile?.ReferenceAthleteId == null) return;
+
+            var athleteId = profile.ReferenceAthleteId.Value;
+
+            // Cargar diario existente o crear uno nuevo
+            _currentSessionDiary = await _databaseService.GetSessionDiaryAsync(sessionId, athleteId);
+            
+            if (_currentSessionDiary != null)
+            {
+                DiaryValoracionFisica = _currentSessionDiary.ValoracionFisica;
+                DiaryValoracionMental = _currentSessionDiary.ValoracionMental;
+                DiaryValoracionTecnica = _currentSessionDiary.ValoracionTecnica;
+                DiaryNotas = _currentSessionDiary.Notas ?? "";
+                IsEditingDiary = false; // Hay datos, mostrar vista de resultados
+            }
+            else
+            {
+                // Valores por defecto
+                DiaryValoracionFisica = 3;
+                DiaryValoracionMental = 3;
+                DiaryValoracionTecnica = 3;
+                DiaryNotas = "";
+                IsEditingDiary = true; // No hay datos, mostrar formulario
+            }
+
+            OnPropertyChanged(nameof(HasDiaryData));
+            OnPropertyChanged(nameof(ShowDiaryResults));
+            OnPropertyChanged(nameof(ShowDiaryForm));
+
+            // Cargar promedios
+            await LoadValoracionAveragesAsync(athleteId);
+
+            // Cargar evolución
+            await LoadValoracionEvolutionAsync();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error cargando diario: {ex}");
+        }
+    }
+
+    private async Task LoadValoracionAveragesAsync(int athleteId)
+    {
+        try
+        {
+            var (fisica, mental, tecnica, count) = await _databaseService.GetValoracionAveragesAsync(athleteId, 30);
+            AvgValoracionFisica = fisica;
+            AvgValoracionMental = mental;
+            AvgValoracionTecnica = tecnica;
+            AvgValoracionCount = count;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error cargando promedios: {ex}");
+        }
+    }
+
+    private async Task LoadValoracionEvolutionAsync()
+    {
+        try
+        {
+            var profile = await _databaseService.GetUserProfileAsync();
+            if (profile?.ReferenceAthleteId == null) return;
+
+            var athleteId = profile.ReferenceAthleteId.Value;
+            var now = DateTimeOffset.UtcNow;
+            long startDate;
+
+            switch (SelectedEvolutionPeriod)
+            {
+                case 0: // Semana
+                    startDate = now.AddDays(-7).ToUnixTimeMilliseconds();
+                    break;
+                case 1: // Mes
+                    startDate = now.AddMonths(-1).ToUnixTimeMilliseconds();
+                    break;
+                case 2: // Año
+                    startDate = now.AddYears(-1).ToUnixTimeMilliseconds();
+                    break;
+                default: // Todo
+                    startDate = 0;
+                    break;
+            }
+
+            var endDate = now.ToUnixTimeMilliseconds();
+            var evolution = await _databaseService.GetValoracionEvolutionAsync(athleteId, startDate, endDate);
+            
+            ValoracionEvolution = new ObservableCollection<SessionDiary>(evolution);
+            
+            // Poblar colecciones para el gráfico de evolución
+            var fisicaValues = new ObservableCollection<int>();
+            var mentalValues = new ObservableCollection<int>();
+            var tecnicaValues = new ObservableCollection<int>();
+            var labels = new ObservableCollection<string>();
+            
+            foreach (var diary in evolution.OrderBy(d => d.CreatedAt))
+            {
+                fisicaValues.Add(diary.ValoracionFisica);
+                mentalValues.Add(diary.ValoracionMental);
+                tecnicaValues.Add(diary.ValoracionTecnica);
+                
+                // Formatear fecha como etiqueta
+                var date = DateTimeOffset.FromUnixTimeMilliseconds(diary.CreatedAt).LocalDateTime;
+                labels.Add(date.ToString("dd/MM"));
+            }
+            
+            EvolutionFisicaValues = fisicaValues;
+            EvolutionMentalValues = mentalValues;
+            EvolutionTecnicaValues = tecnicaValues;
+            EvolutionLabels = labels;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error cargando evolución: {ex}");
+        }
+    }
+
+    private async Task SaveDiaryAsync()
+    {
+        var sessionId = _videoClip?.SessionId ?? 0;
+        if (sessionId <= 0) return;
+
+        try
+        {
+            var profile = await _databaseService.GetUserProfileAsync();
+            if (profile?.ReferenceAthleteId == null)
+            {
+                await Shell.Current.DisplayAlert("Error", "No hay un atleta de referencia configurado en tu perfil.", "OK");
+                return;
+            }
+
+            var athleteId = profile.ReferenceAthleteId.Value;
+
+            var diary = new SessionDiary
+            {
+                SessionId = sessionId,
+                AthleteId = athleteId,
+                ValoracionFisica = DiaryValoracionFisica,
+                ValoracionMental = DiaryValoracionMental,
+                ValoracionTecnica = DiaryValoracionTecnica,
+                Notas = DiaryNotas
+            };
+
+            await _databaseService.SaveSessionDiaryAsync(diary);
+            _currentSessionDiary = diary;
+            IsEditingDiary = false;
+            OnPropertyChanged(nameof(HasDiaryData));
+            OnPropertyChanged(nameof(ShowDiaryResults));
+            OnPropertyChanged(nameof(ShowDiaryForm));
+
+            // Recargar promedios y evolución
+            await LoadValoracionAveragesAsync(athleteId);
+            await LoadValoracionEvolutionAsync();
+
+            await Shell.Current.DisplayAlert("Guardado", "Tu diario de sesión se ha guardado correctamente.", "OK");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error guardando diario: {ex}");
+            await Shell.Current.DisplayAlert("Error", $"No se pudo guardar el diario: {ex.Message}", "OK");
+        }
+    }
+
+    // ==================== POPUP TABLA DETALLADA DE TIEMPOS ====================
+
+    /// <summary>
+    /// Abre el popup con la tabla de tiempos detallados (incluye parciales)
+    /// </summary>
+    private async Task OpenDetailedTimesPopupAsync()
+    {
+        var sessionId = _videoClip?.SessionId ?? 0;
+        if (sessionId <= 0) return;
+        
+        IsLoadingDetailedTimes = true;
+        ShowDetailedTimesPopup = true;
+        IsAthleteDropdownExpanded = false;
+        
+        try
+        {
+            var detailedTimes = await _statisticsService.GetDetailedAthleteSectionTimesAsync(sessionId);
+            
+            DetailedSectionTimes.Clear();
+            foreach (var section in detailedTimes)
+            {
+                DetailedSectionTimes.Add(section);
+            }
+            
+            OnPropertyChanged(nameof(HasDetailedTimesWithLaps));
+
+            // Cargar lista de atletas para el selector (atletas únicos de la sesión)
+            DetailedTimesAthletes.Clear();
+            
+            // Obtener atletas únicos de todas las secciones
+            var uniqueAthletes = detailedTimes
+                .SelectMany(s => s.Athletes)
+                .GroupBy(a => a.AthleteId)
+                .Select(g => new {
+                    AthleteId = g.Key,
+                    AthleteName = g.First().AthleteName,
+                    TotalRuns = g.Count()
+                })
+                .OrderBy(a => a.AthleteName)
+                .ToList();
+
+            // Añadir cada atleta único al selector
+            foreach (var athlete in uniqueAthletes)
+            {
+                var suffix = athlete.TotalRuns > 1 ? $" ({athlete.TotalRuns} mangas)" : "";
+                DetailedTimesAthletes.Add(new AthletePickerItem(
+                    athlete.AthleteId, 
+                    athlete.AthleteName + suffix, 
+                    videoId: null,
+                    attemptNumber: 0, 
+                    hasMultipleAttempts: athlete.TotalRuns > 1));
+            }
+
+            // Preseleccionar el atleta actual si existe
+            if (_videoClip?.AtletaId > 0)
+            {
+                SelectedDetailedTimesAthlete = DetailedTimesAthletes
+                    .FirstOrDefault(a => a.Id == _videoClip.AtletaId);
+            }
+            else
+            {
+                SelectedDetailedTimesAthlete = null;
+            }
+
+            // Generar HTML inicial
+            RegenerateDetailedTimesHtml();
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("SinglePlayerViewModel", $"Error cargando tiempos detallados: {ex.Message}", ex);
+        }
+        finally
+        {
+            IsLoadingDetailedTimes = false;
+        }
+    }
+
+    /// <summary>Regenera el HTML con el atleta seleccionado actual</summary>
+    private void RegenerateDetailedTimesHtml()
+    {
+        if (_videoClip == null || DetailedSectionTimes.Count == 0)
+            return;
+
+        var refId = SelectedDetailedTimesAthlete?.Id;
+        var refVideoId = SelectedDetailedTimesAthlete?.VideoId;
+        var refName = SelectedDetailedTimesAthlete?.DisplayName;
+        
+        // Crear un objeto Session mínimo para el informe
+        var sessionTitle = _videoClip.Session?.DisplayName ?? "Sesión";
+        var session = new Session
+        {
+            Id = _videoClip.SessionId,
+            NombreSesion = sessionTitle
+        };
+        
+        // Generar datos del informe completo
+        var reportData = SessionReportService.GenerateReportData(
+            session, 
+            DetailedSectionTimes.ToList(), 
+            refId, 
+            refVideoId);
+        
+        // Generar HTML con las opciones seleccionadas
+        DetailedTimesHtml = _tableExportService.BuildSessionReportHtml(
+            reportData, 
+            ReportOptions, 
+            refId, 
+            refVideoId,
+            refName);
+    }
+
+    /// <summary>Exporta el informe de tiempos detallados a HTML</summary>
+    private async Task ExportDetailedTimesHtmlAsync()
+    {
+        if (IsExportingDetailedTimes || string.IsNullOrEmpty(DetailedTimesHtml)) return;
+        
+        try
+        {
+            IsExportingDetailedTimes = true;
+            
+            var sessionTitle = _videoClip?.Session?.DisplayName ?? "Sesion";
+            var fileName = $"Tiempos_{sessionTitle}_{DateTime.Now:yyyyMMdd_HHmmss}.html";
+            
+            // Guardar en carpeta de descargas
+            var downloadsPath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            downloadsPath = Path.Combine(downloadsPath, "Downloads");
+            var filePath = Path.Combine(downloadsPath, fileName);
+            
+            await File.WriteAllTextAsync(filePath, DetailedTimesHtml);
+            
+            await Shell.Current.DisplayAlert("Exportado", $"Informe guardado en:\n{filePath}", "OK");
+        }
+        catch (Exception ex)
+        {
+            await Shell.Current.DisplayAlert("Error", $"No se pudo exportar: {ex.Message}", "OK");
+        }
+        finally
+        {
+            IsExportingDetailedTimes = false;
+        }
+    }
+
+    /// <summary>Exporta el informe de tiempos detallados a PDF</summary>
+    private async Task ExportDetailedTimesPdfAsync()
+    {
+        if (IsExportingDetailedTimes || DetailedSectionTimes.Count == 0) return;
+        
+        try
+        {
+            IsExportingDetailedTimes = true;
+            
+            var sessionTitle = _videoClip?.Session?.DisplayName ?? "Sesion";
+            
+            // Crear un objeto Session mínimo para el informe
+            var session = new Session
+            {
+                Id = _videoClip?.SessionId ?? 0,
+                NombreSesion = sessionTitle
+            };
+            
+            // Generar datos del informe completo
+            var refId = SelectedDetailedTimesAthlete?.Id;
+            var refVideoId = SelectedDetailedTimesAthlete?.VideoId;
+            var refName = SelectedDetailedTimesAthlete?.DisplayName;
+            var reportData = SessionReportService.GenerateReportData(
+                session, 
+                DetailedSectionTimes.ToList(), 
+                refId, 
+                refVideoId);
+            
+            // Usar el servicio de exportación para generar PDF
+            var pdfPath = await _tableExportService.ExportSessionReportToPdfAsync(
+                reportData, 
+                ReportOptions, 
+                refId, 
+                refVideoId, 
+                refName);
+            
+            await Shell.Current.DisplayAlert("Exportado", $"PDF guardado en:\n{pdfPath}", "OK");
+        }
+        catch (Exception ex)
+        {
+            await Shell.Current.DisplayAlert("Error", $"No se pudo exportar PDF: {ex.Message}", "OK");
+        }
+        finally
+        {
+            IsExportingDetailedTimes = false;
+        }
+    }
+
+    #endregion
+
     private void PopulateFilterOptions(List<Category> allCategories)
     {
         // Opción "Todos" para cada filtro
@@ -2040,6 +2701,39 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         {
             _currentPlaylistIndex = index;
             await NavigateToCurrentPlaylistVideoAsync();
+        }
+    }
+
+    /// <summary>
+    /// Selecciona un video por su ID (desde la tabla de tiempos)
+    /// </summary>
+    private async Task SelectVideoByIdAsync(int videoId)
+    {
+        if (videoId <= 0) return;
+        
+        // Buscar el video en la playlist filtrada
+        var index = _filteredPlaylist.FindIndex(v => v.Id == videoId);
+        if (index >= 0)
+        {
+            _currentPlaylistIndex = index;
+            await NavigateToCurrentPlaylistVideoAsync();
+            return;
+        }
+        
+        // Si no está en la playlist filtrada, buscar en todos los videos de la sesión
+        var sessionIndex = _sessionVideos.FindIndex(v => v.Id == videoId);
+        if (sessionIndex >= 0)
+        {
+            // Limpiar filtros para poder navegar al video
+            ClearFilters();
+            
+            // Buscar de nuevo en la playlist filtrada (ahora sin filtros)
+            index = _filteredPlaylist.FindIndex(v => v.Id == videoId);
+            if (index >= 0)
+            {
+                _currentPlaylistIndex = index;
+                await NavigateToCurrentPlaylistVideoAsync();
+            }
         }
     }
 
@@ -2712,6 +3406,13 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             
             // Notificar al Dashboard para actualizar la galería
             NotifyVideoClipUpdated();
+            
+            // Refrescar estadísticas de sesión (eventos)
+            var sessionIdToRefresh = _videoClip.SessionId;
+            if (sessionIdToRefresh > 0)
+            {
+                _ = LoadSessionStatisticsAsync(sessionIdToRefresh);
+            }
         }
         catch (Exception ex)
         {
@@ -2742,6 +3443,13 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             
             // Notificar al Dashboard para actualizar la galería
             NotifyVideoClipUpdated();
+            
+            // Refrescar estadísticas de sesión (eventos)
+            var sessionIdToRefresh = _videoClip.SessionId;
+            if (sessionIdToRefresh > 0)
+            {
+                _ = LoadSessionStatisticsAsync(sessionIdToRefresh);
+            }
         }
         catch (Exception ex)
         {
@@ -3576,6 +4284,13 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             await _databaseService.InsertExecutionTimingEventsAsync(events);
             HasSavedSplit = true;
 
+            // Refrescar tabla de tiempos en estadísticas
+            var sessionIdToRefresh = _videoClip.SessionId;
+            if (sessionIdToRefresh > 0)
+            {
+                _ = LoadSessionStatisticsAsync(sessionIdToRefresh);
+            }
+
             // Opcional: cerrar el panel después de guardar
             // ShowSplitTimePanel = false;
         }
@@ -3679,6 +4394,35 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         {
             var (slotNumber, video) = tuple;
             AssignVideoToSlot(slotNumber, video);
+        }
+    }
+
+    /// <summary>
+    /// Asigna un video al slot de comparación usando solo el VideoId (para drag desde tabla de tiempos)
+    /// </summary>
+    private async Task AssignVideoIdToComparisonSlotAsync(object? parameter)
+    {
+        if (parameter is ValueTuple<int, int> tuple)
+        {
+            var (slotNumber, videoId) = tuple;
+            
+            // Buscar el video en la playlist o en la sesión
+            var video = _filteredPlaylist.FirstOrDefault(v => v.Id == videoId)
+                     ?? _sessionVideos.FirstOrDefault(v => v.Id == videoId);
+            
+            if (video != null)
+            {
+                AssignVideoToSlot(slotNumber, video);
+            }
+            else
+            {
+                // Si no está en memoria, cargarlo desde la base de datos
+                var loadedVideo = await _databaseService.GetVideoClipByIdAsync(videoId);
+                if (loadedVideo != null)
+                {
+                    AssignVideoToSlot(slotNumber, loadedVideo);
+                }
+            }
         }
     }
 

@@ -2075,6 +2075,21 @@ public partial class SinglePlayerPage : ContentPage
         }
     }
 
+    /// <summary>
+    /// Maneja el inicio del drag desde una fila de la tabla de tiempos
+    /// </summary>
+    private void OnTimesRowDragStarting(object? sender, DragStartingEventArgs e)
+    {
+        if (sender is GestureRecognizer recognizer && 
+            recognizer.Parent is VisualElement element &&
+            element.BindingContext is AthleteSectionTimeRow timeRow)
+        {
+            // Guardar el VideoId para que el drop lo pueda resolver
+            e.Data.Properties["VideoId"] = timeRow.VideoId;
+            e.Data.Text = $"{timeRow.AthleteName} - {timeRow.TotalFormatted}";
+        }
+    }
+
     private void OnVideoDragOver(object? sender, DragEventArgs e)
     {
         // Mostrar indicador visual de que se puede soltar aquí
@@ -2124,6 +2139,14 @@ public partial class SinglePlayerPage : ContentPage
             if (BindingContext is SinglePlayerViewModel viewModel)
             {
                 viewModel.DropVideoToSlotCommand.Execute((slotNumber, video));
+            }
+        }
+        // Si viene de la tabla de tiempos, tenemos solo el VideoId
+        else if (e.Data.Properties.TryGetValue("VideoId", out var videoIdData) && videoIdData is int videoId)
+        {
+            if (BindingContext is SinglePlayerViewModel viewModel)
+            {
+                viewModel.DropVideoIdToSlotCommand?.Execute((slotNumber, videoId));
             }
         }
     }
