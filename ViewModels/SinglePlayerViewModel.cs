@@ -33,6 +33,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
 
     private readonly DatabaseService _databaseService;
+    private readonly StatisticsService _statisticsService;
     private readonly SemaphoreSlim _videoPathInitLock = new(1, 1);
     
     private string _videoPath = "";
@@ -124,9 +125,15 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     private VideoClip? _comparisonVideo4;
     private int _selectedComparisonSlot = 0; // 0 = ninguno, 2-4 = slot de video
 
-    public SinglePlayerViewModel(DatabaseService databaseService)
+    // Pestañas del panel lateral derecho
+    private bool _isToolsTabSelected = true;
+    private bool _isStatsTabSelected;
+    private bool _isDiaryTabSelected;
+
+    public SinglePlayerViewModel(DatabaseService databaseService, StatisticsService statisticsService)
     {
         _databaseService = databaseService;
+        _statisticsService = statisticsService;
         
         // Comandos de reproducción
         PlayPauseCommand = new Command(TogglePlayPause);
@@ -217,6 +224,11 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         ClearComparisonSlotCommand = new Command<object>(ClearComparisonSlot);
         AssignVideoToComparisonSlotCommand = new Command<VideoClip>(AssignVideoToComparisonSlot);
         DropVideoToSlotCommand = new Command<object>(AssignVideoToComparisonSlotWithSlot);
+        
+        // Comandos de navegación de pestañas del panel lateral
+        SelectToolsTabCommand = new Command(() => IsToolsTabSelected = true);
+        SelectStatsTabCommand = new Command(() => IsStatsTabSelected = true);
+        SelectDiaryTabCommand = new Command(() => IsDiaryTabSelected = true);
         
         // Cargar historial de configuraciones
         _ = LoadRecentLapConfigsAsync();
@@ -648,6 +660,176 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     /// </summary>
     public List<VideoClip> PlaylistVideos => _filteredPlaylist;
 
+    // ===== Propiedades de estadísticas de sesión =====
+    
+    /// <summary>
+    /// Número total de videos en la sesión
+    /// </summary>
+    public int SessionTotalVideoCount => _sessionVideos.Count;
+    
+    /// <summary>
+    /// Duración total de todos los videos de la sesión
+    /// </summary>
+    public string SessionTotalDurationFormatted
+    {
+        get
+        {
+            var totalSeconds = _sessionVideos.Sum(v => v.ClipDuration);
+            var ts = TimeSpan.FromSeconds(totalSeconds);
+            return ts.TotalHours >= 1 
+                ? $"{(int)ts.TotalHours}:{ts.Minutes:D2}:{ts.Seconds:D2}"
+                : $"{ts.Minutes}:{ts.Seconds:D2}";
+        }
+    }
+    
+    /// <summary>
+    /// Número de atletas únicos en la sesión
+    /// </summary>
+    public int SessionUniqueAthletesCount => _sessionVideos
+        .Where(v => v.AtletaId > 0)
+        .Select(v => v.AtletaId)
+        .Distinct()
+        .Count();
+    
+    /// <summary>
+    /// Número de secciones/tramos únicos en la sesión
+    /// </summary>
+    public int SessionUniqueSectionsCount => _sessionVideos
+        .Where(v => v.Section > 0)
+        .Select(v => v.Section)
+        .Distinct()
+        .Count();
+    
+    /// <summary>
+    /// Total de eventos marcados en los videos de la sesión
+    /// </summary>
+    public int SessionTotalEventsCount => _sessionVideos
+        .SelectMany(v => v.EventTags ?? new List<Tag>())
+        .Count();
+    
+    /// <summary>
+    /// Total de etiquetas asignadas en los videos de la sesión
+    /// </summary>
+    public int SessionTotalTagsCount => _sessionVideos
+        .SelectMany(v => v.Tags ?? new List<Tag>())
+        .Count();
+    
+    /// <summary>
+    /// Porcentaje de videos con atleta asignado
+    /// </summary>
+    public int SessionVideosWithAthletePercent => _sessionVideos.Count > 0
+        ? (int)Math.Round(_sessionVideos.Count(v => v.AtletaId > 0) * 100.0 / _sessionVideos.Count)
+        : 0;
+    
+    /// <summary>
+    /// Texto descriptivo de videos con atleta
+    /// </summary>
+    public string SessionVideosWithAthleteText => 
+        $"{_sessionVideos.Count(v => v.AtletaId > 0)} de {_sessionVideos.Count}";
+
+    // ===== Propiedades para estadísticas completas (gráficos y tablas) =====
+    
+    private bool _isLoadingStats;
+    /// <summary>Indica si se están cargando las estadísticas</summary>
+    public bool IsLoadingStats
+    {
+        get => _isLoadingStats;
+        set { _isLoadingStats = value; OnPropertyChanged(); }
+    }
+    
+    private int _totalEventTagsCount;
+    /// <summary>Total de eventos de tag establecidos</summary>
+    public int TotalEventTagsCount
+    {
+        get => _totalEventTagsCount;
+        set { _totalEventTagsCount = value; OnPropertyChanged(); }
+    }
+    
+    private int _totalUniqueEventTagsCount;
+    /// <summary>Número de tipos de eventos únicos usados</summary>
+    public int TotalUniqueEventTagsCount
+    {
+        get => _totalUniqueEventTagsCount;
+        set { _totalUniqueEventTagsCount = value; OnPropertyChanged(); }
+    }
+    
+    private int _totalLabelTagsCount;
+    /// <summary>Total de etiquetas asignadas</summary>
+    public int TotalLabelTagsCount
+    {
+        get => _totalLabelTagsCount;
+        set { _totalLabelTagsCount = value; OnPropertyChanged(); }
+    }
+    
+    private int _totalUniqueLabelTagsCount;
+    /// <summary>Número de etiquetas únicas usadas</summary>
+    public int TotalUniqueLabelTagsCount
+    {
+        get => _totalUniqueLabelTagsCount;
+        set { _totalUniqueLabelTagsCount = value; OnPropertyChanged(); }
+    }
+    
+    private int _labeledVideosCount;
+    /// <summary>Vídeos con nombre/etiqueta asignada</summary>
+    public int LabeledVideosCount
+    {
+        get => _labeledVideosCount;
+        set { _labeledVideosCount = value; OnPropertyChanged(); OnPropertyChanged(nameof(LabeledVideosText)); OnPropertyChanged(nameof(LabeledVideosPercentage)); }
+    }
+    
+    private int _totalVideosForLabeling;
+    /// <summary>Total de vídeos en contexto para calcular porcentaje</summary>
+    public int TotalVideosForLabeling
+    {
+        get => _totalVideosForLabeling;
+        set { _totalVideosForLabeling = value; OnPropertyChanged(); OnPropertyChanged(nameof(LabeledVideosText)); OnPropertyChanged(nameof(LabeledVideosPercentage)); }
+    }
+    
+    /// <summary>Texto formateado de vídeos etiquetados</summary>
+    public string LabeledVideosText => TotalVideosForLabeling > 0 
+        ? $"{LabeledVideosCount} de {TotalVideosForLabeling}"
+        : "0";
+    
+    /// <summary>Porcentaje de vídeos etiquetados</summary>
+    public double LabeledVideosPercentage => TotalVideosForLabeling > 0
+        ? (double)LabeledVideosCount / TotalVideosForLabeling * 100
+        : 0;
+    
+    /// <summary>Top tags de eventos más usados</summary>
+    public ObservableCollection<TagUsageRow> TopEventTags { get; } = new();
+    
+    /// <summary>Valores para gráfico circular de eventos</summary>
+    public ObservableCollection<double> TopEventTagValues { get; } = new();
+    
+    /// <summary>Nombres para gráfico circular de eventos</summary>
+    public ObservableCollection<string> TopEventTagNames { get; } = new();
+    
+    /// <summary>Top etiquetas más usadas</summary>
+    public ObservableCollection<TagUsageRow> TopLabelTags { get; } = new();
+    
+    /// <summary>Valores para gráfico circular de etiquetas</summary>
+    public ObservableCollection<double> TopLabelTagValues { get; } = new();
+    
+    /// <summary>Nombres para gráfico circular de etiquetas</summary>
+    public ObservableCollection<string> TopLabelTagNames { get; } = new();
+    
+    /// <summary>Secciones con tiempos de atletas</summary>
+    public ObservableCollection<SectionWithAthleteRows> SectionTimes { get; } = new();
+    
+    private bool _hasSectionTimes;
+    /// <summary>Indica si hay tiempos por sección para mostrar</summary>
+    public bool HasSectionTimes
+    {
+        get => _hasSectionTimes;
+        set { _hasSectionTimes = value; OnPropertyChanged(); }
+    }
+    
+    /// <summary>Indica si hay eventos de sesión para mostrar en gráfico (estadísticas)</summary>
+    public bool HasSessionEventStats => TopEventTagNames.Count > 0;
+    
+    /// <summary>Indica si hay etiquetas de sesión para mostrar en gráfico (estadísticas)</summary>
+    public bool HasSessionLabelStats => TopLabelTagNames.Count > 0;
+
     // Propiedades para asignación de atleta
     public bool ShowAthleteAssignPanel
     {
@@ -996,6 +1178,61 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     public bool IsSelectingComparisonVideo => _selectedComparisonSlot > 0;
 
+    // Propiedades de pestañas del panel lateral derecho
+    public bool IsToolsTabSelected
+    {
+        get => _isToolsTabSelected;
+        set
+        {
+            if (_isToolsTabSelected != value)
+            {
+                _isToolsTabSelected = value;
+                OnPropertyChanged();
+                if (value)
+                {
+                    IsStatsTabSelected = false;
+                    IsDiaryTabSelected = false;
+                }
+            }
+        }
+    }
+
+    public bool IsStatsTabSelected
+    {
+        get => _isStatsTabSelected;
+        set
+        {
+            if (_isStatsTabSelected != value)
+            {
+                _isStatsTabSelected = value;
+                OnPropertyChanged();
+                if (value)
+                {
+                    IsToolsTabSelected = false;
+                    IsDiaryTabSelected = false;
+                }
+            }
+        }
+    }
+
+    public bool IsDiaryTabSelected
+    {
+        get => _isDiaryTabSelected;
+        set
+        {
+            if (_isDiaryTabSelected != value)
+            {
+                _isDiaryTabSelected = value;
+                OnPropertyChanged();
+                if (value)
+                {
+                    IsToolsTabSelected = false;
+                    IsStatsTabSelected = false;
+                }
+            }
+        }
+    }
+
     public TimeSpan? SplitStartTime
     {
         get => _splitStartTime;
@@ -1276,6 +1513,11 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     public ICommand ClearComparisonSlotCommand { get; }
     public ICommand AssignVideoToComparisonSlotCommand { get; }
     public ICommand DropVideoToSlotCommand { get; }
+
+    // Comandos de navegación de pestañas del panel lateral
+    public ICommand SelectToolsTabCommand { get; }
+    public ICommand SelectStatsTabCommand { get; }
+    public ICommand SelectDiaryTabCommand { get; }
 
     #endregion
 
@@ -1587,10 +1829,78 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             
             // Aplicar filtros iniciales (sin filtro = todos los videos)
             ApplyFilters();
+            
+            // Cargar estadísticas completas para la pestaña de estadísticas
+            _ = LoadSessionStatisticsAsync(sessionId);
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Error loading session data: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Carga estadísticas completas de la sesión (tags, eventos, tiempos por sección)
+    /// </summary>
+    private async Task LoadSessionStatisticsAsync(int sessionId)
+    {
+        try
+        {
+            IsLoadingStats = true;
+            
+            // Cargar estadísticas absolutas de tags
+            var stats = await _statisticsService.GetAbsoluteTagStatsAsync(sessionId);
+            
+            TotalEventTagsCount = stats.TotalEventTags;
+            TotalUniqueEventTagsCount = stats.UniqueEventTags;
+            TotalLabelTagsCount = stats.TotalLabelTags;
+            TotalUniqueLabelTagsCount = stats.UniqueLabelTags;
+            LabeledVideosCount = stats.LabeledVideos;
+            TotalVideosForLabeling = stats.TotalVideos;
+            
+            // Llenar gráficos de eventos
+            TopEventTags.Clear();
+            TopEventTagValues.Clear();
+            TopEventTagNames.Clear();
+            foreach (var tag in stats.TopEventTags)
+            {
+                TopEventTags.Add(tag);
+                TopEventTagValues.Add(tag.UsageCount);
+                TopEventTagNames.Add(tag.TagName);
+            }
+            
+            // Llenar gráficos de etiquetas
+            TopLabelTags.Clear();
+            TopLabelTagValues.Clear();
+            TopLabelTagNames.Clear();
+            foreach (var tag in stats.TopLabelTags)
+            {
+                TopLabelTags.Add(tag);
+                TopLabelTagValues.Add(tag.UsageCount);
+                TopLabelTagNames.Add(tag.TagName);
+            }
+            
+            OnPropertyChanged(nameof(HasSessionEventStats));
+            OnPropertyChanged(nameof(HasSessionLabelStats));
+            
+            // Cargar tiempos por sección (tabla de tiempos por atleta)
+            var sections = await _statisticsService.GetAthleteSectionTimesAsync(sessionId);
+            
+            SectionTimes.Clear();
+            foreach (var section in sections)
+            {
+                SectionTimes.Add(section);
+            }
+            
+            HasSectionTimes = SectionTimes.Count > 0;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error loading session statistics: {ex.Message}");
+        }
+        finally
+        {
+            IsLoadingStats = false;
         }
     }
 
@@ -1799,6 +2109,16 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(CanGoNext));
         OnPropertyChanged(nameof(HasPlaylist));
         OnPropertyChanged(nameof(PlaylistVideos));
+        
+        // Propiedades de estadísticas de sesión
+        OnPropertyChanged(nameof(SessionTotalVideoCount));
+        OnPropertyChanged(nameof(SessionTotalDurationFormatted));
+        OnPropertyChanged(nameof(SessionUniqueAthletesCount));
+        OnPropertyChanged(nameof(SessionUniqueSectionsCount));
+        OnPropertyChanged(nameof(SessionTotalEventsCount));
+        OnPropertyChanged(nameof(SessionTotalTagsCount));
+        OnPropertyChanged(nameof(SessionVideosWithAthletePercent));
+        OnPropertyChanged(nameof(SessionVideosWithAthleteText));
         
         // Actualizar estado de comandos
         ((Command)PreviousVideoCommand).ChangeCanExecute();

@@ -253,6 +253,12 @@ public partial class SinglePlayerPage : ContentPage
         ApplyVideoLessonRuntimeOptions();
     }
 
+    private async void OnGoToDashboardTapped(object? sender, TappedEventArgs e)
+    {
+        // Navegar al Dashboard
+        await Shell.Current.GoToAsync("//dashboard");
+    }
+
     private void ApplyVideoLessonRuntimeOptions()
     {
         UpdateVideoLessonOptionsVisualState();

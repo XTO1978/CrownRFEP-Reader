@@ -395,6 +395,29 @@ public class IsZeroConverter : IValueConverter
 }
 
 /// <summary>
+/// Devuelve true si el valor NO es 0
+/// </summary>
+public class IsNotZeroConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        return value switch
+        {
+            int intValue => intValue != 0,
+            double doubleValue => doubleValue != 0,
+            float floatValue => floatValue != 0,
+            long longValue => longValue != 0,
+            _ => false
+        };
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+/// <summary>
 /// Convierte el estado de selección de un tag (int: 0 o 1) a color de fondo
 /// </summary>
 public class TagSelectedColorConverter : IValueConverter
