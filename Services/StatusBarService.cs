@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using Microsoft.Maui.Graphics;
 
 namespace CrownRFEP_Reader.Services;
 
@@ -13,13 +14,33 @@ public class DatabaseLogEntry
     public DatabaseLogLevel Level { get; set; }
     
     public string TimestampText => Timestamp.ToString("HH:mm:ss");
+
+    // NO usar emojis: el UI debe renderizar SF Symbols (o equivalente en Windows)
     public string LevelText => Level switch
     {
-        DatabaseLogLevel.Info => "ℹ️",
-        DatabaseLogLevel.Success => "✅",
-        DatabaseLogLevel.Warning => "⚠️",
-        DatabaseLogLevel.Error => "❌",
-        _ => "•"
+        DatabaseLogLevel.Info => "INFO",
+        DatabaseLogLevel.Success => "OK",
+        DatabaseLogLevel.Warning => "WARN",
+        DatabaseLogLevel.Error => "ERROR",
+        _ => "LOG"
+    };
+
+    public string LevelSymbolName => Level switch
+    {
+        DatabaseLogLevel.Info => "info.circle",
+        DatabaseLogLevel.Success => "checkmark.circle.fill",
+        DatabaseLogLevel.Warning => "exclamationmark.triangle.fill",
+        DatabaseLogLevel.Error => "xmark.circle.fill",
+        _ => "circle.fill"
+    };
+
+    public Color LevelTintColor => Level switch
+    {
+        DatabaseLogLevel.Info => Color.FromArgb("#FF6DDDFF"),
+        DatabaseLogLevel.Success => Color.FromArgb("#FF4CAF50"),
+        DatabaseLogLevel.Warning => Color.FromArgb("#FFFF9800"),
+        DatabaseLogLevel.Error => Color.FromArgb("#FFFF5252"),
+        _ => Color.FromArgb("#FF6A6A6A")
     };
 }
 

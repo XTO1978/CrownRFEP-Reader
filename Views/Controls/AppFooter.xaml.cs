@@ -285,6 +285,7 @@ public partial class AppFooter : ContentView
                 {
                     new ColumnDefinition(GridLength.Auto),
                     new ColumnDefinition(GridLength.Auto),
+                    new ColumnDefinition(GridLength.Auto),
                     new ColumnDefinition(GridLength.Star)
                 },
                 ColumnSpacing = 8
@@ -293,15 +294,31 @@ public partial class AppFooter : ContentView
             var timestampLabel = new Label { FontSize = GetFontSize("FontSizeSmall"), TextColor = Color.FromArgb("#FF6A6A6A"), VerticalOptions = LayoutOptions.Center };
             timestampLabel.SetBinding(Label.TextProperty, "TimestampText");
 
-            var levelLabel = new Label { FontSize = GetFontSize("FontSizeSmall"), VerticalOptions = LayoutOptions.Center };
+            var levelIcon = new SymbolIcon
+            {
+                HeightRequest = GetIconSize("IconSizeSmall"),
+                WidthRequest = GetIconSize("IconSizeSmall"),
+                VerticalOptions = LayoutOptions.Center
+            };
+            levelIcon.SetBinding(SymbolIcon.SymbolNameProperty, "LevelSymbolName");
+            levelIcon.SetBinding(SymbolIcon.TintColorProperty, "LevelTintColor");
+            Grid.SetColumn(levelIcon, 1);
+
+            var levelLabel = new Label
+            {
+                FontSize = GetFontSize("FontSizeSmall"),
+                TextColor = Color.FromArgb("#FF8A8A8A"),
+                VerticalOptions = LayoutOptions.Center
+            };
             levelLabel.SetBinding(Label.TextProperty, "LevelText");
-            Grid.SetColumn(levelLabel, 1);
+            Grid.SetColumn(levelLabel, 2);
 
             var messageLabel = new Label { FontSize = GetFontSize("FontSizeBody"), TextColor = Color.FromArgb("#FFB0B0B0"), LineBreakMode = LineBreakMode.TailTruncation, VerticalOptions = LayoutOptions.Center };
             messageLabel.SetBinding(Label.TextProperty, "Message");
-            Grid.SetColumn(messageLabel, 2);
+            Grid.SetColumn(messageLabel, 3);
 
             grid.Children.Add(timestampLabel);
+            grid.Children.Add(levelIcon);
             grid.Children.Add(levelLabel);
             grid.Children.Add(messageLabel);
 
