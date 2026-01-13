@@ -303,13 +303,13 @@
                                                                 <controls:SymbolIcon
                                                                     HeightRequest="{StaticResource IconSizeXSmall}"
                                                                     SymbolName="play.fill"
-                                                                    TintColor="#FF6DDDFF"
+                                                                    TintColor="#FFAAAAAA"
                                                                     WidthRequest="{StaticResource IconSizeXSmall}" />
                                                                 <Label
                                                                     Text="{Binding TimestampFormatted}"
                                                                     FontSize="{StaticResource FontSizeCaption}"
                                                                     FontAttributes="Bold"
-                                                                    TextColor="#FF6DDDFF" />
+                                                                    TextColor="#FFAAAAAA" />
                                                             </HorizontalStackLayout>
                                                         </Border>
 
@@ -470,7 +470,7 @@
                                                     HeightRequest="20"
                                                     WidthRequest="20"
                                                     SymbolName="play.fill"
-                                                    TintColor="#FF6DDDFF"
+                                                    TintColor="#FFAAAAAA"
                                                     HorizontalOptions="Center"
                                                     VerticalOptions="Center" />
                                             </Border>
@@ -610,12 +610,12 @@
                             <controls:SymbolIcon
                                 HeightRequest="{StaticResource IconSizeSidebarMenu}"
                                 SymbolName="line.3.horizontal.decrease"
-                                TintColor="#FF6DDDFF"
+                                TintColor="#FFAAAAAA"
                                 WidthRequest="{StaticResource IconSizeSidebarMenu}" />
                             <Label
                                 FontSize="{StaticResource FontSizeSidebarMenu}"
                                 Text="Filtros"
-                                TextColor="#FF6DDDFF"
+                                TextColor="#FFAAAAAA"
                                 VerticalOptions="Center" />
                         </HorizontalStackLayout>
                     </Border>
@@ -1508,7 +1508,7 @@
                                         <Border
                                             HeightRequest="16"
                                             WidthRequest="16"
-                                            BackgroundColor="#FF6DDDFF"
+                                            BackgroundColor="#FF4A4A4A"
                                             StrokeShape="RoundRectangle 8"
                                             StrokeThickness="0" />
                                     </Border>
@@ -1872,7 +1872,7 @@
                         <Button
                             Command="{Binding AssignAthleteCommand}"
                             Text="Asignar seleccionado"
-                            BackgroundColor="#FF6DDDFF"
+                            BackgroundColor="#FF4A4A4A"
                             TextColor="Black"
                             FontSize="{StaticResource FontSizeBody}"
                             CornerRadius="6"
@@ -1931,7 +1931,7 @@
                         <Button
                             Command="{Binding CreateAndAssignAthleteCommand}"
                             Text="Crear y asignar"
-                            BackgroundColor="#FF6DDDFF"
+                            BackgroundColor="#FF4A4A4A"
                             TextColor="White"
                             FontSize="{StaticResource FontSizeBody}"
                             CornerRadius="6"
@@ -2414,13 +2414,13 @@
                                                         <controls:SymbolIcon
                                                             HeightRequest="{StaticResource IconSizeSmall}"
                                                             SymbolName="play.fill"
-                                                            TintColor="#FF6DDDFF"
+                                                            TintColor="#FFAAAAAA"
                                                             WidthRequest="{StaticResource IconSizeSmall}" />
                                                         <Label
                                                             Text="{Binding TimestampFormatted}"
                                                             FontSize="{StaticResource FontSizeSmall}"
                                                             FontAttributes="Bold"
-                                                            TextColor="#FF6DDDFF" />
+                                                            TextColor="#FFAAAAAA" />
                                                     </HorizontalStackLayout>
                                                 </Border>
                                                 
@@ -3244,7 +3244,7 @@
                                     <controls:SymbolIcon
                                         HeightRequest="{StaticResource IconSizeSidebarMenu}"
                                         SymbolName="person.badge.plus"
-                                        TintColor="#FF6DDDFF"
+                                        TintColor="#FFAAAAAA"
                                         WidthRequest="{StaticResource IconSizeSidebarMenu}" />
                                     <Label
                                         FontSize="{StaticResource FontSizeSidebarMenu}"
@@ -3273,7 +3273,7 @@
                                     <controls:SymbolIcon
                                         HeightRequest="{StaticResource IconSizeSidebarMenu}"
                                         SymbolName="arrow.triangle.branch"
-                                        TintColor="#FF6DDDFF"
+                                        TintColor="#FFAAAAAA"
                                         WidthRequest="{StaticResource IconSizeSidebarMenu}" />
                                     <Label
                                         FontSize="{StaticResource FontSizeSidebarMenu}"
@@ -3630,7 +3630,7 @@
                             </ScrollView>
                         </Border>
                         
-                        <Button Command="{Binding AssignAthleteCommand}" Text="Asignar" BackgroundColor="#FF6DDDFF" TextColor="Black" FontSize="{StaticResource FontSizeSmall}" CornerRadius="6" HeightRequest="{StaticResource ElementHeightDefault}" />
+                        <Button Command="{Binding AssignAthleteCommand}" Text="Asignar" BackgroundColor="#FF4A4A4A" TextColor="Black" FontSize="{StaticResource FontSizeSmall}" CornerRadius="6" HeightRequest="{StaticResource ElementHeightDefault}" />
                         
                         <Grid ColumnDefinitions="*,*" ColumnSpacing="6">
                             <Border Grid.Column="0" Padding="6,4" BackgroundColor="#FF2A2A2A" StrokeShape="RoundRectangle 4" StrokeThickness="0">
@@ -3640,7 +3640,7 @@
                                 <Entry Text="{Binding NewAthleteSurname}" Placeholder="Apellido" PlaceholderColor="#FF666666" TextColor="White" BackgroundColor="Transparent" FontSize="{StaticResource FontSizeSmall}" />
                             </Border>
                         </Grid>
-                        <Button Command="{Binding CreateAndAssignAthleteCommand}" Text="Crear y asignar" BackgroundColor="#FF6DDDFF" TextColor="White" FontSize="{StaticResource FontSizeSmall}" CornerRadius="6" HeightRequest="{StaticResource ElementHeightDefault}" />
+                        <Button Command="{Binding CreateAndAssignAthleteCommand}" Text="Crear y asignar" BackgroundColor="#FF4A4A4A" TextColor="White" FontSize="{StaticResource FontSizeSmall}" CornerRadius="6" HeightRequest="{StaticResource ElementHeightDefault}" />
                     </VerticalStackLayout>
                     
                     <!-- Panel de asignación de sección (inline en sidebar) -->
@@ -3791,8 +3791,8 @@
                                                         <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.SeekToTagEventCommand}" CommandParameter="{Binding .}" />
                                                     </Border.GestureRecognizers>
                                                     <HorizontalStackLayout Spacing="4">
-                                                        <controls:SymbolIcon HeightRequest="12" SymbolName="play.fill" TintColor="#FF6DDDFF" WidthRequest="12" />
-                                                        <Label Text="{Binding TimestampFormatted}" FontSize="{StaticResource FontSizeCaption}" FontAttributes="Bold" TextColor="#FF6DDDFF" />
+                                                        <controls:SymbolIcon HeightRequest="12" SymbolName="play.fill" TintColor="#FFAAAAAA" WidthRequest="12" />
+                                                        <Label Text="{Binding TimestampFormatted}" FontSize="{StaticResource FontSizeCaption}" FontAttributes="Bold" TextColor="#FFAAAAAA" />
                                                     </HorizontalStackLayout>
                                                 </Border>
                                                 <Border Grid.Column="1" Padding="6,3" BackgroundColor="#FFFF7043" StrokeShape="RoundRectangle 8" StrokeThickness="0" HorizontalOptions="Start">
@@ -4012,7 +4012,7 @@
                                 </Border.GestureRecognizers>
                                 <controls:SymbolIcon HeightRequest="18" WidthRequest="18" SymbolName="gobackward.5" TintColor="White" />
                             </Border>
-                            <Border Padding="16,4" BackgroundColor="#FF6DDDFF" StrokeShape="RoundRectangle 4" StrokeThickness="0">
+                            <Border Padding="16,4" BackgroundColor="#FF4A4A4A" StrokeShape="RoundRectangle 4" StrokeThickness="0">
                                 <Border.GestureRecognizers>
                                     <TapGestureRecognizer Command="{Binding PlayPauseCommand}" />
                                 </Border.GestureRecognizers>
@@ -4129,7 +4129,7 @@
                             <controls:SymbolIcon HeightRequest="16" WidthRequest="16" SymbolName="gobackward.5" TintColor="White" />
                         </Border>
                         <!--  Play/Pause  -->
-                        <Border Padding="12,4" BackgroundColor="#FF6DDDFF" StrokeShape="RoundRectangle 4" StrokeThickness="0">
+                        <Border Padding="12,4" BackgroundColor="#FF4A4A4A" StrokeShape="RoundRectangle 4" StrokeThickness="0">
                             <Border.GestureRecognizers>
                                 <TapGestureRecognizer Command="{Binding PlayPauseCommand}" />
                             </Border.GestureRecognizers>
@@ -4172,7 +4172,7 @@
                             <Border.GestureRecognizers>
                                 <TapGestureRecognizer Command="{Binding ToggleFiltersCommand}" />
                             </Border.GestureRecognizers>
-                            <controls:SymbolIcon HeightRequest="12" WidthRequest="12" SymbolName="line.3.horizontal.decrease" TintColor="#FF6DDDFF" />
+                            <controls:SymbolIcon HeightRequest="12" WidthRequest="12" SymbolName="line.3.horizontal.decrease" TintColor="#FFAAAAAA" />
                         </Border>
                         <!--  Navegación siguiente  -->
                         <Border Padding="6,4" BackgroundColor="#FF2A2A2A" StrokeShape="RoundRectangle 4" StrokeThickness="0"
@@ -4444,7 +4444,7 @@
                     <!--  Play/Pause  -->
                     <Border
                         Padding="{StaticResource PlayerPlayButtonPadding}"
-                        BackgroundColor="#FF6DDDFF"
+                        BackgroundColor="#FF4A4A4A"
                         StrokeShape="RoundRectangle 4"
                         StrokeThickness="0">
                         <Border.GestureRecognizers>
@@ -4733,12 +4733,12 @@
                                 <controls:SymbolIcon
                                     HeightRequest="{StaticResource IconSizeSmall}"
                                     SymbolName="line.3.horizontal.decrease"
-                                    TintColor="#FF6DDDFF"
+                                    TintColor="#FFAAAAAA"
                                     WidthRequest="{StaticResource IconSizeSmall}" />
                                 <Label
                                     FontSize="{StaticResource FontSizeSmall}"
                                     Text="Filtros"
-                                    TextColor="#FF6DDDFF"
+                                    TextColor="#FFAAAAAA"
                                     VerticalOptions="Center" />
                             </HorizontalStackLayout>
                         </Border>
