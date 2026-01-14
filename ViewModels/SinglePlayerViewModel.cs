@@ -32,10 +32,15 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 {
     public event PropertyChangedEventHandler? PropertyChanged;
 
+    public event EventHandler<LapSyncPauseRequestEventArgs>? LapSyncPauseRequested;
+    public event EventHandler? LapSyncResumeAllRequested;
+
     private readonly DatabaseService _databaseService;
     private readonly StatisticsService _statisticsService;
     private readonly ITableExportService _tableExportService;
     private readonly SemaphoreSlim _videoPathInitLock = new(1, 1);
+
+    private CancellationTokenSource? _lapSyncInitCts;
     
     private string _videoPath = "";
     private string _videoTitle = "";
@@ -131,6 +136,53 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     private double _comparisonExportProgress;
     private string _comparisonExportStatus = string.Empty;
     private bool _isComparisonLapSyncEnabled;
+
+    // Sincronización por laps en playback de comparación
+    private sealed record LapSegment(int LapNumber, TimeSpan Start, TimeSpan End)
+    {
+        public TimeSpan Duration => End - Start;
+    }
+    
+    private List<LapSegment>? _lapSegments1; // Video principal
+    private List<LapSegment>? _lapSegments2; // ComparisonVideo2
+    private List<LapSegment>? _lapSegments3; // ComparisonVideo3
+    private List<LapSegment>? _lapSegments4; // ComparisonVideo4
+    
+    private TimeSpan _currentPosition2;
+    private TimeSpan _currentPosition3;
+    private TimeSpan _currentPosition4;
+    private TimeSpan _duration2;
+    private TimeSpan _duration3;
+    private TimeSpan _duration4;
+    private bool _isPlaying2;
+    private bool _isPlaying3;
+    private bool _isPlaying4;
+    
+    private bool _hasLapTiming;
+    private string _currentLapText1 = string.Empty;
+    private string _currentLapText2 = string.Empty;
+    private string _currentLapText3 = string.Empty;
+    private string _currentLapText4 = string.Empty;
+    private string _currentLapDiffText = string.Empty;
+    private Color _currentLapColor1 = Colors.White;
+    private Color _currentLapColor2 = Colors.White;
+    private Color _currentLapColor3 = Colors.White;
+    private Color _currentLapColor4 = Colors.White;
+    private Color _currentLapBgColor1 = Color.FromArgb("#E6000000");
+    private Color _currentLapBgColor2 = Color.FromArgb("#E6000000");
+    private Color _currentLapBgColor3 = Color.FromArgb("#E6000000");
+    private Color _currentLapBgColor4 = Color.FromArgb("#E6000000");
+
+    // Estado de sincronización por laps durante playback
+    private int _currentLapIndex1 = 0;
+    private int _currentLapIndex2 = 0;
+    private int _currentLapIndex3 = 0;
+    private int _currentLapIndex4 = 0;
+    private bool _waitingAtLapBoundary1;
+    private bool _waitingAtLapBoundary2;
+    private bool _waitingAtLapBoundary3;
+    private bool _waitingAtLapBoundary4;
+    private bool _isProcessingLapSync; // Evita re-entrada durante seek/pause
 
     // Pestañas del panel lateral derecho
     private bool _isToolsTabSelected = true;
@@ -498,10 +550,16 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         get => _currentPosition;
         set
         {
+            var previousPosition = _currentPosition;
             _currentPosition = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(CurrentPositionText));
             UpdateProgress();
+            if (IsComparisonLapSyncEnabled)
+            {
+                CheckLapBoundaryAndSync(1, previousPosition, value);
+                UpdateLapOverlay();
+            }
         }
     }
 
@@ -1243,6 +1301,12 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(CanExportComparison));
 
             (ExportComparisonCommand as Command)?.ChangeCanExecute();
+            
+            // Cargar lap segments si está disponible
+            if (value != null && value.Id > 0)
+                _ = LoadLapSegmentsAsync(2, value.Id);
+            else
+                _lapSegments2 = null;
         }
     }
 
@@ -1258,6 +1322,12 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(CanExportComparison));
 
             (ExportComparisonCommand as Command)?.ChangeCanExecute();
+            
+            // Cargar lap segments si está disponible
+            if (value != null && value.Id > 0)
+                _ = LoadLapSegmentsAsync(3, value.Id);
+            else
+                _lapSegments3 = null;
         }
     }
 
@@ -1273,6 +1343,12 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(CanExportComparison));
 
             (ExportComparisonCommand as Command)?.ChangeCanExecute();
+            
+            // Cargar lap segments si está disponible
+            if (value != null && value.Id > 0)
+                _ = LoadLapSegmentsAsync(4, value.Id);
+            else
+                _lapSegments4 = null;
         }
     }
 
@@ -1319,7 +1395,298 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             if (_isComparisonLapSyncEnabled == value) return;
             _isComparisonLapSyncEnabled = value;
             OnPropertyChanged();
+            
+            // Resetear estado de sincronización
+            _currentLapIndex1 = 0;
+            _currentLapIndex2 = 0;
+            _currentLapIndex3 = 0;
+            _currentLapIndex4 = 0;
+            _waitingAtLapBoundary1 = false;
+            _waitingAtLapBoundary2 = false;
+            _waitingAtLapBoundary3 = false;
+            _waitingAtLapBoundary4 = false;
+
+            if (_isComparisonLapSyncEnabled)
+            {
+                _ = EnsureLapSyncSegmentsLoadedAsync();
+            }
+            else
+            {
+                UpdateLapOverlay();
+            }
         }
+    }
+
+    private List<int> GetActiveLayoutVideoIndices()
+    {
+        var active = new List<int> { 1 };
+
+        if (_comparisonLayout != ComparisonLayout.Single && HasComparisonVideo2)
+            active.Add(2);
+
+        if (_comparisonLayout == ComparisonLayout.Quad2x2)
+        {
+            if (HasComparisonVideo3) active.Add(3);
+            if (HasComparisonVideo4) active.Add(4);
+        }
+
+        return active;
+    }
+
+    private bool HasSegmentsForVideo(int videoIndex)
+    {
+        var segments = videoIndex switch
+        {
+            1 => _lapSegments1,
+            2 => _lapSegments2,
+            3 => _lapSegments3,
+            4 => _lapSegments4,
+            _ => null
+        };
+
+        return segments != null && segments.Count > 0;
+    }
+
+    private bool CanLapSyncPlayback()
+    {
+        if (!IsMultiVideoLayout || !IsComparisonLapSyncEnabled)
+            return false;
+
+        var active = GetActiveLayoutVideoIndices();
+        if (active.Count < 2)
+            return false;
+
+        foreach (var idx in active)
+        {
+            if (!HasSegmentsForVideo(idx))
+                return false;
+        }
+
+        return true;
+    }
+
+    private async Task EnsureLapSyncSegmentsLoadedAsync()
+    {
+        try
+        {
+            _lapSyncInitCts?.Cancel();
+            _lapSyncInitCts = new CancellationTokenSource();
+            var ct = _lapSyncInitCts.Token;
+
+            // Resolver el video principal si llegamos aquí sin VideoClip/Id.
+            if ((_videoClip == null || _videoClip.Id <= 0) && !string.IsNullOrWhiteSpace(VideoPath))
+            {
+                try
+                {
+                    var resolved = await _databaseService.FindVideoClipByAnyPathAsync(VideoPath);
+                    if (resolved != null && resolved.Id > 0)
+                    {
+                        resolved.LocalClipPath = VideoPath;
+                        VideoClip = resolved;
+                    }
+                }
+                catch
+                {
+                    // Ignorar
+                }
+            }
+
+            var active = GetActiveLayoutVideoIndices();
+
+            foreach (var idx in active)
+            {
+                if (ct.IsCancellationRequested) return;
+
+                var videoId = idx switch
+                {
+                    1 => _videoClip?.Id ?? 0,
+                    2 => _comparisonVideo2?.Id ?? 0,
+                    3 => _comparisonVideo3?.Id ?? 0,
+                    4 => _comparisonVideo4?.Id ?? 0,
+                    _ => 0
+                };
+
+                if (videoId > 0)
+                    await LoadLapSegmentsAsync(idx, videoId);
+            }
+
+            if (!ct.IsCancellationRequested)
+                UpdateLapOverlay();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"EnsureLapSyncSegmentsLoadedAsync failed: {ex.Message}");
+            UpdateLapOverlay();
+        }
+    }
+
+    // Propiedades para sincronización por laps en playback
+    public bool HasLapTiming
+    {
+        get => _hasLapTiming;
+        set { _hasLapTiming = value; OnPropertyChanged(); }
+    }
+
+    public string CurrentLapText1
+    {
+        get => _currentLapText1;
+        set { _currentLapText1 = value; OnPropertyChanged(); }
+    }
+
+    public string CurrentLapText2
+    {
+        get => _currentLapText2;
+        set { _currentLapText2 = value; OnPropertyChanged(); }
+    }
+
+    public string CurrentLapText3
+    {
+        get => _currentLapText3;
+        set { _currentLapText3 = value; OnPropertyChanged(); }
+    }
+
+    public string CurrentLapText4
+    {
+        get => _currentLapText4;
+        set { _currentLapText4 = value; OnPropertyChanged(); }
+    }
+
+    public string CurrentLapDiffText
+    {
+        get => _currentLapDiffText;
+        set { _currentLapDiffText = value; OnPropertyChanged(); }
+    }
+
+    public Color CurrentLapColor1
+    {
+        get => _currentLapColor1;
+        set { _currentLapColor1 = value; OnPropertyChanged(); }
+    }
+
+    public Color CurrentLapColor2
+    {
+        get => _currentLapColor2;
+        set { _currentLapColor2 = value; OnPropertyChanged(); }
+    }
+
+    public Color CurrentLapColor3
+    {
+        get => _currentLapColor3;
+        set { _currentLapColor3 = value; OnPropertyChanged(); }
+    }
+
+    public Color CurrentLapColor4
+    {
+        get => _currentLapColor4;
+        set { _currentLapColor4 = value; OnPropertyChanged(); }
+    }
+
+    public Color CurrentLapBgColor1
+    {
+        get => _currentLapBgColor1;
+        set { _currentLapBgColor1 = value; OnPropertyChanged(); }
+    }
+
+    public Color CurrentLapBgColor2
+    {
+        get => _currentLapBgColor2;
+        set { _currentLapBgColor2 = value; OnPropertyChanged(); }
+    }
+
+    public Color CurrentLapBgColor3
+    {
+        get => _currentLapBgColor3;
+        set { _currentLapBgColor3 = value; OnPropertyChanged(); }
+    }
+
+    public Color CurrentLapBgColor4
+    {
+        get => _currentLapBgColor4;
+        set { _currentLapBgColor4 = value; OnPropertyChanged(); }
+    }
+
+    public TimeSpan CurrentPosition2
+    {
+        get => _currentPosition2;
+        set
+        {
+            var previousPosition = _currentPosition2;
+            _currentPosition2 = value;
+            OnPropertyChanged();
+            if (IsComparisonLapSyncEnabled)
+            {
+                CheckLapBoundaryAndSync(2, previousPosition, value);
+                UpdateLapOverlay();
+            }
+        }
+    }
+
+    public TimeSpan CurrentPosition3
+    {
+        get => _currentPosition3;
+        set
+        {
+            var previousPosition = _currentPosition3;
+            _currentPosition3 = value;
+            OnPropertyChanged();
+            if (IsComparisonLapSyncEnabled)
+            {
+                CheckLapBoundaryAndSync(3, previousPosition, value);
+                UpdateLapOverlay();
+            }
+        }
+    }
+
+    public TimeSpan CurrentPosition4
+    {
+        get => _currentPosition4;
+        set
+        {
+            var previousPosition = _currentPosition4;
+            _currentPosition4 = value;
+            OnPropertyChanged();
+            if (IsComparisonLapSyncEnabled)
+            {
+                CheckLapBoundaryAndSync(4, previousPosition, value);
+                UpdateLapOverlay();
+            }
+        }
+    }
+
+    public TimeSpan Duration2
+    {
+        get => _duration2;
+        set { _duration2 = value; OnPropertyChanged(); }
+    }
+
+    public TimeSpan Duration3
+    {
+        get => _duration3;
+        set { _duration3 = value; OnPropertyChanged(); }
+    }
+
+    public TimeSpan Duration4
+    {
+        get => _duration4;
+        set { _duration4 = value; OnPropertyChanged(); }
+    }
+
+    public bool IsPlaying2
+    {
+        get => _isPlaying2;
+        set { _isPlaying2 = value; OnPropertyChanged(); }
+    }
+
+    public bool IsPlaying3
+    {
+        get => _isPlaying3;
+        set { _isPlaying3 = value; OnPropertyChanged(); }
+    }
+
+    public bool IsPlaying4
+    {
+        get => _isPlaying4;
+        set { _isPlaying4 = value; OnPropertyChanged(); }
     }
 
     /// <summary>
@@ -3471,6 +3838,9 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
                 OnPropertyChanged(nameof(TagEventsCountText));
                 RefreshTimelineMarkers();
             });
+            
+            // Cargar lap segments para el video principal
+            await LoadLapSegmentsAsync(1, _videoClip.Id);
         }
         catch (Exception ex)
         {
@@ -5319,6 +5689,431 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     }
 
     #endregion
+
+    #region Lap Sync Playback
+
+    /// <summary>
+    /// Construye segmentos de laps a partir de eventos de timing.
+    /// Similar a ParallelPlayerViewModel.BuildLapSegments
+    /// </summary>
+    private static List<LapSegment>? BuildLapSegments(
+        List<ExecutionTimingEvent> events,
+        TimeSpan fallbackEnd)
+    {
+        if (events.Count == 0)
+            return null;
+
+        // Elegir el run con más laps
+        var bestRun = events
+            .GroupBy(e => e.RunIndex)
+            .Select(g => new
+            {
+                RunIndex = g.Key,
+                LapCount = g.Count(e => e.Kind == 1),
+                EndMs = g.Where(e => e.Kind == 2).Select(e => e.ElapsedMilliseconds).DefaultIfEmpty(0).Max()
+            })
+            .OrderByDescending(x => x.LapCount)
+            .ThenByDescending(x => x.EndMs)
+            .FirstOrDefault();
+
+        var runIndex = bestRun?.RunIndex ?? 0;
+        var runEvents = events
+            .Where(e => e.RunIndex == runIndex)
+            .OrderBy(e => e.ElapsedMilliseconds)
+            .ToList();
+
+        var startMs = runEvents.FirstOrDefault(e => e.Kind == 0)?.ElapsedMilliseconds ?? 0;
+        var endMs = runEvents.LastOrDefault(e => e.Kind == 2)?.ElapsedMilliseconds;
+
+        var start = TimeSpan.FromMilliseconds(startMs);
+        var end = endMs.HasValue
+            ? TimeSpan.FromMilliseconds(endMs.Value)
+            : (fallbackEnd > TimeSpan.Zero ? fallbackEnd : TimeSpan.FromMilliseconds(runEvents.Max(e => e.ElapsedMilliseconds)));
+        if (end <= start)
+            return null;
+
+        var lapMarkers = runEvents
+            .Where(e => e.Kind == 1)
+            .Select(e => TimeSpan.FromMilliseconds(e.ElapsedMilliseconds))
+            .Where(t => t > start && t < end)
+            .Distinct()
+            .OrderBy(t => t)
+            .ToList();
+
+        var boundaries = new List<TimeSpan>(capacity: 2 + lapMarkers.Count) { start };
+        boundaries.AddRange(lapMarkers);
+        boundaries.Add(end);
+
+        if (boundaries.Count < 2)
+            return null;
+
+        var segments = new List<LapSegment>(capacity: boundaries.Count - 1);
+        for (int i = 0; i < boundaries.Count - 1; i++)
+        {
+            var segStart = boundaries[i];
+            var segEnd = boundaries[i + 1];
+            if (segEnd <= segStart) continue;
+            segments.Add(new LapSegment(i + 1, segStart, segEnd));
+        }
+
+        return segments.Count > 0 ? segments : null;
+    }
+
+    private static LapSegment? FindLapAtPosition(List<LapSegment> segments, TimeSpan position)
+    {
+        if (position <= segments[0].Start)
+            return segments[0];
+        if (position >= segments[^1].End)
+            return segments[^1];
+
+        for (int i = 0; i < segments.Count; i++)
+        {
+            var seg = segments[i];
+            if (position >= seg.Start && position < seg.End)
+                return seg;
+        }
+
+        return null;
+    }
+
+    private async Task LoadLapSegmentsAsync(int videoIndex, int videoId)
+    {
+        try
+        {
+            var events = await _databaseService.GetExecutionTimingEventsByVideoAsync(videoId);
+            if (events == null || events.Count == 0)
+            {
+                switch (videoIndex)
+                {
+                    case 1: _lapSegments1 = null; break;
+                    case 2: _lapSegments2 = null; break;
+                    case 3: _lapSegments3 = null; break;
+                    case 4: _lapSegments4 = null; break;
+                }
+                return;
+            }
+
+            // Usar la duración del video como fallback
+            var fallbackEnd = videoIndex switch
+            {
+                2 => Duration2,
+                3 => Duration3,
+                4 => Duration4,
+                _ => Duration
+            };
+
+            var segments = BuildLapSegments(events, fallbackEnd);
+            
+            switch (videoIndex)
+            {
+                case 1: _lapSegments1 = segments; break;
+                case 2: _lapSegments2 = segments; break;
+                case 3: _lapSegments3 = segments; break;
+                case 4: _lapSegments4 = segments; break;
+            }
+
+            if (IsComparisonLapSyncEnabled)
+                UpdateLapOverlay();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error loading lap segments for video {videoIndex}: {ex.Message}");
+        }
+    }
+
+    private void UpdateLapOverlay()
+    {
+        if (!IsComparisonLapSyncEnabled)
+        {
+            HasLapTiming = false;
+            CurrentLapText1 = string.Empty;
+            CurrentLapText2 = string.Empty;
+            CurrentLapText3 = string.Empty;
+            CurrentLapText4 = string.Empty;
+            CurrentLapDiffText = string.Empty;
+            return;
+        }
+
+        // Solo mostrar overlay cuando el lap-sync es viable para todos los vídeos activos.
+        if (!CanLapSyncPlayback())
+        {
+            HasLapTiming = false;
+            CurrentLapText1 = string.Empty;
+            CurrentLapText2 = string.Empty;
+            CurrentLapText3 = string.Empty;
+            CurrentLapText4 = string.Empty;
+            CurrentLapDiffText = string.Empty;
+            return;
+        }
+
+        var activeVideos = new List<(int index, List<LapSegment> segments, TimeSpan position)>();
+        foreach (var idx in GetActiveLayoutVideoIndices())
+        {
+            var segments = idx switch
+            {
+                1 => _lapSegments1,
+                2 => _lapSegments2,
+                3 => _lapSegments3,
+                4 => _lapSegments4,
+                _ => null
+            };
+
+            if (segments == null || segments.Count == 0)
+                continue;
+
+            var position = idx switch
+            {
+                2 => CurrentPosition2,
+                3 => CurrentPosition3,
+                4 => CurrentPosition4,
+                _ => CurrentPosition
+            };
+
+            activeVideos.Add((idx, segments, position));
+        }
+
+        HasLapTiming = true;
+
+        // Encontrar los laps actuales para cada video
+        var lapData = new List<(int index, TimeSpan lapTime, string text)>();
+        
+        foreach (var (index, segments, position) in activeVideos)
+        {
+            var seg = FindLapAtPosition(segments, position);
+            if (seg == null) continue;
+            
+            var lapTime = seg.Duration;
+            var text = $"Lap {seg.LapNumber}: {FormatLapTime(lapTime)}";
+            
+            lapData.Add((index, lapTime, text));
+        }
+
+        if (lapData.Count < 2)
+        {
+            HasLapTiming = false;
+            CurrentLapText1 = string.Empty;
+            CurrentLapText2 = string.Empty;
+            CurrentLapText3 = string.Empty;
+            CurrentLapText4 = string.Empty;
+            CurrentLapDiffText = string.Empty;
+            return;
+        }
+
+        // Determinar colores según tiempos
+        var lapTimes = lapData.Select(d => d.lapTime).ToList();
+        var min = lapTimes.Min();
+        var max = lapTimes.Max();
+        var anyDiff = min != max;
+
+        var green = Color.FromRgb(52, 199, 89);
+        var red = Color.FromRgb(255, 59, 48);
+        var white = Colors.White;
+        var bgNormal = Color.FromArgb("#E6000000");
+
+        foreach (var (index, lapTime, text) in lapData)
+        {
+            Color color = white;
+            if (anyDiff)
+            {
+                if (lapTime == min) color = green;
+                else if (lapTime == max) color = red;
+            }
+
+            switch (index)
+            {
+                case 1:
+                    CurrentLapText1 = text;
+                    CurrentLapColor1 = color;
+                    CurrentLapBgColor1 = bgNormal;
+                    break;
+                case 2:
+                    CurrentLapText2 = text;
+                    CurrentLapColor2 = color;
+                    CurrentLapBgColor2 = bgNormal;
+                    break;
+                case 3:
+                    CurrentLapText3 = text;
+                    CurrentLapColor3 = color;
+                    CurrentLapBgColor3 = bgNormal;
+                    break;
+                case 4:
+                    CurrentLapText4 = text;
+                    CurrentLapColor4 = color;
+                    CurrentLapBgColor4 = bgNormal;
+                    break;
+            }
+        }
+
+        // Calcular delta entre el más rápido y el más lento
+        if (lapData.Count >= 2)
+        {
+            var diff = max - min;
+            CurrentLapDiffText = $"Δ {FormatLapTime(diff)}";
+        }
+        else
+        {
+            CurrentLapDiffText = string.Empty;
+        }
+    }
+
+    private static string FormatLapTime(TimeSpan ts)
+    {
+        return $"{ts.TotalSeconds:0.00}s";
+    }
+
+    private void CheckLapBoundaryAndSync(int videoIndex, TimeSpan previousPosition, TimeSpan currentPosition)
+    {
+        if (!IsMultiVideoLayout || !IsComparisonLapSyncEnabled)
+            return;
+
+        // Evitar re-entrada mientras estamos procesando un sync
+        if (_isProcessingLapSync)
+            return;
+
+        // Evitar disparos por seek/scrub o saltos grandes.
+        if (currentPosition <= previousPosition)
+            return;
+
+        if (currentPosition - previousPosition > TimeSpan.FromSeconds(0.75))
+            return;
+
+        // Solo sincronizar si todos los vídeos activos tienen timing.
+        if (!CanLapSyncPlayback())
+            return;
+
+        var alreadyWaiting = videoIndex switch
+        {
+            1 => _waitingAtLapBoundary1,
+            2 => _waitingAtLapBoundary2,
+            3 => _waitingAtLapBoundary3,
+            4 => _waitingAtLapBoundary4,
+            _ => false
+        };
+        if (alreadyWaiting)
+            return;
+
+        // Obtener los lap segments del video
+        var segments = videoIndex switch
+        {
+            1 => _lapSegments1,
+            2 => _lapSegments2,
+            3 => _lapSegments3,
+            4 => _lapSegments4,
+            _ => null
+        };
+
+        if (segments == null || segments.Count == 0)
+            return;
+
+        // Determinar el lap anterior y el actual
+        var prevLap = FindLapAtPosition(segments, previousPosition);
+        var currentLap = FindLapAtPosition(segments, currentPosition);
+
+        if (prevLap == null || currentLap == null)
+            return;
+
+        // Detectar si cruzamos a un nuevo lap
+        if (currentLap.LapNumber > prevLap.LapNumber)
+        {
+            // Snap al inicio del lap actual (equivale al final del lap anterior)
+            var boundaryPosition = currentLap.Start;
+
+            // Este video ha cruzado a un nuevo lap
+            switch (videoIndex)
+            {
+                case 1:
+                    _currentLapIndex1 = currentLap.LapNumber;
+                    _waitingAtLapBoundary1 = true;
+                    break;
+                case 2:
+                    _currentLapIndex2 = currentLap.LapNumber;
+                    _waitingAtLapBoundary2 = true;
+                    break;
+                case 3:
+                    _currentLapIndex3 = currentLap.LapNumber;
+                    _waitingAtLapBoundary3 = true;
+                    break;
+                case 4:
+                    _currentLapIndex4 = currentLap.LapNumber;
+                    _waitingAtLapBoundary4 = true;
+                    break;
+            }
+
+            _isProcessingLapSync = true;
+            LapSyncPauseRequested?.Invoke(this, new LapSyncPauseRequestEventArgs(videoIndex, boundaryPosition));
+
+            // Intentar reanudar todos si todos están esperando
+            TryResumeAllVideos();
+        }
+    }
+
+    private void TryResumeAllVideos()
+    {
+        if (!IsMultiVideoLayout || !IsComparisonLapSyncEnabled)
+            return;
+
+        if (!CanLapSyncPlayback())
+            return;
+
+        var activeVideos = GetActiveLayoutVideoIndices();
+
+        // Verificar si todos los videos activos están esperando
+        var allWaiting = true;
+        foreach (var videoIndex in activeVideos)
+        {
+            var isWaiting = videoIndex switch
+            {
+                1 => _waitingAtLapBoundary1,
+                2 => _waitingAtLapBoundary2,
+                3 => _waitingAtLapBoundary3,
+                4 => _waitingAtLapBoundary4,
+                _ => false
+            };
+
+            if (!isWaiting)
+            {
+                allWaiting = false;
+                break;
+            }
+        }
+
+        // Si todos están esperando, reanudar todos
+        if (allWaiting && activeVideos.Count >= 2)
+        {
+            foreach (var videoIndex in activeVideos)
+            {
+                switch (videoIndex)
+                {
+                    case 1: _waitingAtLapBoundary1 = false; break;
+                    case 2: _waitingAtLapBoundary2 = false; break;
+                    case 3: _waitingAtLapBoundary3 = false; break;
+                    case 4: _waitingAtLapBoundary4 = false; break;
+                }
+            }
+
+            _isProcessingLapSync = false; // Liberar el lock antes de reanudar
+            LapSyncResumeAllRequested?.Invoke(this, EventArgs.Empty);
+        }
+        else
+        {
+            // Liberar el lock después de un breve delay para permitir que otros videos lleguen
+            Task.Delay(50).ContinueWith(_ => _isProcessingLapSync = false);
+        }
+    }
+
+    #endregion
+}
+
+public sealed class LapSyncPauseRequestEventArgs : EventArgs
+{
+    public int VideoIndex { get; }
+    public TimeSpan BoundaryPosition { get; }
+
+    public LapSyncPauseRequestEventArgs(int videoIndex, TimeSpan boundaryPosition)
+    {
+        VideoIndex = videoIndex;
+        BoundaryPosition = boundaryPosition;
+    }
 }
 
 /// <summary>

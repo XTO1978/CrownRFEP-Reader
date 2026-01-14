@@ -59,6 +59,10 @@ public static class NativeSyncPlaybackService
             {
                 try
                 {
+                    // setRate:time:atHostTime: puede fallar con NSException si AutomaticallyWaitsToMinimizeStalling==true
+                    // (error: "cannot service synchronized playback request...").
+                    nativePlayer.AutomaticallyWaitsToMinimizeStalling = false;
+
                     // setRate:time:atHostTime: sincroniza todos los players
                     // Cada uno usa SU posición actual, pero todos arrancan en syncTime
                     nativePlayer.SetRate(

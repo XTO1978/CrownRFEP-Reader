@@ -852,6 +852,24 @@
                         <Label Text="1" FontSize="12" FontAttributes="Bold" TextColor="White" />
                     </Border>
                     
+                    <!-- Overlay de lap actual (solo visible con lap sync activo) -->
+                    <Border
+                        Margin="20,20,20,40"
+                        Padding="20,14"
+                        BackgroundColor="{Binding CurrentLapBgColor1}"
+                        HorizontalOptions="End"
+                        InputTransparent="True"
+                        IsVisible="{Binding HasLapTiming}"
+                        StrokeShape="RoundRectangle 4"
+                        StrokeThickness="0"
+                        VerticalOptions="End">
+                        <Label
+                            FontAttributes="Bold"
+                            FontSize="{StaticResource FontSizeHeader}"
+                            Text="{Binding CurrentLapText1}"
+                            TextColor="{Binding CurrentLapColor1}" />
+                    </Border>
+                    
                     <!-- Slider individual con hover (solo en modo comparación) -->
                     <Border
                         x:Name="SliderOverlay1"
@@ -915,6 +933,9 @@
                         IsVisible="{Binding HasComparisonVideo2}"
                         Aspect="{Binding VideoAspect}"
                         IsMuted="True"
+                        Duration="{Binding Duration2, Mode=OneWayToSource}"
+                        Position="{Binding CurrentPosition2, Mode=OneWayToSource}"
+                        IsPlaying="{Binding IsPlaying2, Mode=TwoWay}"
                         Source="{Binding ComparisonVideo2Path}" />
                     
                     <!-- Overlay para scrubbing del video 2 -->
@@ -954,6 +975,24 @@
                         StrokeShape="RoundRectangle 4"
                         StrokeThickness="0">
                         <Label Text="2" FontSize="12" FontAttributes="Bold" TextColor="White" />
+                    </Border>
+                    
+                    <!-- Overlay de lap actual (solo visible con lap sync activo) -->
+                    <Border
+                        Margin="20,20,20,40"
+                        Padding="20,14"
+                        BackgroundColor="{Binding CurrentLapBgColor2}"
+                        HorizontalOptions="End"
+                        InputTransparent="True"
+                        IsVisible="{Binding HasLapTiming}"
+                        StrokeShape="RoundRectangle 4"
+                        StrokeThickness="0"
+                        VerticalOptions="End">
+                        <Label
+                            FontAttributes="Bold"
+                            FontSize="{StaticResource FontSizeHeader}"
+                            Text="{Binding CurrentLapText2}"
+                            TextColor="{Binding CurrentLapColor2}" />
                     </Border>
                     
                     <!-- Slider individual con hover -->
@@ -1019,6 +1058,9 @@
                         IsVisible="{Binding HasComparisonVideo3}"
                         Aspect="{Binding VideoAspect}"
                         IsMuted="True"
+                        Duration="{Binding Duration3, Mode=OneWayToSource}"
+                        Position="{Binding CurrentPosition3, Mode=OneWayToSource}"
+                        IsPlaying="{Binding IsPlaying3, Mode=TwoWay}"
                         Source="{Binding ComparisonVideo3Path}" />
                     
                     <!-- Overlay para scrubbing del video 3 -->
@@ -1058,6 +1100,24 @@
                         StrokeShape="RoundRectangle 4"
                         StrokeThickness="0">
                         <Label Text="3" FontSize="12" FontAttributes="Bold" TextColor="White" />
+                    </Border>
+                    
+                    <!-- Overlay de lap actual (solo visible con lap sync activo) -->
+                    <Border
+                        Margin="20,20,20,40"
+                        Padding="20,14"
+                        BackgroundColor="{Binding CurrentLapBgColor3}"
+                        HorizontalOptions="End"
+                        InputTransparent="True"
+                        IsVisible="{Binding HasLapTiming}"
+                        StrokeShape="RoundRectangle 4"
+                        StrokeThickness="0"
+                        VerticalOptions="End">
+                        <Label
+                            FontAttributes="Bold"
+                            FontSize="{StaticResource FontSizeHeader}"
+                            Text="{Binding CurrentLapText3}"
+                            TextColor="{Binding CurrentLapColor3}" />
                     </Border>
                     
                     <!-- Slider individual con hover -->
@@ -1123,6 +1183,9 @@
                         IsVisible="{Binding HasComparisonVideo4}"
                         Aspect="{Binding VideoAspect}"
                         IsMuted="True"
+                        Duration="{Binding Duration4, Mode=OneWayToSource}"
+                        Position="{Binding CurrentPosition4, Mode=OneWayToSource}"
+                        IsPlaying="{Binding IsPlaying4, Mode=TwoWay}"
                         Source="{Binding ComparisonVideo4Path}" />
                     
                     <!-- Overlay para scrubbing del video 4 -->
@@ -1162,6 +1225,24 @@
                         StrokeShape="RoundRectangle 4"
                         StrokeThickness="0">
                         <Label Text="4" FontSize="12" FontAttributes="Bold" TextColor="White" />
+                    </Border>
+                    
+                    <!-- Overlay de lap actual (solo visible con lap sync activo) -->
+                    <Border
+                        Margin="20,20,20,40"
+                        Padding="20,14"
+                        BackgroundColor="{Binding CurrentLapBgColor4}"
+                        HorizontalOptions="End"
+                        InputTransparent="True"
+                        IsVisible="{Binding HasLapTiming}"
+                        StrokeShape="RoundRectangle 4"
+                        StrokeThickness="0"
+                        VerticalOptions="End">
+                        <Label
+                            FontAttributes="Bold"
+                            FontSize="{StaticResource FontSizeHeader}"
+                            Text="{Binding CurrentLapText4}"
+                            TextColor="{Binding CurrentLapColor4}" />
                     </Border>
                     
                     <!-- Slider individual con hover -->

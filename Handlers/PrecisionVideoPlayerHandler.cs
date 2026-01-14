@@ -442,6 +442,11 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
 
         _playerItem = new AVPlayerItem(url);
         _player = new AVPlayer(_playerItem);
+
+        // Necesario para reproducción sincronizada con setRate:time:atHostTime:
+        // si es true (default), AVPlayer puede lanzar una ObjC exception en solicitudes sincronizadas.
+        // En este proyecto priorizamos sync precisa en comparación sobre la mitigación automática de stalling.
+        _player.AutomaticallyWaitsToMinimizeStalling = false;
         _player.Muted = VirtualView.IsMuted;
 
         if (_playerLayer != null)

@@ -114,6 +114,8 @@ public partial class SinglePlayerPage : ContentPage
         _viewModel.SpeedChangeRequested += OnSpeedChangeRequested;
         _viewModel.CloseExternalPanelsRequested += OnCloseExternalPanelsRequested;
         _viewModel.VideoChanged += OnVideoChanged;
+        _viewModel.LapSyncPauseRequested += OnLapSyncPauseRequested;
+        _viewModel.LapSyncResumeAllRequested += OnLapSyncResumeAllRequested;
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
 
         if (AnalysisCanvas != null)
@@ -885,18 +887,22 @@ public partial class SinglePlayerPage : ContentPage
     private void OnPositionChanged2(object? sender, TimeSpan position)
     {
         if (!_isPageActive) return;
+        // CurrentPosition2 alimenta el lap-sync/overlay (VM); ComparisonPosition2 alimenta el delta en footer.
+        _viewModel.CurrentPosition2 = position;
         _viewModel.ComparisonPosition2 = position;
     }
 
     private void OnPositionChanged3(object? sender, TimeSpan position)
     {
         if (!_isPageActive) return;
+        _viewModel.CurrentPosition3 = position;
         _viewModel.ComparisonPosition3 = position;
     }
 
     private void OnPositionChanged4(object? sender, TimeSpan position)
     {
         if (!_isPageActive) return;
+        _viewModel.CurrentPosition4 = position;
         _viewModel.ComparisonPosition4 = position;
     }
 
@@ -1127,6 +1133,8 @@ public partial class SinglePlayerPage : ContentPage
         _viewModel.FrameBackwardRequested -= OnFrameBackwardRequested;
         _viewModel.SpeedChangeRequested -= OnSpeedChangeRequested;
         _viewModel.VideoChanged -= OnVideoChanged;
+        _viewModel.LapSyncPauseRequested -= OnLapSyncPauseRequested;
+        _viewModel.LapSyncResumeAllRequested -= OnLapSyncResumeAllRequested;
 
         if (AnalysisCanvas != null)
             AnalysisCanvas.TextRequested -= OnAnalysisCanvasTextRequested;
@@ -1549,6 +1557,46 @@ public partial class SinglePlayerPage : ContentPage
 
     #endregion
 
+    #region Lap Sync handlers
+
+    private void OnLapSyncPauseRequested(object? sender, LapSyncPauseRequestEventArgs e)
+    {
+        if (!_isPageActive) return;
+
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            if (!_isPageActive) return;
+
+            var player = e.VideoIndex switch
+            {
+                1 => MediaPlayer,
+                2 => MediaPlayer2,
+                3 => MediaPlayer3,
+                4 => MediaPlayer4,
+                _ => null
+            };
+
+            if (player == null)
+                return;
+
+            // Solo pausar, no hacer seek (el seek causa bucles de retroalimentación)
+            player.Pause();
+        });
+    }
+
+    private void OnLapSyncResumeAllRequested(object? sender, EventArgs e)
+    {
+        if (!_isPageActive) return;
+
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            if (!_isPageActive) return;
+            PlayAllPlayers();
+        });
+    }
+
+    #endregion
+
     #region Handlers del ViewModel
 
     private void OnPlayRequested(object? sender, EventArgs e)
@@ -1619,8 +1667,11 @@ public partial class SinglePlayerPage : ContentPage
 
     private void PlayAllPlayers()
     {
-        // En modo comparación: usar sincronización nativa precisa
-        if (_viewModel.IsMultiVideoLayout)
+        // En modo comparación: usar sincronización nativa precisa.
+        // OJO: en lap-sync hacemos muchas pausas/reanudaciones; setRate:time:atHostTime:
+        // puede lanzar NSException en algunos estados del AVPlayer. En ese modo preferimos
+        // Play() normal para estabilidad.
+        if (_viewModel.IsMultiVideoLayout && !_viewModel.IsComparisonLapSyncEnabled)
         {
 #if MACCATALYST || IOS || WINDOWS
             // Recopilar todos los players activos
