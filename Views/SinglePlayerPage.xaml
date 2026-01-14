@@ -854,18 +854,19 @@
                     
                     <!-- Overlay de lap actual (solo visible con lap sync activo) -->
                     <Border
-                        Margin="20,20,20,40"
-                        Padding="20,14"
+                        Margin="10,10,10,30"
+                        Padding="10,6"
                         BackgroundColor="{Binding CurrentLapBgColor1}"
                         HorizontalOptions="End"
                         InputTransparent="True"
                         IsVisible="{Binding HasLapTiming}"
-                        StrokeShape="RoundRectangle 4"
+                        StrokeShape="RoundRectangle 6"
                         StrokeThickness="0"
                         VerticalOptions="End">
                         <Label
+                            FontFamily="CourierNew"
                             FontAttributes="Bold"
-                            FontSize="{StaticResource FontSizeHeader}"
+                            FontSize="13"
                             Text="{Binding CurrentLapText1}"
                             TextColor="{Binding CurrentLapColor1}" />
                     </Border>
@@ -912,18 +913,13 @@
                                 Drop="OnVideoDropSlot2" />
                         </Border.GestureRecognizers>
                         <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center" Spacing="12">
-                            <Border
-                                Padding="16"
-                                BackgroundColor="#FF2A2A2A"
-                                StrokeShape="RoundRectangle 40"
-                                StrokeThickness="0">
-                                <controls:SymbolIcon
-                                    HeightRequest="40"
-                                    WidthRequest="40"
-                                    SymbolName="plus"
-                                    TintColor="#FF888888" />
-                            </Border>
-                            <Label Text="Arrastra un video aquí" FontSize="14" TextColor="#FF888888" HorizontalOptions="Center" />
+                            <Image
+                                Source="dragdropgris.png"
+                                HeightRequest="80"
+                                WidthRequest="80"
+                                Aspect="AspectFit"
+                                Opacity="0.8" />
+                            <Label Text="Arrastra un video aquí" Opacity="0.8" FontSize="14" TextColor="#888888" HorizontalOptions="Center" />
                         </VerticalStackLayout>
                     </Border>
                     
@@ -979,18 +975,19 @@
                     
                     <!-- Overlay de lap actual (solo visible con lap sync activo) -->
                     <Border
-                        Margin="20,20,20,40"
-                        Padding="20,14"
+                        Margin="10,10,10,30"
+                        Padding="10,6"
                         BackgroundColor="{Binding CurrentLapBgColor2}"
                         HorizontalOptions="End"
                         InputTransparent="True"
                         IsVisible="{Binding HasLapTiming}"
-                        StrokeShape="RoundRectangle 4"
+                        StrokeShape="RoundRectangle 6"
                         StrokeThickness="0"
                         VerticalOptions="End">
                         <Label
+                            FontFamily="CourierNew"
                             FontAttributes="Bold"
-                            FontSize="{StaticResource FontSizeHeader}"
+                            FontSize="13"
                             Text="{Binding CurrentLapText2}"
                             TextColor="{Binding CurrentLapColor2}" />
                     </Border>
@@ -1037,17 +1034,12 @@
                                 Drop="OnVideoDropSlot3" />
                         </Border.GestureRecognizers>
                         <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center" Spacing="12">
-                            <Border
-                                Padding="16"
-                                BackgroundColor="#FF2A2A2A"
-                                StrokeShape="RoundRectangle 40"
-                                StrokeThickness="0">
-                                <controls:SymbolIcon
-                                    HeightRequest="40"
-                                    WidthRequest="40"
-                                    SymbolName="plus"
-                                    TintColor="#FF888888" />
-                            </Border>
+                            <Image
+                                Source="dragdropgris.png"
+                                HeightRequest="60"
+                                WidthRequest="60"
+                                Aspect="AspectFit"
+                                Opacity="0.6" />
                             <Label Text="Arrastra un video aquí" FontSize="14" TextColor="#FF888888" HorizontalOptions="Center" />
                         </VerticalStackLayout>
                     </Border>
@@ -1104,18 +1096,19 @@
                     
                     <!-- Overlay de lap actual (solo visible con lap sync activo) -->
                     <Border
-                        Margin="20,20,20,40"
-                        Padding="20,14"
+                        Margin="10,10,10,30"
+                        Padding="10,6"
                         BackgroundColor="{Binding CurrentLapBgColor3}"
                         HorizontalOptions="End"
                         InputTransparent="True"
                         IsVisible="{Binding HasLapTiming}"
-                        StrokeShape="RoundRectangle 4"
+                        StrokeShape="RoundRectangle 6"
                         StrokeThickness="0"
                         VerticalOptions="End">
                         <Label
+                            FontFamily="CourierNew"
                             FontAttributes="Bold"
-                            FontSize="{StaticResource FontSizeHeader}"
+                            FontSize="13"
                             Text="{Binding CurrentLapText3}"
                             TextColor="{Binding CurrentLapColor3}" />
                     </Border>
@@ -1162,17 +1155,12 @@
                                 Drop="OnVideoDropSlot4" />
                         </Border.GestureRecognizers>
                         <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center" Spacing="12">
-                            <Border
-                                Padding="16"
-                                BackgroundColor="#FF2A2A2A"
-                                StrokeShape="RoundRectangle 40"
-                                StrokeThickness="0">
-                                <controls:SymbolIcon
-                                    HeightRequest="40"
-                                    WidthRequest="40"
-                                    SymbolName="plus"
-                                    TintColor="#FF888888" />
-                            </Border>
+                            <Image
+                                Source="dragdropgris.png"
+                                HeightRequest="60"
+                                WidthRequest="60"
+                                Aspect="AspectFit"
+                                Opacity="0.6" />
                             <Label Text="Arrastra un video aquí" FontSize="14" TextColor="#FF888888" HorizontalOptions="Center" />
                         </VerticalStackLayout>
                     </Border>
@@ -1229,18 +1217,19 @@
                     
                     <!-- Overlay de lap actual (solo visible con lap sync activo) -->
                     <Border
-                        Margin="20,20,20,40"
-                        Padding="20,14"
+                        Margin="10,10,10,30"
+                        Padding="10,6"
                         BackgroundColor="{Binding CurrentLapBgColor4}"
                         HorizontalOptions="End"
                         InputTransparent="True"
                         IsVisible="{Binding HasLapTiming}"
-                        StrokeShape="RoundRectangle 4"
+                        StrokeShape="RoundRectangle 6"
                         StrokeThickness="0"
                         VerticalOptions="End">
                         <Label
+                            FontFamily="CourierNew"
                             FontAttributes="Bold"
-                            FontSize="{StaticResource FontSizeHeader}"
+                            FontSize="13"
                             Text="{Binding CurrentLapText4}"
                             TextColor="{Binding CurrentLapColor4}" />
                     </Border>
@@ -3917,7 +3906,7 @@
                                 BackgroundColor="#FF2A2A2A"
                                 StrokeShape="RoundRectangle 6"
                                 StrokeThickness="0">
-                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                                <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="10">
                                     <controls:SymbolIcon
                                         Grid.Column="0"
                                         HeightRequest="20"
@@ -3931,8 +3920,26 @@
                                         Text="Sincronizar laps"
                                         TextColor="White"
                                         VerticalOptions="Center" />
-                                    <Switch
+                                    <!-- Botón de resincronización manual -->
+                                    <Border
                                         Grid.Column="2"
+                                        Padding="6,4"
+                                        BackgroundColor="#FF3A3A3A"
+                                        StrokeShape="RoundRectangle 4"
+                                        StrokeThickness="0"
+                                        IsVisible="{Binding IsComparisonLapSyncEnabled}"
+                                        VerticalOptions="Center">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer Command="{Binding ResyncLapsCommand}" />
+                                        </Border.GestureRecognizers>
+                                        <controls:SymbolIcon
+                                            HeightRequest="16"
+                                            SymbolName="arrow.clockwise"
+                                            TintColor="#FF4FC3F7"
+                                            WidthRequest="16" />
+                                    </Border>
+                                    <Switch
+                                        Grid.Column="3"
                                         IsToggled="{Binding IsComparisonLapSyncEnabled, Mode=TwoWay}"
                                         OnColor="#FF4FC3F7"
                                         ThumbColor="White"

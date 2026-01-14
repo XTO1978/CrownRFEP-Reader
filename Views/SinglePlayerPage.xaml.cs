@@ -116,6 +116,7 @@ public partial class SinglePlayerPage : ContentPage
         _viewModel.VideoChanged += OnVideoChanged;
         _viewModel.LapSyncPauseRequested += OnLapSyncPauseRequested;
         _viewModel.LapSyncResumeAllRequested += OnLapSyncResumeAllRequested;
+        _viewModel.LapSyncResyncRequested += OnLapSyncResyncRequested;
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
 
         if (AnalysisCanvas != null)
@@ -1135,6 +1136,7 @@ public partial class SinglePlayerPage : ContentPage
         _viewModel.VideoChanged -= OnVideoChanged;
         _viewModel.LapSyncPauseRequested -= OnLapSyncPauseRequested;
         _viewModel.LapSyncResumeAllRequested -= OnLapSyncResumeAllRequested;
+        _viewModel.LapSyncResyncRequested -= OnLapSyncResyncRequested;
 
         if (AnalysisCanvas != null)
             AnalysisCanvas.TextRequested -= OnAnalysisCanvasTextRequested;
@@ -1595,6 +1597,35 @@ public partial class SinglePlayerPage : ContentPage
         });
     }
 
+    private void OnLapSyncResyncRequested(object? sender, LapSyncResyncEventArgs e)
+    {
+        if (!_isPageActive) return;
+
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            if (!_isPageActive) return;
+
+            System.Diagnostics.Debug.WriteLine($"[SinglePlayerPage] LapSyncResync to lap {e.TargetLapNumber}");
+
+            // Pausar todos los players primero
+            PauseAllPlayers();
+
+            // Hacer seek a la posición correcta para cada video
+            foreach (var kvp in e.SeekPositions)
+            {
+                var player = GetPlayerByIndex(kvp.Key);
+                if (player != null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[SinglePlayerPage] Seeking video {kvp.Key} to {kvp.Value}");
+                    player.SeekTo(kvp.Value);
+                }
+            }
+
+            // Actualizar el estado de reproducción en el ViewModel para que el botón refleje "paused"
+            _viewModel.IsPlaying = false;
+        });
+    }
+
     #endregion
 
     #region Handlers del ViewModel
@@ -1664,6 +1695,18 @@ public partial class SinglePlayerPage : ContentPage
     #endregion
 
     #region Métodos de reproducción sincronizada
+
+    private PrecisionVideoPlayer? GetPlayerByIndex(int videoIndex)
+    {
+        return videoIndex switch
+        {
+            1 => MediaPlayer,
+            2 => MediaPlayer2,
+            3 => MediaPlayer3,
+            4 => MediaPlayer4,
+            _ => null
+        };
+    }
 
     private void PlayAllPlayers()
     {
