@@ -5026,11 +5026,99 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
                     Video3StartPosition = _comparisonPosition3,
                     Video4StartPosition = _comparisonPosition4,
                     Video1AthleteName = _videoClip.Atleta?.NombreCompleto,
+                    Video1Category = _videoClip.Atleta?.CategoriaNombre,
+                    Video1Section = _videoClip.Section,
                     Video2AthleteName = _comparisonVideo2?.Atleta?.NombreCompleto,
+                    Video2Category = _comparisonVideo2?.Atleta?.CategoriaNombre,
+                    Video2Section = _comparisonVideo2?.Section ?? 0,
                     Video3AthleteName = _comparisonVideo3?.Atleta?.NombreCompleto,
+                    Video3Category = _comparisonVideo3?.Atleta?.CategoriaNombre,
+                    Video3Section = _comparisonVideo3?.Section ?? 0,
                     Video4AthleteName = _comparisonVideo4?.Atleta?.NombreCompleto,
+                    Video4Category = _comparisonVideo4?.Atleta?.CategoriaNombre,
+                    Video4Section = _comparisonVideo4?.Section ?? 0,
                     OutputPath = outputPath
                 };
+
+                // Si está habilitada la sincronización por laps, leer parciales de los 4 videos
+                if (IsComparisonLapSyncEnabled)
+                {
+                    ComparisonExportStatus = "Leyendo parciales...";
+                    if (statusBarService != null)
+                        MainThread.BeginInvokeOnMainThread(() => statusBarService.UpdateProgress(0.0, "Leyendo parciales..."));
+
+                    var timing1 = await _databaseService.GetExecutionTimingEventsByVideoAsync(_videoClip.Id);
+                    var timing2 = _comparisonVideo2 != null 
+                        ? await _databaseService.GetExecutionTimingEventsByVideoAsync(_comparisonVideo2.Id)
+                        : new List<ExecutionTimingEvent>();
+                    var timing3 = _comparisonVideo3 != null 
+                        ? await _databaseService.GetExecutionTimingEventsByVideoAsync(_comparisonVideo3.Id)
+                        : new List<ExecutionTimingEvent>();
+                    var timing4 = _comparisonVideo4 != null 
+                        ? await _databaseService.GetExecutionTimingEventsByVideoAsync(_comparisonVideo4.Id)
+                        : new List<ExecutionTimingEvent>();
+
+                    var end1FromEventsMs = timing1.LastOrDefault(e => e.Kind == 2)?.ElapsedMilliseconds;
+                    var end2FromEventsMs = timing2.LastOrDefault(e => e.Kind == 2)?.ElapsedMilliseconds;
+                    var end3FromEventsMs = timing3.LastOrDefault(e => e.Kind == 2)?.ElapsedMilliseconds;
+                    var end4FromEventsMs = timing4.LastOrDefault(e => e.Kind == 2)?.ElapsedMilliseconds;
+
+                    var end1 = end1FromEventsMs.HasValue
+                        ? TimeSpan.FromMilliseconds(end1FromEventsMs.Value)
+                        : Duration;
+                    var end2 = end2FromEventsMs.HasValue
+                        ? TimeSpan.FromMilliseconds(end2FromEventsMs.Value)
+                        : Duration;
+                    var end3 = end3FromEventsMs.HasValue
+                        ? TimeSpan.FromMilliseconds(end3FromEventsMs.Value)
+                        : Duration;
+                    var end4 = end4FromEventsMs.HasValue
+                        ? TimeSpan.FromMilliseconds(end4FromEventsMs.Value)
+                        : Duration;
+
+                    var start1FromEventsMs = timing1.FirstOrDefault(e => e.Kind == 0)?.ElapsedMilliseconds;
+                    var start2FromEventsMs = timing2.FirstOrDefault(e => e.Kind == 0)?.ElapsedMilliseconds;
+                    var start3FromEventsMs = timing3.FirstOrDefault(e => e.Kind == 0)?.ElapsedMilliseconds;
+                    var start4FromEventsMs = timing4.FirstOrDefault(e => e.Kind == 0)?.ElapsedMilliseconds;
+
+                    var exportStart1 = start1FromEventsMs.HasValue
+                        ? TimeSpan.FromMilliseconds(start1FromEventsMs.Value)
+                        : CurrentPosition;
+                    var exportStart2 = start2FromEventsMs.HasValue
+                        ? TimeSpan.FromMilliseconds(start2FromEventsMs.Value)
+                        : _comparisonPosition2;
+                    var exportStart3 = start3FromEventsMs.HasValue
+                        ? TimeSpan.FromMilliseconds(start3FromEventsMs.Value)
+                        : _comparisonPosition3;
+                    var exportStart4 = start4FromEventsMs.HasValue
+                        ? TimeSpan.FromMilliseconds(start4FromEventsMs.Value)
+                        : _comparisonPosition4;
+
+                    var boundaries1 = BuildLapBoundaries(timing1, exportStart1, end1);
+                    var boundaries2 = BuildLapBoundaries(timing2, exportStart2, end2);
+                    var boundaries3 = BuildLapBoundaries(timing3, exportStart3, end3);
+                    var boundaries4 = BuildLapBoundaries(timing4, exportStart4, end4);
+
+                    // Verificar que todos los videos tienen al menos 2 boundaries (inicio y fin)
+                    if (boundaries1 != null && boundaries2 != null && boundaries3 != null && boundaries4 != null 
+                        && boundaries1.Count >= 2 && boundaries2.Count >= 2 && boundaries3.Count >= 2 && boundaries4.Count >= 2)
+                    {
+                        exportParams.SyncByLaps = true;
+                        exportParams.Video1LapBoundaries = boundaries1;
+                        exportParams.Video2LapBoundaries = boundaries2;
+                        exportParams.Video3LapBoundaries = boundaries3;
+                        exportParams.Video4LapBoundaries = boundaries4;
+                        exportParams.Video1StartPosition = exportStart1;
+                        exportParams.Video2StartPosition = exportStart2;
+                        exportParams.Video3StartPosition = exportStart3;
+                        exportParams.Video4StartPosition = exportStart4;
+                    }
+                    else
+                    {
+                        ComparisonExportStatus = "No hay parciales suficientes para sincronizar. Exportando sin sincronización...";
+                        await Task.Delay(1500);
+                    }
+                }
 
                 ComparisonExportStatus = "Componiendo vídeos...";
                 if (statusBarService != null)

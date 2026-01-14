@@ -1372,6 +1372,12 @@ public class WindowsVideoCompositionService : IVideoCompositionService
                     var lapText3 = $"Lap {i + 1}: {FormatLap(d3)}";
                     var lapText4 = $"Lap {i + 1}: {FormatLap(d4)}";
 
+                    // Delta global (más rápido vs más lento) centrado en el grid, como en QuadPlayer.
+                    var diff = maxDur - minDur;
+                    if (diff < TimeSpan.Zero)
+                        diff = -diff;
+                    var diffText = $"Δ {FormatLap(diff)}";
+
                     var availableW = (int)Math.Max(1, Math.Round(pos1.Width - (quadPad * 2.0)));
                     var lapW1 = Math.Min(ComputePillWidthTight(lapText1, quadLapH, quadLapMaxW), availableW);
                     var lapW2 = Math.Min(ComputePillWidthTight(lapText2, quadLapH, quadLapMaxW), availableW);
@@ -1449,6 +1455,20 @@ public class WindowsVideoCompositionService : IVideoCompositionService
                     // Fila inferior: arriba del cuadrante para alinear los 4 labels en la junta central
                     await AddLapAndNameOverlayAsync(pos3, anchorRight: true, anchorTop: true, lapText3, lapColor3, lapW3, v3NameFile, v3NameW, showName3, $"q_lap_3_{i + 1}");
                     await AddLapAndNameOverlayAsync(pos4, anchorRight: false, anchorTop: true, lapText4, lapColor4, lapW4, v4NameFile, v4NameW, showName4, $"q_lap_4_{i + 1}");
+
+                    // Delta central (fondo oscuro + texto blanco)
+                    var deltaH = quadLapH;
+                    var deltaMaxW = (int)Math.Max(1, Math.Round(syncOutputWidth * 0.60));
+                    var deltaW = ComputePillWidthTight(diffText, deltaH, deltaMaxW);
+                    var deltaBg = new SKColor(0, 0, 0, 220);
+                    var deltaImg = await CreatePillLabelImageAsync(diffText, deltaBg, white, deltaW, deltaH, $"q_delta_{i + 1}", cancellationToken);
+                    var deltaClip = await MediaClip.CreateFromImageFileAsync(deltaImg, segDuration);
+                    syncOverlayLayer.Overlays.Add(new MediaOverlay(deltaClip)
+                    {
+                        Position = new WinFoundation.Rect((syncOutputWidth - deltaW) / 2.0, (syncOutputHeight - deltaH) / 2.0, deltaW, deltaH),
+                        Delay = cursor,
+                        Opacity = 1.0
+                    });
 
                     cursor += segDuration;
                 }

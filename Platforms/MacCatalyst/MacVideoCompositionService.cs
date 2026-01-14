@@ -82,6 +82,15 @@ public class MacVideoCompositionService : Services.IVideoCompositionService
 
     private sealed record LapOverlaySegment(int LapIndex, TimeSpan Start, TimeSpan Duration, TimeSpan LapTime1, TimeSpan LapTime2);
 
+    private sealed record QuadLapOverlaySegment(
+        int LapIndex,
+        TimeSpan Start,
+        TimeSpan Duration,
+        TimeSpan LapTime1,
+        TimeSpan LapTime2,
+        TimeSpan LapTime3,
+        TimeSpan LapTime4);
+
     private static void AddLapTimingOverlays(
         CALayer parentLayer,
         CGRect frame1,
@@ -121,6 +130,75 @@ public class MacVideoCompositionService : Services.IVideoCompositionService
 
             parentLayer.AddSublayer(CreateTimedBadge(badge1Frame, text1, color1, begin, dur));
             parentLayer.AddSublayer(CreateTimedBadge(badge2Frame, text2, color2, begin, dur));
+            parentLayer.AddSublayer(CreateTimedBadge(centerFrame, diffText, white, begin, dur));
+        }
+    }
+
+    private static void AddQuadLapTimingOverlays(
+        CALayer parentLayer,
+        CGRect frame1,
+        CGRect frame2,
+        CGRect frame3,
+        CGRect frame4,
+        CGSize outputSize,
+        IReadOnlyList<QuadLapOverlaySegment> segments)
+    {
+        var green = UIColor.FromRGB(52, 199, 89);
+        var red = UIColor.FromRGB(255, 59, 48);
+        var white = UIColor.White;
+
+        var badgeHeight = 44;
+        var badgeWidth = Math.Min(260, frame1.Width * 0.80);
+
+        var pad = 12.0;
+
+        CGRect BottomRight(CGRect f) => new CGRect(f.Right - pad - badgeWidth, f.Y + f.Height - pad - badgeHeight, badgeWidth, badgeHeight);
+        CGRect BottomLeft(CGRect f) => new CGRect(f.X + pad, f.Y + f.Height - pad - badgeHeight, badgeWidth, badgeHeight);
+        CGRect TopRight(CGRect f) => new CGRect(f.Right - pad - badgeWidth, f.Y + pad, badgeWidth, badgeHeight);
+        CGRect TopLeft(CGRect f) => new CGRect(f.X + pad, f.Y + pad, badgeWidth, badgeHeight);
+
+        var badge1Frame = BottomRight(frame1);
+        var badge2Frame = BottomLeft(frame2);
+        var badge3Frame = TopRight(frame3);
+        var badge4Frame = TopLeft(frame4);
+
+        // Delta centrado horizontalmente, justo arriba de la línea divisoria horizontal
+        var centerFrame = new CGRect((outputSize.Width - 260) / 2.0, (outputSize.Height / 2.0) + 8, 260, badgeHeight);
+
+        foreach (var seg in segments)
+        {
+            var d1 = seg.LapTime1;
+            var d2 = seg.LapTime2;
+            var d3 = seg.LapTime3;
+            var d4 = seg.LapTime4;
+
+            var min = new[] { d1, d2, d3, d4 }.Min();
+            var max = new[] { d1, d2, d3, d4 }.Max();
+            var anyDiff = min != max;
+
+            UIColor PickColor(TimeSpan d)
+            {
+                if (!anyDiff) return white;
+                if (d == min) return green;
+                if (d == max) return red;
+                return white;
+            }
+
+            var lapLabel = $"Lap {seg.LapIndex}";
+            var text1 = $"{lapLabel}: {FormatLapTime(d1)}";
+            var text2 = $"{lapLabel}: {FormatLapTime(d2)}";
+            var text3 = $"{lapLabel}: {FormatLapTime(d3)}";
+            var text4 = $"{lapLabel}: {FormatLapTime(d4)}";
+            var diff = (max - min) < TimeSpan.Zero ? (min - max) : (max - min);
+            var diffText = $"Δ {FormatLapTime(diff)}";
+
+            var begin = seg.Start.TotalSeconds;
+            var dur = Math.Max(0.05, seg.Duration.TotalSeconds);
+
+            parentLayer.AddSublayer(CreateTimedBadge(badge1Frame, text1, PickColor(d1), begin, dur));
+            parentLayer.AddSublayer(CreateTimedBadge(badge2Frame, text2, PickColor(d2), begin, dur));
+            parentLayer.AddSublayer(CreateTimedBadge(badge3Frame, text3, PickColor(d3), begin, dur));
+            parentLayer.AddSublayer(CreateTimedBadge(badge4Frame, text4, PickColor(d4), begin, dur));
             parentLayer.AddSublayer(CreateTimedBadge(centerFrame, diffText, white, begin, dur));
         }
     }
@@ -617,7 +695,8 @@ public class MacVideoCompositionService : Services.IVideoCompositionService
     }
 
     private void AddOverlayToFrame(CALayer parentLayer, CGRect frame, 
-        string? athleteName, string? category, int? section, string? time, string? penalties)
+        string? athleteName, string? category, int? section, string? time, string? penalties,
+        bool alignRight = false)
     {
         // Construir el texto de información
         var infoText = "";
@@ -631,25 +710,38 @@ public class MacVideoCompositionService : Services.IVideoCompositionService
         var infoFontSize = 12.0f;
         var horizontalPadding = 24.0; // 12px padding a cada lado
         
-        // Estimar el ancho del texto (aproximadamente 0.6 * fontSize * caracteres para fuente proporcional)
-        var nameWidth = !string.IsNullOrEmpty(athleteName) 
-            ? athleteName.Length * nameFontSize * 0.55 
-            : 0;
-        var infoWidth = !string.IsNullOrEmpty(infoText) 
-            ? infoText.Length * infoFontSize * 0.55 
-            : 0;
+        // Medir el ancho real del texto usando NSString
+        var nameFont = UIFont.SystemFontOfSize(nameFontSize);
+        var infoFont = UIFont.SystemFontOfSize(infoFontSize);
+        
+        var nameWidth = 0.0;
+        if (!string.IsNullOrEmpty(athleteName))
+        {
+            var nameSize = new NSString(athleteName).GetSizeUsingAttributes(new UIStringAttributes { Font = nameFont });
+            nameWidth = nameSize.Width;
+        }
+        
+        var infoWidth = 0.0;
+        if (!string.IsNullOrEmpty(infoText))
+        {
+            var infoSize = new NSString(infoText).GetSizeUsingAttributes(new UIStringAttributes { Font = infoFont });
+            infoWidth = infoSize.Width;
+        }
         
         var maxTextWidth = Math.Max(nameWidth, infoWidth);
         var containerWidth = Math.Min(maxTextWidth + horizontalPadding, frame.Width - 20); // No exceder el frame
         containerWidth = Math.Max(containerWidth, 120); // Mínimo 120px
         
         var overlayContainer = new CALayer();
-        overlayContainer.Frame = new CGRect(frame.X + 10, frame.Y + frame.Height - 80, containerWidth, 70);
+        var xPosition = alignRight 
+            ? frame.X + frame.Width - containerWidth - 10 
+            : frame.X + 10;
+        overlayContainer.Frame = new CGRect(xPosition, frame.Y + 10, containerWidth, 70);
         // Fondo mate (100% opaco)
         overlayContainer.BackgroundColor = UIColor.FromRGBA(0, 0, 0, 255).CGColor;
         overlayContainer.CornerRadius = 8;
 
-        var alignmentLeft = new NSString("left");
+        var alignmentMode = alignRight ? new NSString("right") : new NSString("left");
 
         if (!string.IsNullOrEmpty(athleteName))
         {
@@ -658,7 +750,7 @@ public class MacVideoCompositionService : Services.IVideoCompositionService
             nameLayer.FontSize = nameFontSize;
             nameLayer.ForegroundColor = UIColor.White.CGColor;
             nameLayer.Frame = new CGRect(12, 40, containerWidth - 24, 24);
-            nameLayer.SetValueForKey(alignmentLeft, new NSString("alignmentMode"));
+            nameLayer.SetValueForKey(alignmentMode, new NSString("alignmentMode"));
             nameLayer.ContentsScale = UIScreen.MainScreen.Scale;
             overlayContainer.AddSublayer(nameLayer);
         }
@@ -670,7 +762,7 @@ public class MacVideoCompositionService : Services.IVideoCompositionService
             infoLayer.FontSize = infoFontSize;
             infoLayer.ForegroundColor = UIColor.FromRGBA(180, 180, 180, 255).CGColor;
             infoLayer.Frame = new CGRect(12, 15, containerWidth - 24, 20);
-            infoLayer.SetValueForKey(alignmentLeft, new NSString("alignmentMode"));
+            infoLayer.SetValueForKey(alignmentMode, new NSString("alignmentMode"));
             infoLayer.ContentsScale = UIScreen.MainScreen.Scale;
             overlayContainer.AddSublayer(infoLayer);
         }
@@ -850,12 +942,16 @@ public class MacVideoCompositionService : Services.IVideoCompositionService
 
                 NSError? error;
 
+                List<QuadLapOverlaySegment>? quadLapSegments = null;
+
                 if (parameters.SyncByLaps &&
                     parameters.Video1LapBoundaries?.Count >= 2 &&
                     parameters.Video2LapBoundaries?.Count >= 2 &&
                     parameters.Video3LapBoundaries?.Count >= 2 &&
                     parameters.Video4LapBoundaries?.Count >= 2)
                 {
+                    quadLapSegments = new List<QuadLapOverlaySegment>();
+
                     var b1 = parameters.Video1LapBoundaries;
                     var b2 = parameters.Video2LapBoundaries;
                     var b3 = parameters.Video3LapBoundaries;
@@ -872,6 +968,8 @@ public class MacVideoCompositionService : Services.IVideoCompositionService
 
                     for (int i = 0; i < segmentCount; i++)
                     {
+                        var cursorStart = cursor;
+
                         var s1 = ToCMTime(b1[i]);
                         var e1 = ToCMTime(b1[i + 1]);
                         var s2 = ToCMTime(b2[i]);
@@ -913,6 +1011,15 @@ public class MacVideoCompositionService : Services.IVideoCompositionService
                         if (compositionVideoTrack2 != null) InsertFreezePadding(compositionVideoTrack2, videoTrack2, e2, cursor + d2, segDuration - d2, fd2, out error);
                         if (compositionVideoTrack3 != null) InsertFreezePadding(compositionVideoTrack3, videoTrack3, e3, cursor + d3, segDuration - d3, fd3, out error);
                         if (compositionVideoTrack4 != null) InsertFreezePadding(compositionVideoTrack4, videoTrack4, e4, cursor + d4, segDuration - d4, fd4, out error);
+
+                        quadLapSegments.Add(new QuadLapOverlaySegment(
+                            LapIndex: i + 1,
+                            Start: TimeSpan.FromSeconds(cursorStart.Seconds),
+                            Duration: TimeSpan.FromSeconds(segDuration.Seconds),
+                            LapTime1: TimeSpan.FromSeconds(d1.Seconds),
+                            LapTime2: TimeSpan.FromSeconds(d2.Seconds),
+                            LapTime3: TimeSpan.FromSeconds(d3.Seconds),
+                            LapTime4: TimeSpan.FromSeconds(d4.Seconds)));
 
                         cursor += segDuration;
                     }
@@ -969,7 +1076,7 @@ public class MacVideoCompositionService : Services.IVideoCompositionService
                 };
 
                 // Overlays
-                AddQuadTextOverlays(videoComposition, parameters, frame1, frame2, frame3, frame4, outputSize);
+                AddQuadTextOverlays(videoComposition, parameters, frame1, frame2, frame3, frame4, outputSize, quadLapSegments);
 
                 // Exportar
                 if (File.Exists(parameters.OutputPath))
@@ -1066,7 +1173,12 @@ public class MacVideoCompositionService : Services.IVideoCompositionService
 
     private void AddQuadTextOverlays(AVMutableVideoComposition videoComposition,
         Services.QuadVideoExportParams parameters,
-        CGRect frame1, CGRect frame2, CGRect frame3, CGRect frame4, CGSize outputSize)
+        CGRect frame1,
+        CGRect frame2,
+        CGRect frame3,
+        CGRect frame4,
+        CGSize outputSize,
+        IReadOnlyList<QuadLapOverlaySegment>? quadLapSegments)
     {
         var parentLayer = new CALayer();
         var videoLayer = new CALayer();
@@ -1082,7 +1194,8 @@ public class MacVideoCompositionService : Services.IVideoCompositionService
                 parameters.Video1Category,
                 parameters.Video1Section,
                 parameters.Video1Time,
-                parameters.Video1Penalties);
+                parameters.Video1Penalties,
+                alignRight: false); // Columna izquierda -> label a la izquierda
         }
 
         if (!string.IsNullOrEmpty(parameters.Video2AthleteName))
@@ -1092,7 +1205,8 @@ public class MacVideoCompositionService : Services.IVideoCompositionService
                 parameters.Video2Category,
                 parameters.Video2Section,
                 parameters.Video2Time,
-                parameters.Video2Penalties);
+                parameters.Video2Penalties,
+                alignRight: true); // Columna derecha -> label a la derecha
         }
 
         if (!string.IsNullOrEmpty(parameters.Video3AthleteName))
@@ -1102,7 +1216,8 @@ public class MacVideoCompositionService : Services.IVideoCompositionService
                 parameters.Video3Category,
                 parameters.Video3Section,
                 parameters.Video3Time,
-                parameters.Video3Penalties);
+                parameters.Video3Penalties,
+                alignRight: false); // Columna izquierda -> label a la izquierda
         }
 
         if (!string.IsNullOrEmpty(parameters.Video4AthleteName))
@@ -1112,7 +1227,13 @@ public class MacVideoCompositionService : Services.IVideoCompositionService
                 parameters.Video4Category,
                 parameters.Video4Section,
                 parameters.Video4Time,
-                parameters.Video4Penalties);
+                parameters.Video4Penalties,
+                alignRight: true); // Columna derecha -> label a la derecha
+        }
+
+        if (parameters.SyncByLaps && quadLapSegments != null && quadLapSegments.Count > 0)
+        {
+            AddQuadLapTimingOverlays(parentLayer, frame1, frame2, frame3, frame4, outputSize, quadLapSegments);
         }
 
         videoComposition.AnimationTool = AVVideoCompositionCoreAnimationTool.FromLayer(videoLayer, parentLayer);
