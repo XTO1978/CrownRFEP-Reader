@@ -131,6 +131,10 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     private bool _isStatsTabSelected;
     private bool _isDiaryTabSelected;
     
+    // Visibilidad de paneles laterales (iOS)
+    private bool _isLeftPanelVisible = true;
+    private bool _isRightPanelVisible = true;
+    
     // Diario de sesión
     private SessionDiary? _currentSessionDiary;
     private bool _isEditingDiary;
@@ -254,6 +258,10 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             IsDiaryTabSelected = true;
             await LoadSessionDiaryAsync();
         });
+        
+        // Comandos para toggle de paneles laterales (iOS)
+        ToggleLeftPanelCommand = new Command(() => IsLeftPanelVisible = !IsLeftPanelVisible);
+        ToggleRightPanelCommand = new Command(() => IsRightPanelVisible = !IsRightPanelVisible);
         
         // Comandos del diario de sesión
         SaveDiaryCommand = new Command(async () => await SaveDiaryAsync());
@@ -1452,6 +1460,20 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         }
     }
 
+    // ===== Visibilidad de paneles laterales (iOS) =====
+    
+    public bool IsLeftPanelVisible
+    {
+        get => _isLeftPanelVisible;
+        set { _isLeftPanelVisible = value; OnPropertyChanged(); }
+    }
+    
+    public bool IsRightPanelVisible
+    {
+        get => _isRightPanelVisible;
+        set { _isRightPanelVisible = value; OnPropertyChanged(); }
+    }
+
     // ===== Propiedades del Diario de Sesión =====
     
     public int DiaryValoracionFisica
@@ -1842,6 +1864,10 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     public ICommand SelectToolsTabCommand { get; }
     public ICommand SelectStatsTabCommand { get; }
     public ICommand SelectDiaryTabCommand { get; }
+    
+    // Comandos para toggle de paneles laterales (iOS)
+    public ICommand ToggleLeftPanelCommand { get; }
+    public ICommand ToggleRightPanelCommand { get; }
     
     // Comandos del diario de sesión
     public ICommand SaveDiaryCommand { get; }

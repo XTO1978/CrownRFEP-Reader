@@ -78,8 +78,8 @@ public partial class SinglePlayerPage : ContentPage
 
         AppLog.Info("SinglePlayerPage", "CTOR");
 
-#if WINDOWS || MACCATALYST
-        // En Windows y MacCatalyst: layout de 5 columnas
+#if WINDOWS || MACCATALYST || IOS
+        // En Windows, MacCatalyst e iOS: layout de 5 columnas
         // Controles de reproducción en Row 1, debajo del player
         if (PlayerControlsBorder != null)
         {
@@ -91,13 +91,6 @@ public partial class SinglePlayerPage : ContentPage
         if (VideoAreaBorder != null)
         {
             Grid.SetRowSpan(VideoAreaBorder, 1);
-        }
-#elif IOS
-        // En iOS: controles de reproducción como overlay en Row 0, anclados abajo
-        if (PlayerControlsBorder != null)
-        {
-            Grid.SetRow(PlayerControlsBorder, 0);
-            PlayerControlsBorder.VerticalOptions = LayoutOptions.End;
         }
 #else
         // En otras plataformas: controles en Row 1 separados del video
@@ -121,6 +114,7 @@ public partial class SinglePlayerPage : ContentPage
         _viewModel.SpeedChangeRequested += OnSpeedChangeRequested;
         _viewModel.CloseExternalPanelsRequested += OnCloseExternalPanelsRequested;
         _viewModel.VideoChanged += OnVideoChanged;
+        _viewModel.PropertyChanged += OnViewModelPropertyChanged;
 
         if (AnalysisCanvas != null)
             AnalysisCanvas.TextRequested += OnAnalysisCanvasTextRequested;
@@ -906,6 +900,137 @@ public partial class SinglePlayerPage : ContentPage
         _viewModel.ComparisonPosition4 = position;
     }
 
+    #region Video Slot Hover y Sliders Individuales
+
+    // Hover handlers para mostrar/ocultar sliders individuales
+    private void OnVideoSlot1PointerEntered(object? sender, PointerEventArgs e)
+    {
+        if (_viewModel.IsMultiVideoLayout)
+        {
+            SliderOverlay1.IsVisible = true;
+            UpdateIndividualSlider1Position();
+        }
+    }
+
+    private void OnVideoSlot1PointerExited(object? sender, PointerEventArgs e)
+    {
+        SliderOverlay1.IsVisible = false;
+    }
+
+    private void OnVideoSlot2PointerEntered(object? sender, PointerEventArgs e)
+    {
+        if (_viewModel.HasComparisonVideo2)
+        {
+            SliderOverlay2.IsVisible = true;
+            UpdateIndividualSlider2Position();
+        }
+    }
+
+    private void OnVideoSlot2PointerExited(object? sender, PointerEventArgs e)
+    {
+        SliderOverlay2.IsVisible = false;
+    }
+
+    private void OnVideoSlot3PointerEntered(object? sender, PointerEventArgs e)
+    {
+        if (_viewModel.HasComparisonVideo3)
+        {
+            SliderOverlay3.IsVisible = true;
+            UpdateIndividualSlider3Position();
+        }
+    }
+
+    private void OnVideoSlot3PointerExited(object? sender, PointerEventArgs e)
+    {
+        SliderOverlay3.IsVisible = false;
+    }
+
+    private void OnVideoSlot4PointerEntered(object? sender, PointerEventArgs e)
+    {
+        if (_viewModel.HasComparisonVideo4)
+        {
+            SliderOverlay4.IsVisible = true;
+            UpdateIndividualSlider4Position();
+        }
+    }
+
+    private void OnVideoSlot4PointerExited(object? sender, PointerEventArgs e)
+    {
+        SliderOverlay4.IsVisible = false;
+    }
+
+    // Actualizar posición de sliders individuales basándose en la posición actual del reproductor
+    private void UpdateIndividualSlider1Position()
+    {
+        if (MediaPlayer?.Duration.TotalSeconds > 0)
+        {
+            IndividualSlider1.Value = MediaPlayer.Position.TotalSeconds / MediaPlayer.Duration.TotalSeconds;
+        }
+    }
+
+    private void UpdateIndividualSlider2Position()
+    {
+        if (MediaPlayer2?.Duration.TotalSeconds > 0)
+        {
+            IndividualSlider2.Value = MediaPlayer2.Position.TotalSeconds / MediaPlayer2.Duration.TotalSeconds;
+        }
+    }
+
+    private void UpdateIndividualSlider3Position()
+    {
+        if (MediaPlayer3?.Duration.TotalSeconds > 0)
+        {
+            IndividualSlider3.Value = MediaPlayer3.Position.TotalSeconds / MediaPlayer3.Duration.TotalSeconds;
+        }
+    }
+
+    private void UpdateIndividualSlider4Position()
+    {
+        if (MediaPlayer4?.Duration.TotalSeconds > 0)
+        {
+            IndividualSlider4.Value = MediaPlayer4.Position.TotalSeconds / MediaPlayer4.Duration.TotalSeconds;
+        }
+    }
+
+    // Handlers de cambio de valor para sliders individuales
+    private void OnIndividualSlider1Changed(object? sender, ValueChangedEventArgs e)
+    {
+        if (MediaPlayer?.Duration.TotalSeconds > 0)
+        {
+            var position = TimeSpan.FromSeconds(e.NewValue * MediaPlayer.Duration.TotalSeconds);
+            MediaPlayer.SeekTo(position);
+        }
+    }
+
+    private void OnIndividualSlider2Changed(object? sender, ValueChangedEventArgs e)
+    {
+        if (MediaPlayer2?.Duration.TotalSeconds > 0)
+        {
+            var position = TimeSpan.FromSeconds(e.NewValue * MediaPlayer2.Duration.TotalSeconds);
+            MediaPlayer2.SeekTo(position);
+        }
+    }
+
+    private void OnIndividualSlider3Changed(object? sender, ValueChangedEventArgs e)
+    {
+        if (MediaPlayer3?.Duration.TotalSeconds > 0)
+        {
+            var position = TimeSpan.FromSeconds(e.NewValue * MediaPlayer3.Duration.TotalSeconds);
+            MediaPlayer3.SeekTo(position);
+        }
+    }
+
+    private void OnIndividualSlider4Changed(object? sender, ValueChangedEventArgs e)
+    {
+        if (MediaPlayer4?.Duration.TotalSeconds > 0)
+        {
+            var position = TimeSpan.FromSeconds(e.NewValue * MediaPlayer4.Duration.TotalSeconds);
+            MediaPlayer4.SeekTo(position);
+        }
+    }
+
+    #endregion
+
     private void CleanupComparisonMediaHandlers()
     {
         if (MediaPlayer2 != null)
@@ -1621,7 +1746,8 @@ public partial class SinglePlayerPage : ContentPage
         _wasPlayingBeforeDrag = _viewModel.IsPlaying;
         if (_wasPlayingBeforeDrag)
         {
-            MediaPlayer?.Pause();
+            // Pausar todos los players en modo comparación
+            PauseAllPlayers();
             _viewModel.IsPlaying = false;
         }
     }
@@ -1642,12 +1768,14 @@ public partial class SinglePlayerPage : ContentPage
         if ((now - _lastSeekTime).TotalMilliseconds >= SeekThrottleMs)
         {
             _lastSeekTime = now;
-            MediaPlayer?.SeekTo(position);
+            // Seek en todos los players en modo comparación
+            SeekAllPlayersTo(position);
         }
 #else
         // En MacCatalyst/iOS: hacer seek para mostrar el frame actual
         // El parpadeo ya no ocurre porque eliminamos el binding del slider
-        MediaPlayer?.SeekTo(position);
+        // Seek en todos los players en modo comparación
+        SeekAllPlayersTo(position);
 #endif
     }
 
@@ -1664,9 +1792,9 @@ public partial class SinglePlayerPage : ContentPage
             sliderValue = ProgressSlider.Value;
         }
         
-        // Primero hacer el seek al frame deseado
+        // Primero hacer el seek al frame deseado en todos los players
         var position = TimeSpan.FromSeconds(sliderValue * _viewModel.Duration.TotalSeconds);
-        MediaPlayer?.SeekTo(position);
+        SeekAllPlayersTo(position);
         
         // Después desactivar los flags para que Progress se actualice normalmente
         _isDraggingSlider = false;
@@ -1830,6 +1958,39 @@ public partial class SinglePlayerPage : ContentPage
             }
         });
     }
+    
+    private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+#if IOS
+        // En iOS, ajustar las columnas cuando cambia la visibilidad de los paneles
+        if (e.PropertyName == nameof(SinglePlayerViewModel.IsLeftPanelVisible) ||
+            e.PropertyName == nameof(SinglePlayerViewModel.IsRightPanelVisible))
+        {
+            UpdatePanelColumnsForIOS();
+        }
+#endif
+    }
+    
+#if IOS
+    private void UpdatePanelColumnsForIOS()
+    {
+        if (RootGrid?.ColumnDefinitions == null || RootGrid.ColumnDefinitions.Count < 5)
+            return;
+            
+        var leftVisible = _viewModel.IsLeftPanelVisible;
+        var rightVisible = _viewModel.IsRightPanelVisible;
+        
+        // Columna 0: Panel izquierdo (galería)
+        RootGrid.ColumnDefinitions[0].Width = leftVisible ? new GridLength(300, GridUnitType.Absolute) : new GridLength(0);
+        // Columna 1: Splitter izquierdo
+        RootGrid.ColumnDefinitions[1].Width = leftVisible ? new GridLength(8, GridUnitType.Absolute) : new GridLength(0);
+        
+        // Columna 3: Splitter derecho
+        RootGrid.ColumnDefinitions[3].Width = rightVisible ? new GridLength(8, GridUnitType.Absolute) : new GridLength(0);
+        // Columna 4: Panel derecho (herramientas)
+        RootGrid.ColumnDefinitions[4].Width = rightVisible ? new GridLength(340, GridUnitType.Absolute) : new GridLength(0);
+    }
+#endif
 
     #endregion
 
