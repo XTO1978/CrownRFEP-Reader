@@ -736,7 +736,9 @@ public class MacVideoCompositionService : Services.IVideoCompositionService
         var xPosition = alignRight 
             ? frame.X + frame.Width - containerWidth - 10 
             : frame.X + 10;
-        overlayContainer.Frame = new CGRect(xPosition, frame.Y + 10, containerWidth, 70);
+        // Posicionar en la parte superior del frame (Y + Height - containerHeight - margen)
+        var yPosition = frame.Y + frame.Height - 70 - 10;
+        overlayContainer.Frame = new CGRect(xPosition, yPosition, containerWidth, 70);
         // Fondo mate (100% opaco)
         overlayContainer.BackgroundColor = UIColor.FromRGBA(0, 0, 0, 255).CGColor;
         overlayContainer.CornerRadius = 8;
