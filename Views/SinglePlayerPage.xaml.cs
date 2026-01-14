@@ -2186,14 +2186,14 @@ public partial class SinglePlayerPage : ContentPage
                 ComparisonGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star });
                 
                 VideoSlot1.IsVisible = true;
-                VideoSlot2.IsVisible = false;
-                VideoSlot3.IsVisible = true;
+                VideoSlot2.IsVisible = true;
+                VideoSlot3.IsVisible = false;
                 VideoSlot4.IsVisible = false;
                 
                 Grid.SetRow(VideoSlot1, 0);
                 Grid.SetColumn(VideoSlot1, 0);
-                Grid.SetRow(VideoSlot3, 1);
-                Grid.SetColumn(VideoSlot3, 0);
+                Grid.SetRow(VideoSlot2, 1);
+                Grid.SetColumn(VideoSlot2, 0);
                 break;
 
             case ComparisonLayout.Quad2x2:

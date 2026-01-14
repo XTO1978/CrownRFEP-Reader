@@ -125,6 +125,12 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     private VideoClip? _comparisonVideo3;
     private VideoClip? _comparisonVideo4;
     private int _selectedComparisonSlot = 0; // 0 = ninguno, 2-4 = slot de video
+    
+    // Exportación de comparación
+    private bool _isComparisonExporting;
+    private double _comparisonExportProgress;
+    private string _comparisonExportStatus = string.Empty;
+    private bool _isComparisonLapSyncEnabled;
 
     // Pestañas del panel lateral derecho
     private bool _isToolsTabSelected = true;
@@ -249,6 +255,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         AssignVideoToComparisonSlotCommand = new Command<VideoClip>(AssignVideoToComparisonSlot);
         DropVideoToSlotCommand = new Command<object>(AssignVideoToComparisonSlotWithSlot);
         DropVideoIdToSlotCommand = new Command<object>(async obj => await AssignVideoIdToComparisonSlotAsync(obj));
+        ExportComparisonCommand = new Command(async () => await ExportComparisonVideosAsync(), () => CanExportComparison);
         
         // Comandos de navegación de pestañas del panel lateral
         SelectToolsTabCommand = new Command(() => IsToolsTabSelected = true);
@@ -1193,6 +1200,18 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(VideoAspect));
             OnPropertyChanged(nameof(SyncStatusText));
             OnPropertyChanged(nameof(SyncDeltaText));
+            OnPropertyChanged(nameof(CanExportComparison));
+
+            // Refrescar galería inmediatamente al crear/cambiar el layout paralelo
+            OnPropertyChanged(nameof(PlaylistVideos));
+            OnPropertyChanged(nameof(PlaylistCount));
+            OnPropertyChanged(nameof(CurrentPlaylistPosition));
+            OnPropertyChanged(nameof(PlaylistPositionText));
+            OnPropertyChanged(nameof(CanGoPrevious));
+            OnPropertyChanged(nameof(CanGoNext));
+            OnPropertyChanged(nameof(HasPlaylist));
+
+            (ExportComparisonCommand as Command)?.ChangeCanExecute();
         }
     }
 
@@ -1221,6 +1240,9 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             OnPropertyChanged();
             OnPropertyChanged(nameof(HasComparisonVideo2));
             OnPropertyChanged(nameof(ComparisonVideo2Path));
+            OnPropertyChanged(nameof(CanExportComparison));
+
+            (ExportComparisonCommand as Command)?.ChangeCanExecute();
         }
     }
 
@@ -1233,6 +1255,9 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             OnPropertyChanged();
             OnPropertyChanged(nameof(HasComparisonVideo3));
             OnPropertyChanged(nameof(ComparisonVideo3Path));
+            OnPropertyChanged(nameof(CanExportComparison));
+
+            (ExportComparisonCommand as Command)?.ChangeCanExecute();
         }
     }
 
@@ -1245,6 +1270,9 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             OnPropertyChanged();
             OnPropertyChanged(nameof(HasComparisonVideo4));
             OnPropertyChanged(nameof(ComparisonVideo4Path));
+            OnPropertyChanged(nameof(CanExportComparison));
+
+            (ExportComparisonCommand as Command)?.ChangeCanExecute();
         }
     }
 
@@ -1255,6 +1283,67 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     public string? ComparisonVideo2Path => _comparisonVideo2?.LocalClipPath;
     public string? ComparisonVideo3Path => _comparisonVideo3?.LocalClipPath;
     public string? ComparisonVideo4Path => _comparisonVideo4?.LocalClipPath;
+
+    #region Exportación de comparación
+
+    public bool IsComparisonExporting
+    {
+        get => _isComparisonExporting;
+        set
+        {
+            _isComparisonExporting = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(CanExportComparison));
+
+            (ExportComparisonCommand as Command)?.ChangeCanExecute();
+        }
+    }
+
+    public double ComparisonExportProgress
+    {
+        get => _comparisonExportProgress;
+        set { _comparisonExportProgress = value; OnPropertyChanged(); }
+    }
+
+    public string ComparisonExportStatus
+    {
+        get => _comparisonExportStatus;
+        set { _comparisonExportStatus = value; OnPropertyChanged(); }
+    }
+
+    public bool IsComparisonLapSyncEnabled
+    {
+        get => _isComparisonLapSyncEnabled;
+        set
+        {
+            if (_isComparisonLapSyncEnabled == value) return;
+            _isComparisonLapSyncEnabled = value;
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>
+    /// Solo se puede exportar cuando hay al menos 2 videos en modo comparación
+    /// </summary>
+    public bool CanExportComparison
+    {
+        get
+        {
+            if (IsComparisonExporting) return false;
+            if (!IsMultiVideoLayout) return false;
+
+            return _comparisonLayout switch
+            {
+                ComparisonLayout.Horizontal2x1 or ComparisonLayout.Vertical1x2 => HasComparisonVideo2,
+                ComparisonLayout.Quad2x2 => HasComparisonVideo2 && HasComparisonVideo3 && HasComparisonVideo4,
+                _ => false
+            };
+        }
+    }
+
+    public ICommand ExportComparisonCommand { get; }
+
+    #endregion
 
     // Propiedades para mostrar delta de sincronización en el footer
     private TimeSpan _comparisonPosition2;
@@ -4569,6 +4658,13 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         CloseAllPanels();
         
         ShowComparisonPanel = !wasOpen;
+
+        // Al abrir el panel por primera vez desde layout Single, activar 2 vídeos por defecto
+        // para que el usuario pueda asignar y exportar sin pasos extra.
+        if (ShowComparisonPanel && ComparisonLayout == ComparisonLayout.Single)
+        {
+            SetComparisonLayout("Horizontal2x1");
+        }
     }
 
     private void SetComparisonLayout(string layoutName)
@@ -4583,7 +4679,21 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         };
 
         ComparisonLayout = newLayout;
-        ShowComparisonPanel = false;
+        // El panel permanece abierto para que el usuario vea las opciones de sincronización y exportación
+
+        // En layouts de 2 vídeos, el segundo vídeo siempre es el slot 2.
+        // Si venimos de un estado antiguo donde el slot inferior era el 3, migrar automáticamente.
+        if (newLayout == ComparisonLayout.Horizontal2x1 || newLayout == ComparisonLayout.Vertical1x2)
+        {
+            if (!HasComparisonVideo2 && HasComparisonVideo3)
+            {
+                ComparisonVideo2 = ComparisonVideo3;
+                ComparisonVideo3 = null;
+            }
+
+            // En modo 2 vídeos no se usan los slots 3/4
+            ComparisonVideo4 = null;
+        }
         
         // Limpiar videos de comparación si volvemos a Single
         if (newLayout == ComparisonLayout.Single)
@@ -4712,6 +4822,413 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     /// La vista se suscribe para actualizar los reproductores.
     /// </summary>
     public event EventHandler<ComparisonLayout>? ComparisonLayoutChanged;
+
+    #endregion
+
+    #region Exportación de comparación
+
+    private async Task ExportComparisonVideosAsync()
+    {
+        if (_videoClip == null || IsComparisonExporting)
+            return;
+
+        // Verificar que hay al menos 2 videos
+        if (!HasComparisonVideo2)
+        {
+            ComparisonExportStatus = "Se necesitan al menos 2 videos";
+            return;
+        }
+
+        StatusBarService? statusBarService = null;
+        var startedStatusBarOperation = false;
+
+        try
+        {
+            IsComparisonExporting = true;
+            ComparisonExportStatus = "Preparando exportación...";
+            ComparisonExportProgress = 0;
+
+            // Obtener servicios necesarios
+            var services = Application.Current?.Handler?.MauiContext?.Services;
+            var compositionService = services?.GetService<IVideoCompositionService>();
+            statusBarService = services?.GetService<StatusBarService>();
+            var exportNotifier = services?.GetService<VideoExportNotifier>();
+
+            if (statusBarService != null)
+            {
+                MainThread.BeginInvokeOnMainThread(() => statusBarService.StartOperation("Exportando comparación..."));
+                startedStatusBarOperation = true;
+            }
+
+            if (compositionService == null)
+            {
+                ComparisonExportStatus = "Error: Servicio de composición no disponible";
+                return;
+            }
+
+            // Determinar la sesión y carpeta de destino
+            var session = _videoClip.Session;
+            string outputFolder;
+            string sessionPath = "";
+
+            if (session != null && !string.IsNullOrEmpty(session.PathSesion))
+            {
+                sessionPath = session.PathSesion;
+                outputFolder = Path.Combine(sessionPath, "videos");
+                if (!Directory.Exists(outputFolder))
+                {
+                    Directory.CreateDirectory(outputFolder);
+                }
+            }
+            else
+            {
+                outputFolder = Environment.GetFolderPath(Environment.SpecialFolder.MyVideos);
+            }
+
+            // Determinar el número de videos a exportar según el layout
+            var videoCount = _comparisonLayout switch
+            {
+                ComparisonLayout.Horizontal2x1 or ComparisonLayout.Vertical1x2 => 2,
+                ComparisonLayout.Quad2x2 => (HasComparisonVideo3 ? 3 : 2) + (HasComparisonVideo4 ? 1 : 0),
+                _ => 1
+            };
+
+            // Crear nombre de archivo descriptivo
+            var athlete1Name = _videoClip.Atleta?.NombreCompleto ?? "Atleta1";
+            var athlete2Name = _comparisonVideo2?.Atleta?.NombreCompleto ?? "Atleta2";
+            string fileName;
+
+            if (videoCount <= 2)
+            {
+                fileName = $"{athlete1Name} vs {athlete2Name}.mp4";
+            }
+            else
+            {
+                fileName = $"Comparación {videoCount} atletas.mp4";
+            }
+
+            fileName = string.Join("_", fileName.Split(Path.GetInvalidFileNameChars()));
+            var outputPath = Path.Combine(outputFolder, fileName);
+
+            if (File.Exists(outputPath))
+            {
+                var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                fileName = Path.GetFileNameWithoutExtension(fileName) + $"_{timestamp}.mp4";
+                outputPath = Path.Combine(outputFolder, fileName);
+            }
+
+            // Determinar las rutas de los videos
+            var video1Path = _videoClip.LocalClipPath ?? _videoClip.ClipPath ?? string.Empty;
+            var video2Path = _comparisonVideo2?.LocalClipPath ?? _comparisonVideo2?.ClipPath ?? string.Empty;
+
+            System.Diagnostics.Debug.WriteLine($"[Export Comparison] Video1Path: {video1Path}");
+            System.Diagnostics.Debug.WriteLine($"[Export Comparison] Video2Path: {video2Path}");
+
+            // Para layouts 2x1 y 1x2 usamos exportación paralela
+            if (_comparisonLayout == ComparisonLayout.Horizontal2x1 || _comparisonLayout == ComparisonLayout.Vertical1x2)
+            {
+                var exportParams = new ParallelVideoExportParams
+                {
+                    Video1Path = video1Path,
+                    Video2Path = video2Path,
+                    Video1StartPosition = CurrentPosition,
+                    Video2StartPosition = _comparisonPosition2,
+                    IsHorizontalLayout = _comparisonLayout == ComparisonLayout.Horizontal2x1,
+                    Video1AthleteName = _videoClip.Atleta?.NombreCompleto,
+                    Video1Category = _videoClip.Atleta?.CategoriaNombre,
+                    Video1Section = _videoClip.Section,
+                    Video2AthleteName = _comparisonVideo2?.Atleta?.NombreCompleto,
+                    Video2Category = _comparisonVideo2?.Atleta?.CategoriaNombre,
+                    Video2Section = _comparisonVideo2?.Section ?? 0,
+                    OutputPath = outputPath
+                };
+
+                // Si está habilitada la sincronización por laps
+                if (IsComparisonLapSyncEnabled)
+                {
+                    ComparisonExportStatus = "Leyendo parciales...";
+                    if (statusBarService != null)
+                        MainThread.BeginInvokeOnMainThread(() => statusBarService.UpdateProgress(0.0, "Leyendo parciales..."));
+
+                    var timing1 = await _databaseService.GetExecutionTimingEventsByVideoAsync(_videoClip.Id);
+                    var timing2 = _comparisonVideo2 != null 
+                        ? await _databaseService.GetExecutionTimingEventsByVideoAsync(_comparisonVideo2.Id)
+                        : new List<ExecutionTimingEvent>();
+
+                    var end1FromEventsMs = timing1.LastOrDefault(e => e.Kind == 2)?.ElapsedMilliseconds;
+                    var end2FromEventsMs = timing2.LastOrDefault(e => e.Kind == 2)?.ElapsedMilliseconds;
+
+                    var end1 = end1FromEventsMs.HasValue
+                        ? TimeSpan.FromMilliseconds(end1FromEventsMs.Value)
+                        : Duration;
+                    var end2 = end2FromEventsMs.HasValue
+                        ? TimeSpan.FromMilliseconds(end2FromEventsMs.Value)
+                        : Duration;
+
+                    var start1FromEventsMs = timing1.FirstOrDefault(e => e.Kind == 0)?.ElapsedMilliseconds;
+                    var start2FromEventsMs = timing2.FirstOrDefault(e => e.Kind == 0)?.ElapsedMilliseconds;
+
+                    var exportStart1 = start1FromEventsMs.HasValue
+                        ? TimeSpan.FromMilliseconds(start1FromEventsMs.Value)
+                        : CurrentPosition;
+                    var exportStart2 = start2FromEventsMs.HasValue
+                        ? TimeSpan.FromMilliseconds(start2FromEventsMs.Value)
+                        : _comparisonPosition2;
+
+                    var boundaries1 = BuildLapBoundaries(timing1, exportStart1, end1);
+                    var boundaries2 = BuildLapBoundaries(timing2, exportStart2, end2);
+
+                    if (boundaries1 != null && boundaries2 != null && boundaries1.Count >= 2 && boundaries2.Count >= 2)
+                    {
+                        exportParams.SyncByLaps = true;
+                        exportParams.Video1LapBoundaries = boundaries1;
+                        exportParams.Video2LapBoundaries = boundaries2;
+                        exportParams.Video1StartPosition = exportStart1;
+                        exportParams.Video2StartPosition = exportStart2;
+                    }
+                    else
+                    {
+                        ComparisonExportStatus = "No hay parciales suficientes para sincronizar. Exportando sin sincronización...";
+                        await Task.Delay(1500);
+                    }
+                }
+
+                ComparisonExportStatus = "Componiendo vídeos...";
+                if (statusBarService != null)
+                    MainThread.BeginInvokeOnMainThread(() => statusBarService.UpdateProgress(0.0, "Componiendo vídeos..."));
+
+                var result = await compositionService.ExportParallelVideosAsync(
+                    exportParams,
+                    new Progress<double>(progress =>
+                    {
+                        ComparisonExportProgress = progress;
+                        ComparisonExportStatus = $"Exportando... {progress:P0}";
+                        if (statusBarService != null)
+                            statusBarService.UpdateProgress(progress);
+                    }));
+
+                await HandleExportResultAsync(result, session, sessionPath, outputFolder, fileName, exportNotifier, statusBarService);
+            }
+            else if (_comparisonLayout == ComparisonLayout.Quad2x2)
+            {
+                // Para layout cuadrícula 2x2
+                var video3Path = _comparisonVideo3?.LocalClipPath ?? _comparisonVideo3?.ClipPath;
+                var video4Path = _comparisonVideo4?.LocalClipPath ?? _comparisonVideo4?.ClipPath;
+
+                var exportParams = new QuadVideoExportParams
+                {
+                    Video1Path = video1Path,
+                    Video2Path = video2Path,
+                    Video3Path = video3Path,
+                    Video4Path = video4Path,
+                    Video1StartPosition = CurrentPosition,
+                    Video2StartPosition = _comparisonPosition2,
+                    Video3StartPosition = _comparisonPosition3,
+                    Video4StartPosition = _comparisonPosition4,
+                    Video1AthleteName = _videoClip.Atleta?.NombreCompleto,
+                    Video2AthleteName = _comparisonVideo2?.Atleta?.NombreCompleto,
+                    Video3AthleteName = _comparisonVideo3?.Atleta?.NombreCompleto,
+                    Video4AthleteName = _comparisonVideo4?.Atleta?.NombreCompleto,
+                    OutputPath = outputPath
+                };
+
+                ComparisonExportStatus = "Componiendo vídeos...";
+                if (statusBarService != null)
+                    MainThread.BeginInvokeOnMainThread(() => statusBarService.UpdateProgress(0.0, "Componiendo vídeos..."));
+
+                var result = await compositionService.ExportQuadVideosAsync(
+                    exportParams,
+                    new Progress<double>(progress =>
+                    {
+                        ComparisonExportProgress = progress;
+                        ComparisonExportStatus = $"Exportando... {progress:P0}";
+                        if (statusBarService != null)
+                            statusBarService.UpdateProgress(progress);
+                    }));
+
+                await HandleExportResultAsync(result, session, sessionPath, outputFolder, fileName, exportNotifier, statusBarService);
+            }
+        }
+        catch (Exception ex)
+        {
+            ComparisonExportStatus = $"Error: {ex.Message}";
+            System.Diagnostics.Debug.WriteLine($"[Export Comparison] Error: {ex}");
+
+            if (statusBarService != null)
+                MainThread.BeginInvokeOnMainThread(() => statusBarService.EndOperation("Error exportando"));
+
+            if (Application.Current?.MainPage != null)
+            {
+                await Application.Current.MainPage.DisplayAlert(
+                    "Error",
+                    $"Error durante la exportación: {ex.Message}",
+                    "OK");
+            }
+        }
+        finally
+        {
+            IsComparisonExporting = false;
+            OnPropertyChanged(nameof(CanExportComparison));
+
+            if (statusBarService != null && startedStatusBarOperation)
+            {
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    if (statusBarService.IsOperationInProgress)
+                        statusBarService.EndOperation();
+                });
+            }
+        }
+    }
+
+    private async Task HandleExportResultAsync(
+        VideoExportResult result,
+        Session? session,
+        string sessionPath,
+        string outputFolder,
+        string fileName,
+        VideoExportNotifier? exportNotifier,
+        StatusBarService? statusBarService)
+    {
+        if (result.Success)
+        {
+            ComparisonExportStatus = "Generando miniatura...";
+            ComparisonExportProgress = 0.90;
+            if (statusBarService != null)
+                MainThread.BeginInvokeOnMainThread(() => statusBarService.UpdateProgress(0.90, "Generando miniatura..."));
+
+            // Generar miniatura
+            var services = Application.Current?.Handler?.MauiContext?.Services;
+            var thumbnailService = services?.GetService<ThumbnailService>();
+            string? thumbnailPath = null;
+            string? thumbnailFileName = null;
+
+            if (thumbnailService != null && !string.IsNullOrEmpty(sessionPath))
+            {
+                var thumbnailFolder = Path.Combine(sessionPath, "thumbnails");
+                if (!Directory.Exists(thumbnailFolder))
+                {
+                    Directory.CreateDirectory(thumbnailFolder);
+                }
+
+                thumbnailFileName = Path.GetFileNameWithoutExtension(fileName) + "_thumb.jpg";
+                thumbnailPath = Path.Combine(thumbnailFolder, thumbnailFileName);
+
+                try
+                {
+                    var thumbResult = await thumbnailService.GenerateComparisonThumbnailAsync(result.OutputPath!, thumbnailPath);
+                    if (!thumbResult)
+                    {
+                        thumbnailPath = null;
+                        thumbnailFileName = null;
+                    }
+                }
+                catch (Exception thumbEx)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[Export] Error generando miniatura: {thumbEx.Message}");
+                    thumbnailPath = null;
+                    thumbnailFileName = null;
+                }
+            }
+
+            ComparisonExportStatus = "Guardando en biblioteca...";
+            ComparisonExportProgress = 0.95;
+            if (statusBarService != null)
+                MainThread.BeginInvokeOnMainThread(() => statusBarService.UpdateProgress(0.95, "Guardando en biblioteca..."));
+
+            // Crear VideoClip para guardar en la base de datos
+            var layoutName = _comparisonLayout switch
+            {
+                ComparisonLayout.Horizontal2x1 => "2x1",
+                ComparisonLayout.Vertical1x2 => "1x2",
+                ComparisonLayout.Quad2x2 => "2x2",
+                _ => ""
+            };
+
+            var comparisonName = $"{_videoClip?.Atleta?.NombreCompleto ?? "Atleta 1"} vs {_comparisonVideo2?.Atleta?.NombreCompleto ?? "Atleta 2"}";
+            if (_comparisonLayout == ComparisonLayout.Quad2x2)
+            {
+                var names = new List<string>();
+                if (_videoClip?.Atleta != null) names.Add(_videoClip.Atleta.NombreCompleto ?? "Atleta 1");
+                if (_comparisonVideo2?.Atleta != null) names.Add(_comparisonVideo2.Atleta.NombreCompleto ?? "Atleta 2");
+                if (_comparisonVideo3?.Atleta != null) names.Add(_comparisonVideo3.Atleta.NombreCompleto ?? "Atleta 3");
+                if (_comparisonVideo4?.Atleta != null) names.Add(_comparisonVideo4.Atleta.NombreCompleto ?? "Atleta 4");
+                comparisonName = string.Join(" vs ", names);
+            }
+
+            var newClip = new VideoClip
+            {
+                SessionId = session?.Id ?? _videoClip?.SessionId ?? 0,
+                AtletaId = _videoClip?.AtletaId ?? 0,
+                Section = 0,
+                CreationDate = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                ClipPath = fileName,
+                LocalClipPath = result.OutputPath,
+                ThumbnailPath = thumbnailFileName,
+                LocalThumbnailPath = thumbnailPath,
+                ClipDuration = result.Duration.TotalSeconds,
+                ClipSize = result.FileSizeBytes,
+                ComparisonName = comparisonName
+            };
+
+            try
+            {
+                var clipId = await _databaseService.InsertVideoClipAsync(newClip);
+                System.Diagnostics.Debug.WriteLine($"[Export] VideoClip guardado con ID: {clipId}");
+                exportNotifier?.NotifyVideoExported(newClip.SessionId, clipId);
+            }
+            catch (Exception dbEx)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Export] Error guardando en BD: {dbEx.Message}");
+            }
+
+            ComparisonExportStatus = "¡Exportación completada!";
+            ComparisonExportProgress = 1.0;
+
+            if (statusBarService != null)
+                MainThread.BeginInvokeOnMainThread(() => statusBarService.EndOperation("Comparación exportada"));
+        }
+        else
+        {
+            ComparisonExportStatus = $"Error: {result.ErrorMessage}";
+
+            if (statusBarService != null)
+                MainThread.BeginInvokeOnMainThread(() => statusBarService.EndOperation("Error exportando"));
+
+            if (Application.Current?.MainPage != null)
+            {
+                await Application.Current.MainPage.DisplayAlert(
+                    "Error de exportación",
+                    result.ErrorMessage ?? "Error desconocido durante la exportación",
+                    "OK");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Construye lista de fronteras de laps a partir de los eventos de timing.
+    /// </summary>
+    private List<TimeSpan>? BuildLapBoundaries(List<ExecutionTimingEvent> events, TimeSpan start, TimeSpan end)
+    {
+        if (events == null || events.Count == 0)
+            return null;
+
+        var boundaries = new List<TimeSpan> { start };
+
+        // Añadir marcadores de lap (Kind == 1)
+        foreach (var ev in events.Where(e => e.Kind == 1).OrderBy(e => e.ElapsedMilliseconds))
+        {
+            var ts = TimeSpan.FromMilliseconds(ev.ElapsedMilliseconds);
+            if (ts > start && ts < end)
+            {
+                boundaries.Add(ts);
+            }
+        }
+
+        boundaries.Add(end);
+
+        return boundaries.Count >= 2 ? boundaries : null;
+    }
 
     #endregion
 }
