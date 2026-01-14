@@ -8,19 +8,15 @@ namespace CrownRFEP_Reader.Services;
 /// <summary>
 /// Implementación nativa de sincronización de players usando AVPlayer.
 /// Usa setRate:time:atHostTime: para sincronización precisa de frame.
+/// Cada player mantiene su posición actual pero todos arrancan simultáneamente.
 /// </summary>
 public static class NativeSyncPlaybackService
 {
-    // Delay en nanosegundos para dar tiempo a que todos los players estén listos
-    // 50ms es suficiente para que AVPlayer prepare los buffers
-    private const long SyncDelayNanoseconds = 50_000_000; // 50ms
-
     /// <summary>
     /// Obtiene el AVPlayer nativo de un PrecisionVideoPlayer
     /// </summary>
     private static AVPlayer? GetNativePlayer(PrecisionVideoPlayer player)
     {
-        // Acceder al handler para obtener el AVPlayer nativo
         if (player.Handler is Handlers.PrecisionVideoPlayerHandler handler)
         {
             return handler.NativePlayer;
@@ -30,90 +26,54 @@ public static class NativeSyncPlaybackService
 
     /// <summary>
     /// Inicia reproducción sincronizada de múltiples players usando el reloj del host.
-    /// Todos los players comenzarán a reproducir en el mismo instante exacto.
+    /// Cada player comienza desde su posición actual, pero todos arrancan exactamente
+    /// en el mismo instante del reloj del sistema.
     /// </summary>
-    public static void PlaySynchronized(PrecisionVideoPlayer[] players, TimeSpan startPosition, double speed)
+    public static void PlaySynchronized(PrecisionVideoPlayer[] players, double speed)
     {
         if (players.Length == 0) return;
 
-        var nativePlayers = new List<AVPlayer>();
+        var playerData = new List<(AVPlayer player, CMTime currentPosition)>();
         
         foreach (var player in players)
         {
             var nativePlayer = GetNativePlayer(player);
             if (nativePlayer != null)
             {
-                nativePlayers.Add(nativePlayer);
+                // Obtener la posición actual de cada player
+                var currentTime = nativePlayer.CurrentTime;
+                playerData.Add((nativePlayer, currentTime));
             }
         }
 
-        if (nativePlayers.Count == 0) return;
+        if (playerData.Count == 0) return;
 
-        // Primero, hacer seek preciso en todos los players y esperar
-        var seekTasks = new List<TaskCompletionSource<bool>>();
-        var cmStartTime = CMTime.FromSeconds(startPosition.TotalSeconds, 600);
+        // Calcular el tiempo de host futuro para sincronizar
+        // 50ms en el futuro da tiempo a que todos los players estén listos
+        var hostTime = CMClock.HostTimeClock.CurrentTime;
+        var syncTime = CMTime.Add(hostTime, CMTime.FromSeconds(0.05, 1_000_000_000));
 
-        foreach (var nativePlayer in nativePlayers)
+        MainThread.BeginInvokeOnMainThread(() =>
         {
-            var tcs = new TaskCompletionSource<bool>();
-            seekTasks.Add(tcs);
-
-            nativePlayer.Seek(cmStartTime, CMTime.Zero, CMTime.Zero, finished =>
+            foreach (var (nativePlayer, currentPosition) in playerData)
             {
-                tcs.TrySetResult(finished);
-            });
-        }
-
-        // Esperar a que todos los seeks completen, luego iniciar sincronizado
-        Task.Run(async () =>
-        {
-            try
-            {
-                // Esperar a que todos los seeks terminen
-                await Task.WhenAll(seekTasks.Select(t => t.Task));
-
-                // Calcular el tiempo de host futuro para sincronizar
-                // Usamos el tiempo actual del host + un pequeño delay
-                var hostTime = CMClock.HostTimeClock.CurrentTime;
-                var syncTime = CMTime.Add(hostTime, CMTime.FromSeconds(0.05, 1_000_000_000)); // 50ms en el futuro
-
-                MainThread.BeginInvokeOnMainThread(() =>
+                try
                 {
-                    foreach (var nativePlayer in nativePlayers)
-                    {
-                        try
-                        {
-                            // setRate:time:atHostTime: sincroniza todos los players
-                            // para comenzar a reproducir exactamente en syncTime
-                            nativePlayer.SetRate(
-                                (float)speed,
-                                cmStartTime,
-                                syncTime
-                            );
-                        }
-                        catch (Exception ex)
-                        {
-                            AppLog.Error("NativeSyncPlaybackService", $"Error setting synchronized playback", ex);
-                            // Fallback: reproducción normal
-                            nativePlayer.Play();
-                            nativePlayer.Rate = (float)speed;
-                        }
-                    }
-                });
-            }
-            catch (Exception ex)
-            {
-                AppLog.Error("NativeSyncPlaybackService", $"Error during synchronized play setup", ex);
-                
-                // Fallback: reproducción secuencial normal
-                MainThread.BeginInvokeOnMainThread(() =>
+                    // setRate:time:atHostTime: sincroniza todos los players
+                    // Cada uno usa SU posición actual, pero todos arrancan en syncTime
+                    nativePlayer.SetRate(
+                        (float)speed,
+                        currentPosition,  // Posición actual de ESTE player
+                        syncTime          // Mismo instante de arranque para TODOS
+                    );
+                }
+                catch (Exception ex)
                 {
-                    foreach (var nativePlayer in nativePlayers)
-                    {
-                        nativePlayer.Play();
-                        nativePlayer.Rate = (float)speed;
-                    }
-                });
+                    AppLog.Error("NativeSyncPlaybackService", $"Error setting synchronized playback", ex);
+                    // Fallback: reproducción normal
+                    nativePlayer.Play();
+                    nativePlayer.Rate = (float)speed;
+                }
             }
         });
     }
@@ -123,8 +83,6 @@ public static class NativeSyncPlaybackService
     /// </summary>
     public static void PauseSynchronized(PrecisionVideoPlayer[] players)
     {
-        // Pause es inmediato, no requiere sincronización especial
-        // pero lo hacemos en el main thread para garantizar orden
         MainThread.BeginInvokeOnMainThread(() =>
         {
             foreach (var player in players)
@@ -136,7 +94,7 @@ public static class NativeSyncPlaybackService
     }
 
     /// <summary>
-    /// Hace seek sincronizado en todos los players
+    /// Hace seek sincronizado en todos los players a la misma posición
     /// </summary>
     public static void SeekSynchronized(PrecisionVideoPlayer[] players, TimeSpan position)
     {
@@ -158,7 +116,6 @@ public static class NativeSyncPlaybackService
             }
         }
 
-        // Actualizar posiciones en los controles una vez completado
         Task.Run(async () =>
         {
             await Task.WhenAll(seekTasks.Select(t => t.Task));
@@ -182,12 +139,12 @@ namespace CrownRFEP_Reader.Services;
 /// <summary>
 /// Implementación nativa de sincronización de players usando MediaPlayer de Windows.
 /// Usa MediaTimelineController para sincronización precisa entre múltiples players.
+/// Cada player mantiene su posición actual pero todos arrancan simultáneamente.
 /// </summary>
 public static class NativeSyncPlaybackService
 {
-    // Controller compartido para sincronización
     private static Windows.Media.MediaTimelineController? _sharedTimelineController;
-    private static readonly List<MediaPlayer> _synchronizedPlayers = new();
+    private static readonly List<(MediaPlayer player, TimeSpan offset)> _synchronizedPlayers = new();
     private static bool _isControllerActive;
 
     /// <summary>
@@ -204,24 +161,27 @@ public static class NativeSyncPlaybackService
 
     /// <summary>
     /// Inicia reproducción sincronizada de múltiples players usando MediaTimelineController.
-    /// Todos los players compartirán el mismo controlador de timeline para sincronización perfecta.
+    /// Cada player comienza desde su posición actual, pero todos arrancan exactamente
+    /// al mismo tiempo gracias al controller compartido.
     /// </summary>
-    public static void PlaySynchronized(PrecisionVideoPlayer[] players, TimeSpan startPosition, double speed)
+    public static void PlaySynchronized(PrecisionVideoPlayer[] players, double speed)
     {
         if (players.Length == 0) return;
 
-        var nativePlayers = new List<MediaPlayer>();
+        var playerData = new List<(MediaPlayer player, TimeSpan currentPosition)>();
         
         foreach (var player in players)
         {
             var nativePlayer = GetNativePlayer(player);
             if (nativePlayer != null)
             {
-                nativePlayers.Add(nativePlayer);
+                // Obtener la posición actual de cada player
+                var currentPosition = nativePlayer.PlaybackSession.Position;
+                playerData.Add((nativePlayer, currentPosition));
             }
         }
 
-        if (nativePlayers.Count == 0) return;
+        if (playerData.Count == 0) return;
 
         try
         {
@@ -233,21 +193,21 @@ public static class NativeSyncPlaybackService
             _sharedTimelineController.ClockRate = speed;
             _synchronizedPlayers.Clear();
 
-            // Primero hacer seek en todos los players a la posición inicial
-            foreach (var nativePlayer in nativePlayers)
+            foreach (var (nativePlayer, currentPosition) in playerData)
             {
-                // Pausar y posicionar
+                // Pausar el player
                 nativePlayer.Pause();
-                nativePlayer.PlaybackSession.Position = startPosition;
                 
                 // Asociar al timeline controller
+                // El offset es la posición actual de ESTE player
                 nativePlayer.TimelineController = _sharedTimelineController;
-                nativePlayer.TimelineControllerPositionOffset = startPosition;
+                nativePlayer.TimelineControllerPositionOffset = currentPosition;
                 
-                _synchronizedPlayers.Add(nativePlayer);
+                _synchronizedPlayers.Add((nativePlayer, currentPosition));
             }
 
-            // Iniciar el controller - todos los players comenzarán simultáneamente
+            // Iniciar el controller desde cero - todos los players comenzarán
+            // simultáneamente desde sus respectivas posiciones actuales
             _sharedTimelineController.Position = TimeSpan.Zero;
             _sharedTimelineController.Start();
             _isControllerActive = true;
@@ -258,9 +218,8 @@ public static class NativeSyncPlaybackService
             
             // Fallback: reproducción secuencial normal
             CleanupTimelineController();
-            foreach (var nativePlayer in nativePlayers)
+            foreach (var (nativePlayer, _) in playerData)
             {
-                nativePlayer.PlaybackSession.Position = startPosition;
                 nativePlayer.Play();
                 nativePlayer.PlaybackSession.PlaybackRate = speed;
             }
@@ -285,7 +244,6 @@ public static class NativeSyncPlaybackService
         }
         else
         {
-            // Fallback: pausar individualmente
             foreach (var player in players)
             {
                 var nativePlayer = GetNativePlayer(player);
@@ -295,7 +253,7 @@ public static class NativeSyncPlaybackService
     }
 
     /// <summary>
-    /// Hace seek sincronizado en todos los players
+    /// Hace seek sincronizado en todos los players a la misma posición
     /// </summary>
     public static void SeekSynchronized(PrecisionVideoPlayer[] players, TimeSpan position)
     {
@@ -303,17 +261,15 @@ public static class NativeSyncPlaybackService
         {
             try
             {
-                // Pausar el controller
                 var wasPlaying = _sharedTimelineController.State == Windows.Media.MediaTimelineControllerState.Running;
                 _sharedTimelineController.Pause();
 
-                // Actualizar offsets para cada player
-                foreach (var nativePlayer in _synchronizedPlayers)
+                // Actualizar offsets para cada player a la nueva posición común
+                foreach (var (nativePlayer, _) in _synchronizedPlayers)
                 {
                     nativePlayer.TimelineControllerPositionOffset = position;
                 }
 
-                // Reset del controller y reanudar si estaba reproduciendo
                 _sharedTimelineController.Position = TimeSpan.Zero;
                 
                 if (wasPlaying)
@@ -321,7 +277,6 @@ public static class NativeSyncPlaybackService
                     _sharedTimelineController.Start();
                 }
 
-                // Actualizar posición en los controles
                 foreach (var player in players)
                 {
                     player.Position = position;
@@ -365,8 +320,7 @@ public static class NativeSyncPlaybackService
             }
             catch { }
 
-            // Desasociar players del controller
-            foreach (var player in _synchronizedPlayers)
+            foreach (var (player, _) in _synchronizedPlayers)
             {
                 try
                 {

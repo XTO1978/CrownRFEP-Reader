@@ -1634,26 +1634,18 @@ public partial class SinglePlayerPage : ContentPage
             {
                 // Usar sincronización nativa (AVPlayer setRate:time:atHostTime: en Apple,
                 // MediaTimelineController en Windows)
+                // Cada player mantiene su posición actual, solo se sincronizan para arrancar
+                // exactamente al mismo tiempo
                 NativeSyncPlaybackService.PlaySynchronized(
                     players.ToArray(),
-                    _viewModel.CurrentPosition,
                     _viewModel.PlaybackSpeed
                 );
                 return;
             }
 #endif
-            // Fallback para single player
-            var startPosition = _viewModel.CurrentPosition;
-
-            if (_viewModel.HasComparisonVideo2)
-                MediaPlayer2?.SeekTo(startPosition);
-            if (_viewModel.HasComparisonVideo3)
-                MediaPlayer3?.SeekTo(startPosition);
-            if (_viewModel.HasComparisonVideo4)
-                MediaPlayer4?.SeekTo(startPosition);
         }
 
-        // Lanzar Play (rápido, sin await) en todos los reproductores activos.
+        // Reproducción normal (single player o fallback)
         MediaPlayer?.Play();
 
         if (_viewModel.IsMultiVideoLayout)
