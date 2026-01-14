@@ -11,6 +11,7 @@ public class AssistedLapDefinition : INotifyPropertyChanged
 {
     private int _index;
     private string _name = "";
+    private AssistedLapDefinition? _previousLap;
     private long? _markedMs;
     private bool _isMarked;
     private bool _isCurrent;
@@ -32,12 +33,116 @@ public class AssistedLapDefinition : INotifyPropertyChanged
         {
             // Limitar a 8 caracteres
             var truncated = string.IsNullOrEmpty(value) ? "" : (value.Length > 8 ? value[..8] : value);
-            SetProperty(ref _name, truncated);
+            if (SetProperty(ref _name, truncated))
+            {
+                OnPropertyChanged(nameof(DisplayName));
+            }
         }
     }
     
-    /// <summary>Nombre para mostrar (usa el índice si no hay nombre)</summary>
-    public string DisplayName => string.IsNullOrWhiteSpace(Name) ? $"P{Index}" : Name;
+    /// <summary>Indica si este es el primer parcial del conjunto</summary>
+    public bool IsFirstLap { get; set; }
+    
+    /// <summary>Indica si este es el último parcial del conjunto</summary>
+    public bool IsLastLap { get; set; }
+
+    /// <summary>
+    /// Referencia al parcial anterior. Se usa para calcular prefijos y DisplayName.
+    /// </summary>
+    public AssistedLapDefinition? PreviousLap
+    {
+        get => _previousLap;
+        set
+        {
+            if (ReferenceEquals(_previousLap, value)) return;
+
+            if (_previousLap != null)
+            {
+                _previousLap.PropertyChanged -= PreviousLapOnPropertyChanged;
+            }
+
+            _previousLap = value;
+
+            if (_previousLap != null)
+            {
+                _previousLap.PropertyChanged += PreviousLapOnPropertyChanged;
+            }
+
+            OnPropertyChanged(nameof(PreviousPointLabel));
+            OnPropertyChanged(nameof(DisplayName));
+        }
+    }
+    
+    /// <summary>Nombre del parcial anterior (para mostrar el rango)</summary>
+    private string _previousLapName = "";
+    public string PreviousLapName 
+    { 
+        get => _previousLapName;
+        set
+        {
+            if (SetProperty(ref _previousLapName, value ?? ""))
+            {
+                OnPropertyChanged(nameof(DisplayName));
+                OnPropertyChanged(nameof(PreviousPointLabel));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Texto para el label a la izquierda del Entry (punto anterior).
+    /// Primer parcial: "Inicio"; siguientes: "{NombreAnterior}-".
+    /// </summary>
+    public string PreviousPointLabel
+    {
+        get
+        {
+            if (IsFirstLap || Index == 1)
+            {
+                return "Inicio";
+            }
+
+            var prevName = _previousLap != null
+                ? (string.IsNullOrWhiteSpace(_previousLap.Name) ? $"P{_previousLap.Index}" : _previousLap.Name)
+                : (string.IsNullOrWhiteSpace(PreviousLapName) ? $"P{Index - 1}" : PreviousLapName);
+
+            return $"{prevName}-";
+        }
+    }
+    
+    /// <summary>Nombre para mostrar (rango desde el punto anterior hasta este)</summary>
+    public string DisplayName
+    {
+        get
+        {
+            var currentName = string.IsNullOrWhiteSpace(Name) ? $"P{Index}" : Name;
+            
+            // Para el primer parcial, siempre usar "Ini"
+            // Para los demás, usar el nombre del parcial anterior
+            string prevName;
+            if (IsFirstLap || Index == 1)
+            {
+                prevName = "Inicio";
+            }
+            else
+            {
+                prevName = _previousLap != null
+                    ? (string.IsNullOrWhiteSpace(_previousLap.Name) ? $"P{_previousLap.Index}" : _previousLap.Name)
+                    : (string.IsNullOrWhiteSpace(PreviousLapName) ? $"P{Index - 1}" : PreviousLapName);
+            }
+            
+            // Mostrar como "PuntoAnterior-PuntoActual"
+            return $"{prevName}-{currentName}";
+        }
+    }
+
+    private void PreviousLapOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(Name))
+        {
+            OnPropertyChanged(nameof(PreviousPointLabel));
+            OnPropertyChanged(nameof(DisplayName));
+        }
+    }
     
     /// <summary>Timestamp marcado (en milisegundos desde inicio del video)</summary>
     public long? MarkedMs
@@ -87,6 +192,10 @@ public class AssistedLapDefinition : INotifyPropertyChanged
     }
     
     protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    
+    /// <summary>Método público para forzar notificación de cambio de propiedad</summary>
+    public void OnPropertyChangedPublic(string propertyName)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }
 

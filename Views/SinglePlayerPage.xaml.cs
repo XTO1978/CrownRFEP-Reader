@@ -2377,4 +2377,26 @@ public partial class SinglePlayerPage : ContentPage
     }
 
     #endregion
+
+    #region Assisted Lap Entry Handlers
+
+    /// <summary>
+    /// Handler para actualizar los prefijos de parciales en tiempo real mientras el usuario escribe
+    /// </summary>
+    private void AssistedLapEntry_TextChanged(object? sender, TextChangedEventArgs e)
+    {
+        if (sender is Entry entry && entry.BindingContext is CrownRFEP_Reader.Models.AssistedLapDefinition lapDef)
+        {
+            // Forzar la actualización del binding inmediatamente
+            lapDef.Name = e.NewTextValue ?? "";
+            
+            // Notificar al ViewModel para que actualice los prefijos
+            if (BindingContext is SinglePlayerViewModel viewModel)
+            {
+                viewModel.RefreshAssistedLapPrefixes();
+            }
+        }
+    }
+
+    #endregion
 }

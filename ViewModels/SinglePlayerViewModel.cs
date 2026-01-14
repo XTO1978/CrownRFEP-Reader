@@ -1662,22 +1662,30 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsManualModeEnabled));
                 
-                // Actualizar estado de los comandos
-                ((Command)StartAssistedCaptureCommand).ChangeCanExecute();
-                ((Command)MarkAssistedPointCommand).ChangeCanExecute();
-                
-                if (value)
+                try
                 {
-                    // Al activar modo asistido, asegurarse de que haya parciales
-                    if (_assistedLaps.Count == 0 || _assistedLaps.Count != AssistedLapCount)
+                    // Actualizar estado de los comandos (con verificación de null por seguridad)
+                    (StartAssistedCaptureCommand as Command)?.ChangeCanExecute();
+                    (MarkAssistedPointCommand as Command)?.ChangeCanExecute();
+                    
+                    if (value)
                     {
-                        InitializeAssistedLaps();
+                        // Al activar modo asistido, asegurarse de que haya parciales
+                        // La lista debe tener AssistedLapCount parciales + 1 (el Fin)
+                        if (_assistedLaps.Count == 0 || _assistedLaps.Count != AssistedLapCount + 1)
+                        {
+                            InitializeAssistedLaps();
+                        }
+                    }
+                    else
+                    {
+                        // Al desactivar, reiniciar el estado de captura
+                        ResetAssistedCapture();
                     }
                 }
-                else
+                catch (Exception ex)
                 {
-                    // Al desactivar, reiniciar el estado de captura
-                    ResetAssistedCapture();
+                    System.Diagnostics.Debug.WriteLine($"Error en IsAssistedModeEnabled setter: {ex}");
                 }
                 
                 System.Diagnostics.Debug.WriteLine($"IsAssistedModeEnabled cambiado a: {value}");
@@ -1703,6 +1711,8 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
                 OnPropertyChanged(nameof(CanMarkAssistedPoint));
                 OnPropertyChanged(nameof(IsAssistedConfiguring));
                 OnPropertyChanged(nameof(IsAssistedCapturing));
+                OnPropertyChanged(nameof(IsAssistedCompleted));
+                OnPropertyChanged(nameof(ShowAssistedResults));
                 ((Command)StartAssistedCaptureCommand).ChangeCanExecute();
                 ((Command)MarkAssistedPointCommand).ChangeCanExecute();
             }
@@ -1775,6 +1785,12 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     /// <summary>Indica si está capturando (no configurando ni completado)</summary>
     public bool IsAssistedCapturing => AssistedLapState != AssistedLapState.Configuring && 
         AssistedLapState != AssistedLapState.Completed;
+    
+    /// <summary>Indica si la toma asistida está completada</summary>
+    public bool IsAssistedCompleted => AssistedLapState == AssistedLapState.Completed;
+    
+    /// <summary>Indica si se deben mostrar los resultados de la toma asistida (capturando o completado)</summary>
+    public bool ShowAssistedResults => AssistedLapState != AssistedLapState.Configuring;
     
     /// <summary>Historial de configuraciones de parciales recientes</summary>
     public ObservableCollection<LapConfigHistory> RecentLapConfigs => _recentLapConfigs;
@@ -3826,31 +3842,54 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     private void AddSplitLap()
     {
+        System.Diagnostics.Debug.WriteLine($"[AddSplitLap] Entrando. VideoClip={_videoClip != null}, SplitStartTime={_splitStartTime}, CurrentPosition={CurrentPosition}");
+        
         if (_videoClip == null)
+        {
+            System.Diagnostics.Debug.WriteLine("[AddSplitLap] Saliendo: _videoClip es null");
             return;
+        }
 
         if (!_splitStartTime.HasValue)
+        {
+            System.Diagnostics.Debug.WriteLine("[AddSplitLap] Saliendo: no hay SplitStartTime");
             return;
+        }
 
         var nowMs = (long)CurrentPosition.TotalMilliseconds;
         var startMs = (long)_splitStartTime.Value.TotalMilliseconds;
+        System.Diagnostics.Debug.WriteLine($"[AddSplitLap] nowMs={nowMs}, startMs={startMs}");
+        
         if (nowMs < startMs)
+        {
+            System.Diagnostics.Debug.WriteLine("[AddSplitLap] Saliendo: nowMs < startMs");
             return;
+        }
 
         if (_splitEndTime.HasValue)
         {
             var endMs = (long)_splitEndTime.Value.TotalMilliseconds;
             if (nowMs > endMs)
+            {
+                System.Diagnostics.Debug.WriteLine($"[AddSplitLap] Saliendo: nowMs > endMs ({endMs})");
                 return;
+            }
         }
 
         // Evitar duplicados exactos
         if (_splitLapMarksMs.Contains(nowMs))
+        {
+            System.Diagnostics.Debug.WriteLine("[AddSplitLap] Saliendo: duplicado");
             return;
+        }
 
         _splitLapMarksMs.Add(nowMs);
+        System.Diagnostics.Debug.WriteLine($"[AddSplitLap] Lap añadido: {nowMs}ms. Total laps: {_splitLapMarksMs.Count}");
+        
         FilterLapMarksToRange();
         RebuildSplitLapRows();
+        
+        System.Diagnostics.Debug.WriteLine($"[AddSplitLap] Después de rebuild: HasSplitLaps={HasSplitLaps}, SplitLapRows.Count={_splitLapRows.Count}");
     }
 
     private void ClearSplit()
@@ -3862,6 +3901,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         _splitLapMarksMs.Clear();
         _splitLapRows.Clear();
         HasSplitLaps = false;
+        HasSavedSplit = false; // Permite volver a editar
     }
 
     private void FilterLapMarksToRange()
@@ -3880,6 +3920,8 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     private void RebuildSplitLapRows()
     {
+        System.Diagnostics.Debug.WriteLine($"[RebuildSplitLapRows] Entrando. LapMarks: {_splitLapMarksMs.Count}, SplitStartTime={_splitStartTime}");
+        
         _splitLapMarksMs.Sort();
 
         _splitLapRows.Clear();
@@ -3887,6 +3929,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         if (!_splitStartTime.HasValue)
         {
             HasSplitLaps = false;
+            System.Diagnostics.Debug.WriteLine("[RebuildSplitLapRows] Sin SplitStartTime, saliendo");
             return;
         }
 
@@ -3899,15 +3942,18 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             if (splitMs < 0) splitMs = 0;
             prev = mark;
 
-            _splitLapRows.Add(new ExecutionTimingRow
+            var row = new ExecutionTimingRow
             {
                 Title = $"Lap {lapIndex}",
                 Value = FormatMs(splitMs),
                 IsTotal = false
-            });
+            };
+            _splitLapRows.Add(row);
+            System.Diagnostics.Debug.WriteLine($"[RebuildSplitLapRows] Añadido: {row.Title} = {row.Value}");
         }
 
         HasSplitLaps = _splitLapRows.Count > 0;
+        System.Diagnostics.Debug.WriteLine($"[RebuildSplitLapRows] Finalizado. HasSplitLaps={HasSplitLaps}, Total rows={_splitLapRows.Count}");
     }
 
     private static string FormatMs(long ms)
@@ -3927,6 +3973,8 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     private void InitializeAssistedLaps()
     {
         _assistedLaps.Clear();
+        
+        // Crear los parciales intermedios definidos por el usuario
         for (int i = 1; i <= AssistedLapCount; i++)
         {
             _assistedLaps.Add(new AssistedLapDefinition
@@ -3936,8 +3984,81 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
                 IsCurrent = false
             });
         }
+        
+        // Añadir el parcial final (FIN) que siempre existe
+        _assistedLaps.Add(new AssistedLapDefinition
+        {
+            Index = AssistedLapCount + 1,
+            Name = "Fin",
+            IsCurrent = false
+        });
+
+        WireAssistedLaps();
+        
         AssistedLapState = AssistedLapState.Configuring;
         CurrentAssistedLapIndex = 0;
+    }
+
+    private void AssistedLap_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(AssistedLapDefinition.Name))
+        {
+            UpdateAssistedLapPreviousNames();
+        }
+    }
+
+    private void WireAssistedLaps()
+    {
+        for (int i = 0; i < _assistedLaps.Count; i++)
+        {
+            var lap = _assistedLaps[i];
+
+            // Evitar dobles suscripciones si se re-usa la misma instancia
+            lap.PropertyChanged -= AssistedLap_PropertyChanged;
+            lap.PropertyChanged += AssistedLap_PropertyChanged;
+
+            lap.IsFirstLap = (i == 0);
+            lap.IsLastLap = (i == _assistedLaps.Count - 1);
+
+            // Referencia al anterior para prefijos dinámicos
+            lap.PreviousLap = (i == 0) ? null : _assistedLaps[i - 1];
+        }
+
+        // Prefijos coherentes desde el primer render
+        UpdateAssistedLapPreviousNames();
+    }
+    
+    /// <summary>
+    /// Método público para refrescar los prefijos de parciales desde el code-behind.
+    /// Se llama cuando el usuario escribe en un Entry de nombre de parcial.
+    /// </summary>
+    public void RefreshAssistedLapPrefixes()
+    {
+        UpdateAssistedLapPreviousNames();
+    }
+    
+    /// <summary>Actualiza los PreviousLapName de todos los parciales basándose en los nombres actuales</summary>
+    private void UpdateAssistedLapPreviousNames()
+    {
+        for (int i = 0; i < _assistedLaps.Count; i++)
+        {
+            var lap = _assistedLaps[i];
+            string newPrevName;
+            
+            if (i == 0)
+            {
+                newPrevName = "Inicio";
+            }
+            else
+            {
+                var prevLap = _assistedLaps[i - 1];
+                newPrevName = string.IsNullOrWhiteSpace(prevLap.Name) ? $"P{prevLap.Index}" : prevLap.Name;
+            }
+            
+            // Siempre actualizar y notificar para forzar el refresco del UI
+            lap.PreviousLapName = newPrevName;
+            lap.OnPropertyChangedPublic(nameof(AssistedLapDefinition.PreviousPointLabel));
+        }
     }
     
     private async void StartAssistedCapture()
@@ -3978,7 +4099,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
                 SplitStartTime = CurrentPosition;
                 _splitLapMarksMs.Clear();
                 
-                if (_assistedLaps.Count > 0)
+                if (AssistedLapCount > 0)
                 {
                     // Pasar a marcar el primer parcial
                     AssistedLapState = AssistedLapState.MarkingLaps;
@@ -3986,15 +4107,15 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
                 }
                 else
                 {
-                    // Si no hay parciales, ir directamente a fin
+                    // Si no hay parciales intermedios, ir directamente a fin
                     AssistedLapState = AssistedLapState.WaitingForEnd;
                 }
                 break;
                 
             case AssistedLapState.MarkingLaps:
-                if (CurrentAssistedLapIndex < _assistedLaps.Count)
+                if (CurrentAssistedLapIndex < AssistedLapCount)
                 {
-                    // Marcar el parcial actual
+                    // Marcar el parcial actual (no incluye FIN)
                     var lap = _assistedLaps[CurrentAssistedLapIndex];
                     lap.MarkedMs = nowMs;
                     lap.IsCurrent = false;
@@ -4006,9 +4127,9 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
                     // Avanzar al siguiente
                     CurrentAssistedLapIndex++;
                     
-                    if (CurrentAssistedLapIndex >= _assistedLaps.Count)
+                    if (CurrentAssistedLapIndex >= AssistedLapCount)
                     {
-                        // Ya marcamos todos los parciales, ir a fin
+                        // Ya marcamos todos los parciales intermedios, ir a fin
                         AssistedLapState = AssistedLapState.WaitingForEnd;
                     }
                 }
@@ -4017,6 +4138,15 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             case AssistedLapState.WaitingForEnd:
                 // Marcar fin
                 SplitEndTime = CurrentPosition;
+                
+                // Marcar también el último parcial (FIN) en la lista
+                if (_assistedLaps.Count > 0)
+                {
+                    var lastLap = _assistedLaps[^1];
+                    lastLap.MarkedMs = nowMs;
+                    lastLap.IsCurrent = false;
+                }
+                
                 AssistedLapState = AssistedLapState.Completed;
                 
                 // Actualizar filas con los nombres de los parciales asistidos
@@ -4032,8 +4162,20 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     {
         for (int i = 0; i < _assistedLaps.Count; i++)
         {
-            _assistedLaps[i].IsCurrent = (i == CurrentAssistedLapIndex) && 
-                AssistedLapState == AssistedLapState.MarkingLaps;
+            bool isCurrent = false;
+            
+            if (AssistedLapState == AssistedLapState.MarkingLaps && i == CurrentAssistedLapIndex)
+            {
+                // Parciales intermedios
+                isCurrent = true;
+            }
+            else if (AssistedLapState == AssistedLapState.WaitingForEnd && i == _assistedLaps.Count - 1)
+            {
+                // El elemento FIN cuando esperamos marcar el fin
+                isCurrent = true;
+            }
+            
+            _assistedLaps[i].IsCurrent = isCurrent;
         }
     }
     
@@ -4155,6 +4297,16 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             });
         }
         
+        // Añadir el parcial final (FIN) que siempre existe
+        _assistedLaps.Add(new AssistedLapDefinition
+        {
+            Index = config.LapCount + 1,
+            Name = "Fin",
+            IsCurrent = false
+        });
+
+        WireAssistedLaps();
+        
         // Asegurarse de estar en modo configuración
         AssistedLapState = AssistedLapState.Configuring;
         CurrentAssistedLapIndex = 0;
@@ -4175,6 +4327,8 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         }
 
         var prev = (long)_splitStartTime.Value.TotalMilliseconds;
+        
+        // Añadir filas para los parciales intermedios
         for (int i = 0; i < _splitLapMarksMs.Count; i++)
         {
             var mark = _splitLapMarksMs[i];
@@ -4189,6 +4343,27 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             {
                 Title = lapName,
                 Value = FormatMs(splitMs),
+                IsTotal = false
+            });
+        }
+        
+        // Añadir el segmento final: desde el último parcial hasta Fin
+        if (_splitEndTime.HasValue)
+        {
+            var endMs = (long)_splitEndTime.Value.TotalMilliseconds;
+            var lastSegmentMs = endMs - prev;
+            if (lastSegmentMs < 0) lastSegmentMs = 0;
+            
+            // El parcial Fin es el último en la lista _assistedLaps
+            var finLapIndex = _assistedLaps.Count - 1;
+            var finLapName = (finLapIndex >= 0 && finLapIndex < _assistedLaps.Count) 
+                ? _assistedLaps[finLapIndex].DisplayName 
+                : "Fin";
+            
+            _splitLapRows.Add(new ExecutionTimingRow
+            {
+                Title = finLapName,
+                Value = FormatMs(lastSegmentMs),
                 IsTotal = false
             });
         }

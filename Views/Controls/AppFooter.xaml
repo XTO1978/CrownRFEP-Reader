@@ -69,6 +69,7 @@
                 <Label
                     x:Name="ProgressLabel"
                     FontSize="{StaticResource FontSizeBody}"
+                    FontFamily="{StaticResource AppFontMono}"
                     TextColor="#FF8A8A8A"
                     VerticalOptions="Center" />
 
@@ -139,6 +140,7 @@
                 <Label
                     x:Name="VideoCountLabel"
                     FontSize="{StaticResource FontSizeBody}"
+                    FontFamily="{StaticResource AppFontMono}"
                     Text="0 vídeos"
                     TextColor="#FF8A8A8A"
                     VerticalOptions="Center" />
@@ -158,6 +160,7 @@
                 <Label
                     x:Name="SessionCountLabel"
                     FontSize="{StaticResource FontSizeBody}"
+                    FontFamily="{StaticResource AppFontMono}"
                     Text="0 sesiones"
                     TextColor="#FF8A8A8A"
                     VerticalOptions="Center" />

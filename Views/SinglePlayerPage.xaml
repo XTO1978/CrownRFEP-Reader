@@ -2734,14 +2734,14 @@
                                         ItemsSource="{Binding AssistedLaps}">
                                         <CollectionView.ItemTemplate>
                                             <DataTemplate x:DataType="models:AssistedLapDefinition">
-                                                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8" Padding="0,4">
+                                                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="4" Padding="0,4">
                                                     <Label
                                                         Grid.Column="0"
+                                                        FontAttributes="Bold"
                                                         FontSize="{StaticResource FontSizeSmall}"
-                                                        Text="{Binding Index, StringFormat='P{0}:'}"
-                                                        TextColor="#FF888888"
-                                                        VerticalOptions="Center"
-                                                        WidthRequest="30" />
+                                                        Text="{Binding PreviousPointLabel}"
+                                                        TextColor="#FF4FC3F7"
+                                                        VerticalOptions="Center" />
                                                     <Entry
                                                         Grid.Column="1"
                                                         BackgroundColor="#FF3A3A3A"
@@ -2750,6 +2750,7 @@
                                                         Placeholder="Nombre"
                                                         PlaceholderColor="#FF666666"
                                                         Text="{Binding Name, Mode=TwoWay}"
+                                                        TextChanged="AssistedLapEntry_TextChanged"
                                                         TextColor="White" />
                                                 </Grid>
                                             </DataTemplate>
@@ -2863,11 +2864,11 @@
                             <Border
                                 Padding="10,8"
                                 BackgroundColor="#FF2A2A2A"
-                                IsVisible="{Binding IsAssistedCapturing}"
+                                IsVisible="{Binding ShowAssistedResults}"
                                 StrokeShape="RoundRectangle 10"
                                 StrokeThickness="0">
                                 <CollectionView
-                                    HeightRequest="100"
+                                    HeightRequest="180"
                                     ItemsSource="{Binding AssistedLaps}">
                                     <CollectionView.ItemTemplate>
                                         <DataTemplate x:DataType="models:AssistedLapDefinition">
@@ -2878,7 +2879,7 @@
                                                     BackgroundColor="{Binding IsCurrent, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF4FC3F7|#FF3A3A3A'}"
                                                     StrokeShape="RoundRectangle 4"
                                                     StrokeThickness="0"
-                                                    WidthRequest="50">
+                                                    WidthRequest="90">
                                                     <Label
                                                         FontAttributes="Bold"
                                                         FontSize="{StaticResource FontSizeSmall}"
@@ -2913,17 +2914,64 @@
                                 CornerRadius="8"
                                 FontSize="{StaticResource FontSizeSmall}"
                                 HeightRequest="40"
-                                IsVisible="{Binding IsAssistedCapturing}"
+                                IsVisible="{Binding ShowAssistedResults}"
                                 Text="Reiniciar toma"
                                 TextColor="#FFAAAAAA" />
+                            
+                            <!--  Indicador de guardado exitoso (modo asistido)  -->
+                            <Border
+                                Padding="12,8"
+                                BackgroundColor="#FF1B5E20"
+                                IsVisible="{Binding HasSavedSplit}"
+                                StrokeShape="RoundRectangle 8"
+                                StrokeThickness="0">
+                                <HorizontalStackLayout HorizontalOptions="Center" Spacing="8">
+                                    <controls:SymbolIcon
+                                        HeightRequest="18"
+                                        SymbolName="checkmark.circle.fill"
+                                        TintColor="#FF4CAF50"
+                                        VerticalOptions="Center"
+                                        WidthRequest="18" />
+                                    <Label
+                                        FontAttributes="Bold"
+                                        FontSize="{StaticResource FontSizeSmall}"
+                                        Text="¡Tiempos guardados!"
+                                        TextColor="#FF4CAF50"
+                                        VerticalOptions="Center" />
+                                </HorizontalStackLayout>
+                            </Border>
                         </VerticalStackLayout>
                         
                         <!--  ===== MODO MANUAL (original) =====  -->
                         <VerticalStackLayout IsVisible="{Binding IsManualModeEnabled}" Spacing="14">
                         
+                        <!--  Indicador de guardado exitoso  -->
+                        <Border
+                            Padding="12,8"
+                            BackgroundColor="#FF1B5E20"
+                            IsVisible="{Binding HasSavedSplit}"
+                            StrokeShape="RoundRectangle 8"
+                            StrokeThickness="0">
+                            <HorizontalStackLayout HorizontalOptions="Center" Spacing="8">
+                                <controls:SymbolIcon
+                                    SymbolName="checkmark.circle.fill"
+                                    TintColor="#FF4CAF50"
+                                    HeightRequest="20"
+                                    WidthRequest="20"
+                                    VerticalOptions="Center" />
+                                <Label
+                                    FontAttributes="Bold"
+                                    FontSize="{StaticResource FontSizeBody}"
+                                    Text="¡Tiempos guardados!"
+                                    TextColor="#FF4CAF50"
+                                    VerticalOptions="Center" />
+                            </HorizontalStackLayout>
+                        </Border>
+                        
                         <!--  Descripción  -->
                         <Label
                             FontSize="{StaticResource FontSizeSmall}"
+                            IsVisible="{Binding HasSavedSplit, Converter={StaticResource InvertedBoolConverter}}"
                             Text="Marca un punto de inicio y fin para medir el tiempo de ejecución."
                             TextColor="#FF888888" />
                         
@@ -2949,12 +2997,13 @@
                             </VerticalStackLayout>
                             <Button
                                 Grid.Column="1"
-                                BackgroundColor="#FF4FC3F7"
+                                BackgroundColor="{Binding HasSavedSplit, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF3A3A3A|#FF4FC3F7'}"
                                 Command="{Binding SetSplitStartCommand}"
                                 CornerRadius="8"
                                 HeightRequest="50"
+                                IsEnabled="{Binding HasSavedSplit, Converter={StaticResource InvertedBoolConverter}}"
                                 Text="Marcar"
-                                TextColor="White"
+                                TextColor="{Binding HasSavedSplit, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF666666|White'}"
                                 VerticalOptions="End"
                                 WidthRequest="80" />
                         </Grid>
@@ -2981,12 +3030,13 @@
                             </VerticalStackLayout>
                             <Button
                                 Grid.Column="1"
-                                BackgroundColor="#FF4FC3F7"
+                                BackgroundColor="{Binding HasSavedSplit, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF3A3A3A|#FF4FC3F7'}"
                                 Command="{Binding SetSplitEndCommand}"
                                 CornerRadius="8"
                                 HeightRequest="50"
+                                IsEnabled="{Binding HasSavedSplit, Converter={StaticResource InvertedBoolConverter}}"
                                 Text="Marcar"
-                                TextColor="White"
+                                TextColor="{Binding HasSavedSplit, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF666666|White'}"
                                 VerticalOptions="End"
                                 WidthRequest="80" />
                         </Grid>
@@ -3005,13 +3055,13 @@
                             </VerticalStackLayout>
                             <Button
                                 Grid.Column="1"
-                                BackgroundColor="#FF4FC3F7"
+                                BackgroundColor="{Binding HasSavedSplit, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF3A3A3A|#FF4FC3F7'}"
                                 Command="{Binding AddSplitLapCommand}"
                                 CornerRadius="8"
                                 HeightRequest="50"
-                                IsEnabled="{Binding HasSplitStart}"
+                                IsEnabled="{Binding HasSavedSplit, Converter={StaticResource InvertedBoolConverter}}"
                                 Text="Lap"
-                                TextColor="White"
+                                TextColor="{Binding HasSavedSplit, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF666666|White'}"
                                 VerticalOptions="End"
                                 WidthRequest="80" />
                         </Grid>
@@ -3100,6 +3150,7 @@
                                 CornerRadius="8"
                                 FontSize="{StaticResource FontSizeBody}"
                                 HeightRequest="{StaticResource ElementHeightLarge}"
+                                IsVisible="{Binding HasSavedSplit, Converter={StaticResource InvertedBoolConverter}}"
                                 Text="Guardar"
                                 TextColor="White" />
                         </Grid>
@@ -4003,6 +4054,15 @@
                         
                         <!-- Modo Manual -->
                         <VerticalStackLayout IsVisible="{Binding IsManualModeEnabled}" Spacing="10">
+                            
+                            <!--  Indicador de guardado exitoso  -->
+                            <Border Padding="10,6" BackgroundColor="#FF1B5E20" IsVisible="{Binding HasSavedSplit}" StrokeShape="RoundRectangle 6" StrokeThickness="0">
+                                <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
+                                    <controls:SymbolIcon SymbolName="checkmark.circle.fill" TintColor="#FF4CAF50" HeightRequest="16" WidthRequest="16" VerticalOptions="Center" />
+                                    <Label FontAttributes="Bold" FontSize="{StaticResource FontSizeSmall}" Text="¡Guardado!" TextColor="#FF4CAF50" VerticalOptions="Center" />
+                                </HorizontalStackLayout>
+                            </Border>
+                            
                             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                                 <VerticalStackLayout Spacing="2">
                                     <Label FontSize="{StaticResource FontSizeCaption}" Text="INICIO" TextColor="#FF888888" />
@@ -4010,7 +4070,7 @@
                                         <Label FontAttributes="Bold" FontSize="{StaticResource FontSizeBody}" Text="{Binding SplitStartTimeText}" TextColor="{Binding HasSplitStart, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF4FC3F7|#FF666666'}" HorizontalOptions="Center" />
                                     </Border>
                                 </VerticalStackLayout>
-                                <Button Grid.Column="1" BackgroundColor="#FF4FC3F7" Command="{Binding SetSplitStartCommand}" CornerRadius="6" HeightRequest="{StaticResource ElementHeightDefault}" Text="Marcar" TextColor="White" VerticalOptions="End" WidthRequest="70" FontSize="{StaticResource FontSizeSmall}" />
+                                <Button Grid.Column="1" BackgroundColor="{Binding HasSavedSplit, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF3A3A3A|#FF4FC3F7'}" Command="{Binding SetSplitStartCommand}" CornerRadius="6" HeightRequest="{StaticResource ElementHeightDefault}" IsEnabled="{Binding HasSavedSplit, Converter={StaticResource InvertedBoolConverter}}" Text="Marcar" TextColor="{Binding HasSavedSplit, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF666666|White'}" VerticalOptions="End" WidthRequest="70" FontSize="{StaticResource FontSizeSmall}" />
                             </Grid>
                             
                             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
@@ -4020,10 +4080,31 @@
                                         <Label FontAttributes="Bold" FontSize="{StaticResource FontSizeBody}" Text="{Binding SplitEndTimeText}" TextColor="{Binding HasSplitEnd, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF4FC3F7|#FF666666'}" HorizontalOptions="Center" />
                                     </Border>
                                 </VerticalStackLayout>
-                                <Button Grid.Column="1" BackgroundColor="#FF4FC3F7" Command="{Binding SetSplitEndCommand}" CornerRadius="6" HeightRequest="{StaticResource ElementHeightDefault}" Text="Marcar" TextColor="White" VerticalOptions="End" WidthRequest="70" FontSize="{StaticResource FontSizeSmall}" />
+                                <Button Grid.Column="1" BackgroundColor="{Binding HasSavedSplit, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF3A3A3A|#FF4FC3F7'}" Command="{Binding SetSplitEndCommand}" CornerRadius="6" HeightRequest="{StaticResource ElementHeightDefault}" IsEnabled="{Binding HasSavedSplit, Converter={StaticResource InvertedBoolConverter}}" Text="Marcar" TextColor="{Binding HasSavedSplit, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF666666|White'}" VerticalOptions="End" WidthRequest="70" FontSize="{StaticResource FontSizeSmall}" />
                             </Grid>
                             
-                            <Button BackgroundColor="#FF4FC3F7" Command="{Binding AddSplitLapCommand}" CornerRadius="6" HeightRequest="{StaticResource ElementHeightDefault}" IsEnabled="{Binding HasSplitStart}" Text="+ Lap" TextColor="White" FontSize="{StaticResource FontSizeSmall}" />
+                            <!-- Botón y lista de Laps -->
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                <Label FontSize="{StaticResource FontSizeCaption}" Text="LAPS" TextColor="#FF888888" VerticalOptions="Center" />
+                                <Button Grid.Column="1" BackgroundColor="{Binding HasSavedSplit, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF3A3A3A|#FF4FC3F7'}" Command="{Binding AddSplitLapCommand}" CornerRadius="6" HeightRequest="{StaticResource ElementHeightDefault}" IsEnabled="{Binding HasSavedSplit, Converter={StaticResource InvertedBoolConverter}}" Text="+ Lap" TextColor="{Binding HasSavedSplit, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF666666|White'}" WidthRequest="70" FontSize="{StaticResource FontSizeSmall}" />
+                            </Grid>
+                            
+                            <!-- Lista de laps tomados -->
+                            <Border Padding="8,6" BackgroundColor="#FF2A2A2A" StrokeShape="RoundRectangle 6" StrokeThickness="0">
+                                <Grid RowDefinitions="Auto,Auto">
+                                    <Label Grid.Row="0" FontSize="{StaticResource FontSizeCaption}" IsVisible="{Binding HasSplitLaps, Converter={StaticResource InvertedBoolConverter}}" Text="Sin laps todavía" TextColor="#FF666666" />
+                                    <CollectionView Grid.Row="1" HeightRequest="100" IsVisible="{Binding HasSplitLaps}" ItemsSource="{Binding SplitLapRows}">
+                                        <CollectionView.ItemTemplate>
+                                            <DataTemplate x:DataType="models:ExecutionTimingRow">
+                                                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8" Padding="0,4">
+                                                    <Label Grid.Column="0" FontSize="{StaticResource FontSizeSmall}" Text="{Binding Title}" TextColor="#FFAAAAAA" />
+                                                    <Label Grid.Column="1" FontAttributes="Bold" FontSize="{StaticResource FontSizeSmall}" HorizontalTextAlignment="End" Text="{Binding Value}" TextColor="White" />
+                                                </Grid>
+                                            </DataTemplate>
+                                        </CollectionView.ItemTemplate>
+                                    </CollectionView>
+                                </Grid>
+                            </Border>
                         </VerticalStackLayout>
                         
                         <!-- Modo Asistido -->
@@ -4037,15 +4118,82 @@
                                 </HorizontalStackLayout>
                             </Grid>
                             
+                            <!--  Lista de parciales para nombrar  -->
+                            <Border Padding="10,8" BackgroundColor="#FF2A2A2A" IsVisible="{Binding IsAssistedConfiguring}" StrokeShape="RoundRectangle 8" StrokeThickness="0">
+                                <VerticalStackLayout Spacing="6">
+                                    <Label FontSize="{StaticResource FontSizeCaption}" Text="Nombres de parciales:" TextColor="#FF888888" />
+                                    <CollectionView HeightRequest="100" ItemsSource="{Binding AssistedLaps}">
+                                        <CollectionView.ItemTemplate>
+                                            <DataTemplate x:DataType="models:AssistedLapDefinition">
+                                                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="4" Padding="0,4">
+                                                    <Label Grid.Column="0" FontAttributes="Bold" FontSize="{StaticResource FontSizeSmall}" Text="{Binding PreviousPointLabel}" TextColor="#FF4FC3F7" VerticalOptions="Center" />
+                                                    <Entry Grid.Column="1" BackgroundColor="#FF3A3A3A" FontSize="{StaticResource FontSizeSmall}" MaxLength="8" Placeholder="Nombre" PlaceholderColor="#FF666666" Text="{Binding Name, Mode=TwoWay}" TextChanged="AssistedLapEntry_TextChanged" TextColor="White" />
+                                                </Grid>
+                                            </DataTemplate>
+                                        </CollectionView.ItemTemplate>
+                                    </CollectionView>
+                                </VerticalStackLayout>
+                            </Border>
+                            
+                            <!--  Configuraciones recientes  -->
+                            <Border Padding="10,8" BackgroundColor="#FF252525" IsVisible="{Binding HasRecentLapConfigs}" StrokeShape="RoundRectangle 8" StrokeThickness="0">
+                                <VerticalStackLayout Spacing="6">
+                                    <Label FontSize="{StaticResource FontSizeCaption}" Text="Configuraciones recientes:" TextColor="#FF888888" />
+                                    <CollectionView ItemsSource="{Binding RecentLapConfigs}" SelectionMode="None">
+                                        <CollectionView.ItemTemplate>
+                                            <DataTemplate x:DataType="models:LapConfigHistory">
+                                                <Border Padding="8,6" BackgroundColor="#FF3A3A3A" StrokeShape="RoundRectangle 6" StrokeThickness="0" Margin="0,2">
+                                                    <Border.GestureRecognizers>
+                                                        <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:SinglePlayerViewModel}}, Path=ApplyLapConfigCommand}" CommandParameter="{Binding .}" />
+                                                    </Border.GestureRecognizers>
+                                                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                                                        <Border Grid.Column="0" Padding="6,2" BackgroundColor="#FF4FC3F7" StrokeShape="RoundRectangle 4" StrokeThickness="0">
+                                                            <Label FontAttributes="Bold" FontSize="{StaticResource FontSizeCaption}" Text="{Binding LapCount}" TextColor="White" />
+                                                        </Border>
+                                                        <Label Grid.Column="1" FontSize="{StaticResource FontSizeCaption}" LineBreakMode="TailTruncation" Text="{Binding DisplaySummary}" TextColor="White" VerticalOptions="Center" />
+                                                        <controls:SymbolIcon Grid.Column="2" HeightRequest="14" SymbolName="arrow.right.circle" TintColor="#FF888888" WidthRequest="14" />
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </CollectionView.ItemTemplate>
+                                    </CollectionView>
+                                </VerticalStackLayout>
+                            </Border>
+                            
                             <Button BackgroundColor="#FF4FC3F7" Command="{Binding StartAssistedCaptureCommand}" CornerRadius="6" FontSize="{StaticResource FontSizeSmall}" HeightRequest="{StaticResource ElementHeightDefault}" IsVisible="{Binding IsAssistedConfiguring}" Text="Iniciar toma" TextColor="White" />
                             
-                            <Border Padding="10,8" BackgroundColor="#FF1B5E20" IsVisible="{Binding IsAssistedCapturing}" StrokeShape="RoundRectangle 6" StrokeThickness="0">
+                            <Border Padding="10,8" BackgroundColor="#FF1B5E20" IsVisible="{Binding ShowAssistedResults}" StrokeShape="RoundRectangle 6" StrokeThickness="0">
                                 <Label FontAttributes="Bold" FontSize="{StaticResource FontSizeSmall}" HorizontalTextAlignment="Center" Text="{Binding AssistedStateDescription}" TextColor="White" />
                             </Border>
                             
                             <Button BackgroundColor="#FF4CAF50" Command="{Binding MarkAssistedPointCommand}" CornerRadius="10" FontAttributes="Bold" FontSize="{StaticResource FontSizeSubtitle}" HeightRequest="60" IsVisible="{Binding CanMarkAssistedPoint}" Text="{Binding AssistedActionButtonText}" TextColor="White" />
                             
-                            <Button BackgroundColor="#FF3A3A3A" Command="{Binding ResetAssistedCaptureCommand}" CornerRadius="6" FontSize="{StaticResource FontSizeSmall}" HeightRequest="{StaticResource ElementHeightDefault}" IsVisible="{Binding IsAssistedCapturing}" Text="Reiniciar" TextColor="#FFAAAAAA" />
+                            <!--  Lista de parciales marcados  -->
+                            <Border Padding="10,8" BackgroundColor="#FF2A2A2A" IsVisible="{Binding ShowAssistedResults}" StrokeShape="RoundRectangle 8" StrokeThickness="0">
+                                <CollectionView HeightRequest="140" ItemsSource="{Binding AssistedLaps}">
+                                    <CollectionView.ItemTemplate>
+                                        <DataTemplate x:DataType="models:AssistedLapDefinition">
+                                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" Padding="0,3">
+                                                <Border Grid.Column="0" Padding="6,2" BackgroundColor="{Binding IsCurrent, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF4FC3F7|#FF3A3A3A'}" StrokeShape="RoundRectangle 4" StrokeThickness="0" WidthRequest="80">
+                                                    <Label FontAttributes="Bold" FontSize="{StaticResource FontSizeCaption}" HorizontalTextAlignment="Center" Text="{Binding DisplayName}" TextColor="White" />
+                                                </Border>
+                                                <controls:SymbolIcon Grid.Column="1" HeightRequest="14" HorizontalOptions="Start" IsVisible="{Binding IsMarked}" SymbolName="checkmark.circle.fill" TintColor="#FF4CAF50" WidthRequest="14" />
+                                                <Label Grid.Column="2" FontSize="{StaticResource FontSizeCaption}" Text="{Binding MarkedTimeFormatted}" TextColor="{Binding IsMarked, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF4CAF50|#FF666666'}" VerticalOptions="Center" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </CollectionView.ItemTemplate>
+                                </CollectionView>
+                            </Border>
+                            
+                            <Button BackgroundColor="#FF3A3A3A" Command="{Binding ResetAssistedCaptureCommand}" CornerRadius="6" FontSize="{StaticResource FontSizeSmall}" HeightRequest="{StaticResource ElementHeightDefault}" IsVisible="{Binding ShowAssistedResults}" Text="Reiniciar" TextColor="#FFAAAAAA" />
+                            
+                            <!--  Indicador de guardado exitoso (modo asistido)  -->
+                            <Border Padding="10,6" BackgroundColor="#FF1B5E20" IsVisible="{Binding HasSavedSplit}" StrokeShape="RoundRectangle 6" StrokeThickness="0">
+                                <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
+                                    <controls:SymbolIcon SymbolName="checkmark.circle.fill" TintColor="#FF4CAF50" HeightRequest="16" WidthRequest="16" VerticalOptions="Center" />
+                                    <Label FontAttributes="Bold" FontSize="{StaticResource FontSizeSmall}" Text="¡Guardado!" TextColor="#FF4CAF50" VerticalOptions="Center" />
+                                </HorizontalStackLayout>
+                            </Border>
                         </VerticalStackLayout>
                         
                         <!-- Duración -->
@@ -4058,7 +4206,7 @@
                         
                         <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
                             <Button Grid.Column="0" BackgroundColor="#FF3A3A3A" Command="{Binding ClearSplitCommand}" CornerRadius="6" FontSize="{StaticResource FontSizeSmall}" HeightRequest="{StaticResource ElementHeightDefault}" Text="Limpiar" TextColor="#FFAAAAAA" />
-                            <Button Grid.Column="1" BackgroundColor="{Binding CanSaveSplit, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF4CAF50|#FF3A3A3A'}" Command="{Binding SaveSplitCommand}" CornerRadius="6" FontSize="{StaticResource FontSizeSmall}" HeightRequest="{StaticResource ElementHeightDefault}" Text="Guardar" TextColor="White" />
+                            <Button Grid.Column="1" BackgroundColor="{Binding CanSaveSplit, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF4CAF50|#FF3A3A3A'}" Command="{Binding SaveSplitCommand}" CornerRadius="6" FontSize="{StaticResource FontSizeSmall}" HeightRequest="{StaticResource ElementHeightDefault}" IsVisible="{Binding HasSavedSplit, Converter={StaticResource InvertedBoolConverter}}" Text="Guardar" TextColor="White" />
                         </Grid>
                     </VerticalStackLayout>
                     
