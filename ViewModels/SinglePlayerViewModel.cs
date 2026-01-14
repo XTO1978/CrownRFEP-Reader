@@ -34,7 +34,6 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     public event EventHandler<LapSyncPauseRequestEventArgs>? LapSyncPauseRequested;
     public event EventHandler? LapSyncResumeAllRequested;
-    public event EventHandler<LapSyncResyncEventArgs>? LapSyncResyncRequested;
 
     private readonly DatabaseService _databaseService;
     private readonly StatisticsService _statisticsService;
@@ -309,7 +308,6 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         DropVideoToSlotCommand = new Command<object>(AssignVideoToComparisonSlotWithSlot);
         DropVideoIdToSlotCommand = new Command<object>(async obj => await AssignVideoIdToComparisonSlotAsync(obj));
         ExportComparisonCommand = new Command(async () => await ExportComparisonVideosAsync(), () => CanExportComparison);
-        ResyncLapsCommand = new Command(ManualResyncLaps, () => IsComparisonLapSyncEnabled && IsMultiVideoLayout);
         
         // Comandos de navegación de pestañas del panel lateral
         SelectToolsTabCommand = new Command(() => IsToolsTabSelected = true);
@@ -1711,7 +1709,6 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     }
 
     public ICommand ExportComparisonCommand { get; }
-    public ICommand ResyncLapsCommand { get; }
 
     #endregion
 
@@ -5903,65 +5900,46 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         }
 
         // Determinar colores según tiempos
-        // Verde: fondo oscuro con texto claro
-        // Rojo: fondo oscuro con texto claro
         var lapTimes = lapData.Select(d => d.lapTime).ToList();
         var min = lapTimes.Min();
         var max = lapTimes.Max();
         var anyDiff = min != max;
 
-        // Colores para el más rápido (verde)
-        var greenText = Color.FromArgb("#FF81C784");      // Verde claro
-        var greenBg = Color.FromArgb("#E61B5E20");        // Verde oscuro con transparencia
-        
-        // Colores para el más lento (rojo)
-        var redText = Color.FromArgb("#FFEF9A9A");        // Rojo claro
-        var redBg = Color.FromArgb("#E6B71C1C");          // Rojo oscuro con transparencia
-        
-        // Colores neutros
+        var green = Color.FromRgb(52, 199, 89);
+        var red = Color.FromRgb(255, 59, 48);
         var white = Colors.White;
         var bgNormal = Color.FromArgb("#E6000000");
 
         foreach (var (index, lapTime, text) in lapData)
         {
-            Color textColor = white;
-            Color bgColor = bgNormal;
-            
+            Color color = white;
             if (anyDiff)
             {
-                if (lapTime == min) 
-                {
-                    textColor = greenText;
-                    bgColor = greenBg;
-                }
-                else if (lapTime == max) 
-                {
-                    textColor = redText;
-                    bgColor = redBg;
-                }
+                if (lapTime == min) color = green;
+                else if (lapTime == max) color = red;
             }
 
             switch (index)
             {
                 case 1:
                     CurrentLapText1 = text;
-                    CurrentLapColor1 = textColor;
-                    CurrentLapBgColor1 = bgColor;
+                    CurrentLapColor1 = color;
+                    CurrentLapBgColor1 = bgNormal;
                     break;
                 case 2:
                     CurrentLapText2 = text;
-                    CurrentLapColor2 = textColor;
-                    CurrentLapBgColor2 = bgColor;
+                    CurrentLapColor2 = color;
+                    CurrentLapBgColor2 = bgNormal;
                     break;
                 case 3:
                     CurrentLapText3 = text;
-                    CurrentLapColor3 = textColor;
-                    CurrentLapBgColor3 = bgColor;
+                    CurrentLapColor3 = color;
+                    CurrentLapBgColor3 = bgNormal;
                     break;
                 case 4:
                     CurrentLapText4 = text;
-                    CurrentLapColor4 = textColor;
-                    CurrentLapBgColor4 = bgColor;
+                    CurrentLapColor4 = color;
+                    CurrentLapBgColor4 = bgNormal;
                     break;
             }
         }
@@ -5992,17 +5970,11 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         if (_isProcessingLapSync)
             return;
 
-        // Si hay un salto grande (seek manual), verificar desincronización
-        var positionDelta = Math.Abs((currentPosition - previousPosition).TotalSeconds);
-        if (positionDelta > 0.75)
-        {
-            // Un salto grande indica seek manual, verificar si necesita resincronización
-            CheckAndResyncToSameLap();
-            return;
-        }
-
-        // Evitar disparos por retroceso
+        // Evitar disparos por seek/scrub o saltos grandes.
         if (currentPosition <= previousPosition)
+            return;
+
+        if (currentPosition - previousPosition > TimeSpan.FromSeconds(0.75))
             return;
 
         // Solo sincronizar si todos los vídeos activos tienen timing.
@@ -6129,193 +6101,6 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         }
     }
 
-    /// <summary>
-    /// Verifica si los videos están desincronizados (en laps diferentes) y los resincroniza al lap más bajo común.
-    /// Este método se llama cuando el usuario hace scrub manual en algún reproductor.
-    /// </summary>
-    private void CheckAndResyncToSameLap()
-    {
-        if (!IsMultiVideoLayout || !IsComparisonLapSyncEnabled)
-            return;
-
-        if (_isProcessingLapSync)
-            return;
-
-        if (!CanLapSyncPlayback())
-            return;
-
-        var activeVideos = GetActiveLayoutVideoIndices();
-        if (activeVideos.Count < 2)
-            return;
-
-        // Obtener el lap actual de cada video activo
-        var videoLaps = new Dictionary<int, (int LapNumber, LapSegment? Segment)>();
-
-        foreach (var videoIndex in activeVideos)
-        {
-            var segments = videoIndex switch
-            {
-                1 => _lapSegments1,
-                2 => _lapSegments2,
-                3 => _lapSegments3,
-                4 => _lapSegments4,
-                _ => null
-            };
-
-            var position = videoIndex switch
-            {
-                1 => CurrentPosition,
-                2 => CurrentPosition2,
-                3 => CurrentPosition3,
-                4 => CurrentPosition4,
-                _ => TimeSpan.Zero
-            };
-
-            if (segments == null || segments.Count == 0)
-                return; // Si un video no tiene segments, no podemos resincronizar
-
-            var currentLap = FindLapAtPosition(segments, position);
-            if (currentLap == null)
-                return;
-
-            videoLaps[videoIndex] = (currentLap.LapNumber, currentLap);
-        }
-
-        // Verificar si todos están en el mismo lap
-        var distinctLaps = videoLaps.Values.Select(v => v.LapNumber).Distinct().ToList();
-        if (distinctLaps.Count == 1)
-            return; // Todos en el mismo lap, no necesita resync
-
-        // Encontrar el lap mínimo común (el más bajo entre todos los videos)
-        var minLapNumber = distinctLaps.Min();
-
-        // Verificar que todos los videos tengan ese lap
-        var seekPositions = new Dictionary<int, TimeSpan>();
-
-        foreach (var videoIndex in activeVideos)
-        {
-            var segments = videoIndex switch
-            {
-                1 => _lapSegments1,
-                2 => _lapSegments2,
-                3 => _lapSegments3,
-                4 => _lapSegments4,
-                _ => null
-            };
-
-            if (segments == null)
-                return;
-
-            // Buscar el lap objetivo en los segments de este video
-            var targetSegment = segments.FirstOrDefault(s => s.LapNumber == minLapNumber);
-            if (targetSegment == null)
-            {
-                // Este video no tiene el lap mínimo, usar el primer lap disponible
-                var firstLap = segments.OrderBy(s => s.LapNumber).FirstOrDefault();
-                if (firstLap == null)
-                    return;
-                seekPositions[videoIndex] = firstLap.Start;
-            }
-            else
-            {
-                seekPositions[videoIndex] = targetSegment.Start;
-            }
-        }
-
-        // Limpiar estados de espera
-        _waitingAtLapBoundary1 = false;
-        _waitingAtLapBoundary2 = false;
-        _waitingAtLapBoundary3 = false;
-        _waitingAtLapBoundary4 = false;
-
-        // Actualizar los lap index actuales
-        foreach (var videoIndex in activeVideos)
-        {
-            switch (videoIndex)
-            {
-                case 1: _currentLapIndex1 = minLapNumber; break;
-                case 2: _currentLapIndex2 = minLapNumber; break;
-                case 3: _currentLapIndex3 = minLapNumber; break;
-                case 4: _currentLapIndex4 = minLapNumber; break;
-            }
-        }
-
-        _isProcessingLapSync = true;
-        LapSyncResyncRequested?.Invoke(this, new LapSyncResyncEventArgs(minLapNumber, seekPositions));
-        
-        // Liberar el lock después de un breve delay
-        Task.Delay(100).ContinueWith(_ => _isProcessingLapSync = false);
-    }
-
-    /// <summary>
-    /// Resincronización manual disparada por el usuario mediante el botón de resync.
-    /// Fuerza la resincronización al lap 1 de todos los videos.
-    /// </summary>
-    private void ManualResyncLaps()
-    {
-        if (!IsMultiVideoLayout || !IsComparisonLapSyncEnabled)
-            return;
-
-        if (_isProcessingLapSync)
-            return;
-
-        if (!CanLapSyncPlayback())
-            return;
-
-        var activeVideos = GetActiveLayoutVideoIndices();
-        if (activeVideos.Count < 2)
-            return;
-
-        // Resincronizar al lap 1 de todos los videos
-        var seekPositions = new Dictionary<int, TimeSpan>();
-
-        foreach (var videoIndex in activeVideos)
-        {
-            var segments = videoIndex switch
-            {
-                1 => _lapSegments1,
-                2 => _lapSegments2,
-                3 => _lapSegments3,
-                4 => _lapSegments4,
-                _ => null
-            };
-
-            if (segments == null || segments.Count == 0)
-                return;
-
-            // Buscar el lap 1 (o el primer lap disponible)
-            var firstLap = segments.OrderBy(s => s.LapNumber).FirstOrDefault();
-            if (firstLap == null)
-                return;
-
-            seekPositions[videoIndex] = firstLap.Start;
-        }
-
-        // Limpiar estados de espera
-        _waitingAtLapBoundary1 = false;
-        _waitingAtLapBoundary2 = false;
-        _waitingAtLapBoundary3 = false;
-        _waitingAtLapBoundary4 = false;
-
-        // Actualizar los lap index actuales al lap 1
-        foreach (var videoIndex in activeVideos)
-        {
-            switch (videoIndex)
-            {
-                case 1: _currentLapIndex1 = 1; break;
-                case 2: _currentLapIndex2 = 1; break;
-                case 3: _currentLapIndex3 = 1; break;
-                case 4: _currentLapIndex4 = 1; break;
-            }
-        }
-
-        _isProcessingLapSync = true;
-        LapSyncResyncRequested?.Invoke(this, new LapSyncResyncEventArgs(1, seekPositions));
-        
-        // Liberar el lock después de un breve delay
-        Task.Delay(100).ContinueWith(_ => _isProcessingLapSync = false);
-    }
-
     #endregion
 }
 
@@ -6328,28 +6113,6 @@ public sealed class LapSyncPauseRequestEventArgs : EventArgs
     {
         VideoIndex = videoIndex;
         BoundaryPosition = boundaryPosition;
-    }
-}
-
-/// <summary>
-/// Argumentos para el evento de resincronización de videos a un lap común.
-/// </summary>
-public sealed class LapSyncResyncEventArgs : EventArgs
-{
-    /// <summary>
-    /// El número del lap al que todos los videos deben sincronizarse.
-    /// </summary>
-    public int TargetLapNumber { get; }
-    
-    /// <summary>
-    /// Diccionario con las posiciones de seek para cada video (key = videoIndex 1-4).
-    /// </summary>
-    public Dictionary<int, TimeSpan> SeekPositions { get; }
-
-    public LapSyncResyncEventArgs(int targetLapNumber, Dictionary<int, TimeSpan> seekPositions)
-    {
-        TargetLapNumber = targetLapNumber;
-        SeekPositions = seekPositions;
     }
 }
 

@@ -63,6 +63,12 @@ public partial class SinglePlayerPage : ContentPage
     
     // Scrubbing para reproductores de comparación
     private readonly Dictionary<int, double> _comparisonScrubPositions = new();
+    
+    // Flags para evitar seeks durante actualizaciones programáticas de sliders individuales
+    private bool _isUpdatingIndividualSlider1;
+    private bool _isUpdatingIndividualSlider2;
+    private bool _isUpdatingIndividualSlider3;
+    private bool _isUpdatingIndividualSlider4;
 
     private static readonly Color DefaultInkColor = Color.FromArgb("#FFFF7043");
     private const float DefaultInkThickness = 3f;
@@ -116,7 +122,6 @@ public partial class SinglePlayerPage : ContentPage
         _viewModel.VideoChanged += OnVideoChanged;
         _viewModel.LapSyncPauseRequested += OnLapSyncPauseRequested;
         _viewModel.LapSyncResumeAllRequested += OnLapSyncResumeAllRequested;
-        _viewModel.LapSyncResyncRequested += OnLapSyncResyncRequested;
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
 
         if (AnalysisCanvas != null)
@@ -971,7 +976,9 @@ public partial class SinglePlayerPage : ContentPage
     {
         if (MediaPlayer?.Duration.TotalSeconds > 0)
         {
+            _isUpdatingIndividualSlider1 = true;
             IndividualSlider1.Value = MediaPlayer.Position.TotalSeconds / MediaPlayer.Duration.TotalSeconds;
+            _isUpdatingIndividualSlider1 = false;
         }
     }
 
@@ -979,7 +986,9 @@ public partial class SinglePlayerPage : ContentPage
     {
         if (MediaPlayer2?.Duration.TotalSeconds > 0)
         {
+            _isUpdatingIndividualSlider2 = true;
             IndividualSlider2.Value = MediaPlayer2.Position.TotalSeconds / MediaPlayer2.Duration.TotalSeconds;
+            _isUpdatingIndividualSlider2 = false;
         }
     }
 
@@ -987,7 +996,9 @@ public partial class SinglePlayerPage : ContentPage
     {
         if (MediaPlayer3?.Duration.TotalSeconds > 0)
         {
+            _isUpdatingIndividualSlider3 = true;
             IndividualSlider3.Value = MediaPlayer3.Position.TotalSeconds / MediaPlayer3.Duration.TotalSeconds;
+            _isUpdatingIndividualSlider3 = false;
         }
     }
 
@@ -995,13 +1006,16 @@ public partial class SinglePlayerPage : ContentPage
     {
         if (MediaPlayer4?.Duration.TotalSeconds > 0)
         {
+            _isUpdatingIndividualSlider4 = true;
             IndividualSlider4.Value = MediaPlayer4.Position.TotalSeconds / MediaPlayer4.Duration.TotalSeconds;
+            _isUpdatingIndividualSlider4 = false;
         }
     }
 
     // Handlers de cambio de valor para sliders individuales
     private void OnIndividualSlider1Changed(object? sender, ValueChangedEventArgs e)
     {
+        if (_isUpdatingIndividualSlider1) return;
         if (MediaPlayer?.Duration.TotalSeconds > 0)
         {
             var position = TimeSpan.FromSeconds(e.NewValue * MediaPlayer.Duration.TotalSeconds);
@@ -1011,6 +1025,7 @@ public partial class SinglePlayerPage : ContentPage
 
     private void OnIndividualSlider2Changed(object? sender, ValueChangedEventArgs e)
     {
+        if (_isUpdatingIndividualSlider2) return;
         if (MediaPlayer2?.Duration.TotalSeconds > 0)
         {
             var position = TimeSpan.FromSeconds(e.NewValue * MediaPlayer2.Duration.TotalSeconds);
@@ -1020,6 +1035,7 @@ public partial class SinglePlayerPage : ContentPage
 
     private void OnIndividualSlider3Changed(object? sender, ValueChangedEventArgs e)
     {
+        if (_isUpdatingIndividualSlider3) return;
         if (MediaPlayer3?.Duration.TotalSeconds > 0)
         {
             var position = TimeSpan.FromSeconds(e.NewValue * MediaPlayer3.Duration.TotalSeconds);
@@ -1029,6 +1045,7 @@ public partial class SinglePlayerPage : ContentPage
 
     private void OnIndividualSlider4Changed(object? sender, ValueChangedEventArgs e)
     {
+        if (_isUpdatingIndividualSlider4) return;
         if (MediaPlayer4?.Duration.TotalSeconds > 0)
         {
             var position = TimeSpan.FromSeconds(e.NewValue * MediaPlayer4.Duration.TotalSeconds);
@@ -1136,7 +1153,6 @@ public partial class SinglePlayerPage : ContentPage
         _viewModel.VideoChanged -= OnVideoChanged;
         _viewModel.LapSyncPauseRequested -= OnLapSyncPauseRequested;
         _viewModel.LapSyncResumeAllRequested -= OnLapSyncResumeAllRequested;
-        _viewModel.LapSyncResyncRequested -= OnLapSyncResyncRequested;
 
         if (AnalysisCanvas != null)
             AnalysisCanvas.TextRequested -= OnAnalysisCanvasTextRequested;
@@ -1597,35 +1613,6 @@ public partial class SinglePlayerPage : ContentPage
         });
     }
 
-    private void OnLapSyncResyncRequested(object? sender, LapSyncResyncEventArgs e)
-    {
-        if (!_isPageActive) return;
-
-        MainThread.BeginInvokeOnMainThread(() =>
-        {
-            if (!_isPageActive) return;
-
-            System.Diagnostics.Debug.WriteLine($"[SinglePlayerPage] LapSyncResync to lap {e.TargetLapNumber}");
-
-            // Pausar todos los players primero
-            PauseAllPlayers();
-
-            // Hacer seek a la posición correcta para cada video
-            foreach (var kvp in e.SeekPositions)
-            {
-                var player = GetPlayerByIndex(kvp.Key);
-                if (player != null)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[SinglePlayerPage] Seeking video {kvp.Key} to {kvp.Value}");
-                    player.SeekTo(kvp.Value);
-                }
-            }
-
-            // Actualizar el estado de reproducción en el ViewModel para que el botón refleje "paused"
-            _viewModel.IsPlaying = false;
-        });
-    }
-
     #endregion
 
     #region Handlers del ViewModel
@@ -1695,18 +1682,6 @@ public partial class SinglePlayerPage : ContentPage
     #endregion
 
     #region Métodos de reproducción sincronizada
-
-    private PrecisionVideoPlayer? GetPlayerByIndex(int videoIndex)
-    {
-        return videoIndex switch
-        {
-            1 => MediaPlayer,
-            2 => MediaPlayer2,
-            3 => MediaPlayer3,
-            4 => MediaPlayer4,
-            _ => null
-        };
-    }
 
     private void PlayAllPlayers()
     {
