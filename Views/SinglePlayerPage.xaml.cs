@@ -1619,10 +1619,30 @@ public partial class SinglePlayerPage : ContentPage
 
     private void PlayAllPlayers()
     {
-        // En modo comparación: alinear todos a la misma posición antes de reproducir,
-        // para que el arranque sea lo más simultáneo/preciso posible.
+        // En modo comparación: usar sincronización nativa precisa
         if (_viewModel.IsMultiVideoLayout)
         {
+#if MACCATALYST || IOS || WINDOWS
+            // Recopilar todos los players activos
+            var players = new List<PrecisionVideoPlayer>();
+            if (MediaPlayer != null) players.Add(MediaPlayer);
+            if (_viewModel.HasComparisonVideo2 && MediaPlayer2 != null) players.Add(MediaPlayer2);
+            if (_viewModel.HasComparisonVideo3 && MediaPlayer3 != null) players.Add(MediaPlayer3);
+            if (_viewModel.HasComparisonVideo4 && MediaPlayer4 != null) players.Add(MediaPlayer4);
+
+            if (players.Count > 1)
+            {
+                // Usar sincronización nativa (AVPlayer setRate:time:atHostTime: en Apple,
+                // MediaTimelineController en Windows)
+                NativeSyncPlaybackService.PlaySynchronized(
+                    players.ToArray(),
+                    _viewModel.CurrentPosition,
+                    _viewModel.PlaybackSpeed
+                );
+                return;
+            }
+#endif
+            // Fallback para single player
             var startPosition = _viewModel.CurrentPosition;
 
             if (_viewModel.HasComparisonVideo2)
@@ -1649,6 +1669,23 @@ public partial class SinglePlayerPage : ContentPage
 
     private void PauseAllPlayers()
     {
+#if MACCATALYST || IOS || WINDOWS
+        // En modo comparación: usar pausa sincronizada
+        if (_viewModel.IsMultiVideoLayout)
+        {
+            var players = new List<PrecisionVideoPlayer>();
+            if (MediaPlayer != null) players.Add(MediaPlayer);
+            if (_viewModel.HasComparisonVideo2 && MediaPlayer2 != null) players.Add(MediaPlayer2);
+            if (_viewModel.HasComparisonVideo3 && MediaPlayer3 != null) players.Add(MediaPlayer3);
+            if (_viewModel.HasComparisonVideo4 && MediaPlayer4 != null) players.Add(MediaPlayer4);
+
+            if (players.Count > 1)
+            {
+                NativeSyncPlaybackService.PauseSynchronized(players.ToArray());
+                return;
+            }
+        }
+#endif
         MediaPlayer?.Pause();
         
         if (_viewModel.IsMultiVideoLayout)
@@ -1664,6 +1701,10 @@ public partial class SinglePlayerPage : ContentPage
 
     private void StopAllPlayers()
     {
+#if WINDOWS
+        // Limpiar el controller de sincronización de Windows
+        NativeSyncPlaybackService.CleanupTimelineController();
+#endif
         MediaPlayer?.Stop();
         
         if (_viewModel.IsMultiVideoLayout)
@@ -1676,6 +1717,23 @@ public partial class SinglePlayerPage : ContentPage
 
     private void SeekAllPlayersTo(TimeSpan position)
     {
+#if MACCATALYST || IOS || WINDOWS
+        // En modo comparación: usar seek sincronizado
+        if (_viewModel.IsMultiVideoLayout)
+        {
+            var players = new List<PrecisionVideoPlayer>();
+            if (MediaPlayer != null) players.Add(MediaPlayer);
+            if (_viewModel.HasComparisonVideo2 && MediaPlayer2 != null) players.Add(MediaPlayer2);
+            if (_viewModel.HasComparisonVideo3 && MediaPlayer3 != null) players.Add(MediaPlayer3);
+            if (_viewModel.HasComparisonVideo4 && MediaPlayer4 != null) players.Add(MediaPlayer4);
+
+            if (players.Count > 1)
+            {
+                NativeSyncPlaybackService.SeekSynchronized(players.ToArray(), position);
+                return;
+            }
+        }
+#endif
         MediaPlayer?.SeekTo(position);
         
         if (_viewModel.IsMultiVideoLayout)

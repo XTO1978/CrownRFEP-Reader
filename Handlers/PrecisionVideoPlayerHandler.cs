@@ -20,6 +20,11 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
     private AVPlayerLayer? _playerLayer;
     private AVPlayer? _player;
     private AVPlayerItem? _playerItem;
+    
+    /// <summary>
+    /// Expone el AVPlayer nativo para sincronización precisa entre múltiples players
+    /// </summary>
+    public AVPlayer? NativePlayer => _player;
     private NSObject? _timeObserver;
     private NSObject? _endObserver;
     private NSObject? _statusObserver;
@@ -920,6 +925,11 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
     private bool _isSeeking;
     private TimeSpan _pendingSeekPosition;
     private bool _isDisconnecting; // Flag para evitar callbacks tardíos durante/después de desconexión
+
+    /// <summary>
+    /// Expone el MediaPlayer nativo para sincronización precisa entre múltiples players
+    /// </summary>
+    public MediaPlayer? NativePlayer => _mediaPlayer;
 
     public static IPropertyMapper<Controls.PrecisionVideoPlayer, PrecisionVideoPlayerHandler> Mapper =
         new PropertyMapper<Controls.PrecisionVideoPlayer, PrecisionVideoPlayerHandler>(ViewHandler.ViewMapper)
