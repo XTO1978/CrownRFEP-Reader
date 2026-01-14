@@ -497,6 +497,42 @@
                                             MaxLines="1"
                                             Text="{Binding DisplayLine2}"
                                             TextColor="#FF888888" />
+                                        
+                                        <!--  Iconos indicadores de contenido  -->
+                                        <HorizontalStackLayout Spacing="6" Margin="0,2,0,0">
+                                            <!--  Split/Timing  -->
+                                            <controls:SymbolIcon
+                                                HeightRequest="12"
+                                                WidthRequest="12"
+                                                SymbolName="timer"
+                                                TintColor="#FF4FC3F7"
+                                                IsVisible="{Binding HasTiming}"
+                                                ToolTipProperties.Text="Tiene toma de tiempos" />
+                                            <!--  Etiquetas  -->
+                                            <controls:SymbolIcon
+                                                HeightRequest="12"
+                                                WidthRequest="12"
+                                                SymbolName="tag.fill"
+                                                TintColor="#FF66BB6A"
+                                                IsVisible="{Binding HasTags}"
+                                                ToolTipProperties.Text="Tiene etiquetas" />
+                                            <!--  Eventos  -->
+                                            <controls:SymbolIcon
+                                                HeightRequest="12"
+                                                WidthRequest="12"
+                                                SymbolName="clock.badge.checkmark"
+                                                TintColor="#FFFF7043"
+                                                IsVisible="{Binding HasEventTags}"
+                                                ToolTipProperties.Text="Tiene eventos" />
+                                            <!--  Tramo/Sección  -->
+                                            <controls:SymbolIcon
+                                                HeightRequest="12"
+                                                WidthRequest="12"
+                                                SymbolName="arrow.triangle.branch"
+                                                TintColor="#FFFFA726"
+                                                IsVisible="{Binding HasSection}"
+                                                ToolTipProperties.Text="Tiene tramo asignado" />
+                                        </HorizontalStackLayout>
                                     </VerticalStackLayout>
                                 </Grid>
                             </Border>

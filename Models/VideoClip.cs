@@ -202,6 +202,12 @@ public class VideoClip : INotifyPropertyChanged
     public bool HasEventTags => EventTags != null && EventTags.Count > 0;
 
     /// <summary>
+    /// Indica si el video tiene sección/tramo asignado
+    /// </summary>
+    [Ignore]
+    public bool HasSection => Section > 0;
+
+    /// <summary>
     /// Indica si el video está seleccionado (para selección múltiple en galería)
     /// </summary>
     [Ignore]
