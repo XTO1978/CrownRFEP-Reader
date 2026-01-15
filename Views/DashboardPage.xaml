@@ -1155,11 +1155,12 @@
                                     </Grid>
                                 </controls:AspectRatioContainer>
 
-                                <!--  Footer con info y botón de preview  -->
+                                <!--  Footer con info, botón de preview y menú  -->
                                 <Grid
                                     Grid.Row="1"
                                     Padding="8"
-                                    ColumnDefinitions="*,Auto">
+                                    ColumnDefinitions="*,Auto,Auto"
+                                    ColumnSpacing="4">
                                     <VerticalStackLayout Spacing="2">
                                         <!--  Primera línea: APELLIDOS Nombre - Sesión  -->
                                         <Label
@@ -1247,6 +1248,24 @@
                                         <controls:SymbolIcon
                                             HeightRequest="{StaticResource IconSizeLarge}"
                                             SymbolName="eye"
+                                            TintColor="#FF888888"
+                                            WidthRequest="{StaticResource IconSizeLarge}" />
+                                    </Border>
+
+                                    <!--  Botón de menú contextual  -->
+                                    <Border
+                                        Grid.Column="2"
+                                        Padding="6"
+                                        BackgroundColor="Transparent"
+                                        StrokeShape="RoundRectangle 4"
+                                        StrokeThickness="0"
+                                        VerticalOptions="Center">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer Tapped="OnVideoItemContextMenuTapped" />
+                                        </Border.GestureRecognizers>
+                                        <controls:SymbolIcon
+                                            HeightRequest="{StaticResource IconSizeLarge}"
+                                            SymbolName="ellipsis.circle"
                                             TintColor="#FF888888"
                                             WidthRequest="{StaticResource IconSizeLarge}" />
                                     </Border>
@@ -6412,6 +6431,113 @@
                             <Label
                                 Text="Eliminar"
                                 Style="{StaticResource ContextMenuItemLabel}" />
+                        </HorizontalStackLayout>
+                    </Border>
+                </VerticalStackLayout>
+            </Border>
+
+            <!--  Menú contextual para Video Item  -->
+            <Border
+                x:Name="VideoItemContextMenu"
+                IsVisible="False"
+                WidthRequest="280"
+                InputTransparent="False"
+                Style="{StaticResource ContextMenuOverlayBorder}">
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Buttons="Primary" Tapped="OnContextMenuSurfaceTapped" />
+                </Border.GestureRecognizers>
+                <VerticalStackLayout Spacing="2">
+                    <!--  Abrir en reproductor  -->
+                    <Border Style="{StaticResource ContextMenuItemBorder}">
+                        <Border.Behaviors>
+                            <behaviors:SidebarHoverBehavior />
+                        </Border.Behaviors>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnVideoItemMenuOpenTapped" />
+                        </Border.GestureRecognizers>
+                        <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                            <controls:SymbolIcon
+                                HeightRequest="18"
+                                WidthRequest="18"
+                                SymbolName="play.rectangle"
+                                TintColor="#FFAAAAAA"
+                                VerticalOptions="Center" />
+                            <Label
+                                Text="Abrir en reproductor"
+                                Style="{StaticResource ContextMenuItemLabel}" />
+                        </HorizontalStackLayout>
+                    </Border>
+
+                    <!--  Editar  -->
+                    <Border Style="{StaticResource ContextMenuItemBorder}">
+                        <Border.Behaviors>
+                            <behaviors:SidebarHoverBehavior />
+                        </Border.Behaviors>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnVideoItemMenuEditTapped" />
+                        </Border.GestureRecognizers>
+                        <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                            <controls:SymbolIcon
+                                HeightRequest="18"
+                                WidthRequest="18"
+                                SymbolName="pencil"
+                                TintColor="#FFAAAAAA"
+                                VerticalOptions="Center" />
+                            <Label
+                                Text="Editar..."
+                                Style="{StaticResource ContextMenuItemLabel}" />
+                        </HorizontalStackLayout>
+                    </Border>
+
+                    <!--  Compartir  -->
+                    <Border Style="{StaticResource ContextMenuItemBorder}">
+                        <Border.Behaviors>
+                            <behaviors:SidebarHoverBehavior />
+                        </Border.Behaviors>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnVideoItemMenuShareTapped" />
+                        </Border.GestureRecognizers>
+                        <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                            <controls:SymbolIcon
+                                HeightRequest="18"
+                                WidthRequest="18"
+                                SymbolName="square.and.arrow.up"
+                                TintColor="#FFAAAAAA"
+                                VerticalOptions="Center" />
+                            <Label
+                                Text="Compartir"
+                                Style="{StaticResource ContextMenuItemLabel}" />
+                        </HorizontalStackLayout>
+                    </Border>
+
+                    <!-- Separador -->
+                    <Border 
+                        HeightRequest="1" 
+                        BackgroundColor="#FF3A3A3A" 
+                        Margin="4,6" 
+                        HorizontalOptions="Fill"
+                        Stroke="Transparent"
+                        StrokeThickness="0" />
+
+                    <!--  Eliminar  -->
+                    <Border Style="{StaticResource ContextMenuItemBorder}">
+                        <Border.Behaviors>
+                            <behaviors:SidebarHoverBehavior />
+                        </Border.Behaviors>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnVideoItemMenuDeleteTapped" />
+                        </Border.GestureRecognizers>
+                        <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                            <controls:SymbolIcon
+                                HeightRequest="18"
+                                WidthRequest="18"
+                                SymbolName="trash"
+                                TintColor="#FFFF453A"
+                                VerticalOptions="Center" />
+                            <Label
+                                Text="Eliminar"
+                                Style="{StaticResource ContextMenuItemLabel}"
+                                TextColor="#FFFF453A" />
                         </HorizontalStackLayout>
                     </Border>
                 </VerticalStackLayout>

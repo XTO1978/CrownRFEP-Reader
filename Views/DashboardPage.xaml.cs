@@ -33,6 +33,7 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 
     private SessionRow? _contextMenuSessionRow;
     private SmartFolderDefinition? _contextMenuSmartFolder;
+    private VideoClip? _contextMenuVideo;
     
     // Posiciones actuales de cada video para scrubbing incremental
     private double _currentPosition0;
@@ -238,7 +239,8 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
                 return;
 
             var anyVisible = (SessionRowContextMenu?.IsVisible ?? false)
-                || (SmartFolderContextMenu?.IsVisible ?? false);
+                || (SmartFolderContextMenu?.IsVisible ?? false)
+                || (VideoItemContextMenu?.IsVisible ?? false);
 
             SubItemContextMenusLayer.IsVisible = anyVisible;
         }
@@ -980,6 +982,7 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         HideSessionsContextMenu();
         HideSessionRowContextMenu();
         HideSmartFolderContextMenu();
+        HideVideoItemContextMenu();
 
         UpdateSubItemContextMenusLayerVisibility();
         UpdateGlobalDismissOverlayVisibility();
@@ -1072,6 +1075,195 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
             AppLog.Error("DashboardPage", "OnSmartFolderMenuDeleteTapped error", ex);
         }
     }
+
+    #region Video Item Context Menu
+
+    private void OnVideoItemContextMenuTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            if (VideoItemContextMenu == null || SubItemContextMenusLayer == null)
+                return;
+
+            if (sender is not VisualElement anchor)
+                return;
+
+            // Buscar el VideoClip en el BindingContext
+            var video = FindVideoClipFromContext(anchor);
+            if (video == null)
+                return;
+
+            if (VideoItemContextMenu.IsVisible && ReferenceEquals(_contextMenuVideo, video))
+            {
+                HideVideoItemContextMenu();
+                return;
+            }
+
+            _contextMenuVideo = video;
+
+            HideUserLibraryContextMenu();
+            HideSessionsContextMenu();
+            HideSessionRowContextMenu();
+            HideSmartFolderContextMenu();
+
+            var clickPos = TryGetTappedPosition(e, SubItemContextMenusLayer);
+            if (clickPos.HasValue)
+            {
+                PositionContextMenuAtPoint(VideoItemContextMenu, clickPos.Value, SubItemContextMenusLayer, xOffset: 10, yOffset: 10);
+            }
+            else
+            {
+                var anchorPos = GetPositionRelativeTo(anchor, SubItemContextMenusLayer);
+                VideoItemContextMenu.TranslationX = anchorPos.X + anchor.Width + 8;
+                VideoItemContextMenu.TranslationY = anchorPos.Y;
+            }
+
+            VideoItemContextMenu.IsVisible = true;
+            UpdateSubItemContextMenusLayerVisibility();
+            UpdateGlobalDismissOverlayVisibility();
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "OnVideoItemContextMenuTapped error", ex);
+        }
+    }
+
+    private static VideoClip? FindVideoClipFromContext(VisualElement element)
+    {
+        Element? current = element;
+        while (current != null)
+        {
+            if (current.BindingContext is VideoClip video)
+                return video;
+            current = current.Parent;
+        }
+        return null;
+    }
+
+    private void HideVideoItemContextMenu()
+    {
+        try
+        {
+            if (VideoItemContextMenu != null)
+                VideoItemContextMenu.IsVisible = false;
+        }
+        catch { }
+
+        UpdateSubItemContextMenusLayerVisibility();
+        UpdateGlobalDismissOverlayVisibility();
+    }
+
+    private void OnVideoItemMenuOpenTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            HideVideoItemContextMenu();
+
+            if (_contextMenuVideo == null)
+                return;
+
+            if (BindingContext is DashboardViewModel vm)
+            {
+                if (vm.VideoTapCommand?.CanExecute(_contextMenuVideo) ?? false)
+                    vm.VideoTapCommand.Execute(_contextMenuVideo);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "OnVideoItemMenuOpenTapped error", ex);
+        }
+    }
+
+    private void OnVideoItemMenuEditTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            HideVideoItemContextMenu();
+
+            if (_contextMenuVideo == null)
+                return;
+
+            if (BindingContext is DashboardViewModel vm)
+            {
+                // Limpiar selección y seleccionar solo este video
+                vm.ClearVideoSelectionCommand?.Execute(null);
+                vm.ToggleVideoSelectionCommand?.Execute(_contextMenuVideo);
+                
+                // Ahora ejecutar el comando de editar
+                if (vm.EditVideoDetailsCommand?.CanExecute(null) ?? false)
+                    vm.EditVideoDetailsCommand.Execute(null);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "OnVideoItemMenuEditTapped error", ex);
+        }
+    }
+
+    private async void OnVideoItemMenuShareTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            HideVideoItemContextMenu();
+
+            if (_contextMenuVideo == null)
+                return;
+
+            var videoPath = _contextMenuVideo.LocalClipPath;
+            if (string.IsNullOrEmpty(videoPath) || !File.Exists(videoPath))
+            {
+                await DisplayAlert("Error", "El archivo de video no está disponible.", "OK");
+                return;
+            }
+
+            await Share.Default.RequestAsync(new ShareFileRequest
+            {
+                Title = _contextMenuVideo.DisplayLine1 ?? "Video",
+                File = new ShareFile(videoPath)
+            });
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "OnVideoItemMenuShareTapped error", ex);
+        }
+    }
+
+    private async void OnVideoItemMenuDeleteTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            HideVideoItemContextMenu();
+
+            if (_contextMenuVideo == null)
+                return;
+
+            var confirm = await DisplayAlert(
+                "Eliminar video",
+                $"¿Seguro que quieres eliminar este video?\n\n{_contextMenuVideo.DisplayLine1}",
+                "Eliminar",
+                "Cancelar");
+
+            if (!confirm)
+                return;
+
+            if (BindingContext is DashboardViewModel vm)
+            {
+                // Limpiar selección y seleccionar solo este video
+                vm.ClearVideoSelectionCommand?.Execute(null);
+                vm.ToggleVideoSelectionCommand?.Execute(_contextMenuVideo);
+                
+                // Ahora ejecutar el comando de eliminar
+                if (vm.DeleteSelectedVideosCommand?.CanExecute(null) ?? false)
+                    vm.DeleteSelectedVideosCommand.Execute(null);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "OnVideoItemMenuDeleteTapped error", ex);
+        }
+    }
+
+    #endregion
 
     private static Point GetPositionRelativeTo(VisualElement element, VisualElement relativeTo)
     {
