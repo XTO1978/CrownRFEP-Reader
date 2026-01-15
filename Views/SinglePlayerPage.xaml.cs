@@ -122,6 +122,7 @@ public partial class SinglePlayerPage : ContentPage
         _viewModel.VideoChanged += OnVideoChanged;
         _viewModel.LapSyncPauseRequested += OnLapSyncPauseRequested;
         _viewModel.LapSyncResumeAllRequested += OnLapSyncResumeAllRequested;
+        _viewModel.LapSyncResyncRequested += OnLapSyncResyncRequested;
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
 
         if (AnalysisCanvas != null)
@@ -1156,6 +1157,7 @@ public partial class SinglePlayerPage : ContentPage
         _viewModel.VideoChanged -= OnVideoChanged;
         _viewModel.LapSyncPauseRequested -= OnLapSyncPauseRequested;
         _viewModel.LapSyncResumeAllRequested -= OnLapSyncResumeAllRequested;
+        _viewModel.LapSyncResyncRequested -= OnLapSyncResyncRequested;
 
         if (AnalysisCanvas != null)
             AnalysisCanvas.TextRequested -= OnAnalysisCanvasTextRequested;
@@ -1612,6 +1614,45 @@ public partial class SinglePlayerPage : ContentPage
         MainThread.BeginInvokeOnMainThread(() =>
         {
             if (!_isPageActive) return;
+            PlayAllPlayers();
+        });
+    }
+
+    private PrecisionVideoPlayer? GetPlayerForIndex(int index)
+    {
+        return index switch
+        {
+            1 => MediaPlayer,
+            2 => MediaPlayer2,
+            3 => MediaPlayer3,
+            4 => MediaPlayer4,
+            _ => null
+        };
+    }
+
+    private void OnLapSyncResyncRequested(object? sender, LapSyncResyncEventArgs e)
+    {
+        if (!_isPageActive) return;
+
+        MainThread.BeginInvokeOnMainThread(async () =>
+        {
+            if (!_isPageActive) return;
+
+            // Pausar todos los players primero
+            PauseAllPlayers();
+
+            // Hacer seek a las posiciones indicadas para cada video
+            foreach (var kvp in e.SeekPositions)
+            {
+                var player = GetPlayerForIndex(kvp.Key);
+                if (player != null)
+                {
+                    player.SeekTo(kvp.Value);
+                }
+            }
+
+            // Reanudar reproducción sincronizada
+            await Task.Delay(50); // Pequeño delay para que el seek se complete
             PlayAllPlayers();
         });
     }
