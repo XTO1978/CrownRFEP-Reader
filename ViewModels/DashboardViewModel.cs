@@ -4179,16 +4179,13 @@ public class DashboardViewModel : BaseViewModel
         var has3 = occupiedSlots.Contains(3);
         var has4 = occupiedSlots.Contains(4);
 
-        // Misma fila: (1,2) o (3,4)
+        // Misma fila: (1,2) o (3,4) → Horizontal 2x1
         if ((has1 && has2) || (has3 && has4))
             return ComparisonLayout.Horizontal2x1;
 
-        // Misma columna: (1,3) o (2,4)
-        if ((has1 && has3) || (has2 && has4))
-            return ComparisonLayout.Vertical1x2;
-
-        // Diagonal: usar 2x2
-        return ComparisonLayout.Quad2x2;
+        // Misma columna o diagonal: (1,3), (2,4), (1,4), (2,3) → Vertical 1x2
+        // Todas las demás combinaciones de 2 slots usan layout vertical
+        return ComparisonLayout.Vertical1x2;
     }
 
     private async Task PreviewParallelAnalysisAsync()
