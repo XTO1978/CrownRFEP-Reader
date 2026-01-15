@@ -160,26 +160,16 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         catch { }
 
                 // Preview players (drop zones): cuando abren media, ocultamos miniatura.
-                PreviewPlayerSingle.MediaOpened += OnPreviewPlayerMediaOpened;
-                PreviewPlayer1H.MediaOpened += OnPreviewPlayerMediaOpened;
-                PreviewPlayer2H.MediaOpened += OnPreviewPlayerMediaOpened;
-                PreviewPlayer1V.MediaOpened += OnPreviewPlayerMediaOpened;
-                PreviewPlayer2V.MediaOpened += OnPreviewPlayerMediaOpened;
                 PreviewPlayer1Q.MediaOpened += OnPreviewPlayerMediaOpened;
                 PreviewPlayer2Q.MediaOpened += OnPreviewPlayerMediaOpened;
                 PreviewPlayer3Q.MediaOpened += OnPreviewPlayerMediaOpened;
                 PreviewPlayer4Q.MediaOpened += OnPreviewPlayerMediaOpened;
 
-        // Marcar "ready" solo cuando hay avance real de tiempo (evita quedarse gris).
-        PreviewPlayerSingle.PositionChanged += OnPreviewPlayerPositionChanged;
-        PreviewPlayer1H.PositionChanged += OnPreviewPlayerPositionChanged;
-        PreviewPlayer2H.PositionChanged += OnPreviewPlayerPositionChanged;
-        PreviewPlayer1V.PositionChanged += OnPreviewPlayerPositionChanged;
-        PreviewPlayer2V.PositionChanged += OnPreviewPlayerPositionChanged;
-        PreviewPlayer1Q.PositionChanged += OnPreviewPlayerPositionChanged;
-        PreviewPlayer2Q.PositionChanged += OnPreviewPlayerPositionChanged;
-        PreviewPlayer3Q.PositionChanged += OnPreviewPlayerPositionChanged;
-        PreviewPlayer4Q.PositionChanged += OnPreviewPlayerPositionChanged;
+            // Marcar "ready" solo cuando hay avance real de tiempo (evita quedarse gris).
+            PreviewPlayer1Q.PositionChanged += OnPreviewPlayerPositionChanged;
+            PreviewPlayer2Q.PositionChanged += OnPreviewPlayerPositionChanged;
+            PreviewPlayer3Q.PositionChanged += OnPreviewPlayerPositionChanged;
+            PreviewPlayer4Q.PositionChanged += OnPreviewPlayerPositionChanged;
     }
 
     protected override void OnHandlerChanged()
@@ -287,21 +277,11 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         try { VideoGallery.SizeChanged -= OnVideoGallerySizeChanged; } catch { }
         try { VideoLessonsGallery.SizeChanged -= OnVideoGallerySizeChanged; } catch { }
 
-        try { PreviewPlayerSingle.MediaOpened -= OnPreviewPlayerMediaOpened; } catch { }
-        try { PreviewPlayer1H.MediaOpened -= OnPreviewPlayerMediaOpened; } catch { }
-        try { PreviewPlayer2H.MediaOpened -= OnPreviewPlayerMediaOpened; } catch { }
-        try { PreviewPlayer1V.MediaOpened -= OnPreviewPlayerMediaOpened; } catch { }
-        try { PreviewPlayer2V.MediaOpened -= OnPreviewPlayerMediaOpened; } catch { }
         try { PreviewPlayer1Q.MediaOpened -= OnPreviewPlayerMediaOpened; } catch { }
         try { PreviewPlayer2Q.MediaOpened -= OnPreviewPlayerMediaOpened; } catch { }
         try { PreviewPlayer3Q.MediaOpened -= OnPreviewPlayerMediaOpened; } catch { }
         try { PreviewPlayer4Q.MediaOpened -= OnPreviewPlayerMediaOpened; } catch { }
 
-        try { PreviewPlayerSingle.PositionChanged -= OnPreviewPlayerPositionChanged; } catch { }
-        try { PreviewPlayer1H.PositionChanged -= OnPreviewPlayerPositionChanged; } catch { }
-        try { PreviewPlayer2H.PositionChanged -= OnPreviewPlayerPositionChanged; } catch { }
-        try { PreviewPlayer1V.PositionChanged -= OnPreviewPlayerPositionChanged; } catch { }
-        try { PreviewPlayer2V.PositionChanged -= OnPreviewPlayerPositionChanged; } catch { }
         try { PreviewPlayer1Q.PositionChanged -= OnPreviewPlayerPositionChanged; } catch { }
         try { PreviewPlayer2Q.PositionChanged -= OnPreviewPlayerPositionChanged; } catch { }
         try { PreviewPlayer3Q.PositionChanged -= OnPreviewPlayerPositionChanged; } catch { }
@@ -1129,11 +1109,11 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
             if (!_isPageActive) return;
 
             // Considerar "listo" cuando vemos callbacks de posición (normalmente implica playback).
-            if (sender == PreviewPlayerSingle || sender == PreviewPlayer1H || sender == PreviewPlayer1V || sender == PreviewPlayer1Q)
+            if (sender == PreviewPlayer1Q)
             {
                 _viewModel.IsPreviewPlayer1Ready = true;
             }
-            else if (sender == PreviewPlayer2H || sender == PreviewPlayer2V || sender == PreviewPlayer2Q)
+            else if (sender == PreviewPlayer2Q)
             {
                 _viewModel.IsPreviewPlayer2Ready = true;
             }
@@ -1870,33 +1850,57 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 
     private void OnDropScreen1(object? sender, DropEventArgs e)
     {
+        System.Diagnostics.Debug.WriteLine($"[Dashboard] OnDropScreen1 called");
         if (e.Data.Properties.TryGetValue("VideoClip", out var data) && data is VideoClip video)
         {
-            _viewModel.ParallelVideo1 = video;
+            System.Diagnostics.Debug.WriteLine($"[Dashboard] OnDropScreen1: got video Id={video.Id}");
+            _ = _viewModel.SetParallelVideoSlotAsync(1, video);
+        }
+        else
+        {
+            System.Diagnostics.Debug.WriteLine($"[Dashboard] OnDropScreen1: no VideoClip in drop data");
         }
     }
 
     private void OnDropScreen2(object? sender, DropEventArgs e)
     {
+        System.Diagnostics.Debug.WriteLine($"[Dashboard] OnDropScreen2 called");
         if (e.Data.Properties.TryGetValue("VideoClip", out var data) && data is VideoClip video)
         {
-            _viewModel.ParallelVideo2 = video;
+            System.Diagnostics.Debug.WriteLine($"[Dashboard] OnDropScreen2: got video Id={video.Id}");
+            _ = _viewModel.SetParallelVideoSlotAsync(2, video);
+        }
+        else
+        {
+            System.Diagnostics.Debug.WriteLine($"[Dashboard] OnDropScreen2: no VideoClip in drop data");
         }
     }
 
     private void OnDropScreen3(object? sender, DropEventArgs e)
     {
+        System.Diagnostics.Debug.WriteLine($"[Dashboard] OnDropScreen3 called");
         if (e.Data.Properties.TryGetValue("VideoClip", out var data) && data is VideoClip video)
         {
-            _viewModel.ParallelVideo3 = video;
+            System.Diagnostics.Debug.WriteLine($"[Dashboard] OnDropScreen3: got video Id={video.Id}");
+            _ = _viewModel.SetParallelVideoSlotAsync(3, video);
+        }
+        else
+        {
+            System.Diagnostics.Debug.WriteLine($"[Dashboard] OnDropScreen3: no VideoClip in drop data");
         }
     }
 
     private void OnDropScreen4(object? sender, DropEventArgs e)
     {
+        System.Diagnostics.Debug.WriteLine($"[Dashboard] OnDropScreen4 called");
         if (e.Data.Properties.TryGetValue("VideoClip", out var data) && data is VideoClip video)
         {
-            _viewModel.ParallelVideo4 = video;
+            System.Diagnostics.Debug.WriteLine($"[Dashboard] OnDropScreen4: got video Id={video.Id}");
+            _ = _viewModel.SetParallelVideoSlotAsync(4, video);
+        }
+        else
+        {
+            System.Diagnostics.Debug.WriteLine($"[Dashboard] OnDropScreen4: no VideoClip in drop data");
         }
     }
 
@@ -1955,25 +1959,13 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 
     private PrecisionVideoPlayer? GetPlayerForIndex(int index)
     {
-        // Modo cuádruple
-        if (_viewModel.IsQuadVideoMode)
-        {
-            return index switch
-            {
-                1 => PreviewPlayer1Q,
-                2 => PreviewPlayer2Q,
-                3 => PreviewPlayer3Q,
-                4 => PreviewPlayer4Q,
-                _ => null
-            };
-        }
-        
-        // Modo único o paralelo
+        // Layout fijo 2x2
         return index switch
         {
-            0 => PreviewPlayerSingle,
-            1 => _viewModel.IsHorizontalOrientation ? PreviewPlayer1H : PreviewPlayer1V,
-            2 => _viewModel.IsHorizontalOrientation ? PreviewPlayer2H : PreviewPlayer2V,
+            1 => PreviewPlayer1Q,
+            2 => PreviewPlayer2Q,
+            3 => PreviewPlayer3Q,
+            4 => PreviewPlayer4Q,
             _ => null
         };
     }
@@ -1981,7 +1973,7 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
     // Toggle Play/Pause para todos los videos activos
     public void TogglePlayPause()
     {
-        AppLog.Info("DashboardPage", $"TogglePlayPause | IsPreviewMode={_viewModel.IsPreviewMode} | HasVideo1={_viewModel.HasParallelVideo1} | IsSingle={_viewModel.IsSingleVideoMode} | IsQuad={_viewModel.IsQuadVideoMode} | IsHorizontal={_viewModel.IsHorizontalOrientation}");
+        AppLog.Info("DashboardPage", $"TogglePlayPause | IsPreviewMode={_viewModel.IsPreviewMode} | HasVideo1={_viewModel.HasParallelVideo1}");
 
         // Importante: los mini players solo se vuelven visibles cuando IsPreviewMode=true
         // (ver MultiTriggers en XAML). Si el usuario pulsa espacio para reproducir,
@@ -2014,34 +2006,11 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
             return;
         }
 
-        if (_viewModel.IsSingleVideoMode)
-        {
-            TogglePlayer(PreviewPlayerSingle);
-        }
-        else if (_viewModel.IsQuadVideoMode)
-        {
-            // Modo cuádruple: controlar los 4 videos
-            TogglePlayer(PreviewPlayer1Q);
-            TogglePlayer(PreviewPlayer2Q);
-            TogglePlayer(PreviewPlayer3Q);
-            TogglePlayer(PreviewPlayer4Q);
-        }
-        else
-        {
-            // Modo paralelo: controlar ambos videos
-            if (_viewModel.IsHorizontalOrientation)
-            {
-                AppLog.Info("DashboardPage", $"TogglePlayPause Parallel H | VM.ClipPath1={_viewModel.ParallelVideo1ClipPath ?? "[null]"} | VM.ClipPath2={_viewModel.ParallelVideo2ClipPath ?? "[null]"}");
-                TogglePlayer(PreviewPlayer1H);
-                TogglePlayer(PreviewPlayer2H);
-            }
-            else
-            {
-                AppLog.Info("DashboardPage", $"TogglePlayPause Parallel V | VM.ClipPath1={_viewModel.ParallelVideo1ClipPath ?? "[null]"} | VM.ClipPath2={_viewModel.ParallelVideo2ClipPath ?? "[null]"}");
-                TogglePlayer(PreviewPlayer1V);
-                TogglePlayer(PreviewPlayer2V);
-            }
-        }
+        // Controlar los slots ocupados en 2x2
+        if (_viewModel.HasParallelVideo1) TogglePlayer(PreviewPlayer1Q);
+        if (_viewModel.HasParallelVideo2) TogglePlayer(PreviewPlayer2Q);
+        if (_viewModel.HasParallelVideo3) TogglePlayer(PreviewPlayer3Q);
+        if (_viewModel.HasParallelVideo4) TogglePlayer(PreviewPlayer4Q);
     }
 
     private void TogglePlayer(PrecisionVideoPlayer? player)
@@ -2062,11 +2031,6 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 
     private void PauseAllVideos()
     {
-        PreviewPlayerSingle?.Pause();
-        PreviewPlayer1H?.Pause();
-        PreviewPlayer2H?.Pause();
-        PreviewPlayer1V?.Pause();
-        PreviewPlayer2V?.Pause();
         PreviewPlayer1Q?.Pause();
         PreviewPlayer2Q?.Pause();
         PreviewPlayer3Q?.Pause();
@@ -2099,11 +2063,6 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
             // Para los preview players del dashboard, solo llamamos PrepareForCleanup()
             // que limpia el AVPlayer nativo pero NO rompe el binding.
             // El binding se actualizará cuando ClearPreviewVideos() ponga ParallelVideoX = null.
-            PreparePlayerForCleanup(PreviewPlayerSingle);
-            PreparePlayerForCleanup(PreviewPlayer1H);
-            PreparePlayerForCleanup(PreviewPlayer2H);
-            PreparePlayerForCleanup(PreviewPlayer1V);
-            PreparePlayerForCleanup(PreviewPlayer2V);
             PreparePlayerForCleanup(PreviewPlayer1Q);
             PreparePlayerForCleanup(PreviewPlayer2Q);
             PreparePlayerForCleanup(PreviewPlayer3Q);

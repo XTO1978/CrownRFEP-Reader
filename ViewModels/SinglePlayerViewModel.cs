@@ -642,9 +642,14 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(VideoAspect));
             
             // Actualizar el path del video si viene en el clip
-            if (value?.LocalClipPath != null)
+            if (!string.IsNullOrWhiteSpace(value?.LocalClipPath))
             {
-                _videoPath = value.LocalClipPath;
+                _videoPath = value!.LocalClipPath;
+                OnPropertyChanged(nameof(VideoPath));
+            }
+            else if (!string.IsNullOrWhiteSpace(value?.ClipPath))
+            {
+                _videoPath = value!.ClipPath;
                 OnPropertyChanged(nameof(VideoPath));
             }
             
@@ -1356,9 +1361,9 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     public bool HasComparisonVideo3 => _comparisonVideo3 != null;
     public bool HasComparisonVideo4 => _comparisonVideo4 != null;
     
-    public string? ComparisonVideo2Path => _comparisonVideo2?.LocalClipPath;
-    public string? ComparisonVideo3Path => _comparisonVideo3?.LocalClipPath;
-    public string? ComparisonVideo4Path => _comparisonVideo4?.LocalClipPath;
+    public string? ComparisonVideo2Path => _comparisonVideo2?.LocalClipPath ?? _comparisonVideo2?.ClipPath;
+    public string? ComparisonVideo3Path => _comparisonVideo3?.LocalClipPath ?? _comparisonVideo3?.ClipPath;
+    public string? ComparisonVideo4Path => _comparisonVideo4?.LocalClipPath ?? _comparisonVideo4?.ClipPath;
 
     #region Exportación de comparación
 
@@ -2469,6 +2474,45 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
         // Auto-abrir Split Time si existen laps/timing guardados
         await AutoOpenSplitTimePanelIfHasTimingAsync();
+    }
+
+    /// <summary>
+    /// Inicializa el ViewModel para comparación, configurando layout y videos secundarios.
+    /// </summary>
+    public async Task InitializeWithComparisonAsync(
+        VideoClip mainVideo,
+        VideoClip? comparison2,
+        VideoClip? comparison3,
+        VideoClip? comparison4,
+        ComparisonLayout layout)
+    {
+        System.Diagnostics.Debug.WriteLine($"[SinglePlayerVM] InitializeWithComparisonAsync: mainVideo.Id={mainVideo?.Id}, layout={layout}");
+        System.Diagnostics.Debug.WriteLine($"[SinglePlayerVM] comparison2: Id={comparison2?.Id}, Path={comparison2?.LocalClipPath ?? comparison2?.ClipPath}");
+        System.Diagnostics.Debug.WriteLine($"[SinglePlayerVM] comparison3: Id={comparison3?.Id}, Path={comparison3?.LocalClipPath ?? comparison3?.ClipPath}");
+        System.Diagnostics.Debug.WriteLine($"[SinglePlayerVM] comparison4: Id={comparison4?.Id}, Path={comparison4?.LocalClipPath ?? comparison4?.ClipPath}");
+
+        await InitializeWithVideoAsync(mainVideo);
+
+        // Limpiar estado anterior
+        ComparisonVideo2 = null;
+        ComparisonVideo3 = null;
+        ComparisonVideo4 = null;
+
+        // Aplicar layout antes de asignar videos
+        SetComparisonLayout(layout switch
+        {
+            ComparisonLayout.Horizontal2x1 => "Horizontal2x1",
+            ComparisonLayout.Vertical1x2 => "Vertical1x2",
+            ComparisonLayout.Quad2x2 => "Quad2x2",
+            _ => "Single"
+        });
+
+        // Asignar videos de comparación
+        ComparisonVideo2 = comparison2;
+        ComparisonVideo3 = comparison3;
+        ComparisonVideo4 = comparison4;
+        
+        System.Diagnostics.Debug.WriteLine($"[SinglePlayerVM] After assignment: HasComparisonVideo4={HasComparisonVideo4}, ComparisonVideo4Path={ComparisonVideo4Path}");
     }
     
     /// <summary>
@@ -5035,6 +5079,14 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         {
             SetComparisonLayout("Horizontal2x1");
         }
+    }
+
+    /// <summary>
+    /// Configura el layout de comparación. Wrapper público para uso externo.
+    /// </summary>
+    public void SetComparisonLayoutPublic(string layoutName)
+    {
+        SetComparisonLayout(layoutName);
     }
 
     private void SetComparisonLayout(string layoutName)

@@ -1906,542 +1906,12 @@
                         </HorizontalStackLayout>
                     </Grid>
 
-                    <!--  Toggle: Único / Paralelo / Cuádruple  -->
-                    <HorizontalStackLayout Spacing="16" HorizontalOptions="Center">
-                        <HorizontalStackLayout.Margin>
-                            <OnPlatform x:TypeArguments="Thickness">
-                                <On Platform="WinUI" Value="0,0,0,4" />
-                                <On Platform="Default" Value="0,0,0,8" />
-                            </OnPlatform>
-                        </HorizontalStackLayout.Margin>
-                        <HorizontalStackLayout>
-                            <HorizontalStackLayout.Spacing>
-                                <OnPlatform x:TypeArguments="x:Double">
-                                    <On Platform="iOS" Value="2" />
-                                    <On Platform="Default" Value="6" />
-                                </OnPlatform>
-                            </HorizontalStackLayout.Spacing>
-                            <RadioButton
-                                GroupName="AnalysisMode"
-                                IsChecked="{Binding IsSingleVideoMode}"
-                                BackgroundColor="Transparent"
-                                VerticalOptions="Center">
-                                <RadioButton.ControlTemplate>
-                                    <ControlTemplate>
-                                        <Grid x:DataType="RadioButton">
-                                            <Ellipse
-                                                WidthRequest="18"
-                                                HeightRequest="18"
-                                                Stroke="#FF888888"
-                                                StrokeThickness="2"
-                                                Fill="Transparent" />
-                                            <Ellipse
-                                                x:Name="CheckedDot"
-                                                WidthRequest="10"
-                                                HeightRequest="10"
-                                                Fill="#FF6DDDFF"
-                                                HorizontalOptions="Center"
-                                                VerticalOptions="Center"
-                                                IsVisible="False" />
-
-                                            <VisualStateManager.VisualStateGroups>
-                                                <VisualStateGroup Name="CheckStates">
-                                                    <VisualState Name="Checked">
-                                                        <VisualState.Setters>
-                                                            <Setter TargetName="CheckedDot" Property="IsVisible" Value="True" />
-                                                        </VisualState.Setters>
-                                                    </VisualState>
-                                                    <VisualState Name="Unchecked">
-                                                        <VisualState.Setters>
-                                                            <Setter TargetName="CheckedDot" Property="IsVisible" Value="False" />
-                                                        </VisualState.Setters>
-                                                    </VisualState>
-                                                </VisualStateGroup>
-                                            </VisualStateManager.VisualStateGroups>
-                                        </Grid>
-                                    </ControlTemplate>
-                                </RadioButton.ControlTemplate>
-                            </RadioButton>
-                            <Grid>
-                                <!-- iOS: Icono -->
-                                <controls:SymbolIcon SymbolName="rectangle.fill" TintColor="White" HeightRequest="16" WidthRequest="16" VerticalOptions="Center">
-                                    <controls:SymbolIcon.IsVisible>
-                                        <OnPlatform x:TypeArguments="x:Boolean">
-                                            <On Platform="iOS" Value="True" />
-                                            <On Platform="Default" Value="False" />
-                                        </OnPlatform>
-                                    </controls:SymbolIcon.IsVisible>
-                                </controls:SymbolIcon>
-                                <!-- Otras plataformas: Texto -->
-                                <Label Text="Único" TextColor="White" VerticalOptions="Center">
-                                    <Label.IsVisible>
-                                        <OnPlatform x:TypeArguments="x:Boolean">
-                                            <On Platform="iOS" Value="False" />
-                                            <On Platform="Default" Value="True" />
-                                        </OnPlatform>
-                                    </Label.IsVisible>
-                                </Label>
-                            </Grid>
-                        </HorizontalStackLayout>
-                        <HorizontalStackLayout>
-                            <HorizontalStackLayout.Spacing>
-                                <OnPlatform x:TypeArguments="x:Double">
-                                    <On Platform="iOS" Value="2" />
-                                    <On Platform="Default" Value="6" />
-                                </OnPlatform>
-                            </HorizontalStackLayout.Spacing>
-                            <RadioButton
-                                GroupName="AnalysisMode"
-                                IsChecked="{Binding IsParallelVideoMode}"
-                                BackgroundColor="Transparent"
-                                VerticalOptions="Center">
-                                <RadioButton.ControlTemplate>
-                                    <ControlTemplate>
-                                        <Grid x:DataType="RadioButton">
-                                            <Ellipse
-                                                WidthRequest="18"
-                                                HeightRequest="18"
-                                                Stroke="#FF888888"
-                                                StrokeThickness="2"
-                                                Fill="Transparent" />
-                                            <Ellipse
-                                                x:Name="CheckedDot"
-                                                WidthRequest="10"
-                                                HeightRequest="10"
-                                                Fill="#FF6DDDFF"
-                                                HorizontalOptions="Center"
-                                                VerticalOptions="Center"
-                                                IsVisible="False" />
-
-                                            <VisualStateManager.VisualStateGroups>
-                                                <VisualStateGroup Name="CheckStates">
-                                                    <VisualState Name="Checked">
-                                                        <VisualState.Setters>
-                                                            <Setter TargetName="CheckedDot" Property="IsVisible" Value="True" />
-                                                        </VisualState.Setters>
-                                                    </VisualState>
-                                                    <VisualState Name="Unchecked">
-                                                        <VisualState.Setters>
-                                                            <Setter TargetName="CheckedDot" Property="IsVisible" Value="False" />
-                                                        </VisualState.Setters>
-                                                    </VisualState>
-                                                </VisualStateGroup>
-                                            </VisualStateManager.VisualStateGroups>
-                                        </Grid>
-                                    </ControlTemplate>
-                                </RadioButton.ControlTemplate>
-                            </RadioButton>
-                            <Grid>
-                                <!-- iOS: Icono -->
-                                <controls:SymbolIcon SymbolName="rectangle.split.2x1.fill" TintColor="White" HeightRequest="16" WidthRequest="16" VerticalOptions="Center">
-                                    <controls:SymbolIcon.IsVisible>
-                                        <OnPlatform x:TypeArguments="x:Boolean">
-                                            <On Platform="iOS" Value="True" />
-                                            <On Platform="Default" Value="False" />
-                                        </OnPlatform>
-                                    </controls:SymbolIcon.IsVisible>
-                                </controls:SymbolIcon>
-                                <!-- Otras plataformas: Texto -->
-                                <Label Text="Paralelo" TextColor="White" VerticalOptions="Center">
-                                    <Label.IsVisible>
-                                        <OnPlatform x:TypeArguments="x:Boolean">
-                                            <On Platform="iOS" Value="False" />
-                                            <On Platform="Default" Value="True" />
-                                        </OnPlatform>
-                                    </Label.IsVisible>
-                                </Label>
-                            </Grid>
-                        </HorizontalStackLayout>
-                        <HorizontalStackLayout>
-                            <HorizontalStackLayout.Spacing>
-                                <OnPlatform x:TypeArguments="x:Double">
-                                    <On Platform="iOS" Value="2" />
-                                    <On Platform="Default" Value="6" />
-                                </OnPlatform>
-                            </HorizontalStackLayout.Spacing>
-                            <RadioButton
-                                GroupName="AnalysisMode"
-                                IsChecked="{Binding IsQuadVideoMode}"
-                                BackgroundColor="Transparent"
-                                VerticalOptions="Center">
-                                <RadioButton.ControlTemplate>
-                                    <ControlTemplate>
-                                        <Grid x:DataType="RadioButton">
-                                            <Ellipse
-                                                WidthRequest="18"
-                                                HeightRequest="18"
-                                                Stroke="#FF888888"
-                                                StrokeThickness="2"
-                                                Fill="Transparent" />
-                                            <Ellipse
-                                                x:Name="CheckedDot"
-                                                WidthRequest="10"
-                                                HeightRequest="10"
-                                                Fill="#FF6DDDFF"
-                                                HorizontalOptions="Center"
-                                                VerticalOptions="Center"
-                                                IsVisible="False" />
-
-                                            <VisualStateManager.VisualStateGroups>
-                                                <VisualStateGroup Name="CheckStates">
-                                                    <VisualState Name="Checked">
-                                                        <VisualState.Setters>
-                                                            <Setter TargetName="CheckedDot" Property="IsVisible" Value="True" />
-                                                        </VisualState.Setters>
-                                                    </VisualState>
-                                                    <VisualState Name="Unchecked">
-                                                        <VisualState.Setters>
-                                                            <Setter TargetName="CheckedDot" Property="IsVisible" Value="False" />
-                                                        </VisualState.Setters>
-                                                    </VisualState>
-                                                </VisualStateGroup>
-                                            </VisualStateManager.VisualStateGroups>
-                                        </Grid>
-                                    </ControlTemplate>
-                                </RadioButton.ControlTemplate>
-                            </RadioButton>
-                            <Grid>
-                                <!-- iOS: Icono -->
-                                <controls:SymbolIcon SymbolName="rectangle.split.2x2.fill" TintColor="White" HeightRequest="16" WidthRequest="16" VerticalOptions="Center">
-                                    <controls:SymbolIcon.IsVisible>
-                                        <OnPlatform x:TypeArguments="x:Boolean">
-                                            <On Platform="iOS" Value="True" />
-                                            <On Platform="Default" Value="False" />
-                                        </OnPlatform>
-                                    </controls:SymbolIcon.IsVisible>
-                                </controls:SymbolIcon>
-                                <!-- Otras plataformas: Texto -->
-                                <Label Text="Cuádruple" TextColor="White" VerticalOptions="Center">
-                                    <Label.IsVisible>
-                                        <OnPlatform x:TypeArguments="x:Boolean">
-                                            <On Platform="iOS" Value="False" />
-                                            <On Platform="Default" Value="True" />
-                                        </OnPlatform>
-                                    </Label.IsVisible>
-                                </Label>
-                            </Grid>
-                        </HorizontalStackLayout>
-                    </HorizontalStackLayout>
-
-                    <!--  Layout Único (un solo video)  -->
-                    <controls:AspectRatioContainer 
-                        AspectRatio="1.777" 
-                        IsVisible="{Binding IsSingleVideoMode}"
-                        HorizontalOptions="Fill">
-                        <Border
-                            BackgroundColor="#FF404040"
-                            Stroke="Transparent"
-                            StrokeShape="RoundRectangle 6">
-                            <Border.GestureRecognizers>
-                                <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen1" />
-                            </Border.GestureRecognizers>
-                            <Grid>
-                                <!--  PrecisionVideoPlayer para scrubbing preciso (capa inferior)  -->
-                                <appcontrols:PrecisionVideoPlayer
-                                    x:Name="PreviewPlayerSingle"
-                                    Aspect="AspectFill"
-                                    IsMuted="True"
-                                    Source="{Binding ParallelVideo1ClipPath}"
-                                    IsVisible="False">
-                                    <appcontrols:PrecisionVideoPlayer.Triggers>
-                                        <MultiTrigger TargetType="appcontrols:PrecisionVideoPlayer">
-                                            <MultiTrigger.Conditions>
-                                                <BindingCondition Binding="{Binding HasParallelVideo1}" Value="True" />
-                                                <BindingCondition Binding="{Binding IsPreviewMode}" Value="True" />
-                                                <BindingCondition Binding="{Binding IsSingleVideoMode}" Value="True" />
-                                            </MultiTrigger.Conditions>
-                                            <Setter Property="IsVisible" Value="True" />
-                                        </MultiTrigger>
-                                    </appcontrols:PrecisionVideoPlayer.Triggers>
-                                </appcontrols:PrecisionVideoPlayer>
-                                <!--  Miniatura del vídeo (cuando no está en preview)  -->
-                                <Image
-                                    Aspect="AspectFill"
-                                    Source="{Binding ParallelVideo1ThumbnailPath}"
-                                    IsVisible="{Binding ShowParallelVideo1Thumbnail}" />
-                                <!--  Placeholder cuando no hay vídeo  -->
-                                <Label
-                                    HorizontalOptions="Center"
-                                    VerticalOptions="Center"
-                                    Text="Arrastra un clip aquí"
-                                    TextColor="#FF888888"
-                                    FontSize="{StaticResource FontSizeBody}"
-                                    IsVisible="{Binding HasParallelVideo1, Converter={StaticResource InvertedBoolConverter}}" />
-                                <!--  Overlay transparente para capturar gestos de scrubbing  -->
-                                <BoxView
-                                    x:Name="ScrubOverlaySingle"
-                                    BackgroundColor="Transparent"
-                                    IsVisible="{Binding HasParallelVideo1}">
-                                    <BoxView.GestureRecognizers>
-                                        <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen1" />
-                                    </BoxView.GestureRecognizers>
-                                    <BoxView.Behaviors>
-                                        <behaviors:VideoScrubBehavior VideoIndex="0" MillisecondsPerPixel="{OnPlatform WinUI=200, iOS=25, Default=5}" />
-                                    </BoxView.Behaviors>
-                                </BoxView>
-                            </Grid>
-                        </Border>
-                    </controls:AspectRatioContainer>
-
-                    <!--  Layout Horizontal (paralelo)  -->
-                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
-                        <Grid.Triggers>
-                            <MultiTrigger TargetType="Grid">
-                                <MultiTrigger.Conditions>
-                                    <BindingCondition Binding="{Binding IsParallelVideoMode}" Value="True" />
-                                    <BindingCondition Binding="{Binding IsHorizontalOrientation}" Value="True" />
-                                </MultiTrigger.Conditions>
-                                <Setter Property="IsVisible" Value="True" />
-                            </MultiTrigger>
-                        </Grid.Triggers>
-                        <Grid.Style>
-                            <Style TargetType="Grid">
-                                <Setter Property="IsVisible" Value="False" />
-                            </Style>
-                        </Grid.Style>
-                        <controls:AspectRatioContainer AspectRatio="1.777">
-                            <Border
-                                BackgroundColor="#FF404040"
-                                Stroke="Transparent"
-                                StrokeShape="RoundRectangle 6">
-                                <Border.GestureRecognizers>
-                                    <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen1" />
-                                </Border.GestureRecognizers>
-                                <Grid>
-                                    <!--  PrecisionVideoPlayer para scrubbing preciso (capa inferior)  -->
-                                    <appcontrols:PrecisionVideoPlayer
-                                        x:Name="PreviewPlayer1H"
-                                        Aspect="AspectFill"
-                                        IsMuted="True"
-                                        Source="{Binding ParallelVideo1ClipPath}"
-                                        IsVisible="False">
-                                        <appcontrols:PrecisionVideoPlayer.Triggers>
-                                            <MultiTrigger TargetType="appcontrols:PrecisionVideoPlayer">
-                                                <MultiTrigger.Conditions>
-                                                    <BindingCondition Binding="{Binding HasParallelVideo1}" Value="True" />
-                                                    <BindingCondition Binding="{Binding IsPreviewMode}" Value="True" />
-                                                </MultiTrigger.Conditions>
-                                                <Setter Property="IsVisible" Value="True" />
-                                            </MultiTrigger>
-                                        </appcontrols:PrecisionVideoPlayer.Triggers>
-                                    </appcontrols:PrecisionVideoPlayer>
-                                    <!--  Miniatura del vídeo (cuando no está en preview)  -->
-                                    <Image
-                                        Aspect="AspectFill"
-                                        Source="{Binding ParallelVideo1ThumbnailPath}"
-                                        IsVisible="{Binding ShowParallelVideo1Thumbnail}" />
-                                    <!--  Placeholder cuando no hay vídeo  -->
-                                    <Label
-                                        HorizontalOptions="Center"
-                                        VerticalOptions="Center"
-                                        Text="1"
-                                        TextColor="#FF888888"
-                                        FontSize="{StaticResource FontSizeHeader}"
-                                        FontAttributes="None"
-                                        IsVisible="{Binding HasParallelVideo1, Converter={StaticResource InvertedBoolConverter}}" />
-                                    <!--  Overlay para scrubbing  -->
-                                    <BoxView
-                                        BackgroundColor="Transparent"
-                                        IsVisible="{Binding HasParallelVideo1}">
-                                        <BoxView.GestureRecognizers>
-                                            <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen1" />
-                                        </BoxView.GestureRecognizers>
-                                        <BoxView.Behaviors>
-                                            <behaviors:VideoScrubBehavior VideoIndex="1" MillisecondsPerPixel="{OnPlatform WinUI=200, iOS=25, Default=5}" />
-                                        </BoxView.Behaviors>
-                                    </BoxView>
-                                </Grid>
-                            </Border>
-                        </controls:AspectRatioContainer>
-                        <controls:AspectRatioContainer Grid.Column="1" AspectRatio="1.777">
-                            <Border
-                                BackgroundColor="#FF404040"
-                                Stroke="Transparent"
-                                StrokeShape="RoundRectangle 6">
-                                <Border.GestureRecognizers>
-                                    <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen2" />
-                                </Border.GestureRecognizers>
-                                <Grid>
-                                    <!--  PrecisionVideoPlayer para scrubbing preciso (capa inferior)  -->
-                                    <appcontrols:PrecisionVideoPlayer
-                                        x:Name="PreviewPlayer2H"
-                                        Aspect="AspectFill"
-                                        IsMuted="True"
-                                        Source="{Binding ParallelVideo2ClipPath}"
-                                        IsVisible="False">
-                                        <appcontrols:PrecisionVideoPlayer.Triggers>
-                                            <MultiTrigger TargetType="appcontrols:PrecisionVideoPlayer">
-                                                <MultiTrigger.Conditions>
-                                                    <BindingCondition Binding="{Binding HasParallelVideo2}" Value="True" />
-                                                    <BindingCondition Binding="{Binding IsPreviewMode}" Value="True" />
-                                                </MultiTrigger.Conditions>
-                                                <Setter Property="IsVisible" Value="True" />
-                                            </MultiTrigger>
-                                        </appcontrols:PrecisionVideoPlayer.Triggers>
-                                    </appcontrols:PrecisionVideoPlayer>
-                                    <!--  Miniatura del vídeo (cuando no está en preview)  -->
-                                    <Image
-                                        Aspect="AspectFill"
-                                        Source="{Binding ParallelVideo2ThumbnailPath}"
-                                        IsVisible="{Binding ShowParallelVideo2Thumbnail}" />
-                                    <!--  Placeholder cuando no hay vídeo  -->
-                                    <Label
-                                        HorizontalOptions="Center"
-                                        VerticalOptions="Center"
-                                        Text="2"
-                                        TextColor="#FF888888"
-                                        FontSize="{StaticResource FontSizeHeader}"
-                                        FontAttributes="None"
-                                        IsVisible="{Binding HasParallelVideo2, Converter={StaticResource InvertedBoolConverter}}" />
-                                    <!--  Overlay para scrubbing  -->
-                                    <BoxView
-                                        BackgroundColor="Transparent"
-                                        IsVisible="{Binding HasParallelVideo2}">
-                                        <BoxView.GestureRecognizers>
-                                            <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen2" />
-                                        </BoxView.GestureRecognizers>
-                                        <BoxView.Behaviors>
-                                            <behaviors:VideoScrubBehavior VideoIndex="2" MillisecondsPerPixel="{OnPlatform WinUI=200, iOS=25, Default=5}" />
-                                        </BoxView.Behaviors>
-                                    </BoxView>
-                                </Grid>
-                            </Border>
-                        </controls:AspectRatioContainer>
-                    </Grid>
-
-                    <!--  Layout Vertical (paralelo)  -->
-                    <Grid RowDefinitions="*,*" RowSpacing="8">
-                        <Grid.Triggers>
-                            <MultiTrigger TargetType="Grid">
-                                <MultiTrigger.Conditions>
-                                    <BindingCondition Binding="{Binding IsParallelVideoMode}" Value="True" />
-                                    <BindingCondition Binding="{Binding IsVerticalOrientation}" Value="True" />
-                                </MultiTrigger.Conditions>
-                                <Setter Property="IsVisible" Value="True" />
-                            </MultiTrigger>
-                        </Grid.Triggers>
-                        <Grid.Style>
-                            <Style TargetType="Grid">
-                                <Setter Property="IsVisible" Value="False" />
-                            </Style>
-                        </Grid.Style>
-                        <controls:AspectRatioContainer AspectRatio="1.777">
-                            <Border
-                                BackgroundColor="#FF404040"
-                                Stroke="Transparent"
-                                StrokeShape="RoundRectangle 6">
-                                <Border.GestureRecognizers>
-                                    <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen1" />
-                                </Border.GestureRecognizers>
-                                <Grid>
-                                    <!--  PrecisionVideoPlayer para scrubbing preciso (capa inferior)  -->
-                                    <appcontrols:PrecisionVideoPlayer
-                                        x:Name="PreviewPlayer1V"
-                                        Aspect="AspectFill"
-                                        IsMuted="True"
-                                        Source="{Binding ParallelVideo1ClipPath}"
-                                        IsVisible="False">
-                                        <appcontrols:PrecisionVideoPlayer.Triggers>
-                                            <MultiTrigger TargetType="appcontrols:PrecisionVideoPlayer">
-                                                <MultiTrigger.Conditions>
-                                                    <BindingCondition Binding="{Binding HasParallelVideo1}" Value="True" />
-                                                    <BindingCondition Binding="{Binding IsPreviewMode}" Value="True" />
-                                                </MultiTrigger.Conditions>
-                                                <Setter Property="IsVisible" Value="True" />
-                                            </MultiTrigger>
-                                        </appcontrols:PrecisionVideoPlayer.Triggers>
-                                    </appcontrols:PrecisionVideoPlayer>
-                                    <!--  Miniatura del vídeo (cuando no está en preview)  -->
-                                    <Image
-                                        Aspect="AspectFill"
-                                        Source="{Binding ParallelVideo1ThumbnailPath}"
-                                        IsVisible="{Binding ShowParallelVideo1Thumbnail}" />
-                                    <!--  Placeholder cuando no hay vídeo  -->
-                                    <Label
-                                        HorizontalOptions="Center"
-                                        VerticalOptions="Center"
-                                        Text="1"
-                                        TextColor="#FF888888"
-                                        FontSize="{StaticResource FontSizeHeader}"
-                                        FontAttributes="None"
-                                        IsVisible="{Binding HasParallelVideo1, Converter={StaticResource InvertedBoolConverter}}" />
-                                    <!--  Overlay para scrubbing  -->
-                                    <BoxView
-                                        BackgroundColor="Transparent"
-                                        IsVisible="{Binding HasParallelVideo1}">
-                                        <BoxView.GestureRecognizers>
-                                            <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen1" />
-                                        </BoxView.GestureRecognizers>
-                                        <BoxView.Behaviors>
-                                            <behaviors:VideoScrubBehavior VideoIndex="1" MillisecondsPerPixel="{OnPlatform WinUI=200, iOS=25, Default=5}" />
-                                        </BoxView.Behaviors>
-                                    </BoxView>
-                                </Grid>
-                            </Border>
-                        </controls:AspectRatioContainer>
-                        <controls:AspectRatioContainer Grid.Row="1" AspectRatio="1.777">
-                            <Border
-                                BackgroundColor="#FF404040"
-                                Stroke="Transparent"
-                                StrokeShape="RoundRectangle 6">
-                                <Border.GestureRecognizers>
-                                    <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen2" />
-                                </Border.GestureRecognizers>
-                                <Grid>
-                                    <!--  PrecisionVideoPlayer para scrubbing preciso (capa inferior)  -->
-                                    <appcontrols:PrecisionVideoPlayer
-                                        x:Name="PreviewPlayer2V"
-                                        Aspect="AspectFill"
-                                        IsMuted="True"
-                                        Source="{Binding ParallelVideo2ClipPath}"
-                                        IsVisible="False">
-                                        <appcontrols:PrecisionVideoPlayer.Triggers>
-                                            <MultiTrigger TargetType="appcontrols:PrecisionVideoPlayer">
-                                                <MultiTrigger.Conditions>
-                                                    <BindingCondition Binding="{Binding HasParallelVideo2}" Value="True" />
-                                                    <BindingCondition Binding="{Binding IsPreviewMode}" Value="True" />
-                                                </MultiTrigger.Conditions>
-                                                <Setter Property="IsVisible" Value="True" />
-                                            </MultiTrigger>
-                                        </appcontrols:PrecisionVideoPlayer.Triggers>
-                                    </appcontrols:PrecisionVideoPlayer>
-                                    <!--  Miniatura del vídeo (cuando no está en preview)  -->
-                                    <Image
-                                        Aspect="AspectFill"
-                                        Source="{Binding ParallelVideo2ThumbnailPath}"
-                                        IsVisible="{Binding ShowParallelVideo2Thumbnail}" />
-                                    <!--  Placeholder cuando no hay vídeo  -->
-                                    <Label
-                                        HorizontalOptions="Center"
-                                        VerticalOptions="Center"
-                                        Text="2"
-                                        TextColor="#FF888888"
-                                        FontSize="{StaticResource FontSizeHeader}"
-                                        FontAttributes="None"
-                                        IsVisible="{Binding HasParallelVideo2, Converter={StaticResource InvertedBoolConverter}}" />
-                                    <!--  Overlay para scrubbing  -->
-                                    <BoxView
-                                        BackgroundColor="Transparent"
-                                        IsVisible="{Binding HasParallelVideo2}">
-                                        <BoxView.GestureRecognizers>
-                                            <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen2" />
-                                        </BoxView.GestureRecognizers>
-                                        <BoxView.Behaviors>
-                                            <behaviors:VideoScrubBehavior VideoIndex="2" MillisecondsPerPixel="{OnPlatform WinUI=200, iOS=25, Default=5}" />
-                                        </BoxView.Behaviors>
-                                    </BoxView>
-                                </Grid>
-                            </Border>
-                        </controls:AspectRatioContainer>
-                    </Grid>
-
                     <!--  Layout Cuádruple (2x2)  -->
                     <Grid 
                         RowDefinitions="*,*" 
                         ColumnDefinitions="*,*" 
                         RowSpacing="8" 
-                        ColumnSpacing="8"
-                        IsVisible="{Binding IsQuadVideoMode}">
+                        ColumnSpacing="8">
                         <!--  Video 1 (arriba izquierda)  -->
                         <controls:AspectRatioContainer AspectRatio="1.777">
                             <Border
@@ -2464,7 +1934,6 @@
                                                 <MultiTrigger.Conditions>
                                                     <BindingCondition Binding="{Binding HasParallelVideo1}" Value="True" />
                                                     <BindingCondition Binding="{Binding IsPreviewMode}" Value="True" />
-                                                    <BindingCondition Binding="{Binding IsQuadVideoMode}" Value="True" />
                                                 </MultiTrigger.Conditions>
                                                 <Setter Property="IsVisible" Value="True" />
                                             </MultiTrigger>
@@ -2491,9 +1960,6 @@
                                         <BoxView.GestureRecognizers>
                                             <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen1" />
                                         </BoxView.GestureRecognizers>
-                                        <BoxView.Behaviors>
-                                            <behaviors:VideoScrubBehavior VideoIndex="1" MillisecondsPerPixel="{OnPlatform WinUI=200, iOS=25, Default=5}" />
-                                        </BoxView.Behaviors>
                                     </BoxView>
                                 </Grid>
                             </Border>
@@ -2520,7 +1986,6 @@
                                                 <MultiTrigger.Conditions>
                                                     <BindingCondition Binding="{Binding HasParallelVideo2}" Value="True" />
                                                     <BindingCondition Binding="{Binding IsPreviewMode}" Value="True" />
-                                                    <BindingCondition Binding="{Binding IsQuadVideoMode}" Value="True" />
                                                 </MultiTrigger.Conditions>
                                                 <Setter Property="IsVisible" Value="True" />
                                             </MultiTrigger>
@@ -2547,9 +2012,6 @@
                                         <BoxView.GestureRecognizers>
                                             <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen2" />
                                         </BoxView.GestureRecognizers>
-                                        <BoxView.Behaviors>
-                                            <behaviors:VideoScrubBehavior VideoIndex="2" MillisecondsPerPixel="{OnPlatform WinUI=200, iOS=25, Default=5}" />
-                                        </BoxView.Behaviors>
                                     </BoxView>
                                 </Grid>
                             </Border>
@@ -2576,7 +2038,6 @@
                                                 <MultiTrigger.Conditions>
                                                     <BindingCondition Binding="{Binding HasParallelVideo3}" Value="True" />
                                                     <BindingCondition Binding="{Binding IsPreviewMode}" Value="True" />
-                                                    <BindingCondition Binding="{Binding IsQuadVideoMode}" Value="True" />
                                                 </MultiTrigger.Conditions>
                                                 <Setter Property="IsVisible" Value="True" />
                                             </MultiTrigger>
@@ -2603,9 +2064,6 @@
                                         <BoxView.GestureRecognizers>
                                             <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen3" />
                                         </BoxView.GestureRecognizers>
-                                        <BoxView.Behaviors>
-                                            <behaviors:VideoScrubBehavior VideoIndex="3" MillisecondsPerPixel="{OnPlatform WinUI=200, iOS=25, Default=5}" />
-                                        </BoxView.Behaviors>
                                     </BoxView>
                                 </Grid>
                             </Border>
@@ -2632,7 +2090,6 @@
                                                 <MultiTrigger.Conditions>
                                                     <BindingCondition Binding="{Binding HasParallelVideo4}" Value="True" />
                                                     <BindingCondition Binding="{Binding IsPreviewMode}" Value="True" />
-                                                    <BindingCondition Binding="{Binding IsQuadVideoMode}" Value="True" />
                                                 </MultiTrigger.Conditions>
                                                 <Setter Property="IsVisible" Value="True" />
                                             </MultiTrigger>
@@ -2659,106 +2116,11 @@
                                         <BoxView.GestureRecognizers>
                                             <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen4" />
                                         </BoxView.GestureRecognizers>
-                                        <BoxView.Behaviors>
-                                            <behaviors:VideoScrubBehavior VideoIndex="4" MillisecondsPerPixel="{OnPlatform WinUI=200, iOS=25, Default=5}" />
-                                        </BoxView.Behaviors>
                                     </BoxView>
                                 </Grid>
                             </Border>
                         </controls:AspectRatioContainer>
                     </Grid>
-
-                    <!--  Radio buttons orientación (solo en modo paralelo)  -->
-                    <HorizontalStackLayout Spacing="16" HorizontalOptions="Center" IsVisible="{Binding IsParallelVideoMode}">
-                        <HorizontalStackLayout Spacing="6">
-                            <RadioButton
-                                GroupName="ParallelOrientation"
-                                IsChecked="{Binding IsHorizontalOrientation}"
-                                BackgroundColor="Transparent"
-                                VerticalOptions="Center">
-                                <RadioButton.ControlTemplate>
-                                    <ControlTemplate>
-                                        <Grid x:DataType="RadioButton">
-                                            <Ellipse
-                                                WidthRequest="18"
-                                                HeightRequest="18"
-                                                Stroke="#FF888888"
-                                                StrokeThickness="2"
-                                                Fill="Transparent" />
-                                            <Ellipse
-                                                x:Name="CheckedDot"
-                                                WidthRequest="10"
-                                                HeightRequest="10"
-                                                Fill="#FF6DDDFF"
-                                                HorizontalOptions="Center"
-                                                VerticalOptions="Center"
-                                                IsVisible="False" />
-
-                                            <VisualStateManager.VisualStateGroups>
-                                                <VisualStateGroup Name="CheckStates">
-                                                    <VisualState Name="Checked">
-                                                        <VisualState.Setters>
-                                                            <Setter TargetName="CheckedDot" Property="IsVisible" Value="True" />
-                                                        </VisualState.Setters>
-                                                    </VisualState>
-                                                    <VisualState Name="Unchecked">
-                                                        <VisualState.Setters>
-                                                            <Setter TargetName="CheckedDot" Property="IsVisible" Value="False" />
-                                                        </VisualState.Setters>
-                                                    </VisualState>
-                                                </VisualStateGroup>
-                                            </VisualStateManager.VisualStateGroups>
-                                        </Grid>
-                                    </ControlTemplate>
-                                </RadioButton.ControlTemplate>
-                            </RadioButton>
-                            <Label Text="Horizontal" TextColor="White" VerticalOptions="Center" />
-                        </HorizontalStackLayout>
-                        <HorizontalStackLayout Spacing="6">
-                            <RadioButton
-                                GroupName="ParallelOrientation"
-                                IsChecked="{Binding IsVerticalOrientation}"
-                                BackgroundColor="Transparent"
-                                VerticalOptions="Center">
-                                <RadioButton.ControlTemplate>
-                                    <ControlTemplate>
-                                        <Grid x:DataType="RadioButton">
-                                            <Ellipse
-                                                WidthRequest="18"
-                                                HeightRequest="18"
-                                                Stroke="#FF888888"
-                                                StrokeThickness="2"
-                                                Fill="Transparent" />
-                                            <Ellipse
-                                                x:Name="CheckedDot"
-                                                WidthRequest="10"
-                                                HeightRequest="10"
-                                                Fill="#FF6DDDFF"
-                                                HorizontalOptions="Center"
-                                                VerticalOptions="Center"
-                                                IsVisible="False" />
-
-                                            <VisualStateManager.VisualStateGroups>
-                                                <VisualStateGroup Name="CheckStates">
-                                                    <VisualState Name="Checked">
-                                                        <VisualState.Setters>
-                                                            <Setter TargetName="CheckedDot" Property="IsVisible" Value="True" />
-                                                        </VisualState.Setters>
-                                                    </VisualState>
-                                                    <VisualState Name="Unchecked">
-                                                        <VisualState.Setters>
-                                                            <Setter TargetName="CheckedDot" Property="IsVisible" Value="False" />
-                                                        </VisualState.Setters>
-                                                    </VisualState>
-                                                </VisualStateGroup>
-                                            </VisualStateManager.VisualStateGroups>
-                                        </Grid>
-                                    </ControlTemplate>
-                                </RadioButton.ControlTemplate>
-                            </RadioButton>
-                            <Label Text="Vertical" TextColor="White" VerticalOptions="Center" />
-                        </HorizontalStackLayout>
-                    </HorizontalStackLayout>
 
                     <!--  Botones Reproducir y Limpiar  -->
                     <Grid ColumnDefinitions="*,*" ColumnSpacing="8" IsVisible="{Binding IsQuickAnalysisIsolatedMode, Converter={toolkit:InvertedBoolConverter}}">

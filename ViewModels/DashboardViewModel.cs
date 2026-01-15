@@ -1492,14 +1492,14 @@ public class DashboardViewModel : BaseViewModel
     public bool HasParallelVideo3 => _parallelVideo3 != null;
     public bool HasParallelVideo4 => _parallelVideo4 != null;
 
-    public string? ParallelVideo1ClipPath => _parallelVideo1?.LocalClipPath;
-    public string? ParallelVideo1ThumbnailPath => _parallelVideo1?.LocalThumbnailPath;
-    public string? ParallelVideo2ClipPath => _parallelVideo2?.LocalClipPath;
-    public string? ParallelVideo2ThumbnailPath => _parallelVideo2?.LocalThumbnailPath;
-    public string? ParallelVideo3ClipPath => _parallelVideo3?.LocalClipPath;
-    public string? ParallelVideo3ThumbnailPath => _parallelVideo3?.LocalThumbnailPath;
-    public string? ParallelVideo4ClipPath => _parallelVideo4?.LocalClipPath;
-    public string? ParallelVideo4ThumbnailPath => _parallelVideo4?.LocalThumbnailPath;
+    public string? ParallelVideo1ClipPath => _parallelVideo1?.LocalClipPath ?? _parallelVideo1?.ClipPath;
+    public string? ParallelVideo1ThumbnailPath => _parallelVideo1?.LocalThumbnailPath ?? _parallelVideo1?.ThumbnailPath;
+    public string? ParallelVideo2ClipPath => _parallelVideo2?.LocalClipPath ?? _parallelVideo2?.ClipPath;
+    public string? ParallelVideo2ThumbnailPath => _parallelVideo2?.LocalThumbnailPath ?? _parallelVideo2?.ThumbnailPath;
+    public string? ParallelVideo3ClipPath => _parallelVideo3?.LocalClipPath ?? _parallelVideo3?.ClipPath;
+    public string? ParallelVideo3ThumbnailPath => _parallelVideo3?.LocalThumbnailPath ?? _parallelVideo3?.ThumbnailPath;
+    public string? ParallelVideo4ClipPath => _parallelVideo4?.LocalClipPath ?? _parallelVideo4?.ClipPath;
+    public string? ParallelVideo4ThumbnailPath => _parallelVideo4?.LocalThumbnailPath ?? _parallelVideo4?.ThumbnailPath;
 
     public VideoClip? ParallelVideo3
     {
@@ -1527,6 +1527,7 @@ public class DashboardViewModel : BaseViewModel
         get => _parallelVideo4;
         set
         {
+            System.Diagnostics.Debug.WriteLine($"[Dashboard] ParallelVideo4 SETTER: value={(value != null ? $"Id={value.Id}, ClipPath={value.ClipPath}, LocalClipPath={value.LocalClipPath}" : "null")}");
             if (SetProperty(ref _parallelVideo4, value))
             {
                 IsPreviewPlayer4Ready = false;
@@ -1534,6 +1535,7 @@ public class DashboardViewModel : BaseViewModel
                 OnPropertyChanged(nameof(ParallelVideo4ClipPath));
                 OnPropertyChanged(nameof(ParallelVideo4ThumbnailPath));
                 OnPropertyChanged(nameof(ShowParallelVideo4Thumbnail));
+                System.Diagnostics.Debug.WriteLine($"[Dashboard] ParallelVideo4 AFTER SET: HasParallelVideo4={HasParallelVideo4}, ClipPath={ParallelVideo4ClipPath}, ThumbnailPath={ParallelVideo4ThumbnailPath}");
                 // Forzar refresh del modo preview con delay para que el UI se actualice
                 if (value != null)
                 {
@@ -1541,6 +1543,69 @@ public class DashboardViewModel : BaseViewModel
                 }
             }
         }
+    }
+
+    public async Task SetParallelVideoSlotAsync(int slot, VideoClip video)
+    {
+        if (video == null) return;
+
+        System.Diagnostics.Debug.WriteLine($"[Dashboard] SetParallelVideoSlotAsync: slot={slot}, video.Id={video.Id}, ClipPath={video.ClipPath}, LocalClipPath={video.LocalClipPath}");
+
+        // Resolver path local si es posible
+        var resolvedPath = await ResolveVideoPathAsync(video);
+        System.Diagnostics.Debug.WriteLine($"[Dashboard] ResolvedPath for slot {slot}: {resolvedPath}");
+        
+        if (!string.IsNullOrWhiteSpace(resolvedPath))
+            video.LocalClipPath = resolvedPath;
+
+        // Asignar al slot correspondiente en hilo UI
+        await MainThread.InvokeOnMainThreadAsync(() =>
+        {
+            System.Diagnostics.Debug.WriteLine($"[Dashboard] Assigning video to slot {slot} on UI thread");
+            switch (slot)
+            {
+                case 1: ParallelVideo1 = video; break;
+                case 2: ParallelVideo2 = video; break;
+                case 3: ParallelVideo3 = video; break;
+                case 4: ParallelVideo4 = video; break;
+            }
+            System.Diagnostics.Debug.WriteLine($"[Dashboard] After assignment - HasParallelVideo4={HasParallelVideo4}, ParallelVideo4ClipPath={ParallelVideo4ClipPath}");
+        });
+    }
+
+    private async Task<string?> ResolveVideoPathAsync(VideoClip video)
+    {
+        var videoPath = video.LocalClipPath;
+
+        // Fallback: construir ruta local desde la carpeta de la sesión
+        if (string.IsNullOrWhiteSpace(videoPath) || !File.Exists(videoPath))
+        {
+            try
+            {
+                var session = SelectedSession ?? await _databaseService.GetSessionByIdAsync(video.SessionId);
+                if (!string.IsNullOrWhiteSpace(session?.PathSesion))
+                {
+                    var normalized = (video.ClipPath ?? "").Replace('\\', '/');
+                    var fileName = Path.GetFileName(normalized);
+                    if (string.IsNullOrWhiteSpace(fileName))
+                        fileName = $"CROWN{video.Id}.mp4";
+
+                    var candidate = Path.Combine(session.PathSesion, "videos", fileName);
+                    if (File.Exists(candidate))
+                        videoPath = candidate;
+                }
+            }
+            catch
+            {
+                // Ignorar: si falla, se usará el ClipPath si existe
+            }
+        }
+
+        // Último recurso: usar ClipPath si fuera una ruta real
+        if (string.IsNullOrWhiteSpace(videoPath))
+            videoPath = video.ClipPath;
+
+        return videoPath;
     }
 
     private async Task RefreshPreviewModeAsync()
@@ -4053,37 +4118,77 @@ public class DashboardViewModel : BaseViewModel
         // Desactivar el modo preview antes de abrir el reproductor
         IsPreviewMode = false;
 
-        // Si está en modo único y hay un video en ParallelVideo1, usar SinglePlayerPage
-        if (IsSingleVideoMode && HasParallelVideo1)
+        // Usar SinglePlayerPage con modo comparación para todos los modos
+        var singlePage = App.Current?.Handler?.MauiContext?.Services.GetService<Views.SinglePlayerPage>();
+        if (singlePage?.BindingContext is SinglePlayerViewModel singleVm)
         {
-            var singlePage = App.Current?.Handler?.MauiContext?.Services.GetService<Views.SinglePlayerPage>();
-            if (singlePage?.BindingContext is SinglePlayerViewModel singleVm)
-            {
-                await singleVm.InitializeWithVideoAsync(ParallelVideo1!);
-                await Shell.Current.Navigation.PushAsync(singlePage);
-            }
-            return;
-        }
+            // Recopilar videos por slot (1-4)
+            var slotVideos = new List<(int slot, VideoClip clip)>();
+            if (ParallelVideo1 != null) slotVideos.Add((1, ParallelVideo1));
+            if (ParallelVideo2 != null) slotVideos.Add((2, ParallelVideo2));
+            if (ParallelVideo3 != null) slotVideos.Add((3, ParallelVideo3));
+            if (ParallelVideo4 != null) slotVideos.Add((4, ParallelVideo4));
 
-        // Modo cuádruple: usar QuadPlayerPage
-        if (IsQuadVideoMode)
-        {
-            var quadPage = App.Current?.Handler?.MauiContext?.Services.GetService<Views.QuadPlayerPage>();
-            if (quadPage?.BindingContext is QuadPlayerViewModel quadVm)
-            {
-                quadVm.Initialize(ParallelVideo1, ParallelVideo2, ParallelVideo3, ParallelVideo4);
-                await Shell.Current.Navigation.PushAsync(quadPage);
-            }
-            return;
-        }
+            if (slotVideos.Count == 0) return;
 
-        // Modo paralelo: usar ParallelPlayerPage
-        var page = App.Current?.Handler?.MauiContext?.Services.GetService<Views.ParallelPlayerPage>();
-        if (page?.BindingContext is ParallelPlayerViewModel vm)
-        {
-            vm.Initialize(ParallelVideo1, ParallelVideo2, IsHorizontalOrientation);
-            await Shell.Current.Navigation.PushAsync(page);
+            // El video principal es el del primer slot ocupado
+            var mainSlot = slotVideos[0];
+            VideoClip mainVideo = mainSlot.clip;
+
+            var occupiedSlots = slotVideos.Select(v => v.slot).ToHashSet();
+            var layout = DetermineLayoutFromOccupiedSlots(occupiedSlots);
+
+            // Recopilar videos de comparación excluyendo por SLOT (no por referencia de objeto)
+            // Esto permite que el mismo video esté en múltiples slots
+            var comparisonVideos = slotVideos
+                .Where(v => v.slot != mainSlot.slot)
+                .OrderBy(v => v.slot)
+                .Select(v => (VideoClip?)v.clip)
+                .ToList();
+
+            System.Diagnostics.Debug.WriteLine($"[Dashboard] PlayParallelAnalysisAsync: mainVideo.Id={mainVideo.Id}, mainSlot={mainSlot.slot}, layout={layout}");
+            System.Diagnostics.Debug.WriteLine($"[Dashboard] slotVideos count={slotVideos.Count}, comparisonVideos count={comparisonVideos.Count}");
+            for (int i = 0; i < comparisonVideos.Count; i++)
+            {
+                var cv = comparisonVideos[i];
+                System.Diagnostics.Debug.WriteLine($"[Dashboard] comparisonVideos[{i}]: Id={cv?.Id}, ClipPath={cv?.ClipPath}");
+            }
+
+            await singleVm.InitializeWithComparisonAsync(
+                mainVideo,
+                comparisonVideos.ElementAtOrDefault(0),
+                comparisonVideos.ElementAtOrDefault(1),
+                comparisonVideos.ElementAtOrDefault(2),
+                layout);
+
+            await Shell.Current.Navigation.PushAsync(singlePage);
         }
+    }
+
+    private static ComparisonLayout DetermineLayoutFromOccupiedSlots(IReadOnlyCollection<int> occupiedSlots)
+    {
+        if (occupiedSlots == null || occupiedSlots.Count <= 1)
+            return ComparisonLayout.Single;
+
+        if (occupiedSlots.Count >= 3)
+            return ComparisonLayout.Quad2x2;
+
+        // Exactamente 2 slots: decidir si están en la misma fila o columna
+        var has1 = occupiedSlots.Contains(1);
+        var has2 = occupiedSlots.Contains(2);
+        var has3 = occupiedSlots.Contains(3);
+        var has4 = occupiedSlots.Contains(4);
+
+        // Misma fila: (1,2) o (3,4)
+        if ((has1 && has2) || (has3 && has4))
+            return ComparisonLayout.Horizontal2x1;
+
+        // Misma columna: (1,3) o (2,4)
+        if ((has1 && has3) || (has2 && has4))
+            return ComparisonLayout.Vertical1x2;
+
+        // Diagonal: usar 2x2
+        return ComparisonLayout.Quad2x2;
     }
 
     private async Task PreviewParallelAnalysisAsync()

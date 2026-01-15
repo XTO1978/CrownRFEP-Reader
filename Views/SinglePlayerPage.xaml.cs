@@ -746,6 +746,9 @@ public partial class SinglePlayerPage : ContentPage
         _viewModel.ComparisonLayoutChanged += OnComparisonLayoutChanged;
         _viewModel.ComparisonSlotCleared += OnComparisonSlotCleared;
 
+        // Asegurar que el grid refleja el layout actual al abrir la página
+        ConfigureComparisonGrid(_viewModel.ComparisonLayout);
+
     #if MACCATALYST || WINDOWS
     #if WINDOWS
         KeyPressHandler.EnsureAttached();
