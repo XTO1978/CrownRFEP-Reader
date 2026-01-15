@@ -1761,6 +1761,69 @@ public class DashboardViewModel : BaseViewModel
         OnPropertyChanged(nameof(SelectedVideoCount));
     }
 
+    /// <summary>
+    /// Selecciona un video específico para edición individual (sin requerir modo multiselección).
+    /// Limpia cualquier selección previa y añade solo este video.
+    /// </summary>
+    public void SelectSingleVideoForEdit(VideoClip video)
+    {
+        if (video == null) return;
+
+        // Limpiar selección previa
+        ClearVideoSelection();
+
+        // Añadir este video a la selección
+        video.IsSelected = true;
+        _selectedVideoIds.Add(video.Id);
+        OnPropertyChanged(nameof(SelectedVideoCount));
+    }
+
+    /// <summary>
+    /// Actualiza el estado interno de selección basado en el estado IsSelected del video.
+    /// Usado para selección por clic simple en desktop.
+    /// Esta selección es independiente del modo multiselección (botón "Seleccionar").
+    /// </summary>
+    public void UpdateVideoSelectionState(VideoClip video)
+    {
+        if (video == null) return;
+
+        if (video.IsSelected)
+            _selectedVideoIds.Add(video.Id);
+        else
+            _selectedVideoIds.Remove(video.Id);
+
+        OnPropertyChanged(nameof(SelectedVideoCount));
+    }
+
+    /// <summary>
+    /// Selecciona un único video, deseleccionando cualquier otro previamente seleccionado.
+    /// Usado para selección por clic simple en desktop.
+    /// Esta selección es independiente del modo multiselección (botón "Seleccionar").
+    /// </summary>
+    public void SelectSingleVideo(VideoClip video)
+    {
+        if (video == null) return;
+
+        // Deseleccionar todos los videos previamente seleccionados
+        foreach (var v in SelectedSessionVideos)
+            v.IsSelected = false;
+
+        var source = _filteredVideosCache ?? _allVideosCache;
+        if (source != null)
+        {
+            foreach (var v in source)
+                v.IsSelected = false;
+        }
+
+        _selectedVideoIds.Clear();
+
+        // Seleccionar el video actual
+        video.IsSelected = true;
+        _selectedVideoIds.Add(video.Id);
+
+        OnPropertyChanged(nameof(SelectedVideoCount));
+    }
+
     public bool HasMoreVideos
     {
         get => _hasMoreVideos;

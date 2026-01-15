@@ -1099,6 +1099,20 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
                 return;
             }
 
+            if (BindingContext is DashboardViewModel vm)
+            {
+                if (vm.IsMultiSelectMode)
+                {
+                    if (!video.IsSelected)
+                        vm.ToggleVideoSelectionCommand.Execute(video);
+                }
+                else
+                {
+                    if (!video.IsSelected)
+                        vm.SelectSingleVideo(video);
+                }
+            }
+
             _contextMenuVideo = video;
 
             HideUserLibraryContextMenu();
@@ -1125,6 +1139,48 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         catch (Exception ex)
         {
             AppLog.Error("DashboardPage", "OnVideoItemContextMenuTapped error", ex);
+        }
+    }
+
+    /// <summary>
+    /// Clic simple en video item: selecciona/deselecciona el video (solo en MacCatalyst/Windows).
+    /// En iOS, este handler no se ejecuta (NumberOfTapsRequired=99).
+    /// </summary>
+    private void OnVideoItemSingleTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            if (sender is not VisualElement anchor)
+                return;
+
+            var video = FindVideoClipFromContext(anchor);
+            if (video == null)
+                return;
+
+            if (BindingContext is DashboardViewModel vm)
+            {
+                if (vm.IsMultiSelectMode)
+                {
+                    // En multiselección, alternar selección sin afectar a otros
+                    vm.ToggleVideoSelectionCommand.Execute(video);
+                    return;
+                }
+
+                // Selección simple: alternar y mantener selección única
+                if (video.IsSelected)
+                {
+                    video.IsSelected = false;
+                    vm.UpdateVideoSelectionState(video);
+                }
+                else
+                {
+                    vm.SelectSingleVideo(video);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "OnVideoItemSingleTapped error", ex);
         }
     }
 
@@ -1185,9 +1241,8 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 
             if (BindingContext is DashboardViewModel vm)
             {
-                // Limpiar selección y seleccionar solo este video
-                vm.ClearVideoSelectionCommand?.Execute(null);
-                vm.ToggleVideoSelectionCommand?.Execute(_contextMenuVideo);
+                // Seleccionar solo este video para edición (sin requerir modo multiselección)
+                vm.SelectSingleVideoForEdit(_contextMenuVideo);
                 
                 // Ahora ejecutar el comando de editar
                 if (vm.EditVideoDetailsCommand?.CanExecute(null) ?? false)
@@ -1248,9 +1303,8 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 
             if (BindingContext is DashboardViewModel vm)
             {
-                // Limpiar selección y seleccionar solo este video
-                vm.ClearVideoSelectionCommand?.Execute(null);
-                vm.ToggleVideoSelectionCommand?.Execute(_contextMenuVideo);
+                // Seleccionar solo este video para eliminación (sin requerir modo multiselección)
+                vm.SelectSingleVideoForEdit(_contextMenuVideo);
                 
                 // Ahora ejecutar el comando de eliminar
                 if (vm.DeleteSelectedVideosCommand?.CanExecute(null) ?? false)

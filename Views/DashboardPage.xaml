@@ -821,7 +821,7 @@
                             Margin="0,4,0,0"
                             Padding="0"
                             BackgroundColor="#FF1A1A1A"
-                            Stroke="#FF6DDDFF"
+                            Stroke="#FF0066"
                             StrokeThickness="1"
                             StrokeShape="RoundRectangle 6"
                             IsVisible="{Binding IsBackgroundImporting}">
@@ -836,13 +836,13 @@
                                         HeightRequest="18"
                                         WidthRequest="18"
                                         IsRunning="True"
-                                        Color="#FF6DDDFF" />
+                                        Color="#FF0066" />
                                     <VerticalStackLayout Spacing="2" VerticalOptions="Center">
                                         <Label
                                             FontFamily="{StaticResource AppFontBody}"
                                             FontSize="13"
                                             Text="{Binding ImportingSessionName}"
-                                            TextColor="#FF6DDDFF"
+                                            TextColor="#FF0066"
                                             LineBreakMode="TailTruncation"
                                             MaximumWidthRequest="220" />
                                         <Label
@@ -858,7 +858,7 @@
                                         FontSize="11"
                                         FontAttributes="None"
                                         Text="{Binding BackgroundImportProgress, StringFormat='{0}%'}"
-                                        TextColor="#FF6DDDFF"
+                                        TextColor="#FF0066"
                                         VerticalOptions="Center"
                                         HorizontalOptions="EndAndExpand" />
                                 </HorizontalStackLayout>
@@ -867,7 +867,7 @@
                                     Grid.Row="1"
                                     Margin="0"
                                     Progress="{Binding BackgroundImportProgressNormalized}"
-                                    ProgressColor="#FF6DDDFF"
+                                    ProgressColor="#FF0066"
                                     BackgroundColor="#FF404040"
                                     HeightRequest="4" />
                             </Grid>
@@ -956,10 +956,10 @@
                         <controls:SymbolIcon
                             HeightRequest="{StaticResource IconSizeMedium}"
                             SymbolName="square.and.arrow.up"
-                            TintColor="#FF6DDDFF"
+                            TintColor="#FF0066"
                             WidthRequest="{StaticResource IconSizeMedium}"
                             VerticalOptions="Center" />
-                        <Label Text="Exportar" TextColor="#FF6DDDFF" VerticalOptions="Center" />
+                        <Label Text="Exportar" TextColor="#FF0066" VerticalOptions="Center" />
                     </HorizontalStackLayout>
                 </Border>
             </VerticalStackLayout>
@@ -1053,12 +1053,32 @@
                                 <behaviors:HoverBackgroundBehavior />
                             </Border.Behaviors>
                             <Border.GestureRecognizers>
-                                <TapGestureRecognizer Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.VideoTapCommand}" CommandParameter="{Binding .}" />
+                                <!-- iOS: clic simple abre reproductor. MacCatalyst/Windows: doble clic -->
+                                <TapGestureRecognizer Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.VideoTapCommand}" CommandParameter="{Binding .}">
+                                    <TapGestureRecognizer.NumberOfTapsRequired>
+                                        <OnPlatform x:TypeArguments="x:Int32">
+                                            <On Platform="iOS" Value="1" />
+                                            <On Platform="MacCatalyst" Value="2" />
+                                            <On Platform="WinUI" Value="2" />
+                                        </OnPlatform>
+                                    </TapGestureRecognizer.NumberOfTapsRequired>
+                                </TapGestureRecognizer>
+                                <!-- MacCatalyst/Windows: clic simple selecciona (deshabilitado en iOS con 99 taps) -->
+                                <TapGestureRecognizer Tapped="OnVideoItemSingleTapped">
+                                    <TapGestureRecognizer.NumberOfTapsRequired>
+                                        <OnPlatform x:TypeArguments="x:Int32">
+                                            <On Platform="iOS" Value="99" />
+                                            <On Platform="MacCatalyst" Value="1" />
+                                            <On Platform="WinUI" Value="1" />
+                                        </OnPlatform>
+                                    </TapGestureRecognizer.NumberOfTapsRequired>
+                                </TapGestureRecognizer>
+                                <TapGestureRecognizer Buttons="Secondary" Tapped="OnVideoItemContextMenuTapped" />
                                 <DragGestureRecognizer CanDrag="True" DragStarting="OnDragStarting" />
                             </Border.GestureRecognizers>
                             <Border.Triggers>
                                 <DataTrigger TargetType="Border" Binding="{Binding IsSelected}" Value="True">
-                                    <Setter Property="Stroke" Value="#FF6DDDFF" />
+                                    <Setter Property="Stroke" Value="#FF0066" />
                                     <Setter Property="StrokeThickness" Value="2" />
                                 </DataTrigger>
                             </Border.Triggers>
@@ -1122,13 +1142,13 @@
                                                 <controls:SymbolIcon
                                                     HeightRequest="{StaticResource IconSizeMedium}"
                                                     SymbolName="rectangle.on.rectangle"
-                                                    TintColor="#FF6DDDFF"
+                                                    TintColor="#FF0066"
                                                     VerticalOptions="Center"
                                                     WidthRequest="{StaticResource IconSizeMedium}" />
                                                 <Label
                                                     FontSize="{StaticResource FontSizeCaption}"
                                                     Text="VS"
-                                                    TextColor="#FF6DDDFF"
+                                                    TextColor="#FF0066"
                                                     VerticalOptions="Center"
                                                     FontAttributes="None" />
                                             </HorizontalStackLayout>
@@ -1640,7 +1660,7 @@
                         <controls:SymbolIcon
                             HeightRequest="{StaticResource IconSizeLarge}"
                             SymbolName="film.stack"
-                            TintColor="#FF6DDDFF"
+                            TintColor="#FF0066"
                             VerticalOptions="Center"
                             WidthRequest="{StaticResource IconSizeLarge}" />
                         <Label
@@ -1665,7 +1685,7 @@
                             StrokeShape="RoundRectangle 6">
                             <Border.Triggers>
                                 <DataTrigger TargetType="Border" Binding="{Binding IsMultiSelectMode}" Value="True">
-                                    <Setter Property="BackgroundColor" Value="#FF6DDDFF" />
+                                    <Setter Property="BackgroundColor" Value="#FF0066" />
                                 </DataTrigger>
                             </Border.Triggers>
                             <Border.GestureRecognizers>
@@ -1677,14 +1697,14 @@
                                     SymbolName="checkmark.circle"
                                     TintColor="White"
                                     WidthRequest="{StaticResource IconSizeMedium}"
-                                    VerticalOptions="Center" />
-                                <Label Text="Seleccionar" TextColor="White" VerticalOptions="Center">
-                                    <Label.Triggers>
-                                        <DataTrigger TargetType="Label" Binding="{Binding IsMultiSelectMode}" Value="True">
-                                            <Setter Property="FontAttributes" Value="None" />
+                                    VerticalOptions="Center">
+                                    <controls:SymbolIcon.Triggers>
+                                        <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding IsMultiSelectMode}" Value="True">
+                                            <Setter Property="SymbolName" Value="checkmark.circle.fill" />
                                         </DataTrigger>
-                                    </Label.Triggers>
-                                </Label>
+                                    </controls:SymbolIcon.Triggers>
+                                </controls:SymbolIcon>
+                                <Label Text="Seleccionar" TextColor="White" VerticalOptions="Center" />
                             </HorizontalStackLayout>
                         </Border>
 
@@ -1697,7 +1717,7 @@
                             StrokeShape="RoundRectangle 6">
                             <Border.Triggers>
                                 <DataTrigger TargetType="Border" Binding="{Binding IsSelectAllActive}" Value="True">
-                                    <Setter Property="BackgroundColor" Value="#FF6DDDFF" />
+                                    <Setter Property="BackgroundColor" Value="#FF0066" />
                                 </DataTrigger>
                             </Border.Triggers>
                             <Border.GestureRecognizers>
@@ -1706,17 +1726,17 @@
                             <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
                                 <controls:SymbolIcon
                                     HeightRequest="{StaticResource IconSizeMedium}"
-                                    SymbolName="checkmark.circle.fill"
+                                    SymbolName="checkmark.circle"
                                     TintColor="White"
                                     WidthRequest="{StaticResource IconSizeMedium}"
-                                    VerticalOptions="Center" />
-                                <Label Text="Todos" TextColor="White" VerticalOptions="Center">
-                                    <Label.Triggers>
-                                        <DataTrigger TargetType="Label" Binding="{Binding IsSelectAllActive}" Value="True">
-                                            <Setter Property="FontAttributes" Value="None" />
+                                    VerticalOptions="Center">
+                                    <controls:SymbolIcon.Triggers>
+                                        <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding IsSelectAllActive}" Value="True">
+                                            <Setter Property="SymbolName" Value="checkmark.circle.fill" />
                                         </DataTrigger>
-                                    </Label.Triggers>
-                                </Label>
+                                    </controls:SymbolIcon.Triggers>
+                                </controls:SymbolIcon>
+                                <Label Text="Todos" TextColor="White" VerticalOptions="Center" />
                             </HorizontalStackLayout>
                         </Border>
                     </Grid>
@@ -1789,10 +1809,10 @@
                                 <controls:SymbolIcon
                                     HeightRequest="{StaticResource IconSizeMedium}"
                                     SymbolName="square.and.arrow.up"
-                                    TintColor="#FF6DDDFF"
+                                    TintColor="#FF0066"
                                     WidthRequest="{StaticResource IconSizeMedium}"
                                     VerticalOptions="Center" />
-                                <Label Text="Compartir" TextColor="#FF6DDDFF" VerticalOptions="Center" />
+                                <Label Text="Compartir" TextColor="#FF0066" VerticalOptions="Center" />
                             </HorizontalStackLayout>
                         </Border>
 
@@ -1843,7 +1863,7 @@
                         <controls:SymbolIcon
                             HeightRequest="{StaticResource IconSizeLarge}"
                             SymbolName="waveform.path.ecg"
-                            TintColor="#FF6DDDFF"
+                            TintColor="#FF0066"
                             VerticalOptions="Center"
                             WidthRequest="{StaticResource IconSizeLarge}" />
                         <Label
@@ -1899,7 +1919,7 @@
                                 StrokeShape="RoundRectangle 6">
                                 <Border.Triggers>
                                     <DataTrigger TargetType="Border" Binding="{Binding IsQuickAnalysisIsolatedMode}" Value="True">
-                                        <Setter Property="BackgroundColor" Value="#FF6DDDFF" />
+                                        <Setter Property="BackgroundColor" Value="#FF0066" />
                                     </DataTrigger>
                                 </Border.Triggers>
                                 <Border.GestureRecognizers>
@@ -2210,7 +2230,7 @@
                                     <controls:SymbolIcon
                                         HeightRequest="{StaticResource IconSizeLarge}"
                                         SymbolName="line.3.horizontal.circle"
-                                        TintColor="#FF6DDDFF"
+                                        TintColor="#FF0066"
                                         VerticalOptions="Center"
                                         WidthRequest="{StaticResource IconSizeLarge}" />
                                     <Label
@@ -2223,7 +2243,7 @@
                                         Command="{Binding ClearFiltersCommand}"
                                         FontSize="{StaticResource FontSizeBody}"
                                         Text="Limpiar"
-                                        TextColor="#FF6DDDFF"
+                                        TextColor="#FF0066"
                                         VerticalOptions="Center" />
                                 </HorizontalStackLayout>
 
@@ -2609,7 +2629,7 @@
                     <controls:SymbolIcon
                         HeightRequest="{StaticResource IconSizeLarge}"
                         SymbolName="chart.pie"
-                        TintColor="#FF6DDDFF"
+                        TintColor="#FF0066"
                         VerticalOptions="Center"
                         WidthRequest="{StaticResource IconSizeLarge}" />
                     <Label
@@ -2641,7 +2661,7 @@
                                 FontSize="{StaticResource FontSizeHeader}"
                                 HorizontalOptions="Center"
                                 Text="{Binding TotalFilteredVideoCount}"
-                                TextColor="#FF6DDDFF" />
+                                TextColor="#FF0066" />
                             <Label
                                 FontSize="{StaticResource FontSizeSmall}"
                                 HorizontalOptions="Center"
@@ -2719,13 +2739,13 @@
                                 <controls:SymbolIcon
                                     HeightRequest="14"
                                     SymbolName="arrow.up.left.and.arrow.down.right"
-                                    TintColor="#FF6DDDFF"
+                                    TintColor="#FF0066"
                                     WidthRequest="14"
                                     VerticalOptions="Center" />
                                 <Label
                                     FontSize="{StaticResource FontSizeSmall}"
                                     Text="Abrir"
-                                    TextColor="#FF6DDDFF"
+                                    TextColor="#FF0066"
                                     VerticalOptions="Center" />
                             </HorizontalStackLayout>
                         </Border>
@@ -2786,7 +2806,7 @@
                                             FontAttributes="None"
                                             FontSize="{StaticResource FontSizeBody}"
                                             Text="{Binding SectionName}"
-                                            TextColor="#FF6DDDFF" />
+                                            TextColor="#FF0066" />
                                         
                                         <!--  ===== VISTA TIEMPOS ABSOLUTOS =====  -->
                                         <VerticalStackLayout Spacing="4" IsVisible="{Binding Source={x:Reference ThisPage}, Path=BindingContext.ShowSectionTimesAbsolute}">
@@ -2875,7 +2895,7 @@
                             FontAttributes="None"
                             FontSize="{StaticResource FontSizeTitle}"
                             Text="{Binding LabeledVideosPercentage, StringFormat='{0:F0}%'}"
-                            TextColor="#FF6DDDFF"
+                            TextColor="#FF0066"
                             VerticalOptions="Center" />
                     </Grid>
                 </Border>
@@ -3487,7 +3507,7 @@
                             <controls:SymbolIcon
                                 HeightRequest="{StaticResource IconSizeLarge}"
                                 SymbolName="book"
-                                TintColor="#FF6DDDFF"
+                                TintColor="#FF0066"
                                 VerticalOptions="Center"
                                 WidthRequest="{StaticResource IconSizeLarge}" />
                             <Label
@@ -3516,7 +3536,7 @@
                                     HeightRequest="{StaticResource IconSizeLarge}"
                                     WidthRequest="{StaticResource IconSizeLarge}"
                                     SymbolName="plus.circle.fill"
-                                    TintColor="#FF6DDDFF" />
+                                    TintColor="#FF0066" />
                             </Border>
                         </HorizontalStackLayout>
                     </Grid>
@@ -3532,7 +3552,7 @@
                         Padding="16"
                         BackgroundColor="#FF1E1E1E"
                         StrokeShape="RoundRectangle 12"
-                        Stroke="#FF6DDDFF"
+                        Stroke="#FF0066"
                         StrokeThickness="1"
                         IsVisible="{Binding IsAddingNewSession}">
                         <VerticalStackLayout Spacing="16">
@@ -3573,8 +3593,8 @@
                                                 Padding="12,6"
                                                 StrokeShape="RoundRectangle 6"
                                                 StrokeThickness="0"
-                                                BackgroundColor="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF6DDDFF|#FF2A2A2A}"
-                                                Stroke="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF6DDDFF|#FF404040}">
+                                                BackgroundColor="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF0066|#FF2A2A2A}"
+                                                Stroke="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF0066|#FF404040}">
                                                 <Border.GestureRecognizers>
                                                     <TapGestureRecognizer 
                                                         Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.SelectSessionTypeCommand}"
@@ -3618,7 +3638,7 @@
                                 <Button
                                     Grid.Column="1"
                                     Text="Crear sesión"
-                                    BackgroundColor="#FF6DDDFF"
+                                    BackgroundColor="#FF0066"
                                     TextColor="#FF121212"
                                     FontAttributes="None"
                                     CornerRadius="8"
@@ -3648,7 +3668,7 @@
                                                 <controls:SymbolIcon
                                                     HeightRequest="{StaticResource IconSizeLarge}"
                                                     SymbolName="figure.pool.swim"
-                                                    TintColor="#FF6DDDFF"
+                                                    TintColor="#FF0066"
                                                     VerticalOptions="Center"
                                                     WidthRequest="{StaticResource IconSizeLarge}" />
                                                 <VerticalStackLayout>
@@ -3694,12 +3714,12 @@
                                             <Label
                                                 FontSize="{StaticResource FontSizeSmall}"
                                                 Text="{Binding ExtraVideosCount, StringFormat='+ {0} más'}"
-                                                TextColor="#FF6DDDFF"
+                                                TextColor="#FF0066"
                                                 IsVisible="{Binding HasExtraVideos}" />
                                             <Button
                                                 Text="Ver sesión"
                                                 BackgroundColor="#FF404040"
-                                                TextColor="#FF6DDDFF"
+                                                TextColor="#FF0066"
                                                 FontSize="{StaticResource FontSizeSmall}"
                                                 CornerRadius="6"
                                                 Padding="12,6"
@@ -3902,7 +3922,7 @@
                                         <!--  Botón guardar (si no hay valoraciones)  -->
                                         <Button
                                             Text="Guardar"
-                                            BackgroundColor="#FF6DDDFF"
+                                            BackgroundColor="#FF0066"
                                             TextColor="#FF121212"
                                             FontAttributes="None"
                                             CornerRadius="8"
@@ -4580,7 +4600,7 @@
                                 HorizontalTextAlignment="Center" />
                             <Button
                                 Text="+ Crear nueva sesión"
-                                BackgroundColor="#FF6DDDFF"
+                                BackgroundColor="#FF0066"
                                 TextColor="#FF121212"
                                 FontAttributes="None"
                                 CornerRadius="8"
@@ -4638,7 +4658,7 @@
             IsRunning="{Binding IsBusy}"
             IsVisible="{Binding IsBusy}"
             VerticalOptions="Center"
-            Color="#FF6DDDFF" />
+            Color="#FF0066" />
 
         <!--  Popup de nueva sesión desde barra lateral (solo iOS)  -->
         <Grid
@@ -4718,8 +4738,8 @@
                                         Padding="12,6"
                                         StrokeShape="RoundRectangle 6"
                                         StrokeThickness="0"
-                                        BackgroundColor="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF6DDDFF|#FF2A2A2A}"
-                                        Stroke="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF6DDDFF|#FF404040}">
+                                        BackgroundColor="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF0066|#FF2A2A2A}"
+                                        Stroke="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF0066|#FF404040}">
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer 
                                                 Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.SelectSessionTypeCommand}"
@@ -4848,7 +4868,7 @@
                                 Padding="12,8"
                                 StrokeShape="RoundRectangle 6"
                                 StrokeThickness="0"
-                                BackgroundColor="{Binding IsSmartFolderMatchAll, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF6DDDFF|#FF2A2A2A}">
+                                BackgroundColor="{Binding IsSmartFolderMatchAll, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF0066|#FF2A2A2A}">
                                 <Border.GestureRecognizers>
                                     <TapGestureRecognizer Command="{Binding SetSmartFolderMatchModeCommand}" CommandParameter="All" />
                                 </Border.GestureRecognizers>
@@ -4865,7 +4885,7 @@
                                 Padding="12,8"
                                 StrokeShape="RoundRectangle 6"
                                 StrokeThickness="0"
-                                BackgroundColor="{Binding IsSmartFolderMatchAny, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF6DDDFF|#FF2A2A2A}">
+                                BackgroundColor="{Binding IsSmartFolderMatchAny, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF0066|#FF2A2A2A}">
                                 <Border.GestureRecognizers>
                                     <TapGestureRecognizer Command="{Binding SetSmartFolderMatchModeCommand}" CommandParameter="Any" />
                                 </Border.GestureRecognizers>
@@ -5009,7 +5029,7 @@
                         <Button
                             Grid.Column="1"
                             Text="Crear"
-                            BackgroundColor="#FF6DDDFF"
+                            BackgroundColor="#FF0066"
                             TextColor="#FF121212"
                             FontAttributes="None"
                             CornerRadius="8"
@@ -5243,17 +5263,17 @@
                             <Border
                                 WidthRequest="28"
                                 HeightRequest="28"
-                                BackgroundColor="#FF6DDDFF"
+                                BackgroundColor="#FF0066"
                                 StrokeShape="RoundRectangle 14"
                                 Stroke="Transparent"
                                 StrokeThickness="3">
                                 <Border.Triggers>
-                                    <DataTrigger TargetType="Border" Binding="{Binding SelectedPickerColor}" Value="#FF6DDDFF">
+                                    <DataTrigger TargetType="Border" Binding="{Binding SelectedPickerColor}" Value="#FF0066">
                                         <Setter Property="Stroke" Value="White" />
                                     </DataTrigger>
                                 </Border.Triggers>
                                 <Border.GestureRecognizers>
-                                    <TapGestureRecognizer Command="{Binding SelectPickerColorCommand}" CommandParameter="#FF6DDDFF" />
+                                    <TapGestureRecognizer Command="{Binding SelectPickerColorCommand}" CommandParameter="#FF0066" />
                                 </Border.GestureRecognizers>
                             </Border>
                         </HorizontalStackLayout>
@@ -5281,7 +5301,7 @@
                                         Padding="8"
                                         BackgroundColor="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF3A5A6A|#FF2A2A2A}"
                                         StrokeShape="RoundRectangle 6"
-                                        Stroke="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF6DDDFF|Transparent}"
+                                        Stroke="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF0066|Transparent}"
                                         StrokeThickness="2"
                                         WidthRequest="40"
                                         HeightRequest="40">
@@ -5357,7 +5377,7 @@
                         <Grid ColumnDefinitions="Auto,*">
                             <CheckBox
                                 IsChecked="{Binding BatchEditAthleteEnabled}"
-                                Color="#FF6DDDFF"
+                                Color="#FF0066"
                                 VerticalOptions="Center" />
                             <Label
                                 Grid.Column="1"
@@ -5439,7 +5459,7 @@
                         <Grid ColumnDefinitions="Auto,*">
                             <CheckBox
                                 IsChecked="{Binding BatchEditSectionEnabled}"
-                                Color="#FF6DDDFF"
+                                Color="#FF0066"
                                 VerticalOptions="Center" />
                             <Label
                                 Grid.Column="1"
@@ -5842,7 +5862,7 @@
                         <ActivityIndicator
                             IsRunning="{Binding IsLoadingDetailedTimes}"
                             IsVisible="{Binding IsLoadingDetailedTimes}"
-                            Color="#FF6DDDFF"
+                            Color="#FF0066"
                             HeightRequest="48"
                             WidthRequest="48"
                             HorizontalOptions="Center"
@@ -5940,7 +5960,7 @@
                                     <Label
                                         FontSize="{StaticResource FontSizeSmall}"
                                         Text="Resumen rápido"
-                                        TextColor="#FF6DDDFF" />
+                                        TextColor="#FF0066" />
                                 </Border>
                                 <Border
                                     Padding="8,4"
@@ -5953,7 +5973,7 @@
                                     <Label
                                         FontSize="{StaticResource FontSizeSmall}"
                                         Text="Análisis completo"
-                                        TextColor="#FF6DDDFF" />
+                                        TextColor="#FF0066" />
                                 </Border>
                                 <Border
                                     Padding="8,4"
@@ -5966,7 +5986,7 @@
                                     <Label
                                         FontSize="{StaticResource FontSizeSmall}"
                                         Text="Informe atleta"
-                                        TextColor="#FF6DDDFF" />
+                                        TextColor="#FF0066" />
                                 </Border>
                             </HorizontalStackLayout>
                             
@@ -5975,47 +5995,47 @@
                             <!--  Checkboxes de secciones  -->
                             <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="10" ColumnSpacing="16">
                                 <HorizontalStackLayout Grid.Row="0" Grid.Column="0" Spacing="8">
-                                    <CheckBox IsChecked="{Binding ReportOptions.ShowSessionHeader}" Color="#FF6DDDFF" />
+                                    <CheckBox IsChecked="{Binding ReportOptions.ShowSessionHeader}" Color="#FF0066" />
                                     <Label Text="Cabecera de sesión" TextColor="White" FontSize="{StaticResource FontSizeSmall}" VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                                 <HorizontalStackLayout Grid.Row="0" Grid.Column="1" Spacing="8">
-                                    <CheckBox IsChecked="{Binding ReportOptions.ShowTrainingSummary}" Color="#FF6DDDFF" />
+                                    <CheckBox IsChecked="{Binding ReportOptions.ShowTrainingSummary}" Color="#FF0066" />
                                     <Label Text="Resumen entrenamiento" TextColor="White" FontSize="{StaticResource FontSizeSmall}" VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                                 
                                 <HorizontalStackLayout Grid.Row="1" Grid.Column="0" Spacing="8">
-                                    <CheckBox IsChecked="{Binding ReportOptions.ShowGroupConsistency}" Color="#FF6DDDFF" />
+                                    <CheckBox IsChecked="{Binding ReportOptions.ShowGroupConsistency}" Color="#FF0066" />
                                     <Label Text="Consistencia grupo" TextColor="White" FontSize="{StaticResource FontSizeSmall}" VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                                 <HorizontalStackLayout Grid.Row="1" Grid.Column="1" Spacing="8">
-                                    <CheckBox IsChecked="{Binding ReportOptions.ShowMinMaxCharts}" Color="#FF6DDDFF" />
+                                    <CheckBox IsChecked="{Binding ReportOptions.ShowMinMaxCharts}" Color="#FF0066" />
                                     <Label Text="Gráficos Min-Max" TextColor="White" FontSize="{StaticResource FontSizeSmall}" VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                                 
                                 <HorizontalStackLayout Grid.Row="2" Grid.Column="0" Spacing="8">
-                                    <CheckBox IsChecked="{Binding ReportOptions.ShowTimeTables}" Color="#FF6DDDFF" />
+                                    <CheckBox IsChecked="{Binding ReportOptions.ShowTimeTables}" Color="#FF0066" />
                                     <Label Text="Tablas de tiempos" TextColor="White" FontSize="{StaticResource FontSizeSmall}" VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                                 <HorizontalStackLayout Grid.Row="2" Grid.Column="1" Spacing="8">
-                                    <CheckBox IsChecked="{Binding ReportOptions.ShowIndividualConsistency}" Color="#FF6DDDFF" />
+                                    <CheckBox IsChecked="{Binding ReportOptions.ShowIndividualConsistency}" Color="#FF0066" />
                                     <Label Text="Consistencia individual" TextColor="White" FontSize="{StaticResource FontSizeSmall}" VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                                 
                                 <HorizontalStackLayout Grid.Row="3" Grid.Column="0" Spacing="8">
-                                    <CheckBox IsChecked="{Binding ReportOptions.ShowLapAnalysis}" Color="#FF6DDDFF" />
+                                    <CheckBox IsChecked="{Binding ReportOptions.ShowLapAnalysis}" Color="#FF0066" />
                                     <Label Text="Análisis de parciales" TextColor="White" FontSize="{StaticResource FontSizeSmall}" VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                                 <HorizontalStackLayout Grid.Row="3" Grid.Column="1" Spacing="8">
-                                    <CheckBox IsChecked="{Binding ReportOptions.ShowRanking}" Color="#FF6DDDFF" />
+                                    <CheckBox IsChecked="{Binding ReportOptions.ShowRanking}" Color="#FF0066" />
                                     <Label Text="Ranking" TextColor="White" FontSize="{StaticResource FontSizeSmall}" VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                                 
                                 <HorizontalStackLayout Grid.Row="4" Grid.Column="0" Spacing="8">
-                                    <CheckBox IsChecked="{Binding ReportOptions.ShowPenalties}" Color="#FF6DDDFF" />
+                                    <CheckBox IsChecked="{Binding ReportOptions.ShowPenalties}" Color="#FF0066" />
                                     <Label Text="Penalizaciones" TextColor="White" FontSize="{StaticResource FontSizeSmall}" VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                                 <HorizontalStackLayout Grid.Row="4" Grid.Column="1" Spacing="8">
-                                    <CheckBox IsChecked="{Binding ReportOptions.ShowAthleteProfile}" Color="#FF6DDDFF" />
+                                    <CheckBox IsChecked="{Binding ReportOptions.ShowAthleteProfile}" Color="#FF0066" />
                                     <Label Text="Perfil del atleta" TextColor="White" FontSize="{StaticResource FontSizeSmall}" VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                             </Grid>
@@ -6024,7 +6044,7 @@
                             
                             <!--  Botón aplicar  -->
                             <Button
-                                BackgroundColor="#FF6DDDFF"
+                                BackgroundColor="#FF0066"
                                 Command="{Binding ToggleReportOptionsPanelCommand}"
                                 Text="Aplicar"
                                 TextColor="#FF1E1E1E"
