@@ -87,6 +87,7 @@ public partial class App : Application
 				});
 			}
 			
+#if !IOS
 			// Pre-instanciar SinglePlayerPage en background para evitar delay de InitializeComponent
 			// cuando el usuario abre un video por primera vez (~2 segundos de parsing XAML)
 			_ = Task.Run(() =>
@@ -110,6 +111,7 @@ public partial class App : Application
 					AppLog.Error("App", "Error pre-cargando SinglePlayerPage", ex);
 				}
 			});
+#endif
 		}
 
 #if MACCATALYST

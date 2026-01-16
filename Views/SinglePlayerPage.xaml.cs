@@ -84,6 +84,11 @@ public partial class SinglePlayerPage : ContentPage
         initStart.Stop();
         AppLog.Info("SinglePlayerPage", $"⏱️ InitializeComponent: {initStart.ElapsedMilliseconds}ms");
         
+#if WINDOWS
+        // Agregar PointerGestureRecognizers solo en Windows (no soportados en iOS/MacCatalyst)
+        AddVideoSlotPointerGestures();
+#endif
+        
         BindingContext = _viewModel = viewModel;
         _databaseService = databaseService;
         _videoLessonRecorder = videoLessonRecorder;
@@ -156,6 +161,47 @@ public partial class SinglePlayerPage : ContentPage
         VideoLessonCameraHost.Content = null;
 #endif
     }
+
+#if WINDOWS
+    /// <summary>
+    /// Agrega PointerGestureRecognizers a los video slots (solo para Windows).
+    /// Estos gestos no son soportados en iOS/MacCatalyst.
+    /// </summary>
+    private void AddVideoSlotPointerGestures()
+    {
+        if (VideoSlot1 != null)
+        {
+            var pgr1 = new PointerGestureRecognizer();
+            pgr1.PointerEntered += OnVideoSlot1PointerEntered;
+            pgr1.PointerExited += OnVideoSlot1PointerExited;
+            VideoSlot1.GestureRecognizers.Add(pgr1);
+        }
+
+        if (VideoSlot2 != null)
+        {
+            var pgr2 = new PointerGestureRecognizer();
+            pgr2.PointerEntered += OnVideoSlot2PointerEntered;
+            pgr2.PointerExited += OnVideoSlot2PointerExited;
+            VideoSlot2.GestureRecognizers.Add(pgr2);
+        }
+
+        if (VideoSlot3 != null)
+        {
+            var pgr3 = new PointerGestureRecognizer();
+            pgr3.PointerEntered += OnVideoSlot3PointerEntered;
+            pgr3.PointerExited += OnVideoSlot3PointerExited;
+            VideoSlot3.GestureRecognizers.Add(pgr3);
+        }
+
+        if (VideoSlot4 != null)
+        {
+            var pgr4 = new PointerGestureRecognizer();
+            pgr4.PointerEntered += OnVideoSlot4PointerEntered;
+            pgr4.PointerExited += OnVideoSlot4PointerExited;
+            VideoSlot4.GestureRecognizers.Add(pgr4);
+        }
+    }
+#endif
 
     private void SyncVideoLessonUiFromRecorder()
     {

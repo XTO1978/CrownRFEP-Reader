@@ -124,11 +124,13 @@ public class GridSplitter : ContentView
         panGesture.PanUpdated += OnPanUpdated;
         GestureRecognizers.Add(panGesture);
 
-        // PointerGestureRecognizer para feedback visual (hover)
+#if WINDOWS
+        // PointerGestureRecognizer para feedback visual (hover) - solo Windows
         var pointerGesture = new PointerGestureRecognizer();
         pointerGesture.PointerEntered += OnPointerEntered;
         pointerGesture.PointerExited += OnPointerExited;
         GestureRecognizers.Add(pointerGesture);
+#endif
     }
 
     private void OnPointerEntered(object? sender, PointerEventArgs e)

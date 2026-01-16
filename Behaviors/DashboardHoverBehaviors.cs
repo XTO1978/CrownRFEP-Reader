@@ -42,7 +42,7 @@ internal static class HoverHelpers
 
 public class DashboardSessionItemHoverBehavior : Behavior<Border>
 {
-#if !MACCATALYST
+#if WINDOWS
     private PointerGestureRecognizer? _pointerRecognizer;
 #endif
 
@@ -56,8 +56,8 @@ public class DashboardSessionItemHoverBehavior : Behavior<Border>
 
         bindable.HandlerChanged += OnHandlerChanged;
         
-#if !MACCATALYST
-        // Fallback: PointerGestureRecognizer solo para Windows y otras plataformas (NO MacCatalyst)
+#if WINDOWS
+        // PointerGestureRecognizer solo para Windows (iOS y Android no lo soportan)
         _pointerRecognizer = new PointerGestureRecognizer();
         _pointerRecognizer.PointerEntered += (_, _) => ApplyHover(bindable);
         _pointerRecognizer.PointerExited += (_, _) => RemoveHover(bindable);
@@ -71,7 +71,7 @@ public class DashboardSessionItemHoverBehavior : Behavior<Border>
     {
         bindable.HandlerChanged -= OnHandlerChanged;
         
-#if !MACCATALYST
+#if WINDOWS
         if (_pointerRecognizer != null)
         {
             bindable.GestureRecognizers.Remove(_pointerRecognizer);
@@ -174,7 +174,7 @@ public class DashboardSessionItemHoverBehavior : Behavior<Border>
 
 public class DashboardAllGalleryHoverBehavior : Behavior<Border>
 {
-#if !MACCATALYST
+#if WINDOWS
     private PointerGestureRecognizer? _pointerRecognizer;
 #endif
 
@@ -188,8 +188,8 @@ public class DashboardAllGalleryHoverBehavior : Behavior<Border>
 
         bindable.HandlerChanged += OnHandlerChanged;
         
-#if !MACCATALYST
-        // Fallback: PointerGestureRecognizer solo para Windows y otras plataformas (NO MacCatalyst)
+#if WINDOWS
+        // PointerGestureRecognizer solo para Windows (iOS y Android no lo soportan)
         _pointerRecognizer = new PointerGestureRecognizer();
         _pointerRecognizer.PointerEntered += (_, _) => ApplyHover(bindable);
         _pointerRecognizer.PointerExited += (_, _) => RemoveHover(bindable);
@@ -203,7 +203,7 @@ public class DashboardAllGalleryHoverBehavior : Behavior<Border>
     {
         bindable.HandlerChanged -= OnHandlerChanged;
         
-#if !MACCATALYST
+#if WINDOWS
         if (_pointerRecognizer != null)
         {
             bindable.GestureRecognizers.Remove(_pointerRecognizer);

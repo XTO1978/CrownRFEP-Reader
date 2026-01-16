@@ -39,7 +39,8 @@ public class HoverVideoPreviewBehavior : Behavior<View>
 
         bindable.HandlerChanged += OnHandlerChanged;
 
-        // Fallback: PointerGestureRecognizer
+#if WINDOWS
+        // PointerGestureRecognizer solo para Windows (iOS no lo soporta)
         var pointer = new PointerGestureRecognizer();
         pointer.PointerEntered += (_, e) =>
         {
@@ -57,6 +58,7 @@ public class HoverVideoPreviewBehavior : Behavior<View>
             OnPointerExited(bindable);
         };
         bindable.GestureRecognizers.Add(pointer);
+#endif
 
         TryAttachPlatformHover(bindable);
     }

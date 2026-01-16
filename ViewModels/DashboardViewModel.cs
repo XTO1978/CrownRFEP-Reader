@@ -4571,6 +4571,7 @@ public class DashboardViewModel : BaseViewModel
 
     private async Task LoadAllVideosAsync()
     {
+        AppLog.Info("DashboardVM", "LoadAllVideosAsync START");
         _selectedSessionVideosCts?.Cancel();
         _selectedSessionVideosCts?.Dispose();
         _selectedSessionVideosCts = new CancellationTokenSource();
@@ -4607,9 +4608,9 @@ public class DashboardViewModel : BaseViewModel
             await Task.Yield();
             
             // Cargar todos los videos en caché
-            System.Diagnostics.Debug.WriteLine($"[LoadAllVideosAsync] Loading all videos from DB...");
+            AppLog.Info("DashboardVM", "LoadAllVideosAsync Loading videos from DB...");
             _allVideosCache = await _databaseService.GetAllVideoClipsAsync();
-            System.Diagnostics.Debug.WriteLine($"[LoadAllVideosAsync] Videos loaded: {_allVideosCache?.Count ?? 0}");
+            AppLog.Info("DashboardVM", $"LoadAllVideosAsync Videos loaded: {_allVideosCache?.Count ?? 0}");
             if (ct.IsCancellationRequested) return;
 
             OnPropertyChanged(nameof(AllGalleryItemCount));
@@ -4638,12 +4639,12 @@ public class DashboardViewModel : BaseViewModel
             _filteredVideosCache = _allVideosCache;
             var filteredCache = _filteredVideosCache ?? new List<VideoClip>();
             var firstBatch = filteredCache.Take(PageSize).ToList();
-            System.Diagnostics.Debug.WriteLine($"[LoadAllVideosAsync] First batch: {firstBatch.Count}, adding to SelectedSessionVideos...");
+            AppLog.Info("DashboardVM", $"LoadAllVideosAsync First batch: {firstBatch.Count}");
             await MainThread.InvokeOnMainThreadAsync(async () =>
             {
                 await ReplaceCollectionInBatchesAsync(SelectedSessionVideos, firstBatch, ct);
             });
-            System.Diagnostics.Debug.WriteLine($"[LoadAllVideosAsync] SelectedSessionVideos.Count: {SelectedSessionVideos.Count}");
+            AppLog.Info("DashboardVM", $"LoadAllVideosAsync SelectedSessionVideos.Count: {SelectedSessionVideos.Count}");
             _currentPage = 1;
             HasMoreVideos = _filteredVideosCache.Count > PageSize;
 
@@ -4651,14 +4652,18 @@ public class DashboardViewModel : BaseViewModel
             var filterTask = LoadFilterOptionsAsync();
 
             // Stats: cálculo fuera del hilo UI
+            AppLog.Info("DashboardVM", "LoadAllVideosAsync BuildGalleryStatsSnapshot...");
             var snapshot = await Task.Run(() => BuildGalleryStatsSnapshot(filteredCache), ct);
             if (!ct.IsCancellationRequested)
                 await ApplyGalleryStatsSnapshotAsync(snapshot, ct);
+            AppLog.Info("DashboardVM", "LoadAllVideosAsync ApplyGalleryStatsSnapshot done");
 
             // Cargar estadísticas absolutas de tags (galería general = null)
             await LoadAbsoluteTagStatsAsync(null);
+            AppLog.Info("DashboardVM", "LoadAllVideosAsync LoadAbsoluteTagStatsAsync done");
 
             await filterTask;
+            AppLog.Info("DashboardVM", "LoadAllVideosAsync LoadFilterOptionsAsync done");
 
             OnPropertyChanged(nameof(TotalFilteredVideoCount));
             OnPropertyChanged(nameof(TotalAvailableVideoCount));
@@ -4669,10 +4674,11 @@ public class DashboardViewModel : BaseViewModel
 
             // Actualizar contadores de SmartFolders
             UpdateSmartFolderVideoCounts();
+            AppLog.Info("DashboardVM", "LoadAllVideosAsync END");
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Error loading all videos: {ex.Message}");
+            AppLog.Error("DashboardVM", "Error loading all videos", ex);
         }
         finally
         {
@@ -4682,7 +4688,7 @@ public class DashboardViewModel : BaseViewModel
 
     private async Task LoadFilterOptionsAsync()
     {
-        System.Diagnostics.Debug.WriteLine($"[LoadFilterOptionsAsync] Start - RecentSessions: {RecentSessions.Count}, _allVideosCache: {_allVideosCache?.Count ?? 0}");
+        AppLog.Info("DashboardVM", $"LoadFilterOptionsAsync START | RecentSessions={RecentSessions.Count} | Videos={_allVideosCache?.Count ?? 0}");
 
         await Task.Yield();
 
@@ -4697,7 +4703,7 @@ public class DashboardViewModel : BaseViewModel
             .Distinct()
             .OrderBy(p => p)
             .ToList());
-        System.Diagnostics.Debug.WriteLine($"[LoadFilterOptionsAsync] Places found: {places.Count}");
+        AppLog.Info("DashboardVM", $"LoadFilterOptionsAsync Places: {places.Count}");
         await MainThread.InvokeOnMainThreadAsync(async () =>
         {
             var i = 0;
@@ -4712,12 +4718,12 @@ public class DashboardViewModel : BaseViewModel
                     await Task.Yield();
             }
         });
-        System.Diagnostics.Debug.WriteLine($"[LoadFilterOptionsAsync] FilterPlaces.Count: {FilterPlaces.Count}");
+        AppLog.Info("DashboardVM", $"LoadFilterOptionsAsync FilterPlaces: {FilterPlaces.Count}");
 
         // Cargar atletas
         FilterAthletes.Clear();
         var athletes = await _databaseService.GetAllAthletesAsync();
-        System.Diagnostics.Debug.WriteLine($"[LoadFilterOptionsAsync] Athletes from DB: {athletes.Count}");
+        AppLog.Info("DashboardVM", $"LoadFilterOptionsAsync Athletes: {athletes.Count}");
         await MainThread.InvokeOnMainThreadAsync(async () =>
         {
             var i = 0;
@@ -4732,7 +4738,7 @@ public class DashboardViewModel : BaseViewModel
                     await Task.Yield();
             }
         });
-        System.Diagnostics.Debug.WriteLine($"[LoadFilterOptionsAsync] FilterAthletes.Count: {FilterAthletes.Count}");
+        AppLog.Info("DashboardVM", $"LoadFilterOptionsAsync FilterAthletes: {FilterAthletes.Count}");
 
         // Cargar secciones únicas de los videos
         FilterSections.Clear();
@@ -4743,7 +4749,7 @@ public class DashboardViewModel : BaseViewModel
                 .Distinct()
                 .OrderBy(s => s)
                 .ToList());
-            System.Diagnostics.Debug.WriteLine($"[LoadFilterOptionsAsync] Sections found: {sections.Count}");
+            AppLog.Info("DashboardVM", $"LoadFilterOptionsAsync Sections: {sections.Count}");
             await MainThread.InvokeOnMainThreadAsync(async () =>
             {
                 var i = 0;
@@ -4759,7 +4765,7 @@ public class DashboardViewModel : BaseViewModel
                 }
             });
         }
-        System.Diagnostics.Debug.WriteLine($"[LoadFilterOptionsAsync] FilterSections.Count: {FilterSections.Count}");
+        AppLog.Info("DashboardVM", $"LoadFilterOptionsAsync FilterSections: {FilterSections.Count}");
 
         OnPropertyChanged(nameof(SelectedPlacesSummary));
         OnPropertyChanged(nameof(SelectedAthletesSummary));
@@ -4797,7 +4803,8 @@ public class DashboardViewModel : BaseViewModel
                 }
             });
         }
-        System.Diagnostics.Debug.WriteLine($"[LoadFilterOptionsAsync] FilterTagItems.Count: {FilterTagItems.Count}");
+        AppLog.Info("DashboardVM", $"LoadFilterOptionsAsync FilterTagItems: {FilterTagItems.Count}");
+        AppLog.Info("DashboardVM", "LoadFilterOptionsAsync END");
         OnPropertyChanged(nameof(SelectedTagsSummary));
     }
 
@@ -4901,8 +4908,10 @@ public class DashboardViewModel : BaseViewModel
 
         try
         {
+            AppLog.Info("DashboardVM", "LoadDataAsync START");
             IsBusy = true;
             Stats = await _statisticsService.GetDashboardStatsAsync();
+            AppLog.Info("DashboardVM", $"LoadDataAsync Stats loaded | RecentSessions={Stats?.RecentSessions?.Count ?? 0}");
 
             RecentSessions.Clear();
             foreach (var session in Stats.RecentSessions)
@@ -4932,10 +4941,13 @@ public class DashboardViewModel : BaseViewModel
             // Por defecto, mostrar Galería General al iniciar (solo si no hay ninguna vista activa)
             else if (SelectedSession == null && !IsAllGallerySelected && !IsDiaryViewSelected)
             {
+                AppLog.Info("DashboardVM", "LoadDataAsync SelectAllGalleryAsync...");
                 await SelectAllGalleryAsync();
+                AppLog.Info("DashboardVM", "LoadDataAsync SelectAllGalleryAsync done");
             }
 
             await RefreshTrashItemCountAsync();
+            AppLog.Info("DashboardVM", "LoadDataAsync END");
         }
         catch (Exception ex)
         {

@@ -833,11 +833,7 @@
             <Grid x:Name="ComparisonGrid">
                 <!-- Video principal (siempre visible, posición configurable según layout) -->
                 <Grid x:Name="VideoSlot1" Grid.Row="0" Grid.Column="0">
-                    <Grid.GestureRecognizers>
-                        <PointerGestureRecognizer
-                            PointerEntered="OnVideoSlot1PointerEntered"
-                            PointerExited="OnVideoSlot1PointerExited" />
-                    </Grid.GestureRecognizers>
+                    <!-- PointerGestureRecognizer agregado en code-behind solo para Windows -->
                     <precision:PrecisionVideoPlayer
                         x:Name="MediaPlayer"
                         Aspect="{Binding VideoAspect}"
@@ -918,11 +914,7 @@
                 
                 <!-- Slot 2: Video de comparación o placeholder -->
                 <Grid x:Name="VideoSlot2" Grid.Row="0" Grid.Column="1" IsVisible="False">
-                    <Grid.GestureRecognizers>
-                        <PointerGestureRecognizer
-                            PointerEntered="OnVideoSlot2PointerEntered"
-                            PointerExited="OnVideoSlot2PointerExited" />
-                    </Grid.GestureRecognizers>
+                    <!-- PointerGestureRecognizer agregado en code-behind solo para Windows -->
                     <!-- Placeholder cuando no hay video asignado -->
                     <Border
                         x:Name="DropZone2"
@@ -1044,11 +1036,7 @@
                 
                 <!-- Slot 3: Video de comparación o placeholder (para layouts 1x2 y 2x2) -->
                 <Grid x:Name="VideoSlot3" Grid.Row="1" Grid.Column="0" IsVisible="False">
-                    <Grid.GestureRecognizers>
-                        <PointerGestureRecognizer
-                            PointerEntered="OnVideoSlot3PointerEntered"
-                            PointerExited="OnVideoSlot3PointerExited" />
-                    </Grid.GestureRecognizers>
+                    <!-- PointerGestureRecognizer agregado en code-behind solo para Windows -->
                     <!-- Placeholder cuando no hay video asignado -->
                     <Border
                         x:Name="DropZone3"
@@ -1170,11 +1158,7 @@
                 
                 <!-- Slot 4: Video de comparación o placeholder (solo para layout 2x2) -->
                 <Grid x:Name="VideoSlot4" Grid.Row="1" Grid.Column="1" IsVisible="False">
-                    <Grid.GestureRecognizers>
-                        <PointerGestureRecognizer
-                            PointerEntered="OnVideoSlot4PointerEntered"
-                            PointerExited="OnVideoSlot4PointerExited" />
-                    </Grid.GestureRecognizers>
+                    <!-- PointerGestureRecognizer agregado en code-behind solo para Windows -->
                     <!-- Placeholder cuando no hay video asignado -->
                     <Border
                         x:Name="DropZone4"

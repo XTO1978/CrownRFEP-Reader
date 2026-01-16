@@ -106,11 +106,14 @@ public class AnalysisDrawingView : GraphicsView
 
         InputTransparent = true;
 
+#if WINDOWS
+        // PointerGestureRecognizer solo para Windows (iOS no lo soporta)
         var pointer = new PointerGestureRecognizer();
         pointer.PointerPressed += OnPointerPressed;
         pointer.PointerMoved += OnPointerMoved;
         pointer.PointerReleased += OnPointerReleased;
         GestureRecognizers.Add(pointer);
+#endif
     }
 
     public void AddText(PointF position, string text)

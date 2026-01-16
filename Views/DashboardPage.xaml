@@ -133,7 +133,14 @@
                                         Tapped="OnSessionRowPrimaryTapped" />
                                     <TapGestureRecognizer
                                         Buttons="Secondary"
-                                        Tapped="OnSessionRowContextMenuTapped" />
+                                        Tapped="OnSessionRowContextMenuTapped">
+                                        <TapGestureRecognizer.NumberOfTapsRequired>
+                                            <OnPlatform x:TypeArguments="x:Int32">
+                                                <On Platform="iOS" Value="99" />
+                                                <On Platform="MacCatalyst,WinUI" Value="1" />
+                                            </OnPlatform>
+                                        </TapGestureRecognizer.NumberOfTapsRequired>
+                                    </TapGestureRecognizer>
                                 </Border.GestureRecognizers>
                             <Border.Behaviors>
                                 <behaviors:SidebarHoverBehavior />
@@ -326,7 +333,14 @@
                                     HorizontalOptions="Fill">
                                     <Grid.GestureRecognizers>
                                         <TapGestureRecognizer Buttons="Primary" Tapped="OnUserLibraryMenuTapped" />
-                                        <TapGestureRecognizer Buttons="Secondary" Tapped="OnUserLibraryMenuTapped" />
+                                        <TapGestureRecognizer Buttons="Secondary" Tapped="OnUserLibraryMenuTapped">
+                                            <TapGestureRecognizer.NumberOfTapsRequired>
+                                                <OnPlatform x:TypeArguments="x:Int32">
+                                                    <On Platform="iOS" Value="99" />
+                                                    <On Platform="MacCatalyst,WinUI" Value="1" />
+                                                </OnPlatform>
+                                            </TapGestureRecognizer.NumberOfTapsRequired>
+                                        </TapGestureRecognizer>
                                     </Grid.GestureRecognizers>
 
                                     <controls:SymbolIcon
@@ -357,7 +371,14 @@
                                     StrokeThickness="0">
                                     <Border.GestureRecognizers>
                                         <TapGestureRecognizer Buttons="Primary" Tapped="OnUserLibraryMenuTapped" />
-                                        <TapGestureRecognizer Buttons="Secondary" Tapped="OnUserLibraryMenuTapped" />
+                                        <TapGestureRecognizer Buttons="Secondary" Tapped="OnUserLibraryMenuTapped">
+                                            <TapGestureRecognizer.NumberOfTapsRequired>
+                                                <OnPlatform x:TypeArguments="x:Int32">
+                                                    <On Platform="iOS" Value="99" />
+                                                    <On Platform="MacCatalyst,WinUI" Value="1" />
+                                                </OnPlatform>
+                                            </TapGestureRecognizer.NumberOfTapsRequired>
+                                        </TapGestureRecognizer>
                                     </Border.GestureRecognizers>
                                     <controls:SymbolIcon
                                         HeightRequest="{StaticResource IconSizeSmall}"
@@ -625,7 +646,14 @@
                                                 Tapped="OnSmartFolderPrimaryTapped" />
                                             <TapGestureRecognizer
                                                 Buttons="Secondary"
-                                                Tapped="OnSmartFolderContextMenuTapped" />
+                                                Tapped="OnSmartFolderContextMenuTapped">
+                                                <TapGestureRecognizer.NumberOfTapsRequired>
+                                                    <OnPlatform x:TypeArguments="x:Int32">
+                                                        <On Platform="iOS" Value="99" />
+                                                        <On Platform="MacCatalyst,WinUI" Value="1" />
+                                                    </OnPlatform>
+                                                </TapGestureRecognizer.NumberOfTapsRequired>
+                                            </TapGestureRecognizer>
                                         </Border.GestureRecognizers>
                                         <Grid ColumnDefinitions="Auto,*,Auto,Auto" VerticalOptions="Center" HorizontalOptions="Fill">
                                             <controls:SymbolIcon
@@ -740,7 +768,14 @@
                             </Border.Behaviors>
                             <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" VerticalOptions="Center" HorizontalOptions="Fill">
                                 <Grid.GestureRecognizers>
-                                    <TapGestureRecognizer Buttons="Secondary" Tapped="OnSessionsMenuTapped" />
+                                    <TapGestureRecognizer Buttons="Secondary" Tapped="OnSessionsMenuTapped">
+                                        <TapGestureRecognizer.NumberOfTapsRequired>
+                                            <OnPlatform x:TypeArguments="x:Int32">
+                                                <On Platform="iOS" Value="99" />
+                                                <On Platform="MacCatalyst,WinUI" Value="1" />
+                                            </OnPlatform>
+                                        </TapGestureRecognizer.NumberOfTapsRequired>
+                                    </TapGestureRecognizer>
                                 </Grid.GestureRecognizers>
                                 <!-- Expansion toggle button (oculto en Windows por ahora) -->
                                 <Border
@@ -804,7 +839,14 @@
                                     </Border.Opacity>
                                     <Border.GestureRecognizers>
                                         <TapGestureRecognizer Buttons="Primary" Tapped="OnSessionsMenuTapped" />
-                                        <TapGestureRecognizer Buttons="Secondary" Tapped="OnSessionsMenuTapped" />
+                                        <TapGestureRecognizer Buttons="Secondary" Tapped="OnSessionsMenuTapped">
+                                            <TapGestureRecognizer.NumberOfTapsRequired>
+                                                <OnPlatform x:TypeArguments="x:Int32">
+                                                    <On Platform="iOS" Value="99" />
+                                                    <On Platform="MacCatalyst,WinUI" Value="1" />
+                                                </OnPlatform>
+                                            </TapGestureRecognizer.NumberOfTapsRequired>
+                                        </TapGestureRecognizer>
                                     </Border.GestureRecognizers>
                                     <controls:SymbolIcon
                                         HeightRequest="{StaticResource IconSizeSmall}"
@@ -1057,11 +1099,8 @@
                                 StrokeShape="RoundRectangle 10"
                                 StrokeThickness="0">
                                 <Border.Behaviors>
-                                    <OnPlatform x:TypeArguments="Behavior">
-                                        <On Platform="WinUI">
-                                            <behaviors:HoverBackgroundBehavior />
-                                        </On>
-                                    </OnPlatform>
+                                    <!-- HoverBackgroundBehavior solo activo en Windows (código protegido con #if WINDOWS) -->
+                                    <behaviors:HoverBackgroundBehavior />
                                 </Border.Behaviors>
                                 <Border.GestureRecognizers>
                                     <!-- iOS: clic simple abre reproductor. MacCatalyst/Windows: doble clic -->
@@ -1084,7 +1123,14 @@
                                             </OnPlatform>
                                         </TapGestureRecognizer.NumberOfTapsRequired>
                                     </TapGestureRecognizer>
-                                    <TapGestureRecognizer Buttons="Secondary" Tapped="OnVideoItemContextMenuTapped" />
+                                    <TapGestureRecognizer Buttons="Secondary" Tapped="OnVideoItemContextMenuTapped">
+                                        <TapGestureRecognizer.NumberOfTapsRequired>
+                                            <OnPlatform x:TypeArguments="x:Int32">
+                                                <On Platform="iOS" Value="99" />
+                                                <On Platform="MacCatalyst,WinUI" Value="1" />
+                                            </OnPlatform>
+                                        </TapGestureRecognizer.NumberOfTapsRequired>
+                                    </TapGestureRecognizer>
                                     <DragGestureRecognizer CanDrag="True" DragStarting="OnDragStarting" />
                                 </Border.GestureRecognizers>
                                 <Border.Triggers>
@@ -1098,11 +1144,8 @@
                                     <Grid>
                                         <!--  Behavior de long press para preview en iOS  -->
                                         <Grid.Behaviors>
-                                            <OnPlatform x:TypeArguments="Behavior">
-                                                <On Platform="iOS">
-                                                    <behaviors:LongPressVideoPreviewBehavior />
-                                                </On>
-                                            </OnPlatform>
+                                            <!-- LongPressVideoPreviewBehavior solo activo en iOS (código protegido con #if IOS) -->
+                                            <behaviors:LongPressVideoPreviewBehavior />
                                         </Grid.Behaviors>
                                         <Image
                                             Aspect="AspectFill"
@@ -1110,36 +1153,43 @@
                                             Source="{Binding LocalThumbnailPath}" />
 
                                         <!--  Overlay de play (oculto cuando está seleccionado en multiselect)  -->
-                                        <OnPlatform x:TypeArguments="View">
-                                            <On Platform="MacCatalyst">
-                                                <ContentView IsVisible="False" />
-                                            </On>
-                                            <On Platform="Default">
-                                                <controls:SymbolIcon
-                                                    HeightRequest="{StaticResource IconSizeXXLarge}"
-                                                    SymbolName="play.circle.fill"
-                                                    TintColor="White"
-                                                    Opacity="0.5"
-                                                    VerticalOptions="Center"
-                                                    WidthRequest="{StaticResource IconSizeXXLarge}" />
-                                            </On>
-                                        </OnPlatform>
+                                        <controls:SymbolIcon
+                                            HeightRequest="{StaticResource IconSizeXXLarge}"
+                                            SymbolName="play.circle.fill"
+                                            TintColor="White"
+                                            Opacity="0.5"
+                                            VerticalOptions="Center"
+                                            WidthRequest="{StaticResource IconSizeXXLarge}">
+                                            <controls:SymbolIcon.IsVisible>
+                                                <OnPlatform x:TypeArguments="x:Boolean">
+                                                    <On Platform="MacCatalyst" Value="False" />
+                                                    <On Platform="Default" Value="True" />
+                                                </OnPlatform>
+                                            </controls:SymbolIcon.IsVisible>
+                                        </controls:SymbolIcon>
 
                                         <!--  Checkmark de selección  -->
-                                        <OnPlatform x:TypeArguments="View">
-                                            <On Platform="MacCatalyst">
-                                                <ContentView IsVisible="False" />
-                                            </On>
-                                            <On Platform="Default">
-                                                <Border
-                                                    BackgroundColor="#34000000"
-                                                    HeightRequest="32"
-                                                    HorizontalOptions="End"
-                                                    IsVisible="{Binding IsSelected}"
-                                                    Margin="6"
-                                                    StrokeShape="RoundRectangle 16"
-                                                    VerticalOptions="Start"
-                                                    WidthRequest="32">
+                                        <Border
+                                            BackgroundColor="#34000000"
+                                            HeightRequest="32"
+                                            HorizontalOptions="End"
+                                            Margin="6"
+                                            StrokeShape="RoundRectangle 16"
+                                            VerticalOptions="Start"
+                                            WidthRequest="32">
+                                            <Border.IsVisible>
+                                                <MultiBinding Converter="{StaticResource AllTrueConverter}">
+                                                    <Binding Path="IsSelected" />
+                                                    <Binding>
+                                                        <Binding.Source>
+                                                            <OnPlatform x:TypeArguments="x:Boolean">
+                                                                <On Platform="MacCatalyst" Value="False" />
+                                                                <On Platform="Default" Value="True" />
+                                                            </OnPlatform>
+                                                        </Binding.Source>
+                                                    </Binding>
+                                                </MultiBinding>
+                                            </Border.IsVisible>
                                             <controls:SymbolIcon
                                                 HeightRequest="{StaticResource IconSizeLarge}"
                                                 HorizontalOptions="Center"
@@ -1147,26 +1197,31 @@
                                                 TintColor="LightGray"
                                                 VerticalOptions="Center"
                                                 WidthRequest="{StaticResource IconSizeLarge}" />
-                                                </Border>
-                                            </On>
-                                        </OnPlatform>
+                                        </Border>
                                         
                                         <!--  Indicador de video comparativo  -->
-                                        <OnPlatform x:TypeArguments="View">
-                                            <On Platform="MacCatalyst">
-                                                <ContentView IsVisible="False" />
-                                            </On>
-                                            <On Platform="Default">
-                                                <Border
-                                                    BackgroundColor="#CC000000"
-                                                    HeightRequest="28"
-                                                    HorizontalOptions="Start"
-                                                    IsVisible="{Binding IsComparisonVideo}"
-                                                    Margin="6"
-                                                    Padding="6,4"
-                                                    StrokeShape="RoundRectangle 4"
-                                                    StrokeThickness="0"
-                                                    VerticalOptions="Start">
+                                        <Border
+                                            BackgroundColor="#CC000000"
+                                            HeightRequest="28"
+                                            HorizontalOptions="Start"
+                                            Margin="6"
+                                            Padding="6,4"
+                                            StrokeShape="RoundRectangle 4"
+                                            StrokeThickness="0"
+                                            VerticalOptions="Start">
+                                            <Border.IsVisible>
+                                                <MultiBinding Converter="{StaticResource AllTrueConverter}">
+                                                    <Binding Path="IsComparisonVideo" />
+                                                    <Binding>
+                                                        <Binding.Source>
+                                                            <OnPlatform x:TypeArguments="x:Boolean">
+                                                                <On Platform="MacCatalyst" Value="False" />
+                                                                <On Platform="Default" Value="True" />
+                                                            </OnPlatform>
+                                                        </Binding.Source>
+                                                    </Binding>
+                                                </MultiBinding>
+                                            </Border.IsVisible>
                                             <HorizontalStackLayout Spacing="4">
                                                 <controls:SymbolIcon
                                                     HeightRequest="{StaticResource IconSizeMedium}"
@@ -1181,35 +1236,38 @@
                                                     VerticalOptions="Center"
                                                     FontAttributes="None" />
                                             </HorizontalStackLayout>
-                                                </Border>
-                                            </On>
-                                        </OnPlatform>
+                                        </Border>
 
                                         <!--  Indicador de tiempo/split  -->
-                                        <OnPlatform x:TypeArguments="View">
-                                            <On Platform="MacCatalyst">
-                                                <ContentView IsVisible="False" />
-                                            </On>
-                                            <On Platform="Default">
-                                                <Border
-                                                    BackgroundColor="#CC000000"
-                                                    HeightRequest="28"
-                                                    HorizontalOptions="Start"
-                                                    IsVisible="{Binding HasTiming}"
-                                                    Margin="6"
-                                                    Padding="6,4"
-                                                    StrokeShape="RoundRectangle 4"
-                                                    StrokeThickness="0"
-                                                    VerticalOptions="End">
+                                        <Border
+                                            BackgroundColor="#CC000000"
+                                            HeightRequest="28"
+                                            HorizontalOptions="Start"
+                                            Margin="6"
+                                            Padding="6,4"
+                                            StrokeShape="RoundRectangle 4"
+                                            StrokeThickness="0"
+                                            VerticalOptions="End">
+                                            <Border.IsVisible>
+                                                <MultiBinding Converter="{StaticResource AllTrueConverter}">
+                                                    <Binding Path="HasTiming" />
+                                                    <Binding>
+                                                        <Binding.Source>
+                                                            <OnPlatform x:TypeArguments="x:Boolean">
+                                                                <On Platform="MacCatalyst" Value="False" />
+                                                                <On Platform="Default" Value="True" />
+                                                            </OnPlatform>
+                                                        </Binding.Source>
+                                                    </Binding>
+                                                </MultiBinding>
+                                            </Border.IsVisible>
                                             <controls:SymbolIcon
                                                 HeightRequest="{StaticResource IconSizeMedium}"
                                                 SymbolName="timer"
                                                 TintColor="White"
                                                 VerticalOptions="Center"
                                                 WidthRequest="{StaticResource IconSizeMedium}" />
-                                                </Border>
-                                            </On>
-                                        </OnPlatform>
+                                        </Border>
                                     </Grid>
                                 </controls:AspectRatioContainer>
                             </Border>
