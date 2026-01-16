@@ -1,5 +1,6 @@
 using SQLite;
 using System.ComponentModel;
+using System.Linq;
 
 namespace CrownRFEP_Reader.Models;
 
@@ -200,6 +201,46 @@ public class VideoClip : INotifyPropertyChanged
     /// </summary>
     [Ignore]
     public bool HasEventTags => EventTags != null && EventTags.Count > 0;
+
+    /// <summary>
+    /// Resumen compacto de tags para la galería (máximo 3 + resto)
+    /// </summary>
+    [Ignore]
+    public string TagsSummary
+    {
+        get
+        {
+            var names = new List<string>();
+            if (Tags != null)
+            {
+                names.AddRange(
+                    Tags.Where(t => t != null)
+                        .Select(t => t!.NombreTag)
+                        .Where(n => !string.IsNullOrWhiteSpace(n)));
+            }
+            if (EventTags != null)
+            {
+                names.AddRange(
+                    EventTags.Where(t => t != null)
+                        .Select(t => t!.DisplayText)
+                        .Where(n => !string.IsNullOrWhiteSpace(n)));
+            }
+
+            if (names.Count == 0)
+                return string.Empty;
+
+            var shown = names.Take(3).ToList();
+            var remaining = names.Count - shown.Count;
+            var summary = string.Join(", ", shown);
+            return remaining > 0 ? $"{summary} +{remaining}" : summary;
+        }
+    }
+
+    /// <summary>
+    /// Indica si hay tags para mostrar en resumen
+    /// </summary>
+    [Ignore]
+    public bool HasTagsSummary => !string.IsNullOrWhiteSpace(TagsSummary);
 
     /// <summary>
     /// Indica si el video tiene sección/tramo asignado

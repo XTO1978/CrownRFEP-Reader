@@ -14,6 +14,7 @@ namespace CrownRFEP_Reader.Behaviors;
 public class HoverVideoPreviewBehavior : Behavior<View>
 {
     private const int HoverDelayMs = 200;
+    public static bool HoverEnabled { get; set; } = true;
     private CancellationTokenSource? _hoverCts;
     private bool _isHovering;
 
@@ -129,6 +130,9 @@ public class HoverVideoPreviewBehavior : Behavior<View>
 
     private async void OnPointerEntered(View bindable)
     {
+        if (!HoverEnabled)
+            return;
+
         if (_isHovering) return;
         _isHovering = true;
 
@@ -158,6 +162,12 @@ public class HoverVideoPreviewBehavior : Behavior<View>
 
     private void OnPointerExited(View bindable)
     {
+        if (!HoverEnabled)
+        {
+            _isHovering = false;
+            _hoverCts?.Cancel();
+        }
+
         _isHovering = false;
         _hoverCts?.Cancel();
 
@@ -190,6 +200,9 @@ public class HoverVideoPreviewBehavior : Behavior<View>
 
     private void TryRaiseMoved(View bindable)
     {
+        if (!HoverEnabled)
+            return;
+
         if (!_isHovering)
             return;
 

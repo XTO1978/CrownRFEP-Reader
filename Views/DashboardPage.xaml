@@ -1031,60 +1031,69 @@
                 Grid.Row="2"
                 ItemsSource="{Binding SelectedSessionVideos}"
                 IsVisible="{Binding ShowVideoGallery}"
-                RemainingItemsThreshold="10"
+                RemainingItemsThreshold="{OnPlatform MacCatalyst=50, WinUI=10, iOS=10, Default=10}"
                 RemainingItemsThresholdReachedCommand="{Binding LoadMoreVideosCommand}"
-                SelectionMode="None" Margin="{StaticResource MarginTopSmall}">
+                SelectionMode="None" 
+                Margin="{StaticResource MarginTopSmall}"
+                ItemSizingStrategy="MeasureFirstItem"
+                ItemsUpdatingScrollMode="KeepScrollOffset"
+                Scrolled="OnVideoGalleryScrolled">
                 <CollectionView.ItemsLayout>
                     <GridItemsLayout
-                        HorizontalItemSpacing="{StaticResource SpacingXSmall}"
+                        HorizontalItemSpacing="{StaticResource SpacingLarge}"
                         Orientation="Vertical"
                         Span="{Binding VideoGalleryColumnSpan}"
-                        VerticalItemSpacing="{StaticResource SpacingSmall}" />
+                        VerticalItemSpacing="50" />
                 </CollectionView.ItemsLayout>
 
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="models:VideoClip">
-                        <Border
-                            BackgroundColor="Transparent"
-                            Stroke="Transparent"
-                            StrokeShape="RoundRectangle 4"
-                            StrokeThickness="0">
-                            <Border.Behaviors>
-                                <behaviors:HoverBackgroundBehavior />
-                            </Border.Behaviors>
-                            <Border.GestureRecognizers>
-                                <!-- iOS: clic simple abre reproductor. MacCatalyst/Windows: doble clic -->
-                                <TapGestureRecognizer Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.VideoTapCommand}" CommandParameter="{Binding .}">
-                                    <TapGestureRecognizer.NumberOfTapsRequired>
-                                        <OnPlatform x:TypeArguments="x:Int32">
-                                            <On Platform="iOS" Value="1" />
-                                            <On Platform="MacCatalyst" Value="2" />
-                                            <On Platform="WinUI" Value="2" />
-                                        </OnPlatform>
-                                    </TapGestureRecognizer.NumberOfTapsRequired>
-                                </TapGestureRecognizer>
-                                <!-- MacCatalyst/Windows: clic simple selecciona (deshabilitado en iOS con 99 taps) -->
-                                <TapGestureRecognizer Tapped="OnVideoItemSingleTapped">
-                                    <TapGestureRecognizer.NumberOfTapsRequired>
-                                        <OnPlatform x:TypeArguments="x:Int32">
-                                            <On Platform="iOS" Value="99" />
-                                            <On Platform="MacCatalyst" Value="1" />
-                                            <On Platform="WinUI" Value="1" />
-                                        </OnPlatform>
-                                    </TapGestureRecognizer.NumberOfTapsRequired>
-                                </TapGestureRecognizer>
-                                <TapGestureRecognizer Buttons="Secondary" Tapped="OnVideoItemContextMenuTapped" />
-                                <DragGestureRecognizer CanDrag="True" DragStarting="OnDragStarting" />
-                            </Border.GestureRecognizers>
-                            <Border.Triggers>
-                                <DataTrigger TargetType="Border" Binding="{Binding IsSelected}" Value="True">
-                                    <Setter Property="Stroke" Value="#FF0066" />
-                                    <Setter Property="StrokeThickness" Value="2" />
-                                </DataTrigger>
-                            </Border.Triggers>
-
-                            <Grid RowDefinitions="Auto,Auto">
-                                <!--  Thumbnail con aspect ratio 16:9  -->
+                        <Grid RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="4">
+                            <!--  Fila 0: Thumbnail con Border  -->
+                            <Border
+                                Grid.Row="0"
+                                BackgroundColor="Transparent"
+                                Stroke="Transparent"
+                                StrokeShape="RoundRectangle 10"
+                                StrokeThickness="0">
+                                <Border.Behaviors>
+                                    <OnPlatform x:TypeArguments="Behavior">
+                                        <On Platform="WinUI">
+                                            <behaviors:HoverBackgroundBehavior />
+                                        </On>
+                                    </OnPlatform>
+                                </Border.Behaviors>
+                                <Border.GestureRecognizers>
+                                    <!-- iOS: clic simple abre reproductor. MacCatalyst/Windows: doble clic -->
+                                    <TapGestureRecognizer Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.VideoTapCommand}" CommandParameter="{Binding .}">
+                                        <TapGestureRecognizer.NumberOfTapsRequired>
+                                            <OnPlatform x:TypeArguments="x:Int32">
+                                                <On Platform="iOS" Value="1" />
+                                                <On Platform="MacCatalyst" Value="2" />
+                                                <On Platform="WinUI" Value="2" />
+                                            </OnPlatform>
+                                        </TapGestureRecognizer.NumberOfTapsRequired>
+                                    </TapGestureRecognizer>
+                                    <!-- MacCatalyst/Windows: clic simple selecciona (deshabilitado en iOS con 99 taps) -->
+                                    <TapGestureRecognizer Tapped="OnVideoItemSingleTapped">
+                                        <TapGestureRecognizer.NumberOfTapsRequired>
+                                            <OnPlatform x:TypeArguments="x:Int32">
+                                                <On Platform="iOS" Value="99" />
+                                                <On Platform="MacCatalyst" Value="1" />
+                                                <On Platform="WinUI" Value="1" />
+                                            </OnPlatform>
+                                        </TapGestureRecognizer.NumberOfTapsRequired>
+                                    </TapGestureRecognizer>
+                                    <TapGestureRecognizer Buttons="Secondary" Tapped="OnVideoItemContextMenuTapped" />
+                                    <DragGestureRecognizer CanDrag="True" DragStarting="OnDragStarting" />
+                                </Border.GestureRecognizers>
+                                <Border.Triggers>
+                                    <DataTrigger TargetType="Border" Binding="{Binding IsSelected}" Value="True">
+                                        <Setter Property="Stroke" Value="#FF0066" />
+                                        <Setter Property="StrokeThickness" Value="2" />
+                                    </DataTrigger>
+                                </Border.Triggers>
+                                
                                 <controls:AspectRatioContainer AspectRatio="1.777">
                                     <Grid>
                                         <!--  Behavior de long press para preview en iOS  -->
@@ -1101,23 +1110,36 @@
                                             Source="{Binding LocalThumbnailPath}" />
 
                                         <!--  Overlay de play (oculto cuando está seleccionado en multiselect)  -->
-                                       <controls:SymbolIcon
-                            HeightRequest="{StaticResource IconSizeXXLarge}"
-                            SymbolName="play.circle.fill"
-                            TintColor="White" Opacity="0.5"
-                            VerticalOptions="Center"
-                            WidthRequest="{StaticResource IconSizeXXLarge}" />
+                                        <OnPlatform x:TypeArguments="View">
+                                            <On Platform="MacCatalyst">
+                                                <ContentView IsVisible="False" />
+                                            </On>
+                                            <On Platform="Default">
+                                                <controls:SymbolIcon
+                                                    HeightRequest="{StaticResource IconSizeXXLarge}"
+                                                    SymbolName="play.circle.fill"
+                                                    TintColor="White"
+                                                    Opacity="0.5"
+                                                    VerticalOptions="Center"
+                                                    WidthRequest="{StaticResource IconSizeXXLarge}" />
+                                            </On>
+                                        </OnPlatform>
 
                                         <!--  Checkmark de selección  -->
-                                        <Border
-                                            BackgroundColor="#34000000"
-                                            HeightRequest="32"
-                                            HorizontalOptions="End"
-                                            IsVisible="{Binding IsSelected}"
-                                            Margin="6"
-                                            StrokeShape="RoundRectangle 16"
-                                            VerticalOptions="Start"
-                                            WidthRequest="32">
+                                        <OnPlatform x:TypeArguments="View">
+                                            <On Platform="MacCatalyst">
+                                                <ContentView IsVisible="False" />
+                                            </On>
+                                            <On Platform="Default">
+                                                <Border
+                                                    BackgroundColor="#34000000"
+                                                    HeightRequest="32"
+                                                    HorizontalOptions="End"
+                                                    IsVisible="{Binding IsSelected}"
+                                                    Margin="6"
+                                                    StrokeShape="RoundRectangle 16"
+                                                    VerticalOptions="Start"
+                                                    WidthRequest="32">
                                             <controls:SymbolIcon
                                                 HeightRequest="{StaticResource IconSizeLarge}"
                                                 HorizontalOptions="Center"
@@ -1125,19 +1147,26 @@
                                                 TintColor="LightGray"
                                                 VerticalOptions="Center"
                                                 WidthRequest="{StaticResource IconSizeLarge}" />
-                                        </Border>
+                                                </Border>
+                                            </On>
+                                        </OnPlatform>
                                         
                                         <!--  Indicador de video comparativo  -->
-                                        <Border
-                                            BackgroundColor="#CC000000"
-                                            HeightRequest="28"
-                                            HorizontalOptions="Start"
-                                            IsVisible="{Binding IsComparisonVideo}"
-                                            Margin="6"
-                                            Padding="6,4"
-                                            StrokeShape="RoundRectangle 4"
-                                            StrokeThickness="0"
-                                            VerticalOptions="Start">
+                                        <OnPlatform x:TypeArguments="View">
+                                            <On Platform="MacCatalyst">
+                                                <ContentView IsVisible="False" />
+                                            </On>
+                                            <On Platform="Default">
+                                                <Border
+                                                    BackgroundColor="#CC000000"
+                                                    HeightRequest="28"
+                                                    HorizontalOptions="Start"
+                                                    IsVisible="{Binding IsComparisonVideo}"
+                                                    Margin="6"
+                                                    Padding="6,4"
+                                                    StrokeShape="RoundRectangle 4"
+                                                    StrokeThickness="0"
+                                                    VerticalOptions="Start">
                                             <HorizontalStackLayout Spacing="4">
                                                 <controls:SymbolIcon
                                                     HeightRequest="{StaticResource IconSizeMedium}"
@@ -1152,146 +1181,78 @@
                                                     VerticalOptions="Center"
                                                     FontAttributes="None" />
                                             </HorizontalStackLayout>
-                                        </Border>
+                                                </Border>
+                                            </On>
+                                        </OnPlatform>
 
                                         <!--  Indicador de tiempo/split  -->
-                                        <Border
-                                            BackgroundColor="#CC000000"
-                                            HeightRequest="28"
-                                            HorizontalOptions="Start"
-                                            IsVisible="{Binding HasTiming}"
-                                            Margin="6"
-                                            Padding="6,4"
-                                            StrokeShape="RoundRectangle 4"
-                                            StrokeThickness="0"
-                                            VerticalOptions="End">
+                                        <OnPlatform x:TypeArguments="View">
+                                            <On Platform="MacCatalyst">
+                                                <ContentView IsVisible="False" />
+                                            </On>
+                                            <On Platform="Default">
+                                                <Border
+                                                    BackgroundColor="#CC000000"
+                                                    HeightRequest="28"
+                                                    HorizontalOptions="Start"
+                                                    IsVisible="{Binding HasTiming}"
+                                                    Margin="6"
+                                                    Padding="6,4"
+                                                    StrokeShape="RoundRectangle 4"
+                                                    StrokeThickness="0"
+                                                    VerticalOptions="End">
                                             <controls:SymbolIcon
                                                 HeightRequest="{StaticResource IconSizeMedium}"
                                                 SymbolName="timer"
                                                 TintColor="White"
                                                 VerticalOptions="Center"
                                                 WidthRequest="{StaticResource IconSizeMedium}" />
-                                        </Border>
+                                                </Border>
+                                            </On>
+                                        </OnPlatform>
                                     </Grid>
                                 </controls:AspectRatioContainer>
-
-                                <!--  Footer con info, botón de preview y menú  -->
-                                <Grid
-                                    Grid.Row="1"
-                                    Padding="8"
-                                    ColumnDefinitions="*,Auto,Auto"
-                                    ColumnSpacing="4">
-                                    <VerticalStackLayout Spacing="2">
-                                        <!--  Primera línea: APELLIDOS Nombre - Sesión  -->
-                                        <Label
-                                            FontSize="{StaticResource FontSizeBody}"
-                                            FontAttributes="None"
-                                            LineBreakMode="TailTruncation"
-                                            Text="{Binding DisplayLine1}"
-                                            TextColor="White" />
-                                        <!--  Segunda línea: Lugar, fecha y hora  -->
-                                        <Label
-                                            FontSize="{StaticResource FontSizeSmall}"
-                                            LineBreakMode="TailTruncation"
-                                            Text="{Binding DisplayLine2}"
-                                            TextColor="#FFCCCCCC" />
-                                        
-                                        <!--  Tags del video (chips)  -->
-                                        <ScrollView
-                                            Orientation="Horizontal"
-                                            Margin="0,2,0,0"
-                                            HorizontalScrollBarVisibility="Never">
-                                            <HorizontalStackLayout Spacing="4">
-                                                <!--  Tags asignados (verde)  -->
-                                                <HorizontalStackLayout
-                                                    Spacing="4"
-                                                    BindableLayout.ItemsSource="{Binding Tags}">
-                                                    <BindableLayout.ItemTemplate>
-                                                        <DataTemplate x:DataType="models:Tag">
-                                                            <Border
-                                                                Padding="6,2"
-                                                                BackgroundColor="#FF006A05"
-                                                                StrokeShape="RoundRectangle 2"
-                                                                StrokeThickness="0">
-                                                                <Label
-                                                                    FontSize="{StaticResource FontSizeCaption}"
-                                                                    Text="{Binding NombreTag}"
-                                                                    TextColor="White"
-                                                                    LineBreakMode="TailTruncation"
-                                                                    MaximumWidthRequest="120" />
-                                                            </Border>
-                                                        </DataTemplate>
-                                                    </BindableLayout.ItemTemplate>
-                                                </HorizontalStackLayout>
-                                                <!--  Tags de eventos (naranja)  -->
-                                                <HorizontalStackLayout
-                                                    Spacing="4"
-                                                    BindableLayout.ItemsSource="{Binding EventTags}">
-                                                    <BindableLayout.ItemTemplate>
-                                                        <DataTemplate x:DataType="models:Tag">
-                                                            <Border
-                                                                Padding="6,2"
-                                                                BackgroundColor="#FFFF8C00"
-                                                                StrokeShape="RoundRectangle 2"
-                                                                StrokeThickness="0">
-                                                                <Label
-                                                                    FontSize="{StaticResource FontSizeCaption}"
-                                                                    Text="{Binding DisplayText}"
-                                                                    TextColor="White"
-                                                                    LineBreakMode="TailTruncation"
-                                                                    MaximumWidthRequest="120" />
-                                                            </Border>
-                                                        </DataTemplate>
-                                                    </BindableLayout.ItemTemplate>
-                                                </HorizontalStackLayout>
-                                            </HorizontalStackLayout>
-                                        </ScrollView>
-                                    </VerticalStackLayout>
-
-                                    <!--  Zona de vista previa (hover para mostrar preview) - Solo en desktop  -->
-                                    <Border
-                                        Grid.Column="1"
-                                        Padding="6"
-                                        BackgroundColor="Transparent"
-                                        StrokeShape="RoundRectangle 4"
-                                        StrokeThickness="0"
-                                        VerticalOptions="Center">
-                                        <Border.IsVisible>
-                                            <OnPlatform x:TypeArguments="x:Boolean">
-                                                <On Platform="iOS" Value="False" />
-                                                <On Platform="MacCatalyst,WinUI" Value="True" />
-                                            </OnPlatform>
-                                        </Border.IsVisible>
-                                        <Border.Behaviors>
-                                            <behaviors:HoverVideoPreviewBehavior />
-                                        </Border.Behaviors>
-                                        <controls:SymbolIcon
-                                            HeightRequest="{StaticResource IconSizeLarge}"
-                                            SymbolName="eye"
-                                            TintColor="#FF888888"
-                                            WidthRequest="{StaticResource IconSizeLarge}" />
-                                    </Border>
-
-                                    <!--  Botón de menú contextual  -->
-                                    <Border
-                                        Grid.Column="2"
-                                        Padding="6"
-                                        BackgroundColor="Transparent"
-                                        StrokeShape="RoundRectangle 4"
-                                        StrokeThickness="0"
-                                        VerticalOptions="Center">
-                                        <Border.GestureRecognizers>
-                                            <TapGestureRecognizer Tapped="OnVideoItemContextMenuTapped" />
-                                        </Border.GestureRecognizers>
-                                        <controls:SymbolIcon
-                                            HeightRequest="{StaticResource IconSizeLarge}"
-                                            SymbolName="ellipsis.circle"
-                                            TintColor="#FF888888"
-                                            WidthRequest="{StaticResource IconSizeLarge}" />
-                                    </Border>
-                                </Grid>
-                            </Grid>
-                        </Border>
+                            </Border>
+                            
+                            <!--  Fila 1: Nombre del atleta  -->
+                            <Label
+                                Grid.Row="1"
+                                FontSize="{StaticResource FontSizeSubtitle}"
+                                FontAttributes="Bold"
+                                HorizontalTextAlignment="Center"
+                                LineBreakMode="TailTruncation"
+                                Text="{Binding DisplayLine1}"
+                                TextColor="White" />
+                            
+                            <!--  Fila 2: Lugar, fecha y hora  -->
+                            <Label
+                                Grid.Row="2"
+                                FontSize="{StaticResource FontSizeBody}"
+                                HorizontalTextAlignment="Center"
+                                LineBreakMode="TailTruncation"
+                                Text="{Binding DisplayLine2}"
+                                TextColor="White" />
+                            
+                            <!--  Fila 3: Etiquetas  -->
+                            <HorizontalStackLayout
+                                Grid.Row="3"
+                                HorizontalOptions="Center"
+                                Spacing="4"
+                                IsVisible="{Binding HasTagsSummary}">
+                                <controls:SymbolIcon
+                                    HeightRequest="{StaticResource IconSizeSmall}"
+                                    SymbolName="tag.fill"
+                                    TintColor="White"
+                                    VerticalOptions="Center"
+                                    WidthRequest="{StaticResource IconSizeSmall}" />
+                                <Label
+                                    FontSize="{StaticResource FontSizeSmall}"
+                                    LineBreakMode="TailTruncation"
+                                    Text="{Binding TagsSummary}"
+                                    TextColor="White"
+                                    VerticalOptions="Center" />
+                            </HorizontalStackLayout>
+                        </Grid>
                     </DataTemplate>
                 </CollectionView.ItemTemplate>
 

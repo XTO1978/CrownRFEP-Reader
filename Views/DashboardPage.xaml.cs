@@ -55,6 +55,9 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
     private double _lastVideoGalleryMeasuredWidth = -1;
     private int _lastVideoGalleryComputedSpan = -1;
 
+    private CancellationTokenSource? _galleryScrollCts;
+    private const int HoverResumeDelayMs = 200;
+
 #if MACCATALYST
 	private UITapGestureRecognizer? _globalDismissTapRecognizer;
     private UILongPressGestureRecognizer? _globalDismissPressRecognizer;
@@ -1240,6 +1243,36 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 
         UpdateSubItemContextMenusLayerVisibility();
         UpdateGlobalDismissOverlayVisibility();
+    }
+
+    private void OnVideoGalleryScrolled(object? sender, ItemsViewScrolledEventArgs e)
+    {
+        _galleryScrollCts?.Cancel();
+        _galleryScrollCts = new CancellationTokenSource();
+        var token = _galleryScrollCts.Token;
+
+        CrownRFEP_Reader.Behaviors.HoverVideoPreviewBehavior.HoverEnabled = false;
+        CrownRFEP_Reader.Behaviors.HoverBackgroundBehavior.HoverEnabled = false;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(HoverResumeDelayMs, token);
+                if (token.IsCancellationRequested)
+                    return;
+
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    CrownRFEP_Reader.Behaviors.HoverVideoPreviewBehavior.HoverEnabled = true;
+                    CrownRFEP_Reader.Behaviors.HoverBackgroundBehavior.HoverEnabled = true;
+                });
+            }
+            catch (TaskCanceledException)
+            {
+                // no-op
+            }
+        });
     }
 
     private void OnVideoItemMenuOpenTapped(object? sender, TappedEventArgs e)

@@ -8,6 +8,7 @@ namespace CrownRFEP_Reader.Behaviors;
 
 public class HoverBackgroundBehavior : Behavior<View>
 {
+    public static bool HoverEnabled { get; set; } = true;
     private Color? _originalBackground;
     private bool _isHovering;
     private bool _isApplyingHover;
@@ -81,6 +82,9 @@ public class HoverBackgroundBehavior : Behavior<View>
 
     private void ApplyHover(VisualElement element)
     {
+        if (!HoverEnabled)
+            return;
+
         if (_originalBackground == null)
             _originalBackground = element.BackgroundColor;
 
@@ -136,7 +140,10 @@ public class HoverBackgroundBehavior : Behavior<View>
             {
                 case UIGestureRecognizerState.Began:
                 case UIGestureRecognizerState.Changed:
-                    ApplyHover(bindable);
+                    if (HoverEnabled)
+                        ApplyHover(bindable);
+                    else
+                        RemoveHover(bindable);
                     break;
 
                 case UIGestureRecognizerState.Ended:

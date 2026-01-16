@@ -1551,12 +1551,32 @@ public class DashboardViewModel : BaseViewModel
 
         System.Diagnostics.Debug.WriteLine($"[Dashboard] SetParallelVideoSlotAsync: slot={slot}, video.Id={video.Id}, ClipPath={video.ClipPath}, LocalClipPath={video.LocalClipPath}");
 
+        // Crear una copia del video para evitar conflictos de referencia entre sesiones
+        var videoCopy = new VideoClip
+        {
+            Id = video.Id,
+            SessionId = video.SessionId,
+            AtletaId = video.AtletaId,
+            Section = video.Section,
+            CreationDate = video.CreationDate,
+            ClipPath = video.ClipPath,
+            LocalClipPath = video.LocalClipPath,
+            ThumbnailPath = video.ThumbnailPath,
+            LocalThumbnailPath = video.LocalThumbnailPath,
+            ComparisonName = video.ComparisonName,
+            ClipDuration = video.ClipDuration,
+            ClipSize = video.ClipSize,
+            IsDeleted = video.IsDeleted,
+            DeletedAtUtc = video.DeletedAtUtc,
+            Atleta = video.Atleta,
+            Session = video.Session,
+            Tags = video.Tags,
+            EventTags = video.EventTags
+        };
+
         // Resolver path local si es posible
-        var resolvedPath = await ResolveVideoPathAsync(video);
-        System.Diagnostics.Debug.WriteLine($"[Dashboard] ResolvedPath for slot {slot}: {resolvedPath}");
-        
-        if (!string.IsNullOrWhiteSpace(resolvedPath))
-            video.LocalClipPath = resolvedPath;
+        await ResolveVideoPathsAsync(videoCopy);
+        System.Diagnostics.Debug.WriteLine($"[Dashboard] ResolvedPath for slot {slot}: Video={videoCopy.LocalClipPath}, Thumbnail={videoCopy.LocalThumbnailPath}");
 
         // Asignar al slot correspondiente en hilo UI
         await MainThread.InvokeOnMainThreadAsync(() =>
@@ -1564,13 +1584,60 @@ public class DashboardViewModel : BaseViewModel
             System.Diagnostics.Debug.WriteLine($"[Dashboard] Assigning video to slot {slot} on UI thread");
             switch (slot)
             {
-                case 1: ParallelVideo1 = video; break;
-                case 2: ParallelVideo2 = video; break;
-                case 3: ParallelVideo3 = video; break;
-                case 4: ParallelVideo4 = video; break;
+                case 1: ParallelVideo1 = videoCopy; break;
+                case 2: ParallelVideo2 = videoCopy; break;
+                case 3: ParallelVideo3 = videoCopy; break;
+                case 4: ParallelVideo4 = videoCopy; break;
             }
             System.Diagnostics.Debug.WriteLine($"[Dashboard] After assignment - HasParallelVideo4={HasParallelVideo4}, ParallelVideo4ClipPath={ParallelVideo4ClipPath}");
         });
+    }
+
+    private async Task ResolveVideoPathsAsync(VideoClip video)
+    {
+        try
+        {
+            // Obtener la sesión del video
+            var session = await _databaseService.GetSessionByIdAsync(video.SessionId);
+            if (session == null || string.IsNullOrWhiteSpace(session.PathSesion))
+                return;
+
+            // Resolver video path
+            var videoPath = video.LocalClipPath;
+            if (string.IsNullOrWhiteSpace(videoPath) || !File.Exists(videoPath))
+            {
+                var normalized = (video.ClipPath ?? "").Replace('\\', '/');
+                var fileName = Path.GetFileName(normalized);
+                if (string.IsNullOrWhiteSpace(fileName))
+                    fileName = $"CROWN{video.Id}.mp4";
+
+                var candidate = Path.Combine(session.PathSesion, "videos", fileName);
+                if (File.Exists(candidate))
+                    video.LocalClipPath = candidate;
+                else if (!string.IsNullOrWhiteSpace(video.ClipPath))
+                    video.LocalClipPath = video.ClipPath;
+            }
+
+            // Resolver thumbnail path
+            var thumbnailPath = video.LocalThumbnailPath;
+            if (string.IsNullOrWhiteSpace(thumbnailPath) || !File.Exists(thumbnailPath))
+            {
+                var normalized = (video.ThumbnailPath ?? "").Replace('\\', '/');
+                var fileName = Path.GetFileName(normalized);
+                if (string.IsNullOrWhiteSpace(fileName))
+                    fileName = $"CROWN{video.Id}.jpg";
+
+                var candidate = Path.Combine(session.PathSesion, "thumbnails", fileName);
+                if (File.Exists(candidate))
+                    video.LocalThumbnailPath = candidate;
+                else if (!string.IsNullOrWhiteSpace(video.ThumbnailPath))
+                    video.LocalThumbnailPath = video.ThumbnailPath;
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Dashboard] Error resolving video paths: {ex.Message}");
+        }
     }
 
     private async Task<string?> ResolveVideoPathAsync(VideoClip video)
@@ -5151,21 +5218,16 @@ public class DashboardViewModel : BaseViewModel
             var isAlreadyInStack = navStack.Contains(playerPage);
             AppLog.Info("DashboardVM", $"⏱️ NavigationStack.Count={navStack.Count}, isAlreadyInStack={isAlreadyInStack}");
             
+            // Si no está en el stack, hacer push
             if (!isAlreadyInStack)
             {
                 await Shell.Current.Navigation.PushAsync(playerPage);
             }
-            else
-            {
-                // Si ya está en el stack, solo necesitamos asegurarnos de que esté visible
-                // Esto puede pasar si el usuario navega hacia atrás y vuelve a hacer doble clic
-                AppLog.Info("DashboardVM", "⏱️ Página ya en stack, omitiendo PushAsync");
-            }
             AppLog.Info("DashboardVM", $"⏱️ PushAsync completado: {pushStart.ElapsedMilliseconds}ms");
             
-            // LUEGO inicializar el ViewModel (la página ya está visible)
+            // LUEGO inicializar el ViewModel (la página ya está visible o se acaba de mostrar)
             AppLog.Info("DashboardVM", "⏱️ Iniciando InitializeWithVideoAsync...");
-            _ = vm.InitializeWithVideoAsync(video);
+            await vm.InitializeWithVideoAsync(video);
             
             AppLog.Info("DashboardVM", $"⏱️ OpenVideoAsync TOTAL: {navWatch.ElapsedMilliseconds}ms");
         }

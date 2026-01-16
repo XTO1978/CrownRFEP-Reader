@@ -2471,6 +2471,20 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         IsLoadingTools = true;
         IsLoadingGallery = true;
 
+        // Limpiar videos de comparación y resetear a modo single
+        ComparisonVideo2 = null;
+        ComparisonVideo3 = null;
+        ComparisonVideo4 = null;
+        SetComparisonLayout("Single");
+
+        // Forzar detención del player anterior
+        IsPlaying = false;
+        CurrentPosition = TimeSpan.Zero;
+        
+        // Limpiar path anterior para forzar recarga
+        _videoPath = "";
+        OnPropertyChanged(nameof(VideoPath));
+
         // Sin Id no podemos recargar eventos/tags desde la BD, así que resolvemos por ruta.
         if (video.Id <= 0)
         {
@@ -2498,6 +2512,9 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         await LoadVideoDataAsync(video);
         
         VideoClip = video;
+        
+        // Forzar actualización del VideoPath para asegurar que el binding se actualice
+        OnPropertyChanged(nameof(VideoPath));
         
         if (video.SessionId > 0)
         {

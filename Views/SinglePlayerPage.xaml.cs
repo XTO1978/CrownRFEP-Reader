@@ -41,6 +41,7 @@ public partial class SinglePlayerPage : ContentPage
 
     private bool _isPageActive;
     private bool _isTextPromptOpen;
+    private bool _vmEventsSubscribed;
 
     private bool _pipHasUserMoved;
     private double _pipDragStartTranslationX;
@@ -116,20 +117,7 @@ public partial class SinglePlayerPage : ContentPage
         if (RootGrid != null)
             RootGrid.SizeChanged += OnRootGridSizeChanged;
 
-        // Suscribirse a eventos del ViewModel
-        _viewModel.PlayRequested += OnPlayRequested;
-        _viewModel.PauseRequested += OnPauseRequested;
-        _viewModel.StopRequested += OnStopRequested;
-        _viewModel.SeekRequested += OnSeekRequested;
-        _viewModel.FrameForwardRequested += OnFrameForwardRequested;
-        _viewModel.FrameBackwardRequested += OnFrameBackwardRequested;
-        _viewModel.SpeedChangeRequested += OnSpeedChangeRequested;
-        _viewModel.CloseExternalPanelsRequested += OnCloseExternalPanelsRequested;
-        _viewModel.VideoChanged += OnVideoChanged;
-        _viewModel.LapSyncPauseRequested += OnLapSyncPauseRequested;
-        _viewModel.LapSyncResumeAllRequested += OnLapSyncResumeAllRequested;
-        _viewModel.LapSyncResyncRequested += OnLapSyncResyncRequested;
-        _viewModel.PropertyChanged += OnViewModelPropertyChanged;
+        SubscribeViewModelEvents();
 
         if (AnalysisCanvas != null)
             AnalysisCanvas.TextRequested += OnAnalysisCanvasTextRequested;
@@ -724,6 +712,8 @@ public partial class SinglePlayerPage : ContentPage
         base.OnAppearing();
         _isPageActive = true;
 
+        SubscribeViewModelEvents();
+
         AppLog.Info(
             "SinglePlayerPage",
             $"OnAppearing | IsRecording={_videoLessonRecorder.IsRecording} | VideoPath='{_viewModel.VideoPath}' | NavStack={Shell.Current?.Navigation?.NavigationStack?.Count} | ModalStack={Shell.Current?.Navigation?.ModalStack?.Count}");
@@ -1155,18 +1145,7 @@ public partial class SinglePlayerPage : ContentPage
             AppLog.Error("SinglePlayerPage", "CleanupResources: VideoLessonCameraPreview.IsActive=false threw", ex);
         }
 
-        // Desuscribirse de eventos del ViewModel
-        _viewModel.PlayRequested -= OnPlayRequested;
-        _viewModel.PauseRequested -= OnPauseRequested;
-        _viewModel.StopRequested -= OnStopRequested;
-        _viewModel.SeekRequested -= OnSeekRequested;
-        _viewModel.FrameForwardRequested -= OnFrameForwardRequested;
-        _viewModel.FrameBackwardRequested -= OnFrameBackwardRequested;
-        _viewModel.SpeedChangeRequested -= OnSpeedChangeRequested;
-        _viewModel.VideoChanged -= OnVideoChanged;
-        _viewModel.LapSyncPauseRequested -= OnLapSyncPauseRequested;
-        _viewModel.LapSyncResumeAllRequested -= OnLapSyncResumeAllRequested;
-        _viewModel.LapSyncResyncRequested -= OnLapSyncResyncRequested;
+        UnsubscribeViewModelEvents();
 
         if (AnalysisCanvas != null)
             AnalysisCanvas.TextRequested -= OnAnalysisCanvasTextRequested;
@@ -1228,6 +1207,50 @@ public partial class SinglePlayerPage : ContentPage
         }
 
         AppLog.Info("SinglePlayerPage", "CleanupResources END");
+    }
+
+    private void SubscribeViewModelEvents()
+    {
+        if (_vmEventsSubscribed)
+            return;
+
+        _viewModel.PlayRequested += OnPlayRequested;
+        _viewModel.PauseRequested += OnPauseRequested;
+        _viewModel.StopRequested += OnStopRequested;
+        _viewModel.SeekRequested += OnSeekRequested;
+        _viewModel.FrameForwardRequested += OnFrameForwardRequested;
+        _viewModel.FrameBackwardRequested += OnFrameBackwardRequested;
+        _viewModel.SpeedChangeRequested += OnSpeedChangeRequested;
+        _viewModel.CloseExternalPanelsRequested += OnCloseExternalPanelsRequested;
+        _viewModel.VideoChanged += OnVideoChanged;
+        _viewModel.LapSyncPauseRequested += OnLapSyncPauseRequested;
+        _viewModel.LapSyncResumeAllRequested += OnLapSyncResumeAllRequested;
+        _viewModel.LapSyncResyncRequested += OnLapSyncResyncRequested;
+        _viewModel.PropertyChanged += OnViewModelPropertyChanged;
+
+        _vmEventsSubscribed = true;
+    }
+
+    private void UnsubscribeViewModelEvents()
+    {
+        if (!_vmEventsSubscribed)
+            return;
+
+        _viewModel.PlayRequested -= OnPlayRequested;
+        _viewModel.PauseRequested -= OnPauseRequested;
+        _viewModel.StopRequested -= OnStopRequested;
+        _viewModel.SeekRequested -= OnSeekRequested;
+        _viewModel.FrameForwardRequested -= OnFrameForwardRequested;
+        _viewModel.FrameBackwardRequested -= OnFrameBackwardRequested;
+        _viewModel.SpeedChangeRequested -= OnSpeedChangeRequested;
+        _viewModel.CloseExternalPanelsRequested -= OnCloseExternalPanelsRequested;
+        _viewModel.VideoChanged -= OnVideoChanged;
+        _viewModel.LapSyncPauseRequested -= OnLapSyncPauseRequested;
+        _viewModel.LapSyncResumeAllRequested -= OnLapSyncResumeAllRequested;
+        _viewModel.LapSyncResyncRequested -= OnLapSyncResyncRequested;
+        _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
+
+        _vmEventsSubscribed = false;
     }
 
     private static async Task<bool> WaitForVideoLessonFileReadyAsync(string path, int minBytes = 1024, int timeoutMs = 2500)

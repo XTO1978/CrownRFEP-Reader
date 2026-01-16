@@ -841,6 +841,7 @@
                     <precision:PrecisionVideoPlayer
                         x:Name="MediaPlayer"
                         Aspect="{Binding VideoAspect}"
+                        IsPlaying="{Binding IsPlaying, Mode=TwoWay}"
                         IsMuted="{Binding IsMuted}"
                         Duration="{Binding Duration, Mode=OneWayToSource}"
                         Position="{Binding CurrentPosition, Mode=OneWayToSource}"
