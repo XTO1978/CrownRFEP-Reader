@@ -86,6 +86,30 @@ public partial class App : Application
 					try { await trashService.PurgeExpiredAsync(); } catch { }
 				});
 			}
+			
+			// Pre-instanciar SinglePlayerPage en background para evitar delay de InitializeComponent
+			// cuando el usuario abre un video por primera vez (~2 segundos de parsing XAML)
+			_ = Task.Run(() =>
+			{
+				try
+				{
+					MainThread.BeginInvokeOnMainThread(() =>
+					{
+						var preloadWatch = System.Diagnostics.Stopwatch.StartNew();
+						AppLog.Info("App", "⏱️ Pre-cargando SinglePlayerPage...");
+						
+						// Solicitar la página del contenedor DI fuerza su instanciación (Singleton)
+						var playerPage = activationState?.Context?.Services?.GetService<CrownRFEP_Reader.Views.SinglePlayerPage>();
+						
+						preloadWatch.Stop();
+						AppLog.Info("App", $"⏱️ SinglePlayerPage pre-cargada: {preloadWatch.ElapsedMilliseconds}ms");
+					});
+				}
+				catch (Exception ex)
+				{
+					AppLog.Error("App", "Error pre-cargando SinglePlayerPage", ex);
+				}
+			});
 		}
 
 #if MACCATALYST

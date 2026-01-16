@@ -213,7 +213,8 @@ public static class MauiProgram
 		builder.Services.AddTransient<VideoPlayerPage>();
 		builder.Services.AddTransient<ParallelPlayerPage>();
 		builder.Services.AddTransient<QuadPlayerPage>();
-		builder.Services.AddTransient<SinglePlayerPage>();
+		// Singleton para evitar InitializeComponent (2+ segundos) en cada navegación
+		builder.Services.AddSingleton<SinglePlayerPage>();
 		builder.Services.AddSingleton<StatisticsPage>();
 		builder.Services.AddSingleton<UserProfilePage>();
 		builder.Services.AddSingleton<VideoLessonsPage>();

@@ -4269,6 +4269,8 @@ public class DashboardViewModel : BaseViewModel
 
     private async Task OnVideoTappedAsync(VideoClip? video)
     {
+        AppLog.Info("DashboardVM", $"⏱️ OnVideoTappedAsync ENTRADA - video={video?.Id}, IsMultiSelectMode={IsMultiSelectMode}");
+        
         if (video == null) return;
 
         if (IsMultiSelectMode)
@@ -5071,6 +5073,8 @@ public class DashboardViewModel : BaseViewModel
 
     private async Task PlaySelectedVideoAsync(VideoClip? video)
     {
+        AppLog.Info("DashboardVM", $"⏱️ PlaySelectedVideoAsync INICIADO - video.Id={video?.Id}, video.ClipPath={video?.ClipPath}");
+        
         if (video == null) return;
 
         var videoPath = video.LocalClipPath;
@@ -5110,7 +5114,12 @@ public class DashboardViewModel : BaseViewModel
         }
 
         // Obtener la página del contenedor DI para poder pasar el VideoClip completo
+        var navWatch = System.Diagnostics.Stopwatch.StartNew();
+        AppLog.Info("DashboardVM", "⏱️ OpenVideoAsync: Obteniendo página DI...");
+        
         var playerPage = Microsoft.Maui.Controls.Application.Current?.Handler?.MauiContext?.Services.GetService<SinglePlayerPage>();
+        AppLog.Info("DashboardVM", $"⏱️ GetService<SinglePlayerPage>: {navWatch.ElapsedMilliseconds}ms");
+        
         if (playerPage?.BindingContext is SinglePlayerViewModel vm)
         {
             // Asegurar que el video tiene la información de Session y Atleta cargada
@@ -5128,13 +5137,37 @@ public class DashboardViewModel : BaseViewModel
                 video.Tags = await _databaseService.GetTagsForVideoAsync(video.Id);
             }
             
+            AppLog.Info("DashboardVM", $"⏱️ Pre-carga datos video: {navWatch.ElapsedMilliseconds}ms");
+            
             // Actualizar la ruta local si fue resuelta
             video.LocalClipPath = videoPath;
             
-            // Inicializar el ViewModel con el video (carga datos de sesión y playlist)
-            await vm.InitializeWithVideoAsync(video);
+            // NAVEGAR PRIMERO para mostrar la página rápidamente
+            AppLog.Info("DashboardVM", "⏱️ Iniciando navegación PushAsync...");
+            var pushStart = System.Diagnostics.Stopwatch.StartNew();
             
-            await Shell.Current.Navigation.PushAsync(playerPage);
+            // Verificar si la página ya está en el stack de navegación
+            var navStack = Shell.Current.Navigation.NavigationStack;
+            var isAlreadyInStack = navStack.Contains(playerPage);
+            AppLog.Info("DashboardVM", $"⏱️ NavigationStack.Count={navStack.Count}, isAlreadyInStack={isAlreadyInStack}");
+            
+            if (!isAlreadyInStack)
+            {
+                await Shell.Current.Navigation.PushAsync(playerPage);
+            }
+            else
+            {
+                // Si ya está en el stack, solo necesitamos asegurarnos de que esté visible
+                // Esto puede pasar si el usuario navega hacia atrás y vuelve a hacer doble clic
+                AppLog.Info("DashboardVM", "⏱️ Página ya en stack, omitiendo PushAsync");
+            }
+            AppLog.Info("DashboardVM", $"⏱️ PushAsync completado: {pushStart.ElapsedMilliseconds}ms");
+            
+            // LUEGO inicializar el ViewModel (la página ya está visible)
+            AppLog.Info("DashboardVM", "⏱️ Iniciando InitializeWithVideoAsync...");
+            _ = vm.InitializeWithVideoAsync(video);
+            
+            AppLog.Info("DashboardVM", $"⏱️ OpenVideoAsync TOTAL: {navWatch.ElapsedMilliseconds}ms");
         }
         else
         {

@@ -35,6 +35,11 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
     private SmartFolderDefinition? _contextMenuSmartFolder;
     private VideoClip? _contextMenuVideo;
     
+    // Detección manual de doble clic (MacCatalyst no maneja bien NumberOfTapsRequired=2)
+    private DateTime _lastVideoTapTime = DateTime.MinValue;
+    private VideoClip? _lastTappedVideo;
+    private const int DoubleClickThresholdMs = 800;
+    
     // Posiciones actuales de cada video para scrubbing incremental
     private double _currentPosition0;
     private double _currentPosition1;
@@ -1145,6 +1150,7 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
     /// <summary>
     /// Clic simple en video item: selecciona/deselecciona el video (solo en MacCatalyst/Windows).
     /// En iOS, este handler no se ejecuta (NumberOfTapsRequired=99).
+    /// Detecta doble clic manualmente porque MacCatalyst no maneja bien múltiples TapGestureRecognizers.
     /// </summary>
     private void OnVideoItemSingleTapped(object? sender, TappedEventArgs e)
     {
@@ -1157,12 +1163,39 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
             if (video == null)
                 return;
 
-            if (BindingContext is DashboardViewModel vm)
+            var now = DateTime.Now;
+            var timeSinceLastTap = (now - _lastVideoTapTime).TotalMilliseconds;
+            var isSameVideo = _lastTappedVideo?.Id == video.Id;
+            
+            // Detectar doble clic: mismo video, dentro del umbral de tiempo
+            if (isSameVideo && timeSinceLastTap < DoubleClickThresholdMs)
             {
-                if (vm.IsMultiSelectMode)
+                AppLog.Info("DashboardPage", $"⏱️ DOBLE CLIC detectado - video.Id={video.Id}, delta={timeSinceLastTap:F0}ms");
+                
+                // Reset para evitar triple-clic
+                _lastVideoTapTime = DateTime.MinValue;
+                _lastTappedVideo = null;
+                
+                // Ejecutar comando de apertura de video
+                if (BindingContext is DashboardViewModel vm)
+                {
+                    vm.VideoTapCommand.Execute(video);
+                }
+                return;
+            }
+            
+            // Registrar este tap para posible doble clic
+            _lastVideoTapTime = now;
+            _lastTappedVideo = video;
+            
+            AppLog.Info("DashboardPage", $"⏱️ Clic simple - video.Id={video.Id}");
+
+            if (BindingContext is DashboardViewModel vm2)
+            {
+                if (vm2.IsMultiSelectMode)
                 {
                     // En multiselección, alternar selección sin afectar a otros
-                    vm.ToggleVideoSelectionCommand.Execute(video);
+                    vm2.ToggleVideoSelectionCommand.Execute(video);
                     return;
                 }
 
@@ -1170,11 +1203,11 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
                 if (video.IsSelected)
                 {
                     video.IsSelected = false;
-                    vm.UpdateVideoSelectionState(video);
+                    vm2.UpdateVideoSelectionState(video);
                 }
                 else
                 {
-                    vm.SelectSingleVideo(video);
+                    vm2.SelectSingleVideo(video);
                 }
             }
         }

@@ -892,6 +892,40 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         set { _isLoadingStats = value; OnPropertyChanged(); }
     }
     
+    // ===== Propiedades para carga progresiva (lazy loading) =====
+    
+    private bool _isVideoReady;
+    /// <summary>Indica si el video principal está listo para reproducirse</summary>
+    public bool IsVideoReady
+    {
+        get => _isVideoReady;
+        set { _isVideoReady = value; OnPropertyChanged(); }
+    }
+    
+    private bool _isLoadingTools = true;
+    /// <summary>Indica si se están cargando las herramientas del panel lateral</summary>
+    public bool IsLoadingTools
+    {
+        get => _isLoadingTools;
+        set { _isLoadingTools = value; OnPropertyChanged(); }
+    }
+    
+    private bool _isLoadingGallery = true;
+    /// <summary>Indica si se está cargando la galería de videos</summary>
+    public bool IsLoadingGallery
+    {
+        get => _isLoadingGallery;
+        set { _isLoadingGallery = value; OnPropertyChanged(); }
+    }
+    
+    private bool _isLoadingSecondaryData;
+    /// <summary>Indica si se están cargando datos secundarios (eventos, tiempos, etc.)</summary>
+    public bool IsLoadingSecondaryData
+    {
+        get => _isLoadingSecondaryData;
+        set { _isLoadingSecondaryData = value; OnPropertyChanged(); }
+    }
+    
     private int _totalEventTagsCount;
     /// <summary>Total de eventos de tag establecidos</summary>
     public int TotalEventTagsCount
@@ -2433,6 +2467,10 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     public async Task InitializeWithVideoAsync(VideoClip video)
     {
         // Algunos flujos pueden pasar un VideoClip “parcial” (Id=0).
+        // ===== Reset de estados de carga para Singleton reutilizado =====
+        IsLoadingTools = true;
+        IsLoadingGallery = true;
+
         // Sin Id no podemos recargar eventos/tags desde la BD, así que resolvemos por ruta.
         if (video.Id <= 0)
         {
@@ -2471,12 +2509,14 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             
             UpdatePlaylistProperties();
         }
+        IsLoadingGallery = false;
         
         // Cargar eventos de etiquetas del video
         await LoadTagEventsAsync();
 
         // Auto-abrir Split Time si existen laps/timing guardados
         await AutoOpenSplitTimePanelIfHasTimingAsync();
+        IsLoadingTools = false;
     }
 
     /// <summary>

@@ -418,16 +418,17 @@
                 </Border>
                 
                 <!-- Lista de videos -->
-                <CollectionView
-                    x:Name="PlaylistGallery"
-                    Grid.Row="2"
-                    ItemsSource="{Binding PlaylistVideos}"
-                    SelectionMode="None"
-                    Margin="0">
-                    <CollectionView.ItemsLayout>
-                        <LinearItemsLayout 
-                            Orientation="Vertical"
-                            ItemSpacing="2" />
+                <Grid Grid.Row="2">
+                    <CollectionView
+                        x:Name="PlaylistGallery"
+                        ItemsSource="{Binding PlaylistVideos}"
+                        SelectionMode="None"
+                        IsVisible="{Binding IsLoadingGallery, Converter={StaticResource InvertedBoolConverter}}"
+                        Margin="0">
+                        <CollectionView.ItemsLayout>
+                            <LinearItemsLayout 
+                                Orientation="Vertical"
+                                ItemSpacing="2" />
                     </CollectionView.ItemsLayout>
                     
                     <CollectionView.ItemTemplate>
@@ -558,7 +559,28 @@
                                 HorizontalOptions="Center" />
                         </VerticalStackLayout>
                     </CollectionView.EmptyView>
-                </CollectionView>
+                    </CollectionView>
+                    
+                    <!-- Indicador de carga de la galería -->
+                    <VerticalStackLayout
+                        IsVisible="{Binding IsLoadingGallery}"
+                        HorizontalOptions="Center"
+                        VerticalOptions="Center"
+                        Spacing="12"
+                        Padding="20">
+                        <ActivityIndicator
+                            IsRunning="{Binding IsLoadingGallery}"
+                            Color="#FF4FC3F7"
+                            HeightRequest="40"
+                            WidthRequest="40"
+                            HorizontalOptions="Center" />
+                        <Label
+                            FontSize="{StaticResource FontSizeSmall}"
+                            Text="Cargando videos..."
+                            TextColor="#FF888888"
+                            HorizontalOptions="Center" />
+                    </VerticalStackLayout>
+                </Grid>
                 
                 <!-- ===================== FOOTER DE NAVEGACIÓN (Row 3) ===================== -->
                 <VerticalStackLayout Grid.Row="3" Spacing="8" Padding="12,12,12,8">
@@ -3438,7 +3460,28 @@
                 </Grid>
 
                 <!-- ===== PESTAÑA: HERRAMIENTAS ===== -->
-                <ScrollView Grid.Row="1" IsVisible="{Binding IsToolsTabSelected}">
+                <Grid Grid.Row="1" IsVisible="{Binding IsToolsTabSelected}">
+                    <!-- Indicador de carga de herramientas -->
+                    <VerticalStackLayout
+                        IsVisible="{Binding IsLoadingTools}"
+                        HorizontalOptions="Center"
+                        VerticalOptions="Start"
+                        Spacing="12"
+                        Padding="20,40,20,20">
+                        <ActivityIndicator
+                            IsRunning="{Binding IsLoadingTools}"
+                            Color="#FF4FC3F7"
+                            HeightRequest="32"
+                            WidthRequest="32"
+                            HorizontalOptions="Center" />
+                        <Label
+                            FontSize="{StaticResource FontSizeSmall}"
+                            Text="Cargando herramientas..."
+                            TextColor="#FF888888"
+                            HorizontalOptions="Center" />
+                    </VerticalStackLayout>
+                    
+                    <ScrollView IsVisible="{Binding IsLoadingTools, Converter={StaticResource InvertedBoolConverter}}">
                     <VerticalStackLayout Spacing="12">
 
                     <!-- Sección Videolección -->
@@ -4442,6 +4485,7 @@
                     
                 </VerticalStackLayout>
                 </ScrollView>
+                </Grid>
 
                 <!-- ===== PESTAÑA: ESTADÍSTICAS ===== -->
                 <ScrollView Grid.Row="1" IsVisible="{Binding IsStatsTabSelected}">

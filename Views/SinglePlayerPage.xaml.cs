@@ -76,7 +76,13 @@ public partial class SinglePlayerPage : ContentPage
 
     public SinglePlayerPage(SinglePlayerViewModel viewModel, DatabaseService databaseService, IVideoLessonRecorder videoLessonRecorder, VideoLessonNotifier videoLessonNotifier)
     {
+        var ctorStart = System.Diagnostics.Stopwatch.StartNew();
+        
+        var initStart = System.Diagnostics.Stopwatch.StartNew();
         InitializeComponent();
+        initStart.Stop();
+        AppLog.Info("SinglePlayerPage", $"⏱️ InitializeComponent: {initStart.ElapsedMilliseconds}ms");
+        
         BindingContext = _viewModel = viewModel;
         _databaseService = databaseService;
         _videoLessonRecorder = videoLessonRecorder;
@@ -714,6 +720,7 @@ public partial class SinglePlayerPage : ContentPage
 
     protected override void OnAppearing()
     {
+        var appearingStart = System.Diagnostics.Stopwatch.StartNew();
         base.OnAppearing();
         _isPageActive = true;
 
@@ -721,6 +728,8 @@ public partial class SinglePlayerPage : ContentPage
             "SinglePlayerPage",
             $"OnAppearing | IsRecording={_videoLessonRecorder.IsRecording} | VideoPath='{_viewModel.VideoPath}' | NavStack={Shell.Current?.Navigation?.NavigationStack?.Count} | ModalStack={Shell.Current?.Navigation?.ModalStack?.Count}");
         SetupMediaHandlers();
+        
+        AppLog.Info("SinglePlayerPage", $"⏱️ OnAppearing base setup: {appearingStart.ElapsedMilliseconds}ms");
 
         // Asegurar que siempre hay un VideoClip (con Id) y recargar eventos al re-entrar.
         // Hacerlo secuencial para evitar carreras (Refresh antes de que exista _videoClip).
