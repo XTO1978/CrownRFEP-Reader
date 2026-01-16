@@ -1014,7 +1014,8 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
             var anyVisible = (UserLibraryContextMenuOverlay?.IsVisible ?? false)
                 || (SessionsContextMenuOverlay?.IsVisible ?? false)
                 || (SessionRowContextMenu?.IsVisible ?? false)
-                || (SmartFolderContextMenu?.IsVisible ?? false);
+                || (SmartFolderContextMenu?.IsVisible ?? false)
+                || (VideoItemContextMenu?.IsVisible ?? false);
 
             GlobalDismissOverlay.IsVisible = anyVisible;
         }
@@ -1589,7 +1590,8 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
             var anyVisible = (UserLibraryContextMenuOverlay?.IsVisible ?? false)
                 || (SessionsContextMenuOverlay?.IsVisible ?? false)
                 || (SessionRowContextMenu?.IsVisible ?? false)
-                || (SmartFolderContextMenu?.IsVisible ?? false);
+                || (SmartFolderContextMenu?.IsVisible ?? false)
+                || (VideoItemContextMenu?.IsVisible ?? false);
             if (!anyVisible)
                 return;
 
@@ -1608,11 +1610,14 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
                 return;
             if (IsPointInsideVisibleMenu(point, SessionsContextMenu))
                 return;
+            if (IsPointInsideVisibleMenu(point, VideoItemContextMenu))
+                return;
 
             HideUserLibraryContextMenu();
             HideSessionsContextMenu();
             HideSessionRowContextMenu();
             HideSmartFolderContextMenu();
+            HideVideoItemContextMenu();
         }
         catch { }
     }
@@ -1743,7 +1748,8 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
             var anyVisible = (UserLibraryContextMenuOverlay?.IsVisible ?? false)
                 || (SessionsContextMenuOverlay?.IsVisible ?? false)
                 || (SessionRowContextMenu?.IsVisible ?? false)
-                || (SmartFolderContextMenu?.IsVisible ?? false);
+                || (SmartFolderContextMenu?.IsVisible ?? false)
+                || (VideoItemContextMenu?.IsVisible ?? false);
             if (!anyVisible)
                 return;
 
@@ -1759,11 +1765,14 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
                 return;
             if (IsPointInsideVisibleMenu(host, location, SessionsContextMenu))
                 return;
+            if (IsPointInsideVisibleMenu(host, location, VideoItemContextMenu))
+                return;
 
             HideUserLibraryContextMenu();
             HideSessionsContextMenu();
             HideSessionRowContextMenu();
             HideSmartFolderContextMenu();
+            HideVideoItemContextMenu();
         }
         catch { }
     }
@@ -1782,7 +1791,8 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
             var anyVisible = (UserLibraryContextMenuOverlay?.IsVisible ?? false)
                 || (SessionsContextMenuOverlay?.IsVisible ?? false)
                 || (SessionRowContextMenu?.IsVisible ?? false)
-                || (SmartFolderContextMenu?.IsVisible ?? false);
+                || (SmartFolderContextMenu?.IsVisible ?? false)
+                || (VideoItemContextMenu?.IsVisible ?? false);
             if (!anyVisible)
                 return;
 
@@ -1798,11 +1808,14 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
                 return;
             if (IsPointInsideVisibleMenu(host, location, SessionsContextMenu))
                 return;
+            if (IsPointInsideVisibleMenu(host, location, VideoItemContextMenu))
+                return;
 
             HideUserLibraryContextMenu();
             HideSessionsContextMenu();
             HideSessionRowContextMenu();
             HideSmartFolderContextMenu();
+            HideVideoItemContextMenu();
         }
         catch { }
     }
