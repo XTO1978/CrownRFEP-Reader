@@ -1467,8 +1467,7 @@ public partial class SinglePlayerPage : ContentPage
                     if (AnalysisCanvas != null)
                         AnalysisCanvas.InputTransparent = true;
 
-                    if (ScrubOverlay != null)
-                        ScrubOverlay.InputTransparent = false;
+                    SetScrubOverlaysInputTransparent(false);
 
                     if (InkOptionsPanel != null)
                         InkOptionsPanel.IsVisible = false;
@@ -1503,8 +1502,7 @@ public partial class SinglePlayerPage : ContentPage
             AnalysisCanvas.InputTransparent = !_isDrawingMode;
 
         // Cuando dibujamos, evitamos que el overlay de scrub intercepte gestos.
-        if (ScrubOverlay != null)
-            ScrubOverlay.InputTransparent = _isDrawingMode;
+        SetScrubOverlaysInputTransparent(_isDrawingMode);
 
         // Por defecto: herramienta de trazo al activar
         if (_isDrawingMode && AnalysisCanvas != null)
@@ -1708,6 +1706,18 @@ public partial class SinglePlayerPage : ContentPage
             return;
 
         AnalysisCanvas?.ClearAll();
+    }
+
+    private void SetScrubOverlaysInputTransparent(bool isTransparent)
+    {
+        if (ScrubOverlay != null)
+            ScrubOverlay.InputTransparent = isTransparent;
+        if (ScrubOverlay2 != null)
+            ScrubOverlay2.InputTransparent = isTransparent;
+        if (ScrubOverlay3 != null)
+            ScrubOverlay3.InputTransparent = isTransparent;
+        if (ScrubOverlay4 != null)
+            ScrubOverlay4.InputTransparent = isTransparent;
     }
 
     #region Eventos del reproductor
@@ -2511,6 +2521,8 @@ public partial class SinglePlayerPage : ContentPage
         // Desuscribir el evento de tamaño si estaba suscrito y resetear padding
         ComparisonGrid.SizeChanged -= OnComparisonGridSizeChanged;
         ComparisonGrid.Padding = new Thickness(0);
+        if (AnalysisCanvas != null)
+            AnalysisCanvas.Margin = ComparisonGrid.Padding;
 
         switch (layout)
         {
@@ -2593,6 +2605,41 @@ public partial class SinglePlayerPage : ContentPage
                     ApplyVideoAspectRatio();
                 break;
         }
+
+        ConfigureAnalysisCanvasForLayout(layout);
+    }
+
+    private void ConfigureAnalysisCanvasForLayout(ComparisonLayout layout)
+    {
+        if (AnalysisCanvas == null)
+            return;
+
+        Grid.SetRow(AnalysisCanvas, 0);
+        Grid.SetColumn(AnalysisCanvas, 0);
+
+        switch (layout)
+        {
+            case ComparisonLayout.Horizontal2x1:
+                Grid.SetRowSpan(AnalysisCanvas, 1);
+                Grid.SetColumnSpan(AnalysisCanvas, 2);
+                break;
+
+            case ComparisonLayout.Vertical1x2:
+                Grid.SetRowSpan(AnalysisCanvas, 2);
+                Grid.SetColumnSpan(AnalysisCanvas, 1);
+                break;
+
+            case ComparisonLayout.Quad2x2:
+                Grid.SetRowSpan(AnalysisCanvas, 2);
+                Grid.SetColumnSpan(AnalysisCanvas, 2);
+                break;
+
+            case ComparisonLayout.Single:
+            default:
+                Grid.SetRowSpan(AnalysisCanvas, 1);
+                Grid.SetColumnSpan(AnalysisCanvas, 1);
+                break;
+        }
     }
 
     private void OnComparisonGridSizeChanged(object? sender, EventArgs e)
@@ -2622,6 +2669,8 @@ public partial class SinglePlayerPage : ContentPage
             // El contenido cabe - centrar verticalmente con las proporciones correctas
             var verticalPadding = (gridHeight - totalIdealHeight) / 2;
             ComparisonGrid.Padding = new Thickness(0, verticalPadding, 0, verticalPadding);
+            if (AnalysisCanvas != null)
+                AnalysisCanvas.Margin = ComparisonGrid.Padding;
             
             // Actualizar las filas a altura fija
             if (ComparisonGrid.RowDefinitions.Count >= 2)
@@ -2634,6 +2683,8 @@ public partial class SinglePlayerPage : ContentPage
         {
             // El contenido no cabe - ajustar al alto disponible y reducir ancho
             ComparisonGrid.Padding = new Thickness(0);
+            if (AnalysisCanvas != null)
+                AnalysisCanvas.Margin = ComparisonGrid.Padding;
             var actualCellHeight = gridHeight / 2;
             var actualCellWidth = actualCellHeight * aspectRatio;
             var horizontalPadding = (gridWidth - (actualCellWidth * 2)) / 2;
@@ -2641,6 +2692,8 @@ public partial class SinglePlayerPage : ContentPage
             if (horizontalPadding > 0)
             {
                 ComparisonGrid.Padding = new Thickness(horizontalPadding, 0, horizontalPadding, 0);
+                if (AnalysisCanvas != null)
+                    AnalysisCanvas.Margin = ComparisonGrid.Padding;
             }
             
             // Usar filas Star para distribuir equitativamente

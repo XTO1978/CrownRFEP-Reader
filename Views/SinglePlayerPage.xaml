@@ -828,8 +828,8 @@
             Stroke="#FF3A3A3A"
             StrokeShape="RoundRectangle 8"
             StrokeThickness="0">
-            
-            <!-- Grid contenedor para layouts de comparación -->
+
+            <!-- Grid contenedor para layouts de comparación + overlay de dibujo -->
             <Grid x:Name="ComparisonGrid">
                 <!-- Video principal (siempre visible, posición configurable según layout) -->
                 <Grid x:Name="VideoSlot1" Grid.Row="0" Grid.Column="0">
@@ -853,11 +853,6 @@
                         </BoxView.Behaviors>
                     </BoxView>
 
-                    <!-- Overlay de dibujo para análisis técnico (solo interactivo cuando el modo dibujo está activo) -->
-                    <controls:AnalysisDrawingView
-                        x:Name="AnalysisCanvas"
-                        InputTransparent="True" />
-                    
                     <!-- Indicador de video 1 (solo visible en modo multi-video) -->
                     <Border
                         Margin="8"
@@ -1309,9 +1304,14 @@
                             ValueChanged="OnIndividualSlider4Changed" />
                     </Border>
                 </Grid>
-                
-                
-                
+
+                <!-- Overlay de dibujo para análisis técnico (solo interactivo cuando el modo dibujo está activo) -->
+                <controls:AnalysisDrawingView
+                    x:Name="AnalysisCanvas"
+                    Grid.Row="0"
+                    Grid.Column="0"
+                    InputTransparent="True"
+                    ZIndex="50" />
                 <!--  Barra de botones de edición (esquina superior derecha) - Solo para iOS/MacCatalyst  -->
                 <Border
                     x:Name="ToolbarOverlay"
@@ -1600,432 +1600,6 @@
                         </Border>
 
                     </HorizontalStackLayout>
-                </Border>
-
-                <!-- Barra de herramientas de dibujo (pequeña) -->
-                <Border
-                    x:Name="DrawingToolsPanel"
-                    Margin="16,100,16,16"
-                    Padding="10"
-                    BackgroundColor="#EE1E1E1E"
-                    HorizontalOptions="End"
-                    IsVisible="False"
-                    StrokeShape="RoundRectangle 12"
-                    StrokeThickness="0"
-                    VerticalOptions="Start">
-                    <VerticalStackLayout Spacing="8">
-                        <!--  Título del panel con botón cerrar  -->
-                        <Grid ColumnDefinitions="*,Auto">
-                            <HorizontalStackLayout Spacing="6">
-                                <controls:SymbolIcon
-                                    HeightRequest="{StaticResource IconSizeDefault}"
-                                    SymbolName="scribble.variable"
-                                    TintColor="#FF4CAF50"
-                                    WidthRequest="{StaticResource IconSizeDefault}" />
-                                <Label
-                                    FontAttributes="Bold"
-                                    FontSize="{StaticResource FontSizeSmall}"
-                                    Text="Dibujar"
-                                    TextColor="White"
-                                    VerticalOptions="Center" />
-                            </HorizontalStackLayout>
-                            <Border
-                                Grid.Column="1"
-                                Padding="4"
-                                BackgroundColor="Transparent"
-                                StrokeThickness="0">
-                                <Border.GestureRecognizers>
-                                    <TapGestureRecognizer Tapped="OnToggleDrawingToolsTapped" />
-                                </Border.GestureRecognizers>
-                                <controls:SymbolIcon
-                                    HeightRequest="{StaticResource IconSizeMedium}"
-                                    SymbolName="xmark.circle.fill"
-                                    TintColor="#FF888888"
-                                    WidthRequest="{StaticResource IconSizeMedium}" />
-                            </Border>
-                        </Grid>
-                        
-                        <HorizontalStackLayout Spacing="8">
-                            <Border
-                                x:Name="ToolStrokeButton"
-                                Padding="10,6"
-                                BackgroundColor="#FF2A2A2A"
-                                StrokeShape="RoundRectangle 6"
-                                StrokeThickness="0">
-                                <Border.GestureRecognizers>
-                                    <TapGestureRecognizer Tapped="OnSelectStrokeToolTapped" />
-                                </Border.GestureRecognizers>
-                                <controls:SymbolIcon
-                                    HeightRequest="{StaticResource IconSizeMedium}"
-                                    WidthRequest="{StaticResource IconSizeMedium}"
-                                    SymbolName="scribble"
-                                    TintColor="White" />
-                            </Border>
-
-                            <Border
-                                x:Name="ToolTextButton"
-                                Padding="10,6"
-                                BackgroundColor="#FF2A2A2A"
-                                StrokeShape="RoundRectangle 6"
-                                StrokeThickness="0">
-                                <Border.GestureRecognizers>
-                                    <TapGestureRecognizer Tapped="OnSelectTextToolTapped" />
-                                </Border.GestureRecognizers>
-                                <controls:SymbolIcon
-                                    HeightRequest="{StaticResource IconSizeMedium}"
-                                    WidthRequest="{StaticResource IconSizeMedium}"
-                                    SymbolName="textformat"
-                                    TintColor="White" />
-                            </Border>
-
-                            <Border
-                                x:Name="ToolShapeButton"
-                                Padding="10,6"
-                                BackgroundColor="#FF2A2A2A"
-                                StrokeShape="RoundRectangle 6"
-                                StrokeThickness="0">
-                                <Border.GestureRecognizers>
-                                    <TapGestureRecognizer Tapped="OnSelectShapeToolTapped" />
-                                </Border.GestureRecognizers>
-                                <controls:SymbolIcon
-                                    HeightRequest="{StaticResource IconSizeMedium}"
-                                    WidthRequest="{StaticResource IconSizeMedium}"
-                                    SymbolName="square.on.circle"
-                                    TintColor="White" />
-                            </Border>
-
-                            <!-- Botón para desplegar opciones de tinta -->
-                            <Border
-                                x:Name="InkOptionsToggleButton"
-                                Padding="10,6"
-                                BackgroundColor="#FF2A2A2A"
-                                StrokeShape="RoundRectangle 6"
-                                StrokeThickness="0">
-                                <Border.GestureRecognizers>
-                                    <TapGestureRecognizer Tapped="OnToggleInkOptionsTapped" />
-                                </Border.GestureRecognizers>
-                                <HorizontalStackLayout Spacing="6" VerticalOptions="Center">
-                                    <controls:SymbolIcon
-                                        HeightRequest="{StaticResource IconSizeMedium}"
-                                        WidthRequest="{StaticResource IconSizeMedium}"
-                                        SymbolName="paintpalette"
-                                        TintColor="White" />
-                                    <Border
-                                        x:Name="InkColorSwatch"
-                                        HeightRequest="12"
-                                        WidthRequest="12"
-                                        BackgroundColor="#FFFF7043"
-                                        StrokeShape="RoundRectangle 6"
-                                        StrokeThickness="0"
-                                        VerticalOptions="Center" />
-                                </HorizontalStackLayout>
-                            </Border>
-                        </HorizontalStackLayout>
-
-                        <!-- Opciones de tinta (panel expandible) -->
-                        <Border
-                            x:Name="InkOptionsPanel"
-                            IsVisible="False"
-                            Padding="8"
-                            BackgroundColor="#FF2A2A2A"
-                            StrokeShape="RoundRectangle 8"
-                            StrokeThickness="0">
-                            <VerticalStackLayout Spacing="8">
-                                <HorizontalStackLayout x:Name="InkColorsRow" Spacing="8">
-                                    <Border
-                                        x:Name="InkColorOrangeButton"
-                                        Padding="6"
-                                        BackgroundColor="#FF2A2A2A"
-                                        StrokeShape="RoundRectangle 6"
-                                        StrokeThickness="0">
-                                        <Border.GestureRecognizers>
-                                            <TapGestureRecognizer Tapped="OnSelectInkOrangeTapped" />
-                                        </Border.GestureRecognizers>
-                                        <Border
-                                            HeightRequest="16"
-                                            WidthRequest="16"
-                                            BackgroundColor="#FFFF7043"
-                                            StrokeShape="RoundRectangle 8"
-                                            StrokeThickness="0" />
-                                    </Border>
-
-                                    <Border
-                                        x:Name="InkColorWhiteButton"
-                                        Padding="6"
-                                        BackgroundColor="#FF2A2A2A"
-                                        StrokeShape="RoundRectangle 6"
-                                        StrokeThickness="0">
-                                        <Border.GestureRecognizers>
-                                            <TapGestureRecognizer Tapped="OnSelectInkWhiteTapped" />
-                                        </Border.GestureRecognizers>
-                                        <Border
-                                            HeightRequest="16"
-                                            WidthRequest="16"
-                                            BackgroundColor="White"
-                                            StrokeShape="RoundRectangle 8"
-                                            StrokeThickness="0" />
-                                    </Border>
-
-                                    <Border
-                                        x:Name="InkColorBlueButton"
-                                        Padding="6"
-                                        BackgroundColor="#FF2A2A2A"
-                                        StrokeShape="RoundRectangle 6"
-                                        StrokeThickness="0">
-                                        <Border.GestureRecognizers>
-                                            <TapGestureRecognizer Tapped="OnSelectInkBlueTapped" />
-                                        </Border.GestureRecognizers>
-                                        <Border
-                                            HeightRequest="16"
-                                            WidthRequest="16"
-                                            BackgroundColor="#FF4A4A4A"
-                                            StrokeShape="RoundRectangle 8"
-                                            StrokeThickness="0" />
-                                    </Border>
-
-                                    <Border
-                                        x:Name="InkColorGreenButton"
-                                        Padding="6"
-                                        BackgroundColor="#FF2A2A2A"
-                                        StrokeShape="RoundRectangle 6"
-                                        StrokeThickness="0">
-                                        <Border.GestureRecognizers>
-                                            <TapGestureRecognizer Tapped="OnSelectInkGreenTapped" />
-                                        </Border.GestureRecognizers>
-                                        <Border
-                                            HeightRequest="16"
-                                            WidthRequest="16"
-                                            BackgroundColor="#FF66BB6A"
-                                            StrokeShape="RoundRectangle 8"
-                                            StrokeThickness="0" />
-                                    </Border>
-                                </HorizontalStackLayout>
-
-                                <HorizontalStackLayout x:Name="InkThicknessRow" Spacing="8">
-                                    <Border
-                                        x:Name="InkThickness2Button"
-                                        Padding="10,6"
-                                        BackgroundColor="#FF2A2A2A"
-                                        StrokeShape="RoundRectangle 6"
-                                        StrokeThickness="0">
-                                        <Border.GestureRecognizers>
-                                            <TapGestureRecognizer Tapped="OnSelectInkThickness2Tapped" />
-                                        </Border.GestureRecognizers>
-                                        <Border
-                                            HeightRequest="2"
-                                            WidthRequest="20"
-                                            BackgroundColor="White"
-                                            StrokeThickness="0"
-                                            VerticalOptions="Center"
-                                            HorizontalOptions="Center" />
-                                    </Border>
-
-                                    <Border
-                                        x:Name="InkThickness4Button"
-                                        Padding="10,6"
-                                        BackgroundColor="#FF2A2A2A"
-                                        StrokeShape="RoundRectangle 6"
-                                        StrokeThickness="0">
-                                        <Border.GestureRecognizers>
-                                            <TapGestureRecognizer Tapped="OnSelectInkThickness4Tapped" />
-                                        </Border.GestureRecognizers>
-                                        <Border
-                                            HeightRequest="4"
-                                            WidthRequest="20"
-                                            BackgroundColor="White"
-                                            StrokeThickness="0"
-                                            VerticalOptions="Center"
-                                            HorizontalOptions="Center" />
-                                    </Border>
-
-                                    <Border
-                                        x:Name="InkThickness6Button"
-                                        Padding="10,6"
-                                        BackgroundColor="#FF2A2A2A"
-                                        StrokeShape="RoundRectangle 6"
-                                        StrokeThickness="0">
-                                        <Border.GestureRecognizers>
-                                            <TapGestureRecognizer Tapped="OnSelectInkThickness6Tapped" />
-                                        </Border.GestureRecognizers>
-                                        <Border
-                                            HeightRequest="6"
-                                            WidthRequest="20"
-                                            BackgroundColor="White"
-                                            StrokeThickness="0"
-                                            VerticalOptions="Center"
-                                            HorizontalOptions="Center" />
-                                    </Border>
-                                </HorizontalStackLayout>
-
-                                <HorizontalStackLayout x:Name="InkTextSizeRow" Spacing="8">
-                                    <Border
-                                        x:Name="TextSizeSmallButton"
-                                        Padding="10,6"
-                                        BackgroundColor="#FF2A2A2A"
-                                        StrokeShape="RoundRectangle 6"
-                                        StrokeThickness="0">
-                                        <Border.GestureRecognizers>
-                                            <TapGestureRecognizer Tapped="OnSelectTextSizeSmallTapped" />
-                                        </Border.GestureRecognizers>
-                                        <Label Text="A" FontSize="{StaticResource FontSizeSmall}" TextColor="White" HorizontalOptions="Center" VerticalOptions="Center" />
-                                    </Border>
-
-                                    <Border
-                                        x:Name="TextSizeMediumButton"
-                                        Padding="10,6"
-                                        BackgroundColor="#FF2A2A2A"
-                                        StrokeShape="RoundRectangle 6"
-                                        StrokeThickness="0">
-                                        <Border.GestureRecognizers>
-                                            <TapGestureRecognizer Tapped="OnSelectTextSizeMediumTapped" />
-                                        </Border.GestureRecognizers>
-                                        <Label Text="A" FontSize="{StaticResource FontSizeSubtitle}" TextColor="White" HorizontalOptions="Center" VerticalOptions="Center" />
-                                    </Border>
-
-                                    <Border
-                                        x:Name="TextSizeLargeButton"
-                                        Padding="10,6"
-                                        BackgroundColor="#FF2A2A2A"
-                                        StrokeShape="RoundRectangle 6"
-                                        StrokeThickness="0">
-                                        <Border.GestureRecognizers>
-                                            <TapGestureRecognizer Tapped="OnSelectTextSizeLargeTapped" />
-                                        </Border.GestureRecognizers>
-                                        <Label Text="A" FontSize="{StaticResource FontSizeHeader}" TextColor="White" HorizontalOptions="Center" VerticalOptions="Center" />
-                                    </Border>
-                                </HorizontalStackLayout>
-                            </VerticalStackLayout>
-                        </Border>
-
-                        <HorizontalStackLayout x:Name="ShapeOptionsRow" IsVisible="False" Spacing="8">
-                            <Border
-                                x:Name="ShapeRectButton"
-                                Padding="10,6"
-                                BackgroundColor="#FF2A2A2A"
-                                StrokeShape="RoundRectangle 6"
-                                StrokeThickness="0">
-                                <Border.GestureRecognizers>
-                                    <TapGestureRecognizer Tapped="OnSelectShapeRectTapped" />
-                                </Border.GestureRecognizers>
-                                <controls:SymbolIcon
-                                    HeightRequest="{StaticResource IconSizeMedium}"
-                                    WidthRequest="{StaticResource IconSizeMedium}"
-                                    SymbolName="rectangle"
-                                    TintColor="White" />
-                            </Border>
-
-                            <Border
-                                x:Name="ShapeCircleButton"
-                                Padding="10,6"
-                                BackgroundColor="#FF2A2A2A"
-                                StrokeShape="RoundRectangle 6"
-                                StrokeThickness="0">
-                                <Border.GestureRecognizers>
-                                    <TapGestureRecognizer Tapped="OnSelectShapeCircleTapped" />
-                                </Border.GestureRecognizers>
-                                <controls:SymbolIcon
-                                    HeightRequest="{StaticResource IconSizeMedium}"
-                                    WidthRequest="{StaticResource IconSizeMedium}"
-                                    SymbolName="circle"
-                                    TintColor="White" />
-                            </Border>
-
-                            <Border
-                                x:Name="ShapeLineButton"
-                                Padding="10,6"
-                                BackgroundColor="#FF2A2A2A"
-                                StrokeShape="RoundRectangle 6"
-                                StrokeThickness="0">
-                                <Border.GestureRecognizers>
-                                    <TapGestureRecognizer Tapped="OnSelectShapeLineTapped" />
-                                </Border.GestureRecognizers>
-                                <controls:SymbolIcon
-                                    HeightRequest="{StaticResource IconSizeMedium}"
-                                    WidthRequest="{StaticResource IconSizeMedium}"
-                                    SymbolName="line.diagonal"
-                                    TintColor="White" />
-                            </Border>
-
-                            <Border
-                                x:Name="ShapeArrowButton"
-                                Padding="10,6"
-                                BackgroundColor="#FF2A2A2A"
-                                StrokeShape="RoundRectangle 6"
-                                StrokeThickness="0">
-                                <Border.GestureRecognizers>
-                                    <TapGestureRecognizer Tapped="OnSelectShapeArrowTapped" />
-                                </Border.GestureRecognizers>
-                                <controls:SymbolIcon
-                                    HeightRequest="{StaticResource IconSizeMedium}"
-                                    WidthRequest="{StaticResource IconSizeMedium}"
-                                    SymbolName="arrow.right"
-                                    TintColor="White" />
-                            </Border>
-                        </HorizontalStackLayout>
-
-                        <!-- Botones Deshacer/Rehacer/Borrar -->
-                        <HorizontalStackLayout Spacing="6" HorizontalOptions="Fill">
-                            <Border
-                                x:Name="ToolUndoButton"
-                                Padding="10,6"
-                                BackgroundColor="#FF2A2A2A"
-                                StrokeShape="RoundRectangle 6"
-                                StrokeThickness="0"
-                                HorizontalOptions="FillAndExpand">
-                                <Border.GestureRecognizers>
-                                    <TapGestureRecognizer Tapped="OnUndoDrawingTapped" />
-                                </Border.GestureRecognizers>
-                                <HorizontalStackLayout Spacing="6" HorizontalOptions="Center">
-                                    <controls:SymbolIcon
-                                        HeightRequest="{StaticResource IconSizeMedium}"
-                                        WidthRequest="{StaticResource IconSizeMedium}"
-                                        SymbolName="arrow.uturn.backward"
-                                        TintColor="White" />
-                                    <Label Text="Deshacer" FontSize="{StaticResource FontSizeSmall}" TextColor="White" VerticalOptions="Center" />
-                                </HorizontalStackLayout>
-                            </Border>
-                            
-                            <Border
-                                x:Name="ToolRedoButton"
-                                Padding="10,6"
-                                BackgroundColor="#FF2A2A2A"
-                                StrokeShape="RoundRectangle 6"
-                                StrokeThickness="0"
-                                HorizontalOptions="FillAndExpand">
-                                <Border.GestureRecognizers>
-                                    <TapGestureRecognizer Tapped="OnRedoDrawingTapped" />
-                                </Border.GestureRecognizers>
-                                <HorizontalStackLayout Spacing="6" HorizontalOptions="Center">
-                                    <controls:SymbolIcon
-                                        HeightRequest="{StaticResource IconSizeMedium}"
-                                        WidthRequest="{StaticResource IconSizeMedium}"
-                                        SymbolName="arrow.uturn.forward"
-                                        TintColor="White" />
-                                    <Label Text="Rehacer" FontSize="{StaticResource FontSizeSmall}" TextColor="White" VerticalOptions="Center" />
-                                </HorizontalStackLayout>
-                            </Border>
-                        </HorizontalStackLayout>
-
-                        <Border
-                            x:Name="ToolClearButton"
-                            Padding="10,6"
-                            BackgroundColor="#FF2A2A2A"
-                            StrokeShape="RoundRectangle 6"
-                            StrokeThickness="0"
-                            HorizontalOptions="Fill">
-                            <Border.GestureRecognizers>
-                                <TapGestureRecognizer Tapped="OnClearDrawingTapped" />
-                            </Border.GestureRecognizers>
-                            <HorizontalStackLayout Spacing="8" HorizontalOptions="Center">
-                                <controls:SymbolIcon
-                                    HeightRequest="{StaticResource IconSizeMedium}"
-                                    WidthRequest="{StaticResource IconSizeMedium}"
-                                    SymbolName="trash"
-                                    TintColor="White" />
-                                <Label Text="Borrar" FontSize="{StaticResource FontSizeSmall}" TextColor="White" VerticalOptions="Center" />
-                            </HorizontalStackLayout>
-                        </Border>
-                    </VerticalStackLayout>
                 </Border>
                 
                 <!--  Contenedor de paneles overlay (solo visible en iOS/Android, no en Windows/MacCatalyst) -->
@@ -3835,6 +3409,430 @@
                             </Border>
                         </FlexLayout>
                     </VerticalStackLayout>
+
+                    <!-- Panel de herramientas de dibujo (en sidebar) -->
+                    <Border
+                        x:Name="DrawingToolsPanel"
+                        Padding="10"
+                        BackgroundColor="#EE1E1E1E"
+                        HorizontalOptions="Fill"
+                        IsVisible="False"
+                        StrokeShape="RoundRectangle 12"
+                        StrokeThickness="0">
+                        <VerticalStackLayout Spacing="8">
+                            <!--  Título del panel con botón cerrar  -->
+                            <Grid ColumnDefinitions="*,Auto">
+                                <HorizontalStackLayout Spacing="6">
+                                    <controls:SymbolIcon
+                                        HeightRequest="{StaticResource IconSizeDefault}"
+                                        SymbolName="scribble.variable"
+                                        TintColor="#FF4CAF50"
+                                        WidthRequest="{StaticResource IconSizeDefault}" />
+                                    <Label
+                                        FontAttributes="Bold"
+                                        FontSize="{StaticResource FontSizeSmall}"
+                                        Text="Dibujar"
+                                        TextColor="White"
+                                        VerticalOptions="Center" />
+                                </HorizontalStackLayout>
+                                <Border
+                                    Grid.Column="1"
+                                    Padding="4"
+                                    BackgroundColor="Transparent"
+                                    StrokeThickness="0">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="OnToggleDrawingToolsTapped" />
+                                    </Border.GestureRecognizers>
+                                    <controls:SymbolIcon
+                                        HeightRequest="{StaticResource IconSizeMedium}"
+                                        SymbolName="xmark.circle.fill"
+                                        TintColor="#FF888888"
+                                        WidthRequest="{StaticResource IconSizeMedium}" />
+                                </Border>
+                            </Grid>
+
+                            <HorizontalStackLayout Spacing="8">
+                                <Border
+                                    x:Name="ToolStrokeButton"
+                                    Padding="10,6"
+                                    BackgroundColor="#FF2A2A2A"
+                                    StrokeShape="RoundRectangle 6"
+                                    StrokeThickness="0">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="OnSelectStrokeToolTapped" />
+                                    </Border.GestureRecognizers>
+                                    <controls:SymbolIcon
+                                        HeightRequest="{StaticResource IconSizeMedium}"
+                                        WidthRequest="{StaticResource IconSizeMedium}"
+                                        SymbolName="scribble"
+                                        TintColor="White" />
+                                </Border>
+
+                                <Border
+                                    x:Name="ToolTextButton"
+                                    Padding="10,6"
+                                    BackgroundColor="#FF2A2A2A"
+                                    StrokeShape="RoundRectangle 6"
+                                    StrokeThickness="0">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="OnSelectTextToolTapped" />
+                                    </Border.GestureRecognizers>
+                                    <controls:SymbolIcon
+                                        HeightRequest="{StaticResource IconSizeMedium}"
+                                        WidthRequest="{StaticResource IconSizeMedium}"
+                                        SymbolName="textformat"
+                                        TintColor="White" />
+                                </Border>
+
+                                <Border
+                                    x:Name="ToolShapeButton"
+                                    Padding="10,6"
+                                    BackgroundColor="#FF2A2A2A"
+                                    StrokeShape="RoundRectangle 6"
+                                    StrokeThickness="0">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="OnSelectShapeToolTapped" />
+                                    </Border.GestureRecognizers>
+                                    <controls:SymbolIcon
+                                        HeightRequest="{StaticResource IconSizeMedium}"
+                                        WidthRequest="{StaticResource IconSizeMedium}"
+                                        SymbolName="square.on.circle"
+                                        TintColor="White" />
+                                </Border>
+
+                                <!-- Botón para desplegar opciones de tinta -->
+                                <Border
+                                    x:Name="InkOptionsToggleButton"
+                                    Padding="10,6"
+                                    BackgroundColor="#FF2A2A2A"
+                                    StrokeShape="RoundRectangle 6"
+                                    StrokeThickness="0">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="OnToggleInkOptionsTapped" />
+                                    </Border.GestureRecognizers>
+                                    <HorizontalStackLayout Spacing="6" VerticalOptions="Center">
+                                        <controls:SymbolIcon
+                                            HeightRequest="{StaticResource IconSizeMedium}"
+                                            WidthRequest="{StaticResource IconSizeMedium}"
+                                            SymbolName="paintpalette"
+                                            TintColor="White" />
+                                        <Border
+                                            x:Name="InkColorSwatch"
+                                            HeightRequest="12"
+                                            WidthRequest="12"
+                                            BackgroundColor="#FFFF7043"
+                                            StrokeShape="RoundRectangle 6"
+                                            StrokeThickness="0"
+                                            VerticalOptions="Center" />
+                                    </HorizontalStackLayout>
+                                </Border>
+                            </HorizontalStackLayout>
+
+                            <!-- Opciones de tinta (panel expandible) -->
+                            <Border
+                                x:Name="InkOptionsPanel"
+                                IsVisible="False"
+                                Padding="8"
+                                BackgroundColor="#FF2A2A2A"
+                                StrokeShape="RoundRectangle 8"
+                                StrokeThickness="0">
+                                <VerticalStackLayout Spacing="8">
+                                    <HorizontalStackLayout x:Name="InkColorsRow" Spacing="8">
+                                        <Border
+                                            x:Name="InkColorOrangeButton"
+                                            Padding="6"
+                                            BackgroundColor="#FF2A2A2A"
+                                            StrokeShape="RoundRectangle 6"
+                                            StrokeThickness="0">
+                                            <Border.GestureRecognizers>
+                                                <TapGestureRecognizer Tapped="OnSelectInkOrangeTapped" />
+                                            </Border.GestureRecognizers>
+                                            <Border
+                                                HeightRequest="16"
+                                                WidthRequest="16"
+                                                BackgroundColor="#FFFF7043"
+                                                StrokeShape="RoundRectangle 8"
+                                                StrokeThickness="0" />
+                                        </Border>
+
+                                        <Border
+                                            x:Name="InkColorWhiteButton"
+                                            Padding="6"
+                                            BackgroundColor="#FF2A2A2A"
+                                            StrokeShape="RoundRectangle 6"
+                                            StrokeThickness="0">
+                                            <Border.GestureRecognizers>
+                                                <TapGestureRecognizer Tapped="OnSelectInkWhiteTapped" />
+                                            </Border.GestureRecognizers>
+                                            <Border
+                                                HeightRequest="16"
+                                                WidthRequest="16"
+                                                BackgroundColor="White"
+                                                StrokeShape="RoundRectangle 8"
+                                                StrokeThickness="0" />
+                                        </Border>
+
+                                        <Border
+                                            x:Name="InkColorBlueButton"
+                                            Padding="6"
+                                            BackgroundColor="#FF2A2A2A"
+                                            StrokeShape="RoundRectangle 6"
+                                            StrokeThickness="0">
+                                            <Border.GestureRecognizers>
+                                                <TapGestureRecognizer Tapped="OnSelectInkBlueTapped" />
+                                            </Border.GestureRecognizers>
+                                            <Border
+                                                HeightRequest="16"
+                                                WidthRequest="16"
+                                                BackgroundColor="#FF4A4A4A"
+                                                StrokeShape="RoundRectangle 8"
+                                                StrokeThickness="0" />
+                                        </Border>
+
+                                        <Border
+                                            x:Name="InkColorGreenButton"
+                                            Padding="6"
+                                            BackgroundColor="#FF2A2A2A"
+                                            StrokeShape="RoundRectangle 6"
+                                            StrokeThickness="0">
+                                            <Border.GestureRecognizers>
+                                                <TapGestureRecognizer Tapped="OnSelectInkGreenTapped" />
+                                            </Border.GestureRecognizers>
+                                            <Border
+                                                HeightRequest="16"
+                                                WidthRequest="16"
+                                                BackgroundColor="#FF66BB6A"
+                                                StrokeShape="RoundRectangle 8"
+                                                StrokeThickness="0" />
+                                        </Border>
+                                    </HorizontalStackLayout>
+
+                                    <HorizontalStackLayout x:Name="InkThicknessRow" Spacing="8">
+                                        <Border
+                                            x:Name="InkThickness2Button"
+                                            Padding="10,6"
+                                            BackgroundColor="#FF2A2A2A"
+                                            StrokeShape="RoundRectangle 6"
+                                            StrokeThickness="0">
+                                            <Border.GestureRecognizers>
+                                                <TapGestureRecognizer Tapped="OnSelectInkThickness2Tapped" />
+                                            </Border.GestureRecognizers>
+                                            <Border
+                                                HeightRequest="2"
+                                                WidthRequest="20"
+                                                BackgroundColor="White"
+                                                StrokeThickness="0"
+                                                VerticalOptions="Center"
+                                                HorizontalOptions="Center" />
+                                        </Border>
+
+                                        <Border
+                                            x:Name="InkThickness4Button"
+                                            Padding="10,6"
+                                            BackgroundColor="#FF2A2A2A"
+                                            StrokeShape="RoundRectangle 6"
+                                            StrokeThickness="0">
+                                            <Border.GestureRecognizers>
+                                                <TapGestureRecognizer Tapped="OnSelectInkThickness4Tapped" />
+                                            </Border.GestureRecognizers>
+                                            <Border
+                                                HeightRequest="4"
+                                                WidthRequest="20"
+                                                BackgroundColor="White"
+                                                StrokeThickness="0"
+                                                VerticalOptions="Center"
+                                                HorizontalOptions="Center" />
+                                        </Border>
+
+                                        <Border
+                                            x:Name="InkThickness6Button"
+                                            Padding="10,6"
+                                            BackgroundColor="#FF2A2A2A"
+                                            StrokeShape="RoundRectangle 6"
+                                            StrokeThickness="0">
+                                            <Border.GestureRecognizers>
+                                                <TapGestureRecognizer Tapped="OnSelectInkThickness6Tapped" />
+                                            </Border.GestureRecognizers>
+                                            <Border
+                                                HeightRequest="6"
+                                                WidthRequest="20"
+                                                BackgroundColor="White"
+                                                StrokeThickness="0"
+                                                VerticalOptions="Center"
+                                                HorizontalOptions="Center" />
+                                        </Border>
+                                    </HorizontalStackLayout>
+
+                                    <HorizontalStackLayout x:Name="InkTextSizeRow" Spacing="8">
+                                        <Border
+                                            x:Name="TextSizeSmallButton"
+                                            Padding="10,6"
+                                            BackgroundColor="#FF2A2A2A"
+                                            StrokeShape="RoundRectangle 6"
+                                            StrokeThickness="0">
+                                            <Border.GestureRecognizers>
+                                                <TapGestureRecognizer Tapped="OnSelectTextSizeSmallTapped" />
+                                            </Border.GestureRecognizers>
+                                            <Label Text="A" FontSize="{StaticResource FontSizeSmall}" TextColor="White" HorizontalOptions="Center" VerticalOptions="Center" />
+                                        </Border>
+
+                                        <Border
+                                            x:Name="TextSizeMediumButton"
+                                            Padding="10,6"
+                                            BackgroundColor="#FF2A2A2A"
+                                            StrokeShape="RoundRectangle 6"
+                                            StrokeThickness="0">
+                                            <Border.GestureRecognizers>
+                                                <TapGestureRecognizer Tapped="OnSelectTextSizeMediumTapped" />
+                                            </Border.GestureRecognizers>
+                                            <Label Text="A" FontSize="{StaticResource FontSizeSubtitle}" TextColor="White" HorizontalOptions="Center" VerticalOptions="Center" />
+                                        </Border>
+
+                                        <Border
+                                            x:Name="TextSizeLargeButton"
+                                            Padding="10,6"
+                                            BackgroundColor="#FF2A2A2A"
+                                            StrokeShape="RoundRectangle 6"
+                                            StrokeThickness="0">
+                                            <Border.GestureRecognizers>
+                                                <TapGestureRecognizer Tapped="OnSelectTextSizeLargeTapped" />
+                                            </Border.GestureRecognizers>
+                                            <Label Text="A" FontSize="{StaticResource FontSizeHeader}" TextColor="White" HorizontalOptions="Center" VerticalOptions="Center" />
+                                        </Border>
+                                    </HorizontalStackLayout>
+                                </VerticalStackLayout>
+                            </Border>
+
+                            <HorizontalStackLayout x:Name="ShapeOptionsRow" IsVisible="False" Spacing="8">
+                                <Border
+                                    x:Name="ShapeRectButton"
+                                    Padding="10,6"
+                                    BackgroundColor="#FF2A2A2A"
+                                    StrokeShape="RoundRectangle 6"
+                                    StrokeThickness="0">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="OnSelectShapeRectTapped" />
+                                    </Border.GestureRecognizers>
+                                    <controls:SymbolIcon
+                                        HeightRequest="{StaticResource IconSizeMedium}"
+                                        WidthRequest="{StaticResource IconSizeMedium}"
+                                        SymbolName="rectangle"
+                                        TintColor="White" />
+                                </Border>
+
+                                <Border
+                                    x:Name="ShapeCircleButton"
+                                    Padding="10,6"
+                                    BackgroundColor="#FF2A2A2A"
+                                    StrokeShape="RoundRectangle 6"
+                                    StrokeThickness="0">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="OnSelectShapeCircleTapped" />
+                                    </Border.GestureRecognizers>
+                                    <controls:SymbolIcon
+                                        HeightRequest="{StaticResource IconSizeMedium}"
+                                        WidthRequest="{StaticResource IconSizeMedium}"
+                                        SymbolName="circle"
+                                        TintColor="White" />
+                                </Border>
+
+                                <Border
+                                    x:Name="ShapeLineButton"
+                                    Padding="10,6"
+                                    BackgroundColor="#FF2A2A2A"
+                                    StrokeShape="RoundRectangle 6"
+                                    StrokeThickness="0">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="OnSelectShapeLineTapped" />
+                                    </Border.GestureRecognizers>
+                                    <controls:SymbolIcon
+                                        HeightRequest="{StaticResource IconSizeMedium}"
+                                        WidthRequest="{StaticResource IconSizeMedium}"
+                                        SymbolName="line.diagonal"
+                                        TintColor="White" />
+                                </Border>
+
+                                <Border
+                                    x:Name="ShapeArrowButton"
+                                    Padding="10,6"
+                                    BackgroundColor="#FF2A2A2A"
+                                    StrokeShape="RoundRectangle 6"
+                                    StrokeThickness="0">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="OnSelectShapeArrowTapped" />
+                                    </Border.GestureRecognizers>
+                                    <controls:SymbolIcon
+                                        HeightRequest="{StaticResource IconSizeMedium}"
+                                        WidthRequest="{StaticResource IconSizeMedium}"
+                                        SymbolName="arrow.right"
+                                        TintColor="White" />
+                                </Border>
+                            </HorizontalStackLayout>
+
+                            <!-- Botones Deshacer/Rehacer/Borrar -->
+                            <HorizontalStackLayout Spacing="6" HorizontalOptions="Fill">
+                                <Border
+                                    x:Name="ToolUndoButton"
+                                    Padding="10,6"
+                                    BackgroundColor="#FF2A2A2A"
+                                    StrokeShape="RoundRectangle 6"
+                                    StrokeThickness="0"
+                                    HorizontalOptions="FillAndExpand">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="OnUndoDrawingTapped" />
+                                    </Border.GestureRecognizers>
+                                    <HorizontalStackLayout Spacing="6" HorizontalOptions="Center">
+                                        <controls:SymbolIcon
+                                            HeightRequest="{StaticResource IconSizeMedium}"
+                                            WidthRequest="{StaticResource IconSizeMedium}"
+                                            SymbolName="arrow.uturn.backward"
+                                            TintColor="White" />
+                                        <Label Text="Deshacer" FontSize="{StaticResource FontSizeSmall}" TextColor="White" VerticalOptions="Center" />
+                                    </HorizontalStackLayout>
+                                </Border>
+
+                                <Border
+                                    x:Name="ToolRedoButton"
+                                    Padding="10,6"
+                                    BackgroundColor="#FF2A2A2A"
+                                    StrokeShape="RoundRectangle 6"
+                                    StrokeThickness="0"
+                                    HorizontalOptions="FillAndExpand">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="OnRedoDrawingTapped" />
+                                    </Border.GestureRecognizers>
+                                    <HorizontalStackLayout Spacing="6" HorizontalOptions="Center">
+                                        <controls:SymbolIcon
+                                            HeightRequest="{StaticResource IconSizeMedium}"
+                                            WidthRequest="{StaticResource IconSizeMedium}"
+                                            SymbolName="arrow.uturn.forward"
+                                            TintColor="White" />
+                                        <Label Text="Rehacer" FontSize="{StaticResource FontSizeSmall}" TextColor="White" VerticalOptions="Center" />
+                                    </HorizontalStackLayout>
+                                </Border>
+                            </HorizontalStackLayout>
+
+                            <Border
+                                x:Name="ToolClearButton"
+                                Padding="10,6"
+                                BackgroundColor="#FF2A2A2A"
+                                StrokeShape="RoundRectangle 6"
+                                StrokeThickness="0"
+                                HorizontalOptions="Fill">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Tapped="OnClearDrawingTapped" />
+                                </Border.GestureRecognizers>
+                                <HorizontalStackLayout Spacing="8" HorizontalOptions="Center">
+                                    <controls:SymbolIcon
+                                        HeightRequest="{StaticResource IconSizeMedium}"
+                                        WidthRequest="{StaticResource IconSizeMedium}"
+                                        SymbolName="trash"
+                                        TintColor="White" />
+                                    <Label Text="Borrar" FontSize="{StaticResource FontSizeSmall}" TextColor="White" VerticalOptions="Center" />
+                                </HorizontalStackLayout>
+                            </Border>
+                        </VerticalStackLayout>
+                    </Border>
 
                     <!-- Panel de Comparación (inline en sidebar) -->
                     <VerticalStackLayout IsVisible="{Binding ShowComparisonPanel}" Spacing="12">
