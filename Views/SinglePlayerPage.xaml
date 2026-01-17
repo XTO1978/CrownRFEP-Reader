@@ -895,19 +895,27 @@
                         x:Name="SliderOverlay1"
                         Margin="16,0"
                         Padding="12,8"
-                        BackgroundColor="#CC000000"
+                        BackgroundColor="Transparent"
                         HorizontalOptions="Fill"
                         VerticalOptions="End"
                         StrokeShape="RoundRectangle 8"
-                        StrokeThickness="0"
-                        IsVisible="False">
+                        StrokeThickness="0">
+                        <Border.IsVisible>
+                            <MultiBinding Converter="{StaticResource AllTrueConverter}">
+                                <Binding Path="IsMultiVideoLayout" />
+                                <Binding Path="IsPlaying" Converter="{StaticResource InvertedBoolConverter}" />
+                            </MultiBinding>
+                        </Border.IsVisible>
                         <Slider
                             x:Name="IndividualSlider1"
+                            AutomationId="IndividualSlider"
                             Maximum="1"
-                            MaximumTrackColor="#FF3A3A3A"
+                            MaximumTrackColor="#FF5C5C5C"
                             Minimum="0"
-                            MinimumTrackColor="#FF5A5A5A"
-                            ThumbColor="#FF8A8A8A"
+                            MinimumTrackColor="#FFB0B0B0"
+                            ThumbColor="{StaticResource AppAccentCyan}"
+                            DragStarted="OnIndividualSlider1DragStarted"
+                            DragCompleted="OnIndividualSlider1DragCompleted"
                             ValueChanged="OnIndividualSlider1Changed" />
                     </Border>
                 </Grid>
@@ -1017,19 +1025,27 @@
                         x:Name="SliderOverlay2"
                         Margin="16,0"
                         Padding="12,8"
-                        BackgroundColor="#CC000000"
+                        BackgroundColor="Transparent"
                         HorizontalOptions="Fill"
                         VerticalOptions="End"
                         StrokeShape="RoundRectangle 8"
-                        StrokeThickness="0"
-                        IsVisible="False">
+                        StrokeThickness="0">
+                        <Border.IsVisible>
+                            <MultiBinding Converter="{StaticResource AllTrueConverter}">
+                                <Binding Path="HasComparisonVideo2" />
+                                <Binding Path="IsPlaying" Converter="{StaticResource InvertedBoolConverter}" />
+                            </MultiBinding>
+                        </Border.IsVisible>
                         <Slider
                             x:Name="IndividualSlider2"
+                            AutomationId="IndividualSlider"
                             Maximum="1"
-                            MaximumTrackColor="#FF3A3A3A"
+                            MaximumTrackColor="#FF5C5C5C"
                             Minimum="0"
-                            MinimumTrackColor="#FF5A5A5A"
-                            ThumbColor="#FF8A8A8A"
+                            MinimumTrackColor="#FFB0B0B0"
+                            ThumbColor="{StaticResource AppAccentCyan}"
+                            DragStarted="OnIndividualSlider2DragStarted"
+                            DragCompleted="OnIndividualSlider2DragCompleted"
                             ValueChanged="OnIndividualSlider2Changed" />
                     </Border>
                 </Grid>
@@ -1139,19 +1155,27 @@
                         x:Name="SliderOverlay3"
                         Margin="16,0"
                         Padding="12,8"
-                        BackgroundColor="#CC000000"
+                        BackgroundColor="Transparent"
                         HorizontalOptions="Fill"
                         VerticalOptions="End"
                         StrokeShape="RoundRectangle 8"
-                        StrokeThickness="0"
-                        IsVisible="False">
+                        StrokeThickness="0">
+                        <Border.IsVisible>
+                            <MultiBinding Converter="{StaticResource AllTrueConverter}">
+                                <Binding Path="HasComparisonVideo3" />
+                                <Binding Path="IsPlaying" Converter="{StaticResource InvertedBoolConverter}" />
+                            </MultiBinding>
+                        </Border.IsVisible>
                         <Slider
                             x:Name="IndividualSlider3"
+                            AutomationId="IndividualSlider"
                             Maximum="1"
-                            MaximumTrackColor="#FF3A3A3A"
+                            MaximumTrackColor="#FF5C5C5C"
                             Minimum="0"
-                            MinimumTrackColor="#FF5A5A5A"
-                            ThumbColor="#FF8A8A8A"
+                            MinimumTrackColor="#FFB0B0B0"
+                            ThumbColor="{StaticResource AppAccentCyan}"
+                            DragStarted="OnIndividualSlider3DragStarted"
+                            DragCompleted="OnIndividualSlider3DragCompleted"
                             ValueChanged="OnIndividualSlider3Changed" />
                     </Border>
                 </Grid>
@@ -1261,19 +1285,27 @@
                         x:Name="SliderOverlay4"
                         Margin="16,0"
                         Padding="12,8"
-                        BackgroundColor="#CC000000"
+                        BackgroundColor="Transparent"
                         HorizontalOptions="Fill"
                         VerticalOptions="End"
                         StrokeShape="RoundRectangle 8"
-                        StrokeThickness="0"
-                        IsVisible="False">
+                        StrokeThickness="0">
+                        <Border.IsVisible>
+                            <MultiBinding Converter="{StaticResource AllTrueConverter}">
+                                <Binding Path="HasComparisonVideo4" />
+                                <Binding Path="IsPlaying" Converter="{StaticResource InvertedBoolConverter}" />
+                            </MultiBinding>
+                        </Border.IsVisible>
                         <Slider
                             x:Name="IndividualSlider4"
+                            AutomationId="IndividualSlider"
                             Maximum="1"
-                            MaximumTrackColor="#FF3A3A3A"
+                            MaximumTrackColor="#FF5C5C5C"
                             Minimum="0"
-                            MinimumTrackColor="#FF5A5A5A"
-                            ThumbColor="#FF8A8A8A"
+                            MinimumTrackColor="#FFB0B0B0"
+                            ThumbColor="{StaticResource AppAccentCyan}"
+                            DragStarted="OnIndividualSlider4DragStarted"
+                            DragCompleted="OnIndividualSlider4DragCompleted"
                             ValueChanged="OnIndividualSlider4Changed" />
                     </Border>
                 </Grid>

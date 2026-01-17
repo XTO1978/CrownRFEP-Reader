@@ -16,6 +16,9 @@ using Foundation;
 using CrownRFEP_Reader.Platforms.MacCatalyst;
 using UIKit;
 #endif
+#if IOS
+using UIKit;
+#endif
 
 namespace CrownRFEP_Reader;
 
@@ -83,7 +86,7 @@ public static class MauiProgram
 #endif
 
 #if WINDOWS
-				// Personalizar thumb del Slider: rectángulo de 2px de ancho con gris oscuro
+				// Personalizar thumb del Slider: por defecto rectángulo, en sliders individuales usar acento 10px
 				SliderHandler.Mapper.AppendToMapping("RectangularThumb", (handler, view) =>
 				{
 					if (handler.PlatformView is Microsoft.UI.Xaml.Controls.Slider slider)
@@ -94,7 +97,18 @@ public static class MauiProgram
 							{
 								// Buscar el Thumb en el ControlTemplate
 								var thumb = FindVisualChild<Microsoft.UI.Xaml.Controls.Primitives.Thumb>(slider);
-								if (thumb != null)
+								if (thumb == null)
+									return;
+
+								if (view is Slider sliderView && sliderView.AutomationId == "IndividualSlider")
+								{
+									var size = 14d;
+									thumb.Width = size;
+									thumb.Height = size;
+									thumb.Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(
+										Microsoft.UI.ColorHelper.FromArgb(255, 109, 221, 255)); // #FF6DDDFF
+								}
+								else
 								{
 									thumb.Width = 2;
 									thumb.Height = 20;
@@ -109,15 +123,40 @@ public static class MauiProgram
 #endif
 
 #if MACCATALYST
-				// Personalizar thumb del Slider para MacCatalyst: rectángulo de 6px de ancho con gris oscuro
+				// Personalizar thumb del Slider para MacCatalyst
 				SliderHandler.Mapper.AppendToMapping("RectangularThumb", (handler, view) =>
 				{
 					if (handler.PlatformView is UISlider slider)
 					{
-						// Crear imagen del thumb rectangular (2x20 px)
-						var thumbImage = CreateRectangularThumbImage(2, 20, UIColor.FromRGB(138, 138, 138));
+						UIImage thumbImage;
+						if (view is Slider sliderView && sliderView.AutomationId == "IndividualSlider")
+						{
+							thumbImage = CreateCircularThumbImage(14, UIColor.FromRGB(109, 221, 255));
+						}
+						else
+						{
+							// Rectángulo gris por defecto
+							thumbImage = CreateRectangularThumbImage(2, 20, UIColor.FromRGB(138, 138, 138));
+						}
+
 						slider.SetThumbImage(thumbImage, UIControlState.Normal);
 						slider.SetThumbImage(thumbImage, UIControlState.Highlighted);
+					}
+				});
+#endif
+
+#if IOS
+				// Personalizar thumb del Slider para iOS
+				SliderHandler.Mapper.AppendToMapping("RectangularThumb", (handler, view) =>
+				{
+					if (handler.PlatformView is UISlider slider)
+					{
+						if (view is Slider sliderView && sliderView.AutomationId == "IndividualSlider")
+						{
+							var thumbImage = CreateCircularThumbImage(14, UIColor.FromRGB(109, 221, 255));
+							slider.SetThumbImage(thumbImage, UIControlState.Normal);
+							slider.SetThumbImage(thumbImage, UIControlState.Highlighted);
+						}
 					}
 				});
 #endif
@@ -304,6 +343,31 @@ public static class MauiProgram
 		var image = UIGraphics.GetImageFromCurrentImageContext();
 		UIGraphics.EndImageContext();
 		
+		return image ?? new UIImage();
+	}
+#endif
+
+#if MACCATALYST || IOS
+	/// <summary>
+	/// Crea una imagen circular para usar como thumb del Slider en iOS/MacCatalyst.
+	/// </summary>
+	private static UIImage CreateCircularThumbImage(nfloat size, UIColor color)
+	{
+		var drawSize = new CoreGraphics.CGSize(size, size);
+		UIGraphics.BeginImageContextWithOptions(drawSize, false, 0);
+
+		var context = UIGraphics.GetCurrentContext();
+		if (context != null)
+		{
+			color.SetFill();
+			var rect = new CoreGraphics.CGRect(0, 0, size, size);
+			var path = UIBezierPath.FromOval(rect);
+			path.Fill();
+		}
+
+		var image = UIGraphics.GetImageFromCurrentImageContext();
+		UIGraphics.EndImageContext();
+
 		return image ?? new UIImage();
 	}
 #endif

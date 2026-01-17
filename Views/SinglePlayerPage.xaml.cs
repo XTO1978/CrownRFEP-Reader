@@ -71,6 +71,19 @@ public partial class SinglePlayerPage : ContentPage
     private bool _isUpdatingIndividualSlider3;
     private bool _isUpdatingIndividualSlider4;
 
+    // Flags para controlar drag de sliders individuales
+    private bool _isDraggingIndividualSlider1;
+    private bool _isDraggingIndividualSlider2;
+    private bool _isDraggingIndividualSlider3;
+    private bool _isDraggingIndividualSlider4;
+
+    // Throttle para seeks en sliders individuales
+    private const int IndividualSeekThrottleMs = 50;
+    private DateTime _lastIndividualSeekTime1 = DateTime.MinValue;
+    private DateTime _lastIndividualSeekTime2 = DateTime.MinValue;
+    private DateTime _lastIndividualSeekTime3 = DateTime.MinValue;
+    private DateTime _lastIndividualSeekTime4 = DateTime.MinValue;
+
     private static readonly Color DefaultInkColor = Color.FromArgb("#FFFF7043");
     private const float DefaultInkThickness = 3f;
     private const float DefaultTextSize = 16f;
@@ -946,7 +959,10 @@ public partial class SinglePlayerPage : ContentPage
         _viewModel.CurrentPosition2 = position;
         _viewModel.ComparisonPosition2 = position;
         if (!_isDraggingSlider && !_isScrubbing)
+        {
             UpdateMainProgressSlider();
+            UpdateIndividualSlider2Position();
+        }
     }
 
     private void OnPositionChanged3(object? sender, TimeSpan position)
@@ -955,7 +971,10 @@ public partial class SinglePlayerPage : ContentPage
         _viewModel.CurrentPosition3 = position;
         _viewModel.ComparisonPosition3 = position;
         if (!_isDraggingSlider && !_isScrubbing)
+        {
             UpdateMainProgressSlider();
+            UpdateIndividualSlider3Position();
+        }
     }
 
     private void OnPositionChanged4(object? sender, TimeSpan position)
@@ -964,7 +983,10 @@ public partial class SinglePlayerPage : ContentPage
         _viewModel.CurrentPosition4 = position;
         _viewModel.ComparisonPosition4 = position;
         if (!_isDraggingSlider && !_isScrubbing)
+        {
             UpdateMainProgressSlider();
+            UpdateIndividualSlider4Position();
+        }
     }
 
     #region Video Slot Hover y Sliders Individuales
@@ -974,56 +996,48 @@ public partial class SinglePlayerPage : ContentPage
     {
         if (_viewModel.IsMultiVideoLayout)
         {
-            SliderOverlay1.IsVisible = true;
             UpdateIndividualSlider1Position();
         }
     }
 
     private void OnVideoSlot1PointerExited(object? sender, PointerEventArgs e)
     {
-        SliderOverlay1.IsVisible = false;
     }
 
     private void OnVideoSlot2PointerEntered(object? sender, PointerEventArgs e)
     {
         if (_viewModel.HasComparisonVideo2)
         {
-            SliderOverlay2.IsVisible = true;
             UpdateIndividualSlider2Position();
         }
     }
 
     private void OnVideoSlot2PointerExited(object? sender, PointerEventArgs e)
     {
-        SliderOverlay2.IsVisible = false;
     }
 
     private void OnVideoSlot3PointerEntered(object? sender, PointerEventArgs e)
     {
         if (_viewModel.HasComparisonVideo3)
         {
-            SliderOverlay3.IsVisible = true;
             UpdateIndividualSlider3Position();
         }
     }
 
     private void OnVideoSlot3PointerExited(object? sender, PointerEventArgs e)
     {
-        SliderOverlay3.IsVisible = false;
     }
 
     private void OnVideoSlot4PointerEntered(object? sender, PointerEventArgs e)
     {
         if (_viewModel.HasComparisonVideo4)
         {
-            SliderOverlay4.IsVisible = true;
             UpdateIndividualSlider4Position();
         }
     }
 
     private void OnVideoSlot4PointerExited(object? sender, PointerEventArgs e)
     {
-        SliderOverlay4.IsVisible = false;
     }
 
     // Actualizar posición de sliders individuales basándose en la posición actual del reproductor
@@ -1031,6 +1045,8 @@ public partial class SinglePlayerPage : ContentPage
     {
         if (MediaPlayer?.Duration.TotalSeconds > 0)
         {
+            if (_isDraggingIndividualSlider1)
+                return;
             _isUpdatingIndividualSlider1 = true;
             IndividualSlider1.Value = MediaPlayer.Position.TotalSeconds / MediaPlayer.Duration.TotalSeconds;
             _isUpdatingIndividualSlider1 = false;
@@ -1041,6 +1057,8 @@ public partial class SinglePlayerPage : ContentPage
     {
         if (MediaPlayer2?.Duration.TotalSeconds > 0)
         {
+            if (_isDraggingIndividualSlider2)
+                return;
             _isUpdatingIndividualSlider2 = true;
             IndividualSlider2.Value = MediaPlayer2.Position.TotalSeconds / MediaPlayer2.Duration.TotalSeconds;
             _isUpdatingIndividualSlider2 = false;
@@ -1051,6 +1069,8 @@ public partial class SinglePlayerPage : ContentPage
     {
         if (MediaPlayer3?.Duration.TotalSeconds > 0)
         {
+            if (_isDraggingIndividualSlider3)
+                return;
             _isUpdatingIndividualSlider3 = true;
             IndividualSlider3.Value = MediaPlayer3.Position.TotalSeconds / MediaPlayer3.Duration.TotalSeconds;
             _isUpdatingIndividualSlider3 = false;
@@ -1061,6 +1081,8 @@ public partial class SinglePlayerPage : ContentPage
     {
         if (MediaPlayer4?.Duration.TotalSeconds > 0)
         {
+            if (_isDraggingIndividualSlider4)
+                return;
             _isUpdatingIndividualSlider4 = true;
             IndividualSlider4.Value = MediaPlayer4.Position.TotalSeconds / MediaPlayer4.Duration.TotalSeconds;
             _isUpdatingIndividualSlider4 = false;
@@ -1073,6 +1095,14 @@ public partial class SinglePlayerPage : ContentPage
         if (_isUpdatingIndividualSlider1) return;
         if (MediaPlayer?.Duration.TotalSeconds > 0)
         {
+            if (_isDraggingIndividualSlider1)
+            {
+                var now = DateTime.UtcNow;
+                if ((now - _lastIndividualSeekTime1).TotalMilliseconds < IndividualSeekThrottleMs)
+                    return;
+                _lastIndividualSeekTime1 = now;
+            }
+
             var position = TimeSpan.FromSeconds(e.NewValue * MediaPlayer.Duration.TotalSeconds);
             MediaPlayer.SeekTo(position);
         }
@@ -1083,6 +1113,14 @@ public partial class SinglePlayerPage : ContentPage
         if (_isUpdatingIndividualSlider2) return;
         if (MediaPlayer2?.Duration.TotalSeconds > 0)
         {
+            if (_isDraggingIndividualSlider2)
+            {
+                var now = DateTime.UtcNow;
+                if ((now - _lastIndividualSeekTime2).TotalMilliseconds < IndividualSeekThrottleMs)
+                    return;
+                _lastIndividualSeekTime2 = now;
+            }
+
             var position = TimeSpan.FromSeconds(e.NewValue * MediaPlayer2.Duration.TotalSeconds);
             MediaPlayer2.SeekTo(position);
         }
@@ -1093,6 +1131,14 @@ public partial class SinglePlayerPage : ContentPage
         if (_isUpdatingIndividualSlider3) return;
         if (MediaPlayer3?.Duration.TotalSeconds > 0)
         {
+            if (_isDraggingIndividualSlider3)
+            {
+                var now = DateTime.UtcNow;
+                if ((now - _lastIndividualSeekTime3).TotalMilliseconds < IndividualSeekThrottleMs)
+                    return;
+                _lastIndividualSeekTime3 = now;
+            }
+
             var position = TimeSpan.FromSeconds(e.NewValue * MediaPlayer3.Duration.TotalSeconds);
             MediaPlayer3.SeekTo(position);
         }
@@ -1103,7 +1149,67 @@ public partial class SinglePlayerPage : ContentPage
         if (_isUpdatingIndividualSlider4) return;
         if (MediaPlayer4?.Duration.TotalSeconds > 0)
         {
+            if (_isDraggingIndividualSlider4)
+            {
+                var now = DateTime.UtcNow;
+                if ((now - _lastIndividualSeekTime4).TotalMilliseconds < IndividualSeekThrottleMs)
+                    return;
+                _lastIndividualSeekTime4 = now;
+            }
+
             var position = TimeSpan.FromSeconds(e.NewValue * MediaPlayer4.Duration.TotalSeconds);
+            MediaPlayer4.SeekTo(position);
+        }
+    }
+
+    private void OnIndividualSlider1DragStarted(object? sender, EventArgs e)
+        => _isDraggingIndividualSlider1 = true;
+
+    private void OnIndividualSlider1DragCompleted(object? sender, EventArgs e)
+    {
+        _isDraggingIndividualSlider1 = false;
+        if (MediaPlayer?.Duration.TotalSeconds > 0 && sender is Slider slider)
+        {
+            var position = TimeSpan.FromSeconds(slider.Value * MediaPlayer.Duration.TotalSeconds);
+            MediaPlayer.SeekTo(position);
+        }
+    }
+
+    private void OnIndividualSlider2DragStarted(object? sender, EventArgs e)
+        => _isDraggingIndividualSlider2 = true;
+
+    private void OnIndividualSlider2DragCompleted(object? sender, EventArgs e)
+    {
+        _isDraggingIndividualSlider2 = false;
+        if (MediaPlayer2?.Duration.TotalSeconds > 0 && sender is Slider slider)
+        {
+            var position = TimeSpan.FromSeconds(slider.Value * MediaPlayer2.Duration.TotalSeconds);
+            MediaPlayer2.SeekTo(position);
+        }
+    }
+
+    private void OnIndividualSlider3DragStarted(object? sender, EventArgs e)
+        => _isDraggingIndividualSlider3 = true;
+
+    private void OnIndividualSlider3DragCompleted(object? sender, EventArgs e)
+    {
+        _isDraggingIndividualSlider3 = false;
+        if (MediaPlayer3?.Duration.TotalSeconds > 0 && sender is Slider slider)
+        {
+            var position = TimeSpan.FromSeconds(slider.Value * MediaPlayer3.Duration.TotalSeconds);
+            MediaPlayer3.SeekTo(position);
+        }
+    }
+
+    private void OnIndividualSlider4DragStarted(object? sender, EventArgs e)
+        => _isDraggingIndividualSlider4 = true;
+
+    private void OnIndividualSlider4DragCompleted(object? sender, EventArgs e)
+    {
+        _isDraggingIndividualSlider4 = false;
+        if (MediaPlayer4?.Duration.TotalSeconds > 0 && sender is Slider slider)
+        {
+            var position = TimeSpan.FromSeconds(slider.Value * MediaPlayer4.Duration.TotalSeconds);
             MediaPlayer4.SeekTo(position);
         }
     }
@@ -1633,6 +1739,7 @@ public partial class SinglePlayerPage : ContentPage
             _viewModel.CurrentPosition = position;
 
             UpdateMainProgressSlider();
+            UpdateIndividualSlider1Position();
         });
     }
 
