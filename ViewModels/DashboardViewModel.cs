@@ -162,6 +162,7 @@ public class DashboardViewModel : BaseViewModel
     private readonly DatabaseService _databaseService;
     private readonly ITrashService _trashService;
         private int _trashItemCount;
+        private int _videoLessonsCount;
     private readonly CrownFileService _crownFileService;
     private readonly StatisticsService _statisticsService;
     private readonly ThumbnailService _thumbnailService;
@@ -3415,7 +3416,11 @@ public class DashboardViewModel : BaseViewModel
         
         // Notificar cambios en VideoCountDisplayText cuando cambie la colección
         SelectedSessionVideos.CollectionChanged += (s, e) => OnPropertyChanged(nameof(VideoCountDisplayText));
-        VideoLessons.CollectionChanged += (s, e) => OnPropertyChanged(nameof(VideoCountDisplayText));
+        VideoLessons.CollectionChanged += (s, e) =>
+        {
+            VideoLessonsCount = VideoLessons.Count;
+            OnPropertyChanged(nameof(VideoCountDisplayText));
+        };
         
         // Suscribirse a mensajes de actualización de video individual
         MessagingCenter.Subscribe<SinglePlayerViewModel, int>(this, "VideoClipUpdated", async (sender, videoId) =>
@@ -3431,6 +3436,12 @@ public class DashboardViewModel : BaseViewModel
     {
         get => _trashItemCount;
         private set => SetProperty(ref _trashItemCount, value);
+    }
+
+    public int VideoLessonsCount
+    {
+        get => _videoLessonsCount;
+        private set => SetProperty(ref _videoLessonsCount, value);
     }
 
     private async Task RefreshTrashItemCountAsync()
@@ -3809,6 +3820,8 @@ public class DashboardViewModel : BaseViewModel
         {
             // cancelación
         }
+
+        VideoLessonsCount = VideoLessons.Count;
     }
 
     /// <summary>
@@ -4913,6 +4926,8 @@ public class DashboardViewModel : BaseViewModel
             Stats = await _statisticsService.GetDashboardStatsAsync();
             AppLog.Info("DashboardVM", $"LoadDataAsync Stats loaded | RecentSessions={Stats?.RecentSessions?.Count ?? 0}");
 
+            await RefreshVideoLessonsCountAsync();
+
             RecentSessions.Clear();
             foreach (var session in Stats.RecentSessions)
             {
@@ -4956,6 +4971,18 @@ public class DashboardViewModel : BaseViewModel
         finally
         {
             IsBusy = false;
+        }
+    }
+
+    private async Task RefreshVideoLessonsCountAsync()
+    {
+        try
+        {
+            VideoLessonsCount = await _databaseService.GetVideoLessonsCountAsync();
+        }
+        catch
+        {
+            VideoLessonsCount = VideoLessons.Count;
         }
     }
 

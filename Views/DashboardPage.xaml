@@ -495,7 +495,7 @@
                                     FontSize="{StaticResource FontSizeSmall}"
                                     HorizontalOptions="End"
                                     HorizontalTextAlignment="End"
-                                    Text="{Binding VideoLessons.Count}"
+                                    Text="{Binding VideoLessonsCount}"
                                     TextColor="#FF888888"
                                     VerticalOptions="Center" />
                             </Grid>

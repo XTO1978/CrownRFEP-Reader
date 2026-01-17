@@ -576,6 +576,12 @@ public class DatabaseService
             .OrderByDescending(v => v.CreatedAtUtc)
             .ToListAsync();
     }
+    
+    public async Task<int> GetVideoLessonsCountAsync()
+    {
+        var db = await GetConnectionAsync();
+        return await db.Table<VideoLesson>().CountAsync();
+    }
 
     public async Task<List<VideoLesson>> GetVideoLessonsBySessionAsync(int sessionId)
     {

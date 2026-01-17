@@ -32,11 +32,26 @@ public class AnalysisDrawingView : GraphicsView
     private IDrawingElement? _activeShape;
     private PointF _dragStart;
 
+    private bool _hasPendingStroke;
+    private PointF _pendingStrokeStart;
+    private const float StrokeStartThreshold = 2.5f;
+
     private IDrawingElement? _selectedElement;
 
     private bool _isDraggingSelection;
     private PointF _lastDragPoint;
-    private PointF _selectionDragStartPosition; // Posición inicial al empezar a arrastrar una selección
+    private PointF _selectionDragStartPosition;
+
+    private DateTime _lastClickTime = DateTime.MinValue;
+    private PointF _lastClickPoint;
+    private const int DoubleClickThresholdMs = 500;
+    private const float DoubleClickMaxDistance = 16f;
+    private const float DoubleClickHitTolerance = 40f;
+    private const float DragHitTolerance = 24f;
+
+    private StrokeElement? _lastSinglePointStroke;
+    private DateTime _lastSinglePointTime = DateTime.MinValue;
+    private PointF _lastSinglePointPosition;
 
     // Stacks para undo/redo
     private readonly Stack<UndoAction> _undoStack = new();
@@ -106,8 +121,8 @@ public class AnalysisDrawingView : GraphicsView
 
         InputTransparent = true;
 
-#if WINDOWS
-        // PointerGestureRecognizer solo para Windows (iOS no lo soporta)
+#if WINDOWS || MACCATALYST
+        // PointerGestureRecognizer para Windows/MacCatalyst (iOS no lo soporta)
         var pointer = new PointerGestureRecognizer();
         pointer.PointerPressed += OnPointerPressed;
         pointer.PointerMoved += OnPointerMoved;
@@ -298,25 +313,67 @@ public class AnalysisDrawingView : GraphicsView
             return;
 
         var point = new PointF((float)p.Value.X, (float)p.Value.Y);
+        _selectionDragStartPosition = point;
+        var isDoubleClick = IsDoubleClick(point);
+        IDrawingElement? hit = HitTest(point, DoubleClickHitTolerance);
 
-        // Prioridad: selección de elementos existentes.
-        // Si hay hit-test, solo seleccionamos (no empezamos un trazo/figura).
-        var hit = HitTest(point);
-        if (hit != null)
+        if (isDoubleClick && hit != null)
         {
+            if (Tool == AnalysisDrawingTool.Stroke)
+            {
+                _isDrawing = false;
+                _hasPendingStroke = false;
+                _activeStroke = null;
+            }
+
+            // Si el primer clic creó un punto accidental, eliminarlo
+            if (_lastSinglePointStroke != null)
+            {
+                var elapsedMs = (DateTime.UtcNow - _lastSinglePointTime).TotalMilliseconds;
+                var dx = point.X - _lastSinglePointPosition.X;
+                var dy = point.Y - _lastSinglePointPosition.Y;
+                var dist = MathF.Sqrt(dx * dx + dy * dy);
+
+                if (elapsedMs <= DoubleClickThresholdMs && dist <= DoubleClickMaxDistance)
+                {
+                    var removed = _lastSinglePointStroke;
+                    _drawable.Elements.Remove(removed);
+                    _lastSinglePointStroke = null;
+                    if (hit == removed || hit == null)
+                        hit = HitTest(point, DoubleClickHitTolerance);
+                }
+            }
+
+            // Selección solo con doble clic para evitar selecciones accidentales.
             _selectedElement = hit;
             _drawable.SelectedElement = hit;
             _isDraggingSelection = true;
             _lastDragPoint = point;
-            _selectionDragStartPosition = point; // Guardar posición inicial para undo
-            _isDrawing = false;
             _activeStroke = null;
             _activeShape = null;
             Invalidate();
             return;
         }
 
-        // Click en vacío: limpiar selección (si la hubiera) y continuar con la herramienta.
+        // Si hay selección y se pulsa sobre ella, iniciar drag.
+        if (_selectedElement != null)
+        {
+            var hitSelected = HitTest(point, DragHitTolerance);
+            if (hitSelected == _selectedElement)
+            {
+                _isDraggingSelection = true;
+                _lastDragPoint = point;
+                _selectionDragStartPosition = point;
+                return;
+            }
+        }
+
+        // En herramientas de Shape/Text, no iniciar una acción si se ha pulsado sobre un elemento:
+        // dejamos el doble clic para seleccionar.
+        if ((Tool == AnalysisDrawingTool.Shape || Tool == AnalysisDrawingTool.Text) && hit != null)
+            return;
+
+        // Click simple: no seleccionar. Limpiar selección (si la hubiera) y continuar con la herramienta.
         if (_selectedElement != null)
         {
             _selectedElement = null;
@@ -329,10 +386,8 @@ public class AnalysisDrawingView : GraphicsView
         {
             case AnalysisDrawingTool.Stroke:
                 _isDrawing = true;
-                _activeStroke = new StrokeElement { Color = InkColor, StrokeSize = InkThickness };
-                _activeStroke.Points.Add(point);
-                _drawable.Elements.Add(_activeStroke);
-                Invalidate();
+                _hasPendingStroke = true;
+                _pendingStrokeStart = point;
                 break;
 
             case AnalysisDrawingTool.Shape:
@@ -349,15 +404,31 @@ public class AnalysisDrawingView : GraphicsView
         }
     }
 
+    private bool IsDoubleClick(PointF point)
+    {
+        var now = DateTime.UtcNow;
+        var elapsedMs = (now - _lastClickTime).TotalMilliseconds;
+        var dx = point.X - _lastClickPoint.X;
+        var dy = point.Y - _lastClickPoint.Y;
+        var dist = MathF.Sqrt(dx * dx + dy * dy);
+
+        _lastClickTime = now;
+        _lastClickPoint = point;
+
+        return elapsedMs <= DoubleClickThresholdMs && dist <= DoubleClickMaxDistance;
+    }
+
     private RectF GetCanvasBounds()
         => new(0, 0, (float)Math.Max(1, Width), (float)Math.Max(1, Height));
 
-    private IDrawingElement? HitTest(PointF point)
+    private IDrawingElement? HitTest(PointF point, float? overrideTolerance = null)
     {
         if (_drawable.Elements.Count == 0)
             return null;
 
         var tolerance = Math.Max(8f, InkThickness * 2f);
+        if (overrideTolerance.HasValue)
+            tolerance = Math.Max(tolerance, overrideTolerance.Value);
         var bounds = GetCanvasBounds();
 
         for (var i = _drawable.Elements.Count - 1; i >= 0; i--)
@@ -417,20 +488,40 @@ public class AnalysisDrawingView : GraphicsView
             if (Math.Abs(dx) > 0.001f || Math.Abs(dy) > 0.001f)
             {
                 _selectedElement.Translate(dx, dy);
-                _lastDragPoint = point;
                 Invalidate();
             }
+            _lastDragPoint = point;
             return;
         }
 
         if (!_isDrawing)
             return;
 
-        if (Tool == AnalysisDrawingTool.Stroke && _activeStroke != null)
+        if (Tool == AnalysisDrawingTool.Stroke)
         {
-            _activeStroke.Points.Add(point);
-            Invalidate();
-            return;
+            if (_hasPendingStroke && _activeStroke == null)
+            {
+                var distSq = DistanceSquared(point, _pendingStrokeStart);
+                if (distSq < StrokeStartThreshold * StrokeStartThreshold)
+                    return;
+
+                _activeStroke = new StrokeElement { Color = InkColor, StrokeSize = InkThickness };
+                _activeStroke.Points.Add(_pendingStrokeStart);
+                _activeStroke.Points.Add(point);
+                _drawable.Elements.Add(_activeStroke);
+                _hasPendingStroke = false;
+                _lastSinglePointStroke = null;
+                Invalidate();
+                return;
+            }
+
+            if (_activeStroke != null)
+            {
+                _activeStroke.Points.Add(point);
+                _lastSinglePointStroke = null;
+                Invalidate();
+                return;
+            }
         }
 
         if (Tool == AnalysisDrawingTool.Shape && _activeShape != null)
@@ -451,10 +542,9 @@ public class AnalysisDrawingView : GraphicsView
         // Registrar movimiento de selección para undo
         if (_isDraggingSelection && _selectedElement != null)
         {
-            // Solo registrar si hubo movimiento significativo
             var dx = endPoint.X - _selectionDragStartPosition.X;
             var dy = endPoint.Y - _selectionDragStartPosition.Y;
-            if (Math.Abs(dx) > 1f || Math.Abs(dy) > 1f)
+            if (Math.Abs(dx) > 0.5f || Math.Abs(dy) > 0.5f)
             {
                 PushUndo(new UndoAction
                 {
@@ -464,6 +554,19 @@ public class AnalysisDrawingView : GraphicsView
                     NewPosition = endPoint
                 });
             }
+        }
+
+        if (_isDrawing && Tool == AnalysisDrawingTool.Stroke && _hasPendingStroke && _activeStroke == null)
+        {
+            var stroke = new StrokeElement { Color = InkColor, StrokeSize = InkThickness };
+            stroke.Points.Add(_pendingStrokeStart);
+            _drawable.Elements.Add(stroke);
+            _activeStroke = stroke;
+            _lastSinglePointStroke = stroke;
+            _lastSinglePointTime = DateTime.UtcNow;
+            _lastSinglePointPosition = _pendingStrokeStart;
+            _hasPendingStroke = false;
+            Invalidate();
         }
 
         // Registrar adición de stroke o shape para undo
@@ -491,6 +594,7 @@ public class AnalysisDrawingView : GraphicsView
 
         _isDraggingSelection = false;
         _isDrawing = false;
+        _hasPendingStroke = false;
         _activeStroke = null;
         _activeShape = null;
     }

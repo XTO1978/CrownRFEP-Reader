@@ -1,4 +1,11 @@
 using Microsoft.Maui.Controls;
+#if WINDOWS
+using Microsoft.UI.Input;
+using Microsoft.UI.Xaml;
+#endif
+#if MACCATALYST
+using AppKit;
+#endif
 
 namespace CrownRFEP_Reader.Views.Controls;
 
@@ -114,6 +121,7 @@ public class GridSplitter : ContentView
         {
             BackgroundColor = Color.FromArgb("#FF4A4A4A"),
             WidthRequest = 0.8,
+            Opacity = 0,
             HorizontalOptions = LayoutOptions.Center,
             VerticalOptions = LayoutOptions.Fill
         };
@@ -124,8 +132,8 @@ public class GridSplitter : ContentView
         panGesture.PanUpdated += OnPanUpdated;
         GestureRecognizers.Add(panGesture);
 
-#if WINDOWS
-        // PointerGestureRecognizer para feedback visual (hover) - solo Windows
+#if WINDOWS || MACCATALYST
+    // PointerGestureRecognizer para feedback visual (hover) - Windows/MacCatalyst
         var pointerGesture = new PointerGestureRecognizer();
         pointerGesture.PointerEntered += OnPointerEntered;
         pointerGesture.PointerExited += OnPointerExited;
@@ -137,12 +145,33 @@ public class GridSplitter : ContentView
     {
         _visualIndicator.BackgroundColor = Color.FromArgb("#FF8A8A8A");
         _visualIndicator.WidthRequest = 4;
+    _visualIndicator.Opacity = 1;
+        SetHoverCursor(true);
     }
 
     private void OnPointerExited(object? sender, PointerEventArgs e)
     {
         _visualIndicator.BackgroundColor = Color.FromArgb("#FF4A4A4A");
         _visualIndicator.WidthRequest = 0.8;
+    _visualIndicator.Opacity = 0;
+        SetHoverCursor(false);
+    }
+
+    private void SetHoverCursor(bool isResize)
+    {
+#if WINDOWS
+        if (Handler?.PlatformView is UIElement element)
+        {
+            element.InputCursor = isResize
+                ? InputSystemCursor.Create(InputSystemCursorShape.SizeWestEast)
+                : InputSystemCursor.Create(InputSystemCursorShape.Arrow);
+        }
+#elif MACCATALYST
+        if (isResize)
+            NSCursor.ResizeLeftRightCursor.Set();
+        else
+            NSCursor.ArrowCursor.Set();
+#endif
     }
 
     private void ShowPreviewLine(double xPosition)
@@ -196,6 +225,7 @@ public class GridSplitter : ContentView
 
                 _visualIndicator.BackgroundColor = Color.FromArgb("#FFAAAAAA");
                 _visualIndicator.WidthRequest = 6;
+                _visualIndicator.Opacity = 1;
 
                 // Capturar anchos actuales de las columnas
                 var leftIdx = LeftColumnIndex;
@@ -341,6 +371,7 @@ public class GridSplitter : ContentView
                 HidePreviewLine();
                 _visualIndicator.BackgroundColor = Color.FromArgb("#FF4A4A4A");
                 _visualIndicator.WidthRequest = 0.8;
+                _visualIndicator.Opacity = 0;
                 _parentGrid = null;
                 break;
 
@@ -348,6 +379,7 @@ public class GridSplitter : ContentView
                 HidePreviewLine();
                 _visualIndicator.BackgroundColor = Color.FromArgb("#FF4A4A4A");
                 _visualIndicator.WidthRequest = 0.8;
+                _visualIndicator.Opacity = 0;
                 _parentGrid = null;
                 break;
         }
