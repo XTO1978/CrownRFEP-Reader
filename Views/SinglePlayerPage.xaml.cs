@@ -804,6 +804,7 @@ public partial class SinglePlayerPage : ContentPage
         // Suscribirse a cambios de layout de comparación
         _viewModel.ComparisonLayoutChanged += OnComparisonLayoutChanged;
         _viewModel.ComparisonSlotCleared += OnComparisonSlotCleared;
+        _viewModel.ComparisonSlotsChanged += OnComparisonSlotsChanged;
 
         // Asegurar que el grid refleja el layout actual al abrir la página
         ConfigureComparisonGrid(_viewModel.ComparisonLayout);
@@ -837,6 +838,7 @@ public partial class SinglePlayerPage : ContentPage
         // Desuscribirse de cambios de layout de comparación
         _viewModel.ComparisonLayoutChanged -= OnComparisonLayoutChanged;
         _viewModel.ComparisonSlotCleared -= OnComparisonSlotCleared;
+        _viewModel.ComparisonSlotsChanged -= OnComparisonSlotsChanged;
 
 #if MACCATALYST || WINDOWS
         KeyPressHandler.SpaceBarPressed -= OnSpaceBarPressed;
@@ -2486,6 +2488,17 @@ public partial class SinglePlayerPage : ContentPage
                     MediaPlayer4?.Stop();
                     break;
             }
+        });
+    }
+
+    private void OnComparisonSlotsChanged(object? sender, EventArgs e)
+    {
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            // Evitar estados inconsistentes al cambiar videos en comparación
+            PauseAllPlayers();
+            StopAllPlayers();
+            _viewModel.IsPlaying = false;
         });
     }
 

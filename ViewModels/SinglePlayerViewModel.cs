@@ -5251,18 +5251,30 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         {
             case 2:
                 ComparisonVideo2 = null;
+                _lapSegments2 = null;
+                _currentLapIndex2 = 0;
+                _waitingAtLapBoundary2 = false;
                 ComparisonSlotCleared?.Invoke(this, 2);
                 break;
             case 3:
                 ComparisonVideo3 = null;
+                _lapSegments3 = null;
+                _currentLapIndex3 = 0;
+                _waitingAtLapBoundary3 = false;
                 ComparisonSlotCleared?.Invoke(this, 3);
                 break;
             case 4:
                 ComparisonVideo4 = null;
+                _lapSegments4 = null;
+                _currentLapIndex4 = 0;
+                _waitingAtLapBoundary4 = false;
                 ComparisonSlotCleared?.Invoke(this, 4);
                 break;
         }
         SelectedComparisonSlot = 0;
+
+        ResetLapSyncForComparisonChange();
+        ComparisonSlotsChanged?.Invoke(this, EventArgs.Empty);
         
         // Actualizar texto de estado
         OnPropertyChanged(nameof(SyncStatusText));
@@ -5272,6 +5284,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     /// Evento que se dispara cuando se limpia un slot de comparación (para detener el reproductor).
     /// </summary>
     public event EventHandler<int>? ComparisonSlotCleared;
+    public event EventHandler? ComparisonSlotsChanged;
 
     private void AssignVideoToComparisonSlot(VideoClip video)
     {
@@ -5325,14 +5338,26 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         {
             case 2:
                 ComparisonVideo2 = video;
+                _lapSegments2 = null;
+                _currentLapIndex2 = 0;
+                _waitingAtLapBoundary2 = false;
                 break;
             case 3:
                 ComparisonVideo3 = video;
+                _lapSegments3 = null;
+                _currentLapIndex3 = 0;
+                _waitingAtLapBoundary3 = false;
                 break;
             case 4:
                 ComparisonVideo4 = video;
+                _lapSegments4 = null;
+                _currentLapIndex4 = 0;
+                _waitingAtLapBoundary4 = false;
                 break;
         }
+
+        ResetLapSyncForComparisonChange();
+        ComparisonSlotsChanged?.Invoke(this, EventArgs.Empty);
     }
 
     private void ClearAllComparisonVideos()
@@ -5340,7 +5365,30 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         ComparisonVideo2 = null;
         ComparisonVideo3 = null;
         ComparisonVideo4 = null;
+        _lapSegments2 = null;
+        _lapSegments3 = null;
+        _lapSegments4 = null;
+        _currentLapIndex2 = 0;
+        _currentLapIndex3 = 0;
+        _currentLapIndex4 = 0;
+        _waitingAtLapBoundary2 = false;
+        _waitingAtLapBoundary3 = false;
+        _waitingAtLapBoundary4 = false;
         SelectedComparisonSlot = 0;
+
+        ResetLapSyncForComparisonChange();
+        ComparisonSlotsChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void ResetLapSyncForComparisonChange()
+    {
+        _lapSyncInitCts?.Cancel();
+        _isProcessingLapSync = false;
+        _currentLapIndex1 = 0;
+        _waitingAtLapBoundary1 = false;
+
+        if (IsComparisonLapSyncEnabled)
+            _ = EnsureLapSyncSegmentsLoadedAsync();
     }
 
     /// <summary>
