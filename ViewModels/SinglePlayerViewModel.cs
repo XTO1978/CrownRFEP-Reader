@@ -556,6 +556,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             _currentPosition = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(CurrentPositionText));
+            OnPropertyChanged(nameof(SliderMaximumSeconds));
             UpdateProgress();
             if (IsComparisonLapSyncEnabled)
             {
@@ -573,10 +574,14 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             _duration = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(DurationText));
+            OnPropertyChanged(nameof(SliderMaximumSeconds));
             UpdateProgress();
             RefreshTimelineMarkers();
         }
     }
+
+    public double SliderMaximumSeconds
+        => Math.Max(1, GetSliderMaxDurationSeconds());
 
     public double Progress
     {
@@ -1295,6 +1300,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(IsVertical1x2Layout));
             OnPropertyChanged(nameof(IsQuad2x2Layout));
             OnPropertyChanged(nameof(IsMultiVideoLayout));
+            OnPropertyChanged(nameof(SliderMaximumSeconds));
             OnPropertyChanged(nameof(ComparisonLayoutText));
             OnPropertyChanged(nameof(VideoAspect));
             OnPropertyChanged(nameof(SyncStatusText));
@@ -1339,6 +1345,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             OnPropertyChanged();
             OnPropertyChanged(nameof(HasComparisonVideo2));
             OnPropertyChanged(nameof(ComparisonVideo2Path));
+            OnPropertyChanged(nameof(SliderMaximumSeconds));
             OnPropertyChanged(nameof(CanExportComparison));
 
             (ExportComparisonCommand as Command)?.ChangeCanExecute();
@@ -1360,6 +1367,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             OnPropertyChanged();
             OnPropertyChanged(nameof(HasComparisonVideo3));
             OnPropertyChanged(nameof(ComparisonVideo3Path));
+            OnPropertyChanged(nameof(SliderMaximumSeconds));
             OnPropertyChanged(nameof(CanExportComparison));
 
             (ExportComparisonCommand as Command)?.ChangeCanExecute();
@@ -1381,6 +1389,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             OnPropertyChanged();
             OnPropertyChanged(nameof(HasComparisonVideo4));
             OnPropertyChanged(nameof(ComparisonVideo4Path));
+            OnPropertyChanged(nameof(SliderMaximumSeconds));
             OnPropertyChanged(nameof(CanExportComparison));
 
             (ExportComparisonCommand as Command)?.ChangeCanExecute();
@@ -1654,6 +1663,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             var previousPosition = _currentPosition2;
             _currentPosition2 = value;
             OnPropertyChanged();
+            OnPropertyChanged(nameof(SliderMaximumSeconds));
             if (IsComparisonLapSyncEnabled)
             {
                 CheckLapBoundaryAndSync(2, previousPosition, value);
@@ -1670,6 +1680,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             var previousPosition = _currentPosition3;
             _currentPosition3 = value;
             OnPropertyChanged();
+            OnPropertyChanged(nameof(SliderMaximumSeconds));
             if (IsComparisonLapSyncEnabled)
             {
                 CheckLapBoundaryAndSync(3, previousPosition, value);
@@ -1686,6 +1697,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             var previousPosition = _currentPosition4;
             _currentPosition4 = value;
             OnPropertyChanged();
+            OnPropertyChanged(nameof(SliderMaximumSeconds));
             if (IsComparisonLapSyncEnabled)
             {
                 CheckLapBoundaryAndSync(4, previousPosition, value);
@@ -1697,19 +1709,34 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     public TimeSpan Duration2
     {
         get => _duration2;
-        set { _duration2 = value; OnPropertyChanged(); }
+        set
+        {
+            _duration2 = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(SliderMaximumSeconds));
+        }
     }
 
     public TimeSpan Duration3
     {
         get => _duration3;
-        set { _duration3 = value; OnPropertyChanged(); }
+        set
+        {
+            _duration3 = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(SliderMaximumSeconds));
+        }
     }
 
     public TimeSpan Duration4
     {
         get => _duration4;
-        set { _duration4 = value; OnPropertyChanged(); }
+        set
+        {
+            _duration4 = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(SliderMaximumSeconds));
+        }
     }
 
     public bool IsPlaying2
@@ -2754,6 +2781,23 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             Progress = CurrentPosition.TotalSeconds / Duration.TotalSeconds;
         else
             Progress = 0;
+    }
+
+    private double GetSliderMaxDurationSeconds()
+    {
+        var max = Duration.TotalSeconds;
+
+        if (IsMultiVideoLayout)
+        {
+            if (HasComparisonVideo2)
+                max = Math.Max(max, Duration2.TotalSeconds);
+            if (HasComparisonVideo3)
+                max = Math.Max(max, Duration3.TotalSeconds);
+            if (HasComparisonVideo4)
+                max = Math.Max(max, Duration4.TotalSeconds);
+        }
+
+        return max;
     }
 
     private async Task LoadSessionDataAsync(int sessionId)

@@ -945,6 +945,8 @@ public partial class SinglePlayerPage : ContentPage
         // CurrentPosition2 alimenta el lap-sync/overlay (VM); ComparisonPosition2 alimenta el delta en footer.
         _viewModel.CurrentPosition2 = position;
         _viewModel.ComparisonPosition2 = position;
+        if (!_isDraggingSlider && !_isScrubbing)
+            UpdateMainProgressSlider();
     }
 
     private void OnPositionChanged3(object? sender, TimeSpan position)
@@ -952,6 +954,8 @@ public partial class SinglePlayerPage : ContentPage
         if (!_isPageActive) return;
         _viewModel.CurrentPosition3 = position;
         _viewModel.ComparisonPosition3 = position;
+        if (!_isDraggingSlider && !_isScrubbing)
+            UpdateMainProgressSlider();
     }
 
     private void OnPositionChanged4(object? sender, TimeSpan position)
@@ -959,6 +963,8 @@ public partial class SinglePlayerPage : ContentPage
         if (!_isPageActive) return;
         _viewModel.CurrentPosition4 = position;
         _viewModel.ComparisonPosition4 = position;
+        if (!_isDraggingSlider && !_isScrubbing)
+            UpdateMainProgressSlider();
     }
 
     #region Video Slot Hover y Sliders Individuales
@@ -1625,23 +1631,8 @@ public partial class SinglePlayerPage : ContentPage
         {
             if (!_isPageActive) return;
             _viewModel.CurrentPosition = position;
-            
-            // Actualizar el slider directamente (sin binding para evitar conflictos)
-            // Se actualiza incluso durante scrubbing para reflejar la posición real
-            if (_viewModel.Duration.TotalSeconds > 0)
-            {
-                var progress = position.TotalSeconds / _viewModel.Duration.TotalSeconds;
-                if (ProgressSlider != null)
-                    ProgressSlider.Value = progress;
-#if IOS
-                if (ProgressSliderIOS != null)
-                    ProgressSliderIOS.Value = progress;
-#endif
-#if WINDOWS || MACCATALYST
-                if (ProgressSliderWindows != null)
-                    ProgressSliderWindows.Value = progress;
-#endif
-            }
+
+            UpdateMainProgressSlider();
         });
     }
 
@@ -1654,6 +1645,73 @@ public partial class SinglePlayerPage : ContentPage
             if (!_isPageActive) return;
             _viewModel.IsPlaying = false;
         });
+    }
+
+    private double GetMainSliderPositionSeconds()
+    {
+        var position = _viewModel.CurrentPosition.TotalSeconds;
+
+        if (_viewModel.IsMultiVideoLayout)
+        {
+            if (_viewModel.HasComparisonVideo2)
+                position = Math.Max(position, _viewModel.CurrentPosition2.TotalSeconds);
+            if (_viewModel.HasComparisonVideo3)
+                position = Math.Max(position, _viewModel.CurrentPosition3.TotalSeconds);
+            if (_viewModel.HasComparisonVideo4)
+                position = Math.Max(position, _viewModel.CurrentPosition4.TotalSeconds);
+        }
+
+        return position;
+    }
+
+    private void UpdateMainProgressSlider()
+    {
+        if (!_isPageActive || _isDraggingSlider || _isScrubbing)
+            return;
+
+        var maxSeconds = _viewModel.SliderMaximumSeconds;
+        if (maxSeconds <= 0)
+            return;
+
+        var positionSeconds = Math.Max(0, Math.Min(GetMainSliderPositionSeconds(), maxSeconds));
+
+        if (ProgressSlider != null)
+            ProgressSlider.Value = positionSeconds;
+#if IOS
+        if (ProgressSliderIOS != null)
+            ProgressSliderIOS.Value = positionSeconds;
+#endif
+#if WINDOWS || MACCATALYST
+        if (ProgressSliderWindows != null)
+            ProgressSliderWindows.Value = positionSeconds;
+#endif
+    }
+
+    private void SeekAllPlayersToGlobalPosition(double positionSeconds)
+    {
+        var clampedPosition = Math.Max(0, positionSeconds);
+
+        var target1 = Math.Max(0, Math.Min(_viewModel.Duration.TotalSeconds, clampedPosition));
+        MediaPlayer?.SeekTo(TimeSpan.FromSeconds(target1));
+
+        if (_viewModel.IsMultiVideoLayout)
+        {
+            if (_viewModel.HasComparisonVideo2)
+            {
+                var target2 = Math.Max(0, Math.Min(_viewModel.Duration2.TotalSeconds, clampedPosition));
+                MediaPlayer2?.SeekTo(TimeSpan.FromSeconds(target2));
+            }
+            if (_viewModel.HasComparisonVideo3)
+            {
+                var target3 = Math.Max(0, Math.Min(_viewModel.Duration3.TotalSeconds, clampedPosition));
+                MediaPlayer3?.SeekTo(TimeSpan.FromSeconds(target3));
+            }
+            if (_viewModel.HasComparisonVideo4)
+            {
+                var target4 = Math.Max(0, Math.Min(_viewModel.Duration4.TotalSeconds, clampedPosition));
+                MediaPlayer4?.SeekTo(TimeSpan.FromSeconds(target4));
+            }
+        }
     }
 
     #endregion
@@ -1998,7 +2056,13 @@ public partial class SinglePlayerPage : ContentPage
         if (!_isDraggingSlider) return;
 
         // Calcular la posición objetivo
-        var position = TimeSpan.FromSeconds(e.NewValue * _viewModel.Duration.TotalSeconds);
+        var maxSeconds = _viewModel.SliderMaximumSeconds;
+        if (maxSeconds <= 0)
+            return;
+
+        var positionSeconds = Math.Max(0, Math.Min(maxSeconds, e.NewValue));
+        var mainPositionSeconds = Math.Min(_viewModel.Duration.TotalSeconds, positionSeconds);
+        var position = TimeSpan.FromSeconds(mainPositionSeconds);
         
         // Actualizar el texto de tiempo
         _viewModel.CurrentPosition = position;
@@ -2010,13 +2074,13 @@ public partial class SinglePlayerPage : ContentPage
         {
             _lastSeekTime = now;
             // Seek en todos los players en modo comparación
-            SeekAllPlayersTo(position);
+            SeekAllPlayersToGlobalPosition(positionSeconds);
         }
 #else
         // En MacCatalyst/iOS: hacer seek para mostrar el frame actual
         // El parpadeo ya no ocurre porque eliminamos el binding del slider
         // Seek en todos los players en modo comparación
-        SeekAllPlayersTo(position);
+        SeekAllPlayersToGlobalPosition(positionSeconds);
 #endif
     }
 
@@ -2032,10 +2096,14 @@ public partial class SinglePlayerPage : ContentPage
         {
             sliderValue = ProgressSlider.Value;
         }
+
+        var maxSeconds = _viewModel.SliderMaximumSeconds;
+        if (maxSeconds <= 0)
+            return;
         
         // Primero hacer el seek al frame deseado en todos los players
-        var position = TimeSpan.FromSeconds(sliderValue * _viewModel.Duration.TotalSeconds);
-        SeekAllPlayersTo(position);
+        var positionSeconds = Math.Max(0, Math.Min(maxSeconds, sliderValue));
+        SeekAllPlayersToGlobalPosition(positionSeconds);
         
         // Después desactivar los flags para que Progress se actualice normalmente
         _isDraggingSlider = false;
@@ -2072,7 +2140,7 @@ public partial class SinglePlayerPage : ContentPage
             // Inicio del scrubbing: pausar si está reproduciendo
             _isScrubbing = true;
             _wasPlayingBeforeScrub = _viewModel.IsPlaying;
-            _currentScrubPosition = _viewModel.CurrentPosition.TotalMilliseconds;
+            _currentScrubPosition = GetMainSliderPositionSeconds() * 1000.0;
             
             if (_wasPlayingBeforeScrub)
             {
@@ -2085,29 +2153,17 @@ public partial class SinglePlayerPage : ContentPage
             // Durante el scrubbing: actualizar posición
             _currentScrubPosition += e.DeltaMilliseconds;
             
-            // Limitar a los bordes del video
-            var maxMs = _viewModel.Duration.TotalMilliseconds;
+            // Limitar al máximo global (duración más larga)
+            var maxMs = _viewModel.SliderMaximumSeconds * 1000.0;
             _currentScrubPosition = Math.Max(0, Math.Min(_currentScrubPosition, maxMs));
             
-            var newPosition = TimeSpan.FromMilliseconds(_currentScrubPosition);
+            var positionSeconds = _currentScrubPosition / 1000.0;
+            var mainPositionSeconds = Math.Min(_viewModel.Duration.TotalSeconds, positionSeconds);
+            var newPosition = TimeSpan.FromSeconds(mainPositionSeconds);
             MediaPlayer?.SeekTo(newPosition);
             _viewModel.CurrentPosition = newPosition;
             
-            // Actualizar el slider directamente durante el scrubbing
-            if (_viewModel.Duration.TotalSeconds > 0)
-            {
-                var progress = newPosition.TotalSeconds / _viewModel.Duration.TotalSeconds;
-                if (ProgressSlider != null)
-                    ProgressSlider.Value = progress;
-#if IOS
-                if (ProgressSliderIOS != null)
-                    ProgressSliderIOS.Value = progress;
-#endif
-#if WINDOWS || MACCATALYST
-                if (ProgressSliderWindows != null)
-                    ProgressSliderWindows.Value = progress;
-#endif
-            }
+            UpdateMainProgressSlider();
         }
     }
 
