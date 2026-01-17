@@ -2521,8 +2521,6 @@ public partial class SinglePlayerPage : ContentPage
         // Desuscribir el evento de tamaño si estaba suscrito y resetear padding
         ComparisonGrid.SizeChanged -= OnComparisonGridSizeChanged;
         ComparisonGrid.Padding = new Thickness(0);
-        if (AnalysisCanvas != null)
-            AnalysisCanvas.Margin = ComparisonGrid.Padding;
 
         switch (layout)
         {
@@ -2669,8 +2667,6 @@ public partial class SinglePlayerPage : ContentPage
             // El contenido cabe - centrar verticalmente con las proporciones correctas
             var verticalPadding = (gridHeight - totalIdealHeight) / 2;
             ComparisonGrid.Padding = new Thickness(0, verticalPadding, 0, verticalPadding);
-            if (AnalysisCanvas != null)
-                AnalysisCanvas.Margin = ComparisonGrid.Padding;
             
             // Actualizar las filas a altura fija
             if (ComparisonGrid.RowDefinitions.Count >= 2)
@@ -2683,8 +2679,6 @@ public partial class SinglePlayerPage : ContentPage
         {
             // El contenido no cabe - ajustar al alto disponible y reducir ancho
             ComparisonGrid.Padding = new Thickness(0);
-            if (AnalysisCanvas != null)
-                AnalysisCanvas.Margin = ComparisonGrid.Padding;
             var actualCellHeight = gridHeight / 2;
             var actualCellWidth = actualCellHeight * aspectRatio;
             var horizontalPadding = (gridWidth - (actualCellWidth * 2)) / 2;
@@ -2692,8 +2686,6 @@ public partial class SinglePlayerPage : ContentPage
             if (horizontalPadding > 0)
             {
                 ComparisonGrid.Padding = new Thickness(horizontalPadding, 0, horizontalPadding, 0);
-                if (AnalysisCanvas != null)
-                    AnalysisCanvas.Margin = ComparisonGrid.Padding;
             }
             
             // Usar filas Star para distribuir equitativamente
