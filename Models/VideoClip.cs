@@ -255,18 +255,46 @@ public class VideoClip : INotifyPropertyChanged
     public bool IsSelected
     {
         get => _isSelected;
+    private List<Tag>? _tags;
+    private List<Tag>? _eventTags;
         set
         {
             if (_isSelected != value)
             {
-                _isSelected = value;
-                OnPropertyChanged(nameof(IsSelected));
+    [Ignore]
+    public List<Tag>? Tags
+    {
+        get => _tags;
+        set
+        {
+            if (ReferenceEquals(_tags, value))
+                return;
+            _tags = value;
+            OnPropertyChanged(nameof(Tags));
+            OnPropertyChanged(nameof(HasTags));
+            OnPropertyChanged(nameof(TagsSummary));
+            OnPropertyChanged(nameof(HasTagsSummary));
+        }
+    }
             }
         }
     }
 
-    /// <summary>
-    /// Indica si el vídeo tiene un tiempo/split guardado (cronometraje de ejecución).
+    [Ignore]
+    public List<Tag>? EventTags
+    {
+        get => _eventTags;
+        set
+        {
+            if (ReferenceEquals(_eventTags, value))
+                return;
+            _eventTags = value;
+            OnPropertyChanged(nameof(EventTags));
+            OnPropertyChanged(nameof(HasEventTags));
+            OnPropertyChanged(nameof(TagsSummary));
+            OnPropertyChanged(nameof(HasTagsSummary));
+        }
+    }
     /// Se usa para mostrar un indicador en la miniatura de la galería.
     /// </summary>
     [Ignore]
