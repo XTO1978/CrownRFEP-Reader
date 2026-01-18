@@ -13,6 +13,8 @@ public class VideoClip : INotifyPropertyChanged
     private bool _isSelected;
     private bool _hasTiming;
     private bool _isCurrentlyPlaying;
+    private List<Tag>? _tags;
+    private List<Tag>? _eventTags;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -182,13 +184,39 @@ public class VideoClip : INotifyPropertyChanged
     /// Tags asignados al video (TimeStamp == 0)
     /// </summary>
     [Ignore]
-    public List<Tag>? Tags { get; set; }
+    public List<Tag>? Tags
+    {
+        get => _tags;
+        set
+        {
+            if (ReferenceEquals(_tags, value))
+                return;
+            _tags = value;
+            OnPropertyChanged(nameof(Tags));
+            OnPropertyChanged(nameof(HasTags));
+            OnPropertyChanged(nameof(TagsSummary));
+            OnPropertyChanged(nameof(HasTagsSummary));
+        }
+    }
 
     /// <summary>
     /// Tags de eventos del video (TimeStamp > 0)
     /// </summary>
     [Ignore]
-    public List<Tag>? EventTags { get; set; }
+    public List<Tag>? EventTags
+    {
+        get => _eventTags;
+        set
+        {
+            if (ReferenceEquals(_eventTags, value))
+                return;
+            _eventTags = value;
+            OnPropertyChanged(nameof(EventTags));
+            OnPropertyChanged(nameof(HasEventTags));
+            OnPropertyChanged(nameof(TagsSummary));
+            OnPropertyChanged(nameof(HasTagsSummary));
+        }
+    }
 
     /// <summary>
     /// Indica si el video tiene tags asignados
@@ -216,14 +244,16 @@ public class VideoClip : INotifyPropertyChanged
                 names.AddRange(
                     Tags.Where(t => t != null)
                         .Select(t => t!.NombreTag)
-                        .Where(n => !string.IsNullOrWhiteSpace(n)));
+                        .Where(n => !string.IsNullOrWhiteSpace(n))
+                        .Select(n => n!));
             }
             if (EventTags != null)
             {
                 names.AddRange(
                     EventTags.Where(t => t != null)
                         .Select(t => t!.DisplayText)
-                        .Where(n => !string.IsNullOrWhiteSpace(n)));
+                        .Where(n => !string.IsNullOrWhiteSpace(n))
+                        .Select(n => n!));
             }
 
             if (names.Count == 0)
@@ -255,46 +285,17 @@ public class VideoClip : INotifyPropertyChanged
     public bool IsSelected
     {
         get => _isSelected;
-    private List<Tag>? _tags;
-    private List<Tag>? _eventTags;
         set
         {
             if (_isSelected != value)
             {
-    [Ignore]
-    public List<Tag>? Tags
-    {
-        get => _tags;
-        set
-        {
-            if (ReferenceEquals(_tags, value))
-                return;
-            _tags = value;
-            OnPropertyChanged(nameof(Tags));
-            OnPropertyChanged(nameof(HasTags));
-            OnPropertyChanged(nameof(TagsSummary));
-            OnPropertyChanged(nameof(HasTagsSummary));
-        }
-    }
+                _isSelected = value;
+                OnPropertyChanged(nameof(IsSelected));
             }
         }
     }
-
-    [Ignore]
-    public List<Tag>? EventTags
-    {
-        get => _eventTags;
-        set
-        {
-            if (ReferenceEquals(_eventTags, value))
-                return;
-            _eventTags = value;
-            OnPropertyChanged(nameof(EventTags));
-            OnPropertyChanged(nameof(HasEventTags));
-            OnPropertyChanged(nameof(TagsSummary));
-            OnPropertyChanged(nameof(HasTagsSummary));
-        }
-    }
+    
+    /// <summary>
     /// Se usa para mostrar un indicador en la miniatura de la galería.
     /// </summary>
     [Ignore]
