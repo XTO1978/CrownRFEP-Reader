@@ -52,6 +52,13 @@
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 	</PropertyGroup>
 
+	<PropertyGroup Condition="'$(TargetFramework)' == 'net9.0-ios' and '$(Configuration)' == 'Debug'">
+		<UseInterpreter>true</UseInterpreter>
+		<MtouchUseInterpreter>true</MtouchUseInterpreter>
+		<RunAOTCompilation>false</RunAOTCompilation>
+		<MtouchUseDynamicRuntime>true</MtouchUseDynamicRuntime>
+	</PropertyGroup>
+
 	<PropertyGroup Condition="'$(Configuration)' == 'Debug' and '$(TargetFramework)' == 'net9.0-windows10.0.19041.0'">
 		<DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_BREAK_ON_UNHANDLED_EXCEPTION</DefineConstants>
 	</PropertyGroup>

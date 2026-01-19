@@ -2,6 +2,9 @@
 bin/
 obj/
 
+# iOS crash reports
+ios-crash-reports/
+
 # Visual Studio
 .vs/
 *.user

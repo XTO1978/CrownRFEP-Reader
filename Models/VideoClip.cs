@@ -1,8 +1,11 @@
 using SQLite;
+using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 
-namespace CrownRFEP_Reader.Models;
+namespace CrownRFEP_Reader.Models
+{
 
 /// <summary>
 /// Representa un clip de video de entrenamiento
@@ -13,8 +16,6 @@ public class VideoClip : INotifyPropertyChanged
     private bool _isSelected;
     private bool _hasTiming;
     private bool _isCurrentlyPlaying;
-    private List<Tag>? _tags;
-    private List<Tag>? _eventTags;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -86,9 +87,9 @@ public class VideoClip : INotifyPropertyChanged
             {
                 return ComparisonName;
             }
-            
+
             var parts = new List<string>();
-            
+
             // Atleta: APELLIDO Nombre
             if (Atleta != null && !string.IsNullOrWhiteSpace(Atleta.Apellido))
             {
@@ -100,13 +101,13 @@ public class VideoClip : INotifyPropertyChanged
             {
                 parts.Add(Atleta.Nombre);
             }
-            
+
             // Sesión
             if (Session != null && !string.IsNullOrWhiteSpace(Session.DisplayName))
             {
                 parts.Add(Session.DisplayName);
             }
-            
+
             return parts.Count > 0 ? string.Join(" - ", parts) : "";
         }
     }
@@ -120,19 +121,19 @@ public class VideoClip : INotifyPropertyChanged
         get
         {
             var parts = new List<string>();
-            
+
             // Lugar
             if (Session != null && !string.IsNullOrWhiteSpace(Session.Lugar))
             {
                 parts.Add(Session.Lugar);
             }
-            
+
             // Fecha y hora
             if (CreationDate > 0)
             {
                 parts.Add(CreationDateTime.ToString("dd/MM/yyyy HH:mm"));
             }
-            
+
             return parts.Count > 0 ? string.Join(", ", parts) : "";
         }
     }
@@ -144,8 +145,8 @@ public class VideoClip : INotifyPropertyChanged
         {
             if (ClipDuration <= 0) return "00:00";
             var ts = TimeSpan.FromSeconds(ClipDuration);
-            return ts.TotalMinutes >= 1 
-                ? $"{(int)ts.TotalMinutes}:{ts.Seconds:D2}" 
+            return ts.TotalMinutes >= 1
+                ? $"{(int)ts.TotalMinutes}:{ts.Seconds:D2}"
                 : $"0:{ts.Seconds:D2}";
         }
     }
@@ -184,39 +185,13 @@ public class VideoClip : INotifyPropertyChanged
     /// Tags asignados al video (TimeStamp == 0)
     /// </summary>
     [Ignore]
-    public List<Tag>? Tags
-    {
-        get => _tags;
-        set
-        {
-            if (ReferenceEquals(_tags, value))
-                return;
-            _tags = value;
-            OnPropertyChanged(nameof(Tags));
-            OnPropertyChanged(nameof(HasTags));
-            OnPropertyChanged(nameof(TagsSummary));
-            OnPropertyChanged(nameof(HasTagsSummary));
-        }
-    }
+    public List<Tag>? Tags { get; set; }
 
     /// <summary>
     /// Tags de eventos del video (TimeStamp > 0)
     /// </summary>
     [Ignore]
-    public List<Tag>? EventTags
-    {
-        get => _eventTags;
-        set
-        {
-            if (ReferenceEquals(_eventTags, value))
-                return;
-            _eventTags = value;
-            OnPropertyChanged(nameof(EventTags));
-            OnPropertyChanged(nameof(HasEventTags));
-            OnPropertyChanged(nameof(TagsSummary));
-            OnPropertyChanged(nameof(HasTagsSummary));
-        }
-    }
+    public List<Tag>? EventTags { get; set; }
 
     /// <summary>
     /// Indica si el video tiene tags asignados
@@ -244,16 +219,14 @@ public class VideoClip : INotifyPropertyChanged
                 names.AddRange(
                     Tags.Where(t => t != null)
                         .Select(t => t!.NombreTag)
-                        .Where(n => !string.IsNullOrWhiteSpace(n))
-                        .Select(n => n!));
+                        .Where(n => !string.IsNullOrWhiteSpace(n)));
             }
             if (EventTags != null)
             {
                 names.AddRange(
                     EventTags.Where(t => t != null)
                         .Select(t => t!.DisplayText)
-                        .Where(n => !string.IsNullOrWhiteSpace(n))
-                        .Select(n => n!));
+                        .Where(n => !string.IsNullOrWhiteSpace(n)));
             }
 
             if (names.Count == 0)
@@ -294,8 +267,9 @@ public class VideoClip : INotifyPropertyChanged
             }
         }
     }
-    
+
     /// <summary>
+    /// Indica si el video tiene cronometraje/split guardado.
     /// Se usa para mostrar un indicador en la miniatura de la galería.
     /// </summary>
     [Ignore]
@@ -334,4 +308,5 @@ public class VideoClip : INotifyPropertyChanged
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
+}
 }
