@@ -28,6 +28,11 @@
 	</array>
 	<key>XSAppIconAssets</key>
 	<string>Assets.xcassets/appicon.appiconset</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
 	
 	<!-- Permisos para grabación de videolecciones -->
 	<key>NSMicrophoneUsageDescription</key>

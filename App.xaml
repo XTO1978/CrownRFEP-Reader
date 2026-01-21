@@ -30,6 +30,7 @@
             <converters:TimestampToDateConverter x:Key="TimestampToDateConverter"/>
             <converters:AllTrueMultiConverter x:Key="AllTrueConverter"/>
             <converters:BoolToDoubleConverter x:Key="BoolToDoubleConverter"/>
+            <converters:BoolToStringConverter x:Key="BoolToStringConverter"/>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

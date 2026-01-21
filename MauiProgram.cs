@@ -179,6 +179,16 @@ public static class MauiProgram
 		builder.Services.AddSingleton<StatisticsService>();
 		builder.Services.AddSingleton<ThumbnailService>();
 		builder.Services.AddSingleton<ITableExportService, TableExportService>();
+		builder.Services.AddSingleton<StoragePathService>();
+		
+		// Servicio de backend en la nube (seguro - sin credenciales en cliente)
+		builder.Services.AddSingleton<ICloudBackendService, CloudBackendService>();
+		
+		// Servicio de sincronización local <-> remoto
+		builder.Services.AddSingleton<SyncService>();
+		
+		// Servicio de migración de almacenamiento
+		builder.Services.AddSingleton<StorageMigrationService>();
 		
 		// Plugin.Maui.Audio para grabación de micrófono
 		builder.Services.AddSingleton(AudioManager.Current);

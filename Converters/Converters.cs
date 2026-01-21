@@ -51,6 +51,38 @@ public class InvertedBoolConverter : IValueConverter
 }
 
 /// <summary>
+/// Convierte un booleano a string.
+/// Parámetro: "valorTrue|valorFalse" (ej: "Sí|No")
+/// </summary>
+public class BoolToStringConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        string trueValue = "Sí";
+        string falseValue = "No";
+
+        if (parameter is string paramStr)
+        {
+            var parts = paramStr.Split('|');
+            if (parts.Length >= 2)
+            {
+                trueValue = parts[0];
+                falseValue = parts[1];
+            }
+        }
+
+        if (value is bool boolValue)
+            return boolValue ? trueValue : falseValue;
+        return falseValue;
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+/// <summary>
 /// Convierte un booleano a un valor double.
 /// Por defecto: true = 1.0, false = 0.5
 /// Parámetro opcional: "trueValue|falseValue" (ej: "1.0|0.3")

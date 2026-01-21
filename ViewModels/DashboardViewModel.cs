@@ -176,8 +176,24 @@ public class DashboardViewModel : BaseViewModel
     private bool _isVideoLessonsSelected;
     private bool _isDiaryViewSelected;
     private bool _isUserLibraryExpanded = true;
+    private bool _isRemoteLibraryVisible = true; // Siempre visible, conectamos al equipo automáticamente
+    private bool _isRemoteLibraryExpanded = true;
+    private bool _isRemoteAllGallerySelected;
+    private bool _isRemoteVideoLessonsSelected;
+    private bool _isRemoteTrashSelected;
+    private bool _isRemoteSmartFoldersExpanded = true;
+    private string _remoteLibraryDisplayName = "Equipo";
+    private string _remoteAllGalleryItemCount = "—";
+    private string _remoteVideoLessonsCount = "—";
+    private string _remoteTrashItemCount = "—";
+    private ObservableCollection<SmartFolderDefinition> _remoteSmartFolders = new();
     private bool _isSessionsListExpanded = true;
     private bool _isLoadingSelectedSessionVideos;
+
+    // Videos remotos (de Wasabi)
+    private ObservableCollection<RemoteVideoItem> _remoteVideos = new();
+    private bool _isLoadingRemoteVideos;
+    private List<CloudFileInfo>? _remoteFilesCache;
 
     private GridLength _mainPanelWidth = new(2.5, GridUnitType.Star);
     private GridLength _rightPanelWidth = new(1.2, GridUnitType.Star);
@@ -212,6 +228,9 @@ public class DashboardViewModel : BaseViewModel
 
     // Carpetas inteligentes (galería)
     private const string SmartFoldersPreferencesKey = "SmartFolders";
+    private readonly ICloudBackendService _cloudBackendService;
+    private readonly SyncService? _syncService;
+    private readonly StorageMigrationService? _migrationService;
     private bool _showSmartFolderSidebarPopup;
     private string _newSmartFolderName = "";
     private string _newSmartFolderMatchMode = "All"; // All=AND, Any=OR
@@ -337,6 +356,12 @@ public class DashboardViewModel : BaseViewModel
     private string? _sessionEditName;
     private string? _sessionEditLugar;
     private string? _sessionEditTipoSesion;
+
+    // Sincronización cloud
+    private bool _isSyncing;
+    private int _syncProgress;
+    private string _syncStatusText = "Sincronización cloud";
+    private int _pendingSyncCount;
 
     private CancellationTokenSource? _selectedSessionVideosCts;
 
@@ -1033,13 +1058,104 @@ public class DashboardViewModel : BaseViewModel
         }
     }
 
-    public string SelectedSessionTitle => IsDiaryViewSelected
-        ? "Diario Personal"
-        : (IsVideoLessonsSelected
-            ? "Videolecciones"
-            : (IsAllGallerySelected
-                ? "Galería General"
-                : (SelectedSession?.DisplayName ?? "Selecciona una sesión")));
+    public bool IsRemoteLibraryVisible
+    {
+        get => _isRemoteLibraryVisible;
+        set => SetProperty(ref _isRemoteLibraryVisible, value);
+    }
+
+    public bool IsRemoteLibraryExpanded
+    {
+        get => _isRemoteLibraryExpanded;
+        set => SetProperty(ref _isRemoteLibraryExpanded, value);
+    }
+
+    public string RemoteLibraryDisplayName
+    {
+        get => _remoteLibraryDisplayName;
+        set => SetProperty(ref _remoteLibraryDisplayName, value);
+    }
+
+    public string RemoteAllGalleryItemCount
+    {
+        get => _remoteAllGalleryItemCount;
+        set => SetProperty(ref _remoteAllGalleryItemCount, value);
+    }
+
+    public string RemoteVideoLessonsCount
+    {
+        get => _remoteVideoLessonsCount;
+        set => SetProperty(ref _remoteVideoLessonsCount, value);
+    }
+
+    public string RemoteTrashItemCount
+    {
+        get => _remoteTrashItemCount;
+        set => SetProperty(ref _remoteTrashItemCount, value);
+    }
+
+    public bool IsRemoteAllGallerySelected
+    {
+        get => _isRemoteAllGallerySelected;
+        set => SetProperty(ref _isRemoteAllGallerySelected, value);
+    }
+
+    public bool IsRemoteVideoLessonsSelected
+    {
+        get => _isRemoteVideoLessonsSelected;
+        set => SetProperty(ref _isRemoteVideoLessonsSelected, value);
+    }
+
+    public bool IsRemoteTrashSelected
+    {
+        get => _isRemoteTrashSelected;
+        set => SetProperty(ref _isRemoteTrashSelected, value);
+    }
+
+    public bool IsRemoteSmartFoldersExpanded
+    {
+        get => _isRemoteSmartFoldersExpanded;
+        set => SetProperty(ref _isRemoteSmartFoldersExpanded, value);
+    }
+
+    /// <summary>
+    /// Colección de videos remotos del equipo (Wasabi)
+    /// </summary>
+    public ObservableCollection<RemoteVideoItem> RemoteVideos
+    {
+        get => _remoteVideos;
+        set => SetProperty(ref _remoteVideos, value);
+    }
+
+    /// <summary>
+    /// Indica si se están cargando videos remotos
+    /// </summary>
+    public bool IsLoadingRemoteVideos
+    {
+        get => _isLoadingRemoteVideos;
+        set => SetProperty(ref _isLoadingRemoteVideos, value);
+    }
+
+    /// <summary>
+    /// Indica si hay alguna sección remota seleccionada
+    /// </summary>
+    public bool IsAnyRemoteSectionSelected => IsRemoteAllGallerySelected || IsRemoteVideoLessonsSelected || IsRemoteTrashSelected;
+
+    public ObservableCollection<SmartFolderDefinition> RemoteSmartFolders
+    {
+        get => _remoteSmartFolders;
+        set => SetProperty(ref _remoteSmartFolders, value);
+    }
+
+    public string SelectedSessionTitle => IsRemoteAllGallerySelected
+        ? $"Galería {RemoteLibraryDisplayName}"
+        : (IsDiaryViewSelected
+            ? "Diario Personal"
+            : (IsVideoLessonsSelected
+                ? "Videolecciones"
+                : (IsAllGallerySelected
+                    ? "Galería General"
+                    : (SelectedSession?.DisplayName ?? "Selecciona una sesión"))));
 
     public bool IsLoadingSelectedSessionVideos
     {
@@ -1114,6 +1230,54 @@ public class DashboardViewModel : BaseViewModel
     /// Progreso de importación como valor entre 0 y 1 para ProgressBar
     /// </summary>
     public double BackgroundImportProgressNormalized => BackgroundImportProgress / 100.0;
+
+    // ===== PROPIEDADES DE SINCRONIZACIÓN CLOUD =====
+
+    /// <summary>
+    /// Indica si se está ejecutando una sincronización
+    /// </summary>
+    public bool IsSyncing
+    {
+        get => _isSyncing;
+        set => SetProperty(ref _isSyncing, value);
+    }
+
+    /// <summary>
+    /// Porcentaje de progreso de la sincronización (0-100)
+    /// </summary>
+    public int SyncProgress
+    {
+        get => _syncProgress;
+        set => SetProperty(ref _syncProgress, value);
+    }
+
+    /// <summary>
+    /// Texto descriptivo del estado de sincronización
+    /// </summary>
+    public string SyncStatusText
+    {
+        get => _syncStatusText;
+        set => SetProperty(ref _syncStatusText, value);
+    }
+
+    /// <summary>
+    /// Cantidad de videos pendientes de sincronizar
+    /// </summary>
+    public int PendingSyncCount
+    {
+        get => _pendingSyncCount;
+        set => SetProperty(ref _pendingSyncCount, value);
+    }
+
+    /// <summary>
+    /// Indica si hay videos pendientes de subir al servidor
+    /// </summary>
+    public bool HasPendingSync => PendingSyncCount > 0;
+
+    /// <summary>
+    /// Indica si el usuario está autenticado en el servidor cloud
+    /// </summary>
+    public bool IsCloudAuthenticated => _cloudBackendService?.IsAuthenticated ?? false;
 
     public bool IsStatsTabSelected
     {
@@ -1270,8 +1434,11 @@ public class DashboardViewModel : BaseViewModel
     /// <summary>Indica si debe mostrarse el formulario del diario (sin datos o editando)</summary>
     public bool ShowDiaryForm => !HasDiaryData || IsEditingDiary;
 
-    /// <summary>Indica si debe mostrarse la galería de vídeos (no en Videolecciones ni Diario)</summary>
-    public bool ShowVideoGallery => !IsVideoLessonsSelected && !IsDiaryViewSelected;
+    /// <summary>Indica si debe mostrarse la galería de vídeos locales (no en Videolecciones, Diario ni secciones remotas)</summary>
+    public bool ShowVideoGallery => !IsVideoLessonsSelected && !IsDiaryViewSelected && !IsAnyRemoteSectionSelected;
+
+    /// <summary>Indica si debe mostrarse la galería de vídeos remotos</summary>
+    public bool ShowRemoteGallery => IsRemoteAllGallerySelected;
 
     public bool IsMultiSelectMode
     {
@@ -2995,6 +3162,7 @@ public class DashboardViewModel : BaseViewModel
     public ICommand ClearFiltersCommand { get; }
     public ICommand ToggleFilterItemCommand { get; }
     public ICommand ToggleUserLibraryExpandedCommand { get; }
+    public ICommand ToggleRemoteLibraryExpandedCommand { get; }
     public ICommand ToggleSessionsListExpandedCommand { get; }
     public ICommand ToggleSessionGroupExpandedCommand { get; }
     public ICommand SelectSessionRowCommand { get; }
@@ -3035,6 +3203,12 @@ public class DashboardViewModel : BaseViewModel
     public ICommand SelectCriterionFieldCommand { get; }
     public ICommand SelectCriterionOperatorCommand { get; }
     public ICommand ShowSmartFolderContextMenuCommand { get; }
+
+    public ICommand ConnectNasCommand { get; }
+    public ICommand RemoteSelectAllGalleryCommand { get; }
+    public ICommand RemoteViewVideoLessonsCommand { get; }
+    public ICommand RemoteViewTrashCommand { get; }
+    public ICommand ToggleRemoteSmartFoldersExpandedCommand { get; }
     public ICommand RenameSmartFolderCommand { get; }
     public ICommand DeleteSmartFolderCommand { get; }
     public ICommand ChangeSmartFolderIconCommand { get; }
@@ -3077,6 +3251,20 @@ public class DashboardViewModel : BaseViewModel
     // Comandos de edición en lote
     public ICommand CloseBatchEditPopupCommand { get; }
     public ICommand ApplyBatchEditCommand { get; }
+    
+    // Comandos de sincronización cloud
+    public ICommand SyncAllCommand { get; }
+    public ICommand SyncSessionCommand { get; }
+    public ICommand UploadVideoCommand { get; }
+    public ICommand DownloadVideoCommand { get; }
+    public ICommand CheckPendingSyncCommand { get; }
+    
+    // Comandos para galería remota
+    public ICommand AddRemoteVideoToLibraryCommand { get; }
+    public ICommand AddRemoteSessionToLibraryCommand { get; }
+    public ICommand DownloadRemoteVideoCommand { get; }
+    public ICommand PlayRemoteVideoCommand { get; }
+    
     public ICommand ToggleBatchTagCommand { get; }
     public ICommand SelectBatchAthleteCommand { get; }
     public ICommand AddNewBatchAthleteCommand { get; }
@@ -3181,6 +3369,9 @@ public class DashboardViewModel : BaseViewModel
         ThumbnailService thumbnailService,
         ITableExportService tableExportService,
         IHealthKitService healthKitService,
+        ICloudBackendService cloudBackendService,
+        SyncService? syncService = null,
+        StorageMigrationService? migrationService = null,
         VideoExportNotifier? videoExportNotifier = null,
         ImportProgressService? importProgressService = null)
     {
@@ -3191,6 +3382,9 @@ public class DashboardViewModel : BaseViewModel
         _thumbnailService = thumbnailService;
         _tableExportService = tableExportService;
         _healthKitService = healthKitService;
+        _cloudBackendService = cloudBackendService;
+        _syncService = syncService;
+        _migrationService = migrationService;
         _importProgressService = importProgressService;
 
         // Suscribirse a eventos de exportación de video
@@ -3234,6 +3428,7 @@ public class DashboardViewModel : BaseViewModel
         ClearFiltersCommand = new RelayCommand(() => ClearFilters());
         ToggleFilterItemCommand = new RelayCommand<object?>(ToggleFilterItem);
         ToggleUserLibraryExpandedCommand = new RelayCommand(() => IsUserLibraryExpanded = !IsUserLibraryExpanded);
+        ToggleRemoteLibraryExpandedCommand = new RelayCommand(() => IsRemoteLibraryExpanded = !IsRemoteLibraryExpanded);
         ToggleSessionsListExpandedCommand = new RelayCommand(() => IsSessionsListExpanded = !IsSessionsListExpanded);
         ToggleSessionGroupExpandedCommand = new RelayCommand<string>(ToggleSessionGroupExpanded);
         SelectSessionRowCommand = new RelayCommand<SessionRow>(row => { if (row != null) SelectedSessionListItem = row; });
@@ -3258,6 +3453,12 @@ public class DashboardViewModel : BaseViewModel
         });
         SelectSmartFolderCommand = new AsyncRelayCommand<SmartFolderDefinition>(SelectSmartFolderAsync);
         ShowSmartFolderContextMenuCommand = new AsyncRelayCommand<SmartFolderDefinition>(ShowSmartFolderContextMenuAsync);
+
+        ConnectNasCommand = new AsyncRelayCommand(ConnectSynologyNasAsync);
+        RemoteSelectAllGalleryCommand = new AsyncRelayCommand(() => HandleRemoteSectionSelectedAsync("Galería General"));
+        RemoteViewVideoLessonsCommand = new AsyncRelayCommand(() => HandleRemoteSectionSelectedAsync("Videolecciones"));
+        RemoteViewTrashCommand = new AsyncRelayCommand(() => HandleRemoteSectionSelectedAsync("Papelera"));
+        ToggleRemoteSmartFoldersExpandedCommand = new RelayCommand(() => IsRemoteSmartFoldersExpanded = !IsRemoteSmartFoldersExpanded);
         RenameSmartFolderCommand = new AsyncRelayCommand<SmartFolderDefinition>(RenameSmartFolderAsync);
         DeleteSmartFolderCommand = new AsyncRelayCommand<SmartFolderDefinition>(DeleteSmartFolderAsync);
         ChangeSmartFolderIconCommand = new AsyncRelayCommand<SmartFolderDefinition>(ChangeSmartFolderIconAsync);
@@ -3329,6 +3530,7 @@ public class DashboardViewModel : BaseViewModel
 
         LoadSmartFoldersFromPreferences();
         LoadSessionCustomizationsFromPreferences();
+        LoadNasConnectionFromPreferences();
 
         RecordForSelectedSessionCommand = new AsyncRelayCommand(RecordForSelectedSessionAsync);
         ExportSelectedSessionCommand = new AsyncRelayCommand(ExportSelectedSessionAsync);
@@ -3381,6 +3583,19 @@ public class DashboardViewModel : BaseViewModel
         SelectBatchAthleteCommand = new RelayCommand<Athlete>(SelectBatchAthlete);
         AddNewBatchAthleteCommand = new AsyncRelayCommand(AddNewBatchAthleteAsync);
         AddNewBatchTagCommand = new AsyncRelayCommand(AddNewBatchTagAsync);
+
+        // Comandos de sincronización cloud
+        SyncAllCommand = new AsyncRelayCommand(SyncAllVideosAsync);
+        SyncSessionCommand = new AsyncRelayCommand<Session>(SyncSessionAsync);
+        UploadVideoCommand = new AsyncRelayCommand<VideoClip>(UploadVideoAsync);
+        DownloadVideoCommand = new AsyncRelayCommand<VideoClip>(DownloadVideoAsync);
+        CheckPendingSyncCommand = new AsyncRelayCommand(CheckPendingSyncAsync);
+
+        // Comandos para galería remota
+        AddRemoteVideoToLibraryCommand = new AsyncRelayCommand<RemoteVideoItem>(AddRemoteVideoToLibraryAsync);
+        AddRemoteSessionToLibraryCommand = new AsyncRelayCommand<int>(AddRemoteSessionToLibraryAsync);
+        DownloadRemoteVideoCommand = new AsyncRelayCommand<RemoteVideoItem>(DownloadRemoteVideoAsync);
+        PlayRemoteVideoCommand = new AsyncRelayCommand<RemoteVideoItem>(PlayRemoteVideoAsync);
 
         // Comandos de edición de sesión individual
         OpenSessionEditPopupCommand = new RelayCommand<SessionRow>(OpenSessionEditPopup);
@@ -4962,6 +5177,10 @@ public class DashboardViewModel : BaseViewModel
             }
 
             await RefreshTrashItemCountAsync();
+            
+            // Verificar videos pendientes de sincronización
+            await CheckPendingSyncAsync();
+            
             AppLog.Info("DashboardVM", "LoadDataAsync END");
         }
         catch (Exception ex)
@@ -6588,6 +6807,422 @@ public class DashboardViewModel : BaseViewModel
         }
     }
 
+    private void LoadNasConnectionFromPreferences()
+    {
+        // Verificar si hay una sesión activa en el backend
+        _ = CheckAndRestoreCloudSessionAsync();
+    }
+
+    /// <summary>
+    /// Verifica y restaura la sesión del backend si existe.
+    /// NO hay credenciales de Wasabi en el cliente - todo pasa por el backend seguro.
+    /// </summary>
+    private async Task CheckAndRestoreCloudSessionAsync()
+    {
+        try
+        {
+            if (_cloudBackendService.IsAuthenticated)
+            {
+                RemoteLibraryDisplayName = _cloudBackendService.TeamName ?? "Equipo";
+                IsRemoteLibraryVisible = true;
+                System.Diagnostics.Debug.WriteLine($"[CloudBackend] Sesión restaurada para {_cloudBackendService.CurrentUserName}");
+                
+                // Cargar información del equipo
+                await LoadTeamFilesAsync();
+            }
+            else
+            {
+                // No hay sesión activa - mostrar opción de login
+                IsRemoteLibraryVisible = false;
+                System.Diagnostics.Debug.WriteLine("[CloudBackend] No hay sesión activa");
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] Error verificando sesión: {ex.Message}");
+            IsRemoteLibraryVisible = false;
+        }
+    }
+
+    /// <summary>
+    /// Carga los archivos del equipo desde el backend.
+    /// </summary>
+    private async Task LoadTeamFilesAsync()
+    {
+        try
+        {
+            var result = await _cloudBackendService.ListFilesAsync();
+            if (result.Success && result.Files != null)
+            {
+                RemoteAllGalleryItemCount = result.Files.Count(f => !f.IsFolder).ToString();
+                System.Diagnostics.Debug.WriteLine($"[CloudBackend] Cargados {result.Files.Count} archivos del equipo");
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] Error cargando archivos: {ex.Message}");
+        }
+    }
+
+    private async Task ConnectSynologyNasAsync()
+    {
+        var page = Application.Current?.MainPage;
+        if (page == null)
+            return;
+
+        // Mostrar diálogo de login al backend
+        var email = await page.DisplayPromptAsync(
+            "Iniciar sesión en Equipo",
+            "Email:",
+            "Continuar",
+            "Cancelar",
+            "",
+            100,
+            Keyboard.Email);
+
+        if (string.IsNullOrWhiteSpace(email))
+            return;
+
+        var password = await page.DisplayPromptAsync(
+            "Iniciar sesión en Equipo",
+            "Contraseña:",
+            "Iniciar sesión",
+            "Cancelar",
+            "",
+            100,
+            Keyboard.Default);
+
+        if (string.IsNullOrWhiteSpace(password))
+            return;
+
+        try
+        {
+            IsBusy = true;
+
+            var result = await _cloudBackendService.LoginAsync(email, password);
+
+            if (!result.Success)
+            {
+                await page.DisplayAlert("Error", result.ErrorMessage ?? "No se pudo iniciar sesión", "OK");
+                return;
+            }
+
+            RemoteLibraryDisplayName = result.TeamName ?? "Equipo";
+            IsRemoteLibraryVisible = true;
+
+            await page.DisplayAlert("Sesión iniciada",
+                $"Bienvenido, {result.UserName}\nEquipo: {result.TeamName}",
+                "OK");
+
+            // Cargar archivos del equipo
+            await LoadTeamFilesAsync();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] Error: {ex.Message}");
+            await page.DisplayAlert("Error", $"No se pudo conectar: {ex.Message}", "OK");
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private async Task HandleRemoteSectionSelectedAsync(string sectionName)
+    {
+        SetRemoteSelection(sectionName);
+        ClearLocalSelection(); // Limpiar selección local
+
+        // Verificar autenticación
+        if (!_cloudBackendService.IsAuthenticated)
+        {
+            var page = Application.Current?.MainPage;
+            if (page != null)
+            {
+                await page.DisplayAlert("No autenticado", "Inicia sesión para acceder a los archivos del equipo.", "OK");
+            }
+            return;
+        }
+
+        if (sectionName == "Galería General")
+        {
+            await LoadRemoteGalleryAsync();
+        }
+        else
+        {
+            var page = Application.Current?.MainPage;
+            if (page != null)
+            {
+                await page.DisplayAlert("Biblioteca del Equipo", $"La sección '{sectionName}' estará disponible próximamente.", "OK");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Limpia la selección local cuando se selecciona una sección remota
+    /// </summary>
+    private void ClearLocalSelection()
+    {
+        IsAllGallerySelected = false;
+        IsVideoLessonsSelected = false;
+        IsDiaryViewSelected = false;
+        SelectedSession = null;
+        OnPropertyChanged(nameof(SelectedSessionTitle));
+    }
+
+    /// <summary>
+    /// Carga los videos desde la galería remota (Wasabi)
+    /// </summary>
+    private async Task LoadRemoteGalleryAsync()
+    {
+        if (IsLoadingRemoteVideos) return;
+
+        try
+        {
+            IsLoadingRemoteVideos = true;
+            RemoteVideos.Clear();
+
+            System.Diagnostics.Debug.WriteLine("[Remote] Cargando galería remota...");
+
+            // Obtener lista de archivos desde el backend
+            var result = await _cloudBackendService.ListFilesAsync("sessions/", maxItems: 1000);
+
+            if (!result.Success)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Remote] Error: {result.ErrorMessage}");
+                return;
+            }
+
+            _remoteFilesCache = result.Files;
+
+            // Filtrar solo archivos de video
+            var videoFiles = result.Files
+                .Where(f => !f.IsFolder && f.Key.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(f => f.LastModified)
+                .ToList();
+
+            System.Diagnostics.Debug.WriteLine($"[Remote] Encontrados {videoFiles.Count} videos");
+
+            // Obtener videos locales para comparar
+            var localVideos = await _databaseService.GetAllVideoClipsAsync();
+            var localVideosByRemotePath = localVideos
+                .Where(v => !string.IsNullOrEmpty(v.ClipPath))
+                .ToDictionary(v => v.ClipPath!, v => v);
+
+            // Crear items remotos
+            foreach (var file in videoFiles)
+            {
+                // Buscar si existe localmente
+                VideoClip? linkedLocal = null;
+                var relativePath = file.Key;
+                if (relativePath.StartsWith("CrownRFEP/"))
+                {
+                    relativePath = relativePath.Substring("CrownRFEP/".Length);
+                }
+
+                if (localVideosByRemotePath.TryGetValue(relativePath, out var local))
+                {
+                    linkedLocal = local;
+                }
+
+                var remoteItem = RemoteVideoItem.FromCloudFile(file, linkedLocal);
+                RemoteVideos.Add(remoteItem);
+            }
+
+            RemoteAllGalleryItemCount = RemoteVideos.Count.ToString();
+            OnPropertyChanged(nameof(IsAnyRemoteSectionSelected));
+
+            System.Diagnostics.Debug.WriteLine($"[Remote] Galería cargada: {RemoteVideos.Count} videos");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Remote] Error cargando galería: {ex.Message}");
+        }
+        finally
+        {
+            IsLoadingRemoteVideos = false;
+        }
+    }
+
+    /// <summary>
+    /// Añade un video remoto a Mi biblioteca (solo crea referencia, sin descargar)
+    /// </summary>
+    private async Task AddRemoteVideoToLibraryAsync(RemoteVideoItem? remoteVideo)
+    {
+        if (remoteVideo == null) return;
+
+        try
+        {
+            // Verificar si ya existe en la biblioteca local
+            if (remoteVideo.LinkedLocalVideo != null)
+            {
+                var page = Application.Current?.MainPage;
+                await page?.DisplayAlert("Ya existe", "Este video ya está en tu biblioteca.", "OK")!;
+                return;
+            }
+
+            // Crear entrada en la base de datos local (solo referencia, sin archivo físico)
+            var newVideo = new VideoClip
+            {
+                SessionId = remoteVideo.SessionId,
+                ClipPath = remoteVideo.Key.StartsWith("CrownRFEP/") 
+                    ? remoteVideo.Key.Substring("CrownRFEP/".Length) 
+                    : remoteVideo.Key,
+                ClipSize = remoteVideo.Size,
+                CreationDate = new DateTimeOffset(remoteVideo.LastModified).ToUnixTimeSeconds(),
+                Source = "remote", // Solo existe en remoto, no hay archivo local
+                IsSynced = 1, // Está sincronizado (existe en remoto)
+                LastSyncUtc = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                LocalClipPath = null // No hay archivo local
+            };
+
+            await _databaseService.InsertVideoClipAsync(newVideo);
+
+            // Actualizar el item remoto
+            remoteVideo.LinkedLocalVideo = newVideo;
+            remoteVideo.IsLocallyAvailable = false; // Está en biblioteca pero no descargado
+
+            System.Diagnostics.Debug.WriteLine($"[Remote] Video {remoteVideo.VideoId} añadido a biblioteca (solo referencia)");
+
+            // Refrescar contadores
+            await CheckPendingSyncAsync();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Remote] Error añadiendo a biblioteca: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Añade todos los videos de una sesión remota a Mi biblioteca
+    /// </summary>
+    private async Task AddRemoteSessionToLibraryAsync(int sessionId)
+    {
+        if (sessionId <= 0) return;
+
+        try
+        {
+            var videosToAdd = RemoteVideos
+                .Where(v => v.SessionId == sessionId && v.LinkedLocalVideo == null)
+                .ToList();
+
+            if (videosToAdd.Count == 0)
+            {
+                var page = Application.Current?.MainPage;
+                await page?.DisplayAlert("Ya importada", "Todos los videos de esta sesión ya están en tu biblioteca.", "OK")!;
+                return;
+            }
+
+            foreach (var remoteVideo in videosToAdd)
+            {
+                await AddRemoteVideoToLibraryAsync(remoteVideo);
+            }
+
+            var mainPage = Application.Current?.MainPage;
+            await mainPage?.DisplayAlert("Sesión añadida", $"Se han añadido {videosToAdd.Count} videos a tu biblioteca.", "OK")!;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Remote] Error añadiendo sesión: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Descarga un video remoto al dispositivo local
+    /// </summary>
+    private async Task DownloadRemoteVideoAsync(RemoteVideoItem? remoteVideo)
+    {
+        if (remoteVideo == null || _syncService == null) return;
+
+        try
+        {
+            remoteVideo.IsDownloading = true;
+            remoteVideo.DownloadProgress = 0;
+
+            // Si no tiene entrada en la biblioteca, crearla primero
+            if (remoteVideo.LinkedLocalVideo == null)
+            {
+                await AddRemoteVideoToLibraryAsync(remoteVideo);
+            }
+
+            if (remoteVideo.LinkedLocalVideo == null) return;
+
+            // Descargar el archivo
+            var progress = new Progress<double>(p => remoteVideo.DownloadProgress = p);
+            var result = await _syncService.DownloadVideoAsync(remoteVideo.LinkedLocalVideo, progress);
+
+            if (result.Success)
+            {
+                remoteVideo.IsLocallyAvailable = true;
+                remoteVideo.LocalPath = result.LocalPath;
+                System.Diagnostics.Debug.WriteLine($"[Remote] Video {remoteVideo.VideoId} descargado correctamente");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"[Remote] Error descargando: {result.ErrorMessage}");
+                var page = Application.Current?.MainPage;
+                await page?.DisplayAlert("Error", $"No se pudo descargar el video: {result.ErrorMessage}", "OK")!;
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Remote] Error descargando video: {ex.Message}");
+        }
+        finally
+        {
+            remoteVideo.IsDownloading = false;
+        }
+    }
+
+    /// <summary>
+    /// Reproduce un video remoto (descarga si es necesario y abre el reproductor)
+    /// </summary>
+    private async Task PlayRemoteVideoAsync(RemoteVideoItem? remoteVideo)
+    {
+        if (remoteVideo == null) return;
+
+        try
+        {
+            // Si no está descargado, preguntar si descargar
+            if (!remoteVideo.IsLocallyAvailable)
+            {
+                var page = Application.Current?.MainPage;
+                var download = await page?.DisplayAlert(
+                    "Video en la nube",
+                    "Este video no está descargado. ¿Deseas descargarlo para reproducirlo?",
+                    "Descargar",
+                    "Cancelar")!;
+
+                if (!download) return;
+
+                await DownloadRemoteVideoAsync(remoteVideo);
+            }
+
+            // Si ahora está disponible localmente, reproducir
+            if (remoteVideo.IsLocallyAvailable && remoteVideo.LinkedLocalVideo != null)
+            {
+                await PlaySelectedVideoAsync(remoteVideo.LinkedLocalVideo);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Remote] Error reproduciendo video: {ex.Message}");
+        }
+    }
+
+    private void SetRemoteSelection(string sectionName)
+    {
+        IsRemoteAllGallerySelected = sectionName == "Galería General";
+        IsRemoteVideoLessonsSelected = sectionName == "Videolecciones";
+        IsRemoteTrashSelected = sectionName == "Papelera";
+        
+        // Notificar cambios de visibilidad
+        OnPropertyChanged(nameof(ShowVideoGallery));
+        OnPropertyChanged(nameof(ShowRemoteGallery));
+        OnPropertyChanged(nameof(IsAnyRemoteSectionSelected));
+        OnPropertyChanged(nameof(SelectedSessionTitle));
+    }
+
     #region Smart Folder Context Menu
 
     private static readonly string[] SmartFolderIconOptions = new[]
@@ -7149,6 +7784,262 @@ public class DashboardViewModel : BaseViewModel
 
         // Contiene (default)
         return haystack.Contains(value, StringComparison.OrdinalIgnoreCase);
+    }
+
+    #endregion
+
+    #region Cloud Sync Methods
+
+    /// <summary>
+    /// Sincroniza todos los videos pendientes al servidor cloud.
+    /// </summary>
+    private async Task SyncAllVideosAsync()
+    {
+        if (_syncService == null)
+        {
+            await Shell.Current.DisplayAlert("Error", "Servicio de sincronización no disponible", "OK");
+            return;
+        }
+
+        if (!_cloudBackendService.IsAuthenticated)
+        {
+            await Shell.Current.DisplayAlert("No autenticado", "Inicia sesión en el servidor para sincronizar", "OK");
+            return;
+        }
+
+        try
+        {
+            IsSyncing = true;
+            SyncStatusText = "Obteniendo videos pendientes...";
+            
+            var pendingVideos = await _databaseService.GetUnsyncedVideoClipsAsync();
+            
+            if (pendingVideos.Count == 0)
+            {
+                SyncStatusText = "Todo sincronizado";
+                await Task.Delay(1500);
+                return;
+            }
+
+            var progress = new Progress<(int current, int total, string message)>(p =>
+            {
+                SyncProgress = (int)((double)p.current / p.total * 100);
+                SyncStatusText = p.message;
+            });
+
+            int successCount = 0;
+            int failCount = 0;
+
+            for (int i = 0; i < pendingVideos.Count; i++)
+            {
+                var video = pendingVideos[i];
+                SyncStatusText = $"Subiendo video {i + 1} de {pendingVideos.Count}...";
+                SyncProgress = (int)((double)(i + 1) / pendingVideos.Count * 100);
+
+                var result = await _syncService.UploadVideoAsync(video);
+                if (result.Success)
+                {
+                    successCount++;
+                    // También subir thumbnail
+                    await _syncService.UploadThumbnailAsync(video);
+                }
+                else
+                {
+                    failCount++;
+                    System.Diagnostics.Debug.WriteLine($"[Sync] Error: {result.ErrorMessage}");
+                }
+            }
+
+            SyncStatusText = $"Completado: {successCount} subidos, {failCount} errores";
+            await CheckPendingSyncAsync();
+            await Task.Delay(2000);
+        }
+        catch (Exception ex)
+        {
+            SyncStatusText = $"Error: {ex.Message}";
+            System.Diagnostics.Debug.WriteLine($"[Sync] Exception: {ex.Message}");
+        }
+        finally
+        {
+            IsSyncing = false;
+        }
+    }
+
+    /// <summary>
+    /// Sincroniza todos los videos de una sesión específica.
+    /// </summary>
+    private async Task SyncSessionAsync(Session? session)
+    {
+        if (session == null || _syncService == null) return;
+
+        if (!_cloudBackendService.IsAuthenticated)
+        {
+            await Shell.Current.DisplayAlert("No autenticado", "Inicia sesión en el servidor para sincronizar", "OK");
+            return;
+        }
+
+        try
+        {
+            IsSyncing = true;
+            SyncStatusText = $"Sincronizando sesión {session.DisplayName}...";
+
+            var progress = new Progress<(int current, int total, string message)>(p =>
+            {
+                SyncProgress = (int)((double)p.current / p.total * 100);
+                SyncStatusText = p.message;
+            });
+
+            var result = await _syncService.SyncSessionAsync(session.Id, SyncDirection.Upload, progress);
+
+            if (result.Success)
+            {
+                SyncStatusText = $"Sesión sincronizada: {result.SuccessCount} videos";
+            }
+            else
+            {
+                SyncStatusText = $"Errores: {result.FailedCount} de {result.TotalCount}";
+            }
+
+            await CheckPendingSyncAsync();
+            await Task.Delay(2000);
+        }
+        catch (Exception ex)
+        {
+            SyncStatusText = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            IsSyncing = false;
+        }
+    }
+
+    /// <summary>
+    /// Sube un video individual al servidor.
+    /// </summary>
+    private async Task UploadVideoAsync(VideoClip? video)
+    {
+        if (video == null || _syncService == null) return;
+
+        if (!_cloudBackendService.IsAuthenticated)
+        {
+            await Shell.Current.DisplayAlert("No autenticado", "Inicia sesión para subir videos", "OK");
+            return;
+        }
+
+        try
+        {
+            IsSyncing = true;
+            SyncStatusText = "Subiendo video...";
+
+            var progress = new Progress<double>(p =>
+            {
+                SyncProgress = (int)(p * 100);
+            });
+
+            var result = await _syncService.UploadVideoAsync(video, progress);
+
+            if (result.Success)
+            {
+                SyncStatusText = "Video subido correctamente";
+                // Actualizar UI
+                OnPropertyChanged(nameof(SelectedSessionVideos));
+            }
+            else
+            {
+                await Shell.Current.DisplayAlert("Error", result.ErrorMessage ?? "Error al subir", "OK");
+            }
+
+            await CheckPendingSyncAsync();
+            await Task.Delay(1500);
+        }
+        catch (Exception ex)
+        {
+            SyncStatusText = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            IsSyncing = false;
+        }
+    }
+
+    /// <summary>
+    /// Descarga un video del servidor.
+    /// </summary>
+    private async Task DownloadVideoAsync(VideoClip? video)
+    {
+        if (video == null || _syncService == null) return;
+
+        if (!_cloudBackendService.IsAuthenticated)
+        {
+            await Shell.Current.DisplayAlert("No autenticado", "Inicia sesión para descargar videos", "OK");
+            return;
+        }
+
+        try
+        {
+            IsSyncing = true;
+            SyncStatusText = "Descargando video...";
+
+            var progress = new Progress<double>(p =>
+            {
+                SyncProgress = (int)(p * 100);
+            });
+
+            var result = await _syncService.DownloadVideoAsync(video, progress);
+
+            if (result.Success)
+            {
+                SyncStatusText = "Video descargado correctamente";
+                // Actualizar UI
+                OnPropertyChanged(nameof(SelectedSessionVideos));
+            }
+            else
+            {
+                await Shell.Current.DisplayAlert("Error", result.ErrorMessage ?? "Error al descargar", "OK");
+            }
+
+            await Task.Delay(1500);
+        }
+        catch (Exception ex)
+        {
+            SyncStatusText = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            IsSyncing = false;
+        }
+    }
+
+    /// <summary>
+    /// Verifica cuántos videos están pendientes de sincronizar.
+    /// </summary>
+    private async Task CheckPendingSyncAsync()
+    {
+        try
+        {
+            var pendingVideos = await _databaseService.GetUnsyncedVideoClipsAsync();
+            PendingSyncCount = pendingVideos.Count;
+            OnPropertyChanged(nameof(HasPendingSync));
+            
+            // Actualizar texto de estado
+            if (PendingSyncCount == 0)
+            {
+                SyncStatusText = "Todo sincronizado ✓";
+            }
+            else if (!_cloudBackendService.IsAuthenticated)
+            {
+                SyncStatusText = "Inicia sesión para sincronizar";
+            }
+            else
+            {
+                SyncStatusText = "Sincronización cloud";
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Sync] Error checking pending: {ex.Message}");
+            SyncStatusText = "Error verificando estado";
+        }
     }
 
     #endregion

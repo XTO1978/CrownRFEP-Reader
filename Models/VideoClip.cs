@@ -34,9 +34,16 @@ public class VideoClip : INotifyPropertyChanged
     [Column("CreationDate")]
     public long CreationDate { get; set; }
 
+    /// <summary>
+    /// Ruta relativa del video (formato: sessions/{sessionId}/videos/{videoId}.mp4)
+    /// Usada tanto para local como para remoto
+    /// </summary>
     [Column("clipPath")]
     public string? ClipPath { get; set; }
 
+    /// <summary>
+    /// Ruta relativa del thumbnail (formato: sessions/{sessionId}/thumbnails/{videoId}.jpg)
+    /// </summary>
     [Column("thumbnailPath")]
     public string? ThumbnailPath { get; set; }
 
@@ -56,6 +63,31 @@ public class VideoClip : INotifyPropertyChanged
     [Column("deleted_at_utc")]
     public long DeletedAtUtc { get; set; }
 
+    // Campos de sincronización remota
+    /// <summary>
+    /// Indica si el video está sincronizado con el servidor remoto
+    /// </summary>
+    [Column("is_synced")]
+    public int IsSynced { get; set; }
+
+    /// <summary>
+    /// Fecha UTC de la última sincronización
+    /// </summary>
+    [Column("last_sync_utc")]
+    public long LastSyncUtc { get; set; }
+
+    /// <summary>
+    /// Hash del archivo para verificar integridad
+    /// </summary>
+    [Column("file_hash")]
+    public string? FileHash { get; set; }
+
+    /// <summary>
+    /// Origen del video: "local", "remote", "both"
+    /// </summary>
+    [Column("source")]
+    public string? Source { get; set; }
+
     // Propiedades adicionales del JSON de exportación
     /// <summary>
     /// Indica si es un video de comparación (calculado a partir de ComparisonName)
@@ -68,6 +100,86 @@ public class VideoClip : INotifyPropertyChanged
 
     [Ignore]
     public string? BadgeBackgroundColor { get; set; }
+
+    // ===== PROPIEDADES DE SINCRONIZACIÓN PARA UI =====
+
+    /// <summary>
+    /// Indica si el video existe localmente
+    /// </summary>
+    [Ignore]
+    public bool IsLocalAvailable => Source == "local" || Source == "both" || !string.IsNullOrEmpty(LocalClipPath);
+
+    /// <summary>
+    /// Indica si el video existe en el servidor remoto
+    /// </summary>
+    [Ignore]
+    public bool IsRemoteAvailable => Source == "remote" || Source == "both" || IsSynced == 1;
+
+    /// <summary>
+    /// Indica si el video necesita subirse al servidor
+    /// </summary>
+    [Ignore]
+    public bool NeedsUpload => IsLocalAvailable && !IsRemoteAvailable;
+
+    /// <summary>
+    /// Indica si el video necesita descargarse del servidor
+    /// </summary>
+    [Ignore]
+    public bool NeedsDownload => IsRemoteAvailable && !IsLocalAvailable;
+
+    /// <summary>
+    /// Icono de estado de sincronización para mostrar en UI
+    /// </summary>
+    [Ignore]
+    public string SyncStatusIcon
+    {
+        get
+        {
+            if (Source == "both" || IsSynced == 1)
+                return "☁️✓"; // Sincronizado
+            if (Source == "remote" || (string.IsNullOrEmpty(LocalClipPath) && !string.IsNullOrEmpty(ClipPath)))
+                return "☁️"; // Solo en nube
+            if (Source == "local" || (IsSynced == 0 && !string.IsNullOrEmpty(LocalClipPath)))
+                return "📱"; // Solo local
+            return "❓"; // Desconocido
+        }
+    }
+
+    /// <summary>
+    /// Color del indicador de sincronización
+    /// </summary>
+    [Ignore]
+    public string SyncStatusColor
+    {
+        get
+        {
+            if (Source == "both" || IsSynced == 1)
+                return "#4CAF50"; // Verde - sincronizado
+            if (NeedsUpload)
+                return "#FF9800"; // Naranja - pendiente de subir
+            if (NeedsDownload)
+                return "#2196F3"; // Azul - pendiente de descargar
+            return "#9E9E9E"; // Gris - desconocido
+        }
+    }
+
+    /// <summary>
+    /// Texto descriptivo del estado de sincronización
+    /// </summary>
+    [Ignore]
+    public string SyncStatusText
+    {
+        get
+        {
+            if (Source == "both" || IsSynced == 1)
+                return "Sincronizado";
+            if (Source == "remote")
+                return "Solo en nube";
+            if (NeedsUpload)
+                return "Pendiente de subir";
+            return "Solo local";
+        }
+    }
 
     // Propiedades computadas
     [Ignore]

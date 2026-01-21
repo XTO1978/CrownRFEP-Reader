@@ -223,6 +223,12 @@ public class DatabaseService
         await EnsureColumnExistsAsync(_database, "event_tags", "is_system", "INTEGER DEFAULT 0");
         await EnsureColumnExistsAsync(_database, "event_tags", "penalty_seconds", "INTEGER DEFAULT 0");
 
+        // Sincronización cloud: columnas nuevas en videoClip
+        await EnsureColumnExistsAsync(_database, "videoClip", "is_synced", "INTEGER DEFAULT 0");
+        await EnsureColumnExistsAsync(_database, "videoClip", "last_sync_utc", "INTEGER DEFAULT 0");
+        await EnsureColumnExistsAsync(_database, "videoClip", "file_hash", "TEXT");
+        await EnsureColumnExistsAsync(_database, "videoClip", "source", "TEXT DEFAULT 'local'");
+
         // Migración: separar tipos de evento en event_tags (si venían guardados como Tag)
         await MigrateEventTagsAsync(_database);
 
@@ -1052,6 +1058,47 @@ public class DatabaseService
         clip.Id = 0;
         await db.InsertAsync(clip);
         return clip.Id;
+    }
+
+    /// <summary>
+    /// Actualiza todos los campos de un VideoClip existente.
+    /// </summary>
+    public async Task<int> UpdateVideoClipAsync(VideoClip clip)
+    {
+        try
+        {
+            var db = await GetConnectionAsync();
+            await db.UpdateAsync(clip);
+            LogInfo($"VideoClip actualizado: ID {clip.Id}");
+            return clip.Id;
+        }
+        catch (Exception ex)
+        {
+            LogError($"Error actualizando VideoClip: {ex.Message}");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Obtiene todos los VideoClips pendientes de sincronizar (local pero no subidos a cloud).
+    /// </summary>
+    public async Task<List<VideoClip>> GetUnsyncedVideoClipsAsync()
+    {
+        var db = await GetConnectionAsync();
+        return await db.Table<VideoClip>()
+            .Where(v => v.IsDeleted == 0 && v.IsSynced == 0 && !string.IsNullOrEmpty(v.LocalClipPath))
+            .ToListAsync();
+    }
+
+    /// <summary>
+    /// Obtiene todos los VideoClips que solo existen en remoto (necesitan descarga).
+    /// </summary>
+    public async Task<List<VideoClip>> GetRemoteOnlyVideoClipsAsync()
+    {
+        var db = await GetConnectionAsync();
+        return await db.Table<VideoClip>()
+            .Where(v => v.IsDeleted == 0 && v.Source == "remote" && string.IsNullOrEmpty(v.LocalClipPath))
+            .ToListAsync();
     }
 
     // ==================== CATEGORIES ====================

@@ -521,7 +521,23 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 
     private void OnUserLibraryContextMenuDismissTapped(object? sender, TappedEventArgs e) => HideUserLibraryContextMenu();
 
-    private void OnUserLibraryMenuCreateTapped(object? sender, TappedEventArgs e) => HideUserLibraryContextMenu();
+    private void OnUserLibraryMenuCreateTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            HideUserLibraryContextMenu();
+
+            if (BindingContext is DashboardViewModel vm)
+            {
+                if (vm.ConnectNasCommand?.CanExecute(null) ?? false)
+                    vm.ConnectNasCommand.Execute(null);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "OnUserLibraryMenuCreateTapped error", ex);
+        }
+    }
     private void OnUserLibraryMenuImportTapped(object? sender, TappedEventArgs e) => HideUserLibraryContextMenu();
     private void OnUserLibraryMenuRefreshTapped(object? sender, TappedEventArgs e) => HideUserLibraryContextMenu();
     private void OnUserLibraryMenuMergeTapped(object? sender, TappedEventArgs e) => HideUserLibraryContextMenu();
@@ -1148,6 +1164,85 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         catch (Exception ex)
         {
             AppLog.Error("DashboardPage", "OnVideoItemContextMenuTapped error", ex);
+        }
+    }
+
+    /// <summary>
+    /// Menú contextual para videos remotos (galería del equipo)
+    /// </summary>
+    private async void OnRemoteVideoContextMenu(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            if (sender is not VisualElement anchor)
+                return;
+
+            var remoteVideo = anchor.BindingContext as CrownRFEP_Reader.Models.RemoteVideoItem;
+            if (remoteVideo == null)
+            {
+                // Buscar en el contexto padre
+                var parent = anchor;
+                while (parent != null && remoteVideo == null)
+                {
+                    parent = parent.Parent as VisualElement;
+                    remoteVideo = parent?.BindingContext as CrownRFEP_Reader.Models.RemoteVideoItem;
+                }
+            }
+
+            if (remoteVideo == null)
+                return;
+
+            if (BindingContext is not DashboardViewModel vm)
+                return;
+
+            // Construir opciones del menú
+            var options = new List<string>();
+            
+            if (remoteVideo.LinkedLocalVideo == null)
+            {
+                options.Add("Añadir a Mi biblioteca");
+            }
+            
+            if (!remoteVideo.IsLocallyAvailable)
+            {
+                options.Add("Descargar");
+            }
+            else
+            {
+                options.Add("Reproducir");
+            }
+
+            options.Add($"Añadir toda la sesión {remoteVideo.SessionId}");
+
+            var result = await DisplayActionSheet(
+                $"Video {remoteVideo.FileName}",
+                "Cancelar",
+                null,
+                options.ToArray());
+
+            if (string.IsNullOrEmpty(result) || result == "Cancelar")
+                return;
+
+            if (result == "Añadir a Mi biblioteca")
+            {
+                vm.AddRemoteVideoToLibraryCommand.Execute(remoteVideo);
+            }
+            else if (result == "Descargar")
+            {
+                vm.DownloadRemoteVideoCommand.Execute(remoteVideo);
+            }
+            else if (result == "Reproducir")
+            {
+                vm.PlayRemoteVideoCommand.Execute(remoteVideo);
+            }
+            else if (result.StartsWith("Añadir toda la sesión"))
+            {
+                vm.AddRemoteSessionToLibraryCommand.Execute(remoteVideo.SessionId);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "OnRemoteVideoContextMenu error", ex);
         }
     }
 
