@@ -38,6 +38,28 @@
       </div>
 
       <div class="card">
+        <h2>Organizaciones</h2>
+        <form id="org-form" class="inline-form">
+          <input type="text" id="org-id" placeholder="ID (ej: rfep)" required />
+          <input type="text" id="org-name" placeholder="Nombre" required />
+          <input type="text" id="org-wasabi" placeholder="Carpeta Wasabi" required />
+          <button type="submit">Crear</button>
+        </form>
+        <table id="orgs-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nombre</th>
+              <th>Carpeta Wasabi</th>
+              <th>Creado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="card">
         <h2>Organizaciones (Wasabi)</h2>
         <table id="teams-table">
           <thead>
@@ -59,7 +81,7 @@
           <input type="email" id="user-email" placeholder="Email" required />
           <input type="text" id="user-name" placeholder="Nombre" required />
           <input type="password" id="user-password" placeholder="Contraseña" required />
-          <input type="text" id="user-team" placeholder="Team ID" value="rfep" />
+          <select id="user-team"></select>
           <select id="user-role"></select>
           <button type="submit">Crear</button>
         </form>

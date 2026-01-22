@@ -7,23 +7,31 @@ const passwordInput = document.getElementById('password');
 const usersTableBody = document.querySelector('#users-table tbody');
 const teamsTableBody = document.querySelector('#teams-table tbody');
 const rolesTableBody = document.querySelector('#roles-table tbody');
+const orgsTableBody = document.querySelector('#orgs-table tbody');
 const totalUsers = document.getElementById('total-users');
 const totalTeams = document.getElementById('total-teams');
 const totalObjects = document.getElementById('total-objects');
 const totalBytes = document.getElementById('total-bytes');
 const userForm = document.getElementById('user-form');
 const roleForm = document.getElementById('role-form');
+const orgForm = document.getElementById('org-form');
 const userRoleSelect = document.getElementById('user-role');
+const userTeamSelect = document.getElementById('user-team');
 
 const userEmail = document.getElementById('user-email');
 const userName = document.getElementById('user-name');
 const userPassword = document.getElementById('user-password');
-const userTeam = document.getElementById('user-team');
 
 const roleId = document.getElementById('role-id');
 const roleName = document.getElementById('role-name');
 const roleDescription = document.getElementById('role-description');
 const rolePerms = document.getElementById('role-perms');
+
+const orgId = document.getElementById('org-id');
+const orgName = document.getElementById('org-name');
+const orgWasabi = document.getElementById('org-wasabi');
+
+const ROOT_USER_EMAIL = 'xtaberna@outlook.com';
 
 const tokenKey = 'admin_token';
 
@@ -61,6 +69,8 @@ async function loadAll() {
       api('/api/admin/roles')
     ]);
 
+    renderOrgs(teamsRes.teams || []);
+    renderTeamSelect(teamsRes.teams || []);
     renderUsers(usersRes.users || []);
     renderTeams(statsRes.teams || []);
     renderRoles(rolesRes.roles || []);
@@ -81,21 +91,31 @@ async function loadAll() {
 function renderUsers(users) {
   usersTableBody.innerHTML = '';
   users.forEach(u => {
+    const isRootUser = u.email === ROOT_USER_EMAIL;
     const roleOptions = Array.from(userRoleSelect.options)
       .map(opt => `<option value="${opt.value}" ${opt.value === u.role ? 'selected' : ''}>${opt.value}</option>`)
+      .join('');
+    const teamOptions = Array.from(userTeamSelect.options)
+      .map(opt => `<option value="${opt.value}" ${opt.value === u.team_id ? 'selected' : ''}>${opt.textContent}</option>`)
       .join('');
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${u.email || ''}</td>
       <td>${u.name || ''}</td>
       <td>
-        <select data-user-role="${u.id}">${roleOptions}</select>
+        <select data-user-role="${u.id}" ${isRootUser ? 'disabled' : ''}>${roleOptions}</select>
       </td>
-      <td><input data-user-team="${u.id}" value="${u.team_id || ''}" /></td>
+      <td>
+        ${isRootUser 
+          ? '<span style="color: #888; font-style: italic;">Root (sin org)</span>' 
+          : `<select data-user-team="${u.id}">${teamOptions}</select>`}
+      </td>
       <td>${u.last_login || ''}</td>
       <td>
-        <button class="btn-secondary" data-user-save="${u.id}">Guardar</button>
-        <button class="btn-danger" data-user-delete="${u.id}">Eliminar</button>
+        ${isRootUser 
+          ? '<span style="color: #888;">Protegido</span>' 
+          : `<button class="btn-secondary" data-user-save="${u.id}">Guardar</button>
+             <button class="btn-danger" data-user-delete="${u.id}">Eliminar</button>`}
       </td>
     `;
     usersTableBody.appendChild(tr);
@@ -105,7 +125,8 @@ function renderUsers(users) {
     btn.addEventListener('click', async () => {
       const id = btn.getAttribute('data-user-save');
       const role = usersTableBody.querySelector(`[data-user-role="${id}"]`).value;
-      const teamId = usersTableBody.querySelector(`[data-user-team="${id}"]`).value;
+      const teamSelect = usersTableBody.querySelector(`[data-user-team="${id}"]`);
+      const teamId = teamSelect ? teamSelect.value : null;
       await fetch(`/api/admin/users/${id}`, {
         method: 'PATCH',
         headers: {
@@ -208,6 +229,67 @@ function renderRoleSelect(roles) {
   });
 }
 
+function renderTeamSelect(teams) {
+  userTeamSelect.innerHTML = '';
+  teams.forEach(t => {
+    const opt = document.createElement('option');
+    opt.value = t.id;
+    opt.textContent = t.name;
+    userTeamSelect.appendChild(opt);
+  });
+}
+
+function renderOrgs(teams) {
+  orgsTableBody.innerHTML = '';
+  teams.forEach(t => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${t.id}</td>
+      <td><input data-org-name="${t.id}" value="${t.name || ''}" /></td>
+      <td><input data-org-wasabi="${t.id}" value="${t.wasabi_folder || ''}" /></td>
+      <td>${t.created_at || ''}</td>
+      <td>
+        <button class="btn-secondary" data-org-save="${t.id}">Guardar</button>
+        <button class="btn-danger" data-org-delete="${t.id}">Eliminar</button>
+      </td>
+    `;
+    orgsTableBody.appendChild(tr);
+  });
+
+  orgsTableBody.querySelectorAll('[data-org-save]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.getAttribute('data-org-save');
+      const name = orgsTableBody.querySelector(`[data-org-name="${id}"]`).value;
+      const wasabiFolder = orgsTableBody.querySelector(`[data-org-wasabi="${id}"]`).value;
+      await fetch(`/api/admin/teams/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem(tokenKey)}`
+        },
+        body: JSON.stringify({ name, wasabiFolder })
+      });
+      await loadAll();
+    });
+  });
+
+  orgsTableBody.querySelectorAll('[data-org-delete]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.getAttribute('data-org-delete');
+      if (!confirm('¿Eliminar organización? Asegúrate de que no hay usuarios asignados.')) return;
+      const res = await fetch(`/api/admin/teams/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${localStorage.getItem(tokenKey)}` }
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        alert(data.error || 'Error eliminando organización');
+      }
+      await loadAll();
+    });
+  });
+}
+
 loginForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const email = emailInput.value.trim();
@@ -242,7 +324,7 @@ userForm.addEventListener('submit', async (e) => {
     email: userEmail.value.trim(),
     password: userPassword.value.trim(),
     name: userName.value.trim(),
-    teamId: userTeam.value.trim(),
+    teamId: userTeamSelect.value,
     role: userRoleSelect.value
   };
   if (!payload.email || !payload.password || !payload.name) return;
@@ -259,7 +341,35 @@ userForm.addEventListener('submit', async (e) => {
   userEmail.value = '';
   userName.value = '';
   userPassword.value = '';
-  userTeam.value = 'rfep';
+  await loadAll();
+});
+
+orgForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const payload = {
+    id: orgId.value.trim(),
+    name: orgName.value.trim(),
+    wasabiFolder: orgWasabi.value.trim()
+  };
+  if (!payload.id || !payload.name || !payload.wasabiFolder) return;
+
+  const res = await fetch('/api/admin/teams', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${localStorage.getItem(tokenKey)}`
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!res.ok) {
+    const data = await res.json();
+    alert(data.error || 'Error creando organización');
+  }
+
+  orgId.value = '';
+  orgName.value = '';
+  orgWasabi.value = '';
   await loadAll();
 });
 

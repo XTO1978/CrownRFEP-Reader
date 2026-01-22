@@ -179,6 +179,85 @@ router.get('/teams', (req, res) => {
   }
 });
 
+router.post('/teams', (req, res) => {
+  try {
+    const { id, name, wasabiFolder } = req.body;
+    if (!id || !name || !wasabiFolder) {
+      return res.status(400).json({ error: 'ID, nombre y carpeta Wasabi son requeridos' });
+    }
+
+    const existing = safeDbGet('SELECT id FROM teams WHERE id = ?', [id]);
+    if (existing) {
+      return res.status(409).json({ error: 'Organización ya existe' });
+    }
+
+    const result = safeDbRun(
+      'INSERT INTO teams (id, name, wasabi_folder) VALUES (?, ?, ?)',
+      [id, name, wasabiFolder]
+    );
+
+    if (!result) {
+      return res.status(500).json({ error: 'No se pudo crear organización' });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[Admin] Error creando organización:', err);
+    res.status(500).json({ error: 'Error creando organización' });
+  }
+});
+
+router.patch('/teams/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, wasabiFolder } = req.body;
+
+    const fields = [];
+    const params = [];
+
+    if (name) { fields.push('name = ?'); params.push(name); }
+    if (wasabiFolder) { fields.push('wasabi_folder = ?'); params.push(wasabiFolder); }
+
+    if (fields.length === 0) {
+      return res.status(400).json({ error: 'Nada que actualizar' });
+    }
+
+    params.push(id);
+    const result = safeDbRun(`UPDATE teams SET ${fields.join(', ')} WHERE id = ?`, params);
+
+    if (!result) {
+      return res.status(500).json({ error: 'No se pudo actualizar organización' });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[Admin] Error actualizando organización:', err);
+    res.status(500).json({ error: 'Error actualizando organización' });
+  }
+});
+
+router.delete('/teams/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Verificar si hay usuarios asignados a esta organización
+    const usersInTeam = safeDbAll('SELECT id FROM users WHERE team_id = ?', [id]);
+    if (usersInTeam && usersInTeam.length > 0) {
+      return res.status(400).json({ error: 'No se puede eliminar: hay usuarios asignados a esta organización' });
+    }
+
+    const result = safeDbRun('DELETE FROM teams WHERE id = ?', [id]);
+    if (!result) {
+      return res.status(500).json({ error: 'No se pudo eliminar organización' });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[Admin] Error eliminando organización:', err);
+    res.status(500).json({ error: 'Error eliminando organización' });
+  }
+});
+
 router.get('/roles', (req, res) => {
   try {
     const roles = db.prepare('SELECT * FROM roles').all();
