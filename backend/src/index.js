@@ -9,15 +9,20 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
 // ============================================
 // Auto-shutdown después de 120 minutos de inactividad
+// SOLO en desarrollo local - en producción PM2 mantiene el proceso
 // ============================================
 const INACTIVITY_TIMEOUT_MS = 120 * 60 * 1000; // 120 minutos
 let lastActivityTime = Date.now();
 let shutdownTimer = null;
 
 function resetInactivityTimer() {
+  // No auto-shutdown en producción
+  if (IS_PRODUCTION) return;
+  
   lastActivityTime = Date.now();
   
   if (shutdownTimer) {
@@ -34,6 +39,7 @@ function resetInactivityTimer() {
 
 // Middleware para rastrear actividad
 function trackActivity(req, res, next) {
+  lastActivityTime = Date.now();
   resetInactivityTimer();
   next();
 }
@@ -55,13 +61,20 @@ app.get('/', (req, res) => {
 });
 
 app.get('/health', (req, res) => {
-  res.json({ 
+  const response = { 
     status: 'ok', 
     timestamp: new Date().toISOString(),
     uptimeSeconds: Math.round(process.uptime()),
-    inactiveMinutes: Math.round((Date.now() - lastActivityTime) / 60000),
-    autoShutdownInMinutes: Math.round((INACTIVITY_TIMEOUT_MS - (Date.now() - lastActivityTime)) / 60000)
-  });
+    environment: IS_PRODUCTION ? 'production' : 'development',
+    inactiveMinutes: Math.round((Date.now() - lastActivityTime) / 60000)
+  };
+  
+  // Solo mostrar info de auto-shutdown en desarrollo
+  if (!IS_PRODUCTION) {
+    response.autoShutdownInMinutes = Math.round((INACTIVITY_TIMEOUT_MS - (Date.now() - lastActivityTime)) / 60000);
+  }
+  
+  res.json(response);
 });
 
 // Rutas de autenticación (públicas)
@@ -82,8 +95,13 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`🌐 Escuchando en 0.0.0.0:${PORT} (accesible desde la red local)`);
   console.log(`📦 Bucket: ${process.env.WASABI_BUCKET}`);
   console.log(`🌍 Región: ${process.env.WASABI_REGION}`);
-  console.log(`⏰ Auto-shutdown: ${INACTIVITY_TIMEOUT_MS / 60000} minutos de inactividad`);
+  console.log(`🔧 Entorno: ${IS_PRODUCTION ? 'PRODUCCIÓN' : 'desarrollo'}`);
   
-  // Iniciar el temporizador de inactividad
-  resetInactivityTimer();
+  if (!IS_PRODUCTION) {
+    console.log(`⏰ Auto-shutdown: ${INACTIVITY_TIMEOUT_MS / 60000} minutos de inactividad`);
+    // Iniciar el temporizador de inactividad solo en desarrollo
+    resetInactivityTimer();
+  } else {
+    console.log(`✅ Modo producción: sin auto-shutdown`);
+  }
 });
