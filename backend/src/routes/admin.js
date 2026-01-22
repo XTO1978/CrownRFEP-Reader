@@ -1,7 +1,7 @@
 import express from 'express';
 import db from '../db/database.js';
 import bcrypt from 'bcryptjs';
-import { S3Client, ListObjectsV2Command, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, ListObjectsV2Command, PutObjectCommand, DeleteObjectsCommand } from '@aws-sdk/client-s3';
 
 const router = express.Router();
 
@@ -36,6 +36,35 @@ async function ensureWasabiFolder(folder) {
     Body: ''
   });
   await client.send(command);
+}
+
+async function deleteWasabiFolder(folder) {
+  if (!folder) return;
+  const prefix = folder.endsWith('/') ? folder : `${folder}/`;
+  const client = getS3Client();
+
+  let continuationToken = undefined;
+  do {
+    const listCommand = new ListObjectsV2Command({
+      Bucket: getBucket(),
+      Prefix: prefix,
+      ContinuationToken: continuationToken
+    });
+
+    const response = await client.send(listCommand);
+    const items = response.Contents || [];
+    if (items.length > 0) {
+      const deleteCommand = new DeleteObjectsCommand({
+        Bucket: getBucket(),
+        Delete: {
+          Objects: items.map(item => ({ Key: item.Key }))
+        }
+      });
+      await client.send(deleteCommand);
+    }
+
+    continuationToken = response.IsTruncated ? response.NextContinuationToken : undefined;
+  } while (continuationToken);
 }
 
 function safeDbAll(sql, params = []) {
@@ -258,7 +287,7 @@ router.patch('/teams/:id', (req, res) => {
   }
 });
 
-router.delete('/teams/:id', (req, res) => {
+router.delete('/teams/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -266,6 +295,19 @@ router.delete('/teams/:id', (req, res) => {
     const usersInTeam = safeDbAll('SELECT id FROM users WHERE team_id = ?', [id]);
     if (usersInTeam && usersInTeam.length > 0) {
       return res.status(400).json({ error: 'No se puede eliminar: hay usuarios asignados a esta organización' });
+    }
+
+    const team = safeDbGet('SELECT * FROM teams WHERE id = ?', [id]);
+    if (!team) {
+      return res.status(404).json({ error: 'Organización no encontrada' });
+    }
+
+    // Eliminar carpeta en Wasabi antes de borrar la organización
+    try {
+      await deleteWasabiFolder(team.wasabi_folder);
+    } catch (err) {
+      console.error('[Admin] Error eliminando carpeta Wasabi:', err);
+      return res.status(500).json({ error: 'No se pudo eliminar la carpeta en Wasabi' });
     }
 
     const result = safeDbRun('DELETE FROM teams WHERE id = ?', [id]);
