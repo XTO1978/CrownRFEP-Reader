@@ -7093,10 +7093,11 @@ public class DashboardViewModel : BaseViewModel
                 return;
             }
 
-            _remoteFilesCache = result.Files;
+            var files = result.Files ?? new List<CloudFileInfo>();
+            _remoteFilesCache = files;
 
             // Filtrar solo archivos de video
-            var videoFiles = result.Files
+            var videoFiles = files
                 .Where(f => !f.IsFolder && f.Key.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase))
                 .OrderByDescending(f => f.LastModified)
                 .ToList();
@@ -7127,6 +7128,13 @@ public class DashboardViewModel : BaseViewModel
 
                 var remoteItem = RemoteVideoItem.FromCloudFile(file, linkedLocal);
                 RemoteVideos.Add(remoteItem);
+
+                // Cargar thumbnail remoto si no hay local
+                if (remoteItem.LinkedLocalVideo?.EffectiveThumbnailPath == null &&
+                    remoteItem.SessionId > 0 && remoteItem.VideoId > 0)
+                {
+                    _ = LoadRemoteThumbnailAsync(remoteItem);
+                }
             }
 
             RemoteAllGalleryItemCount = RemoteVideos.Count.ToString();
@@ -7141,6 +7149,26 @@ public class DashboardViewModel : BaseViewModel
         finally
         {
             IsLoadingRemoteVideos = false;
+        }
+    }
+
+    private async Task LoadRemoteThumbnailAsync(RemoteVideoItem remoteItem)
+    {
+        try
+        {
+            var remoteThumbPath = $"sessions/{remoteItem.SessionId}/thumbnails/{remoteItem.VideoId}.jpg";
+            var signResult = await _cloudBackendService.GetDownloadUrlAsync(remoteThumbPath, expirationMinutes: 60);
+            if (signResult.Success && !string.IsNullOrWhiteSpace(signResult.Url))
+            {
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    remoteItem.ThumbnailUrl = signResult.Url;
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Remote] Error obteniendo thumbnail: {ex.Message}");
         }
     }
 

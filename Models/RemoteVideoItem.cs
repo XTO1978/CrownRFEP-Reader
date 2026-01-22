@@ -118,8 +118,20 @@ public class RemoteVideoItem : INotifyPropertyChanged
     public string? ThumbnailUrl
     {
         get => _thumbnailUrl;
-        set => SetProperty(ref _thumbnailUrl, value);
+        set
+        {
+            if (SetProperty(ref _thumbnailUrl, value))
+            {
+                OnPropertyChanged(nameof(EffectiveThumbnailSource));
+            }
+        }
     }
+
+    /// <summary>
+    /// Fuente efectiva de miniatura (local si existe, si no URL remota)
+    /// </summary>
+    public string? EffectiveThumbnailSource
+        => LinkedLocalVideo?.EffectiveThumbnailPath ?? ThumbnailUrl;
 
     /// <summary>
     /// Indica si el video está disponible localmente

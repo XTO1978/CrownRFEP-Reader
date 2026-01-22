@@ -1862,6 +1862,12 @@
                                             </VerticalStackLayout>
                                         </Border>
 
+                                        <!--  Thumbnail remota/local si existe  -->
+                                        <Image
+                                            Aspect="AspectFill"
+                                            Source="{Binding EffectiveThumbnailSource}"
+                                            IsVisible="{Binding EffectiveThumbnailSource, Converter={StaticResource NotNullOrEmptyBoolConverter}}" />
+
                                         <!--  Indicador de descarga  -->
                                         <Border
                                             BackgroundColor="#80000000"
