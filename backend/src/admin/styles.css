@@ -10,10 +10,16 @@ header h1 { margin: 0; font-size: 24px; }
 .grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
 @media (min-width: 900px) { .grid { grid-template-columns: 1fr; } }
 form { display: grid; gap: 8px; }
+form.inline-form { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); align-items: center; }
 label { display: grid; gap: 4px; font-size: 14px; }
 input { padding: 8px 10px; border-radius: 6px; border: 1px solid #374151; background: #0b1220; color: #e5e7eb; }
+select { padding: 8px 10px; border-radius: 6px; border: 1px solid #374151; background: #0b1220; color: #e5e7eb; }
 button { padding: 8px 12px; border-radius: 6px; border: 0; background: #2563eb; color: white; cursor: pointer; }
 button:hover { background: #1d4ed8; }
+.btn-secondary { background: #374151; }
+.btn-secondary:hover { background: #4b5563; }
+.btn-danger { background: #7f1d1d; }
+.btn-danger:hover { background: #991b1b; }
 .metrics { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
 .metrics span { font-size: 20px; font-weight: 600; display: block; }
 .metrics small { color: #9ca3af; }

@@ -43,12 +43,59 @@ try {
     )
   `);
 
+  // Crear tabla de roles si no existe
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS roles (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT,
+      permissions_json TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
   // Insertar equipo RFEP por defecto si no existe
   const rfepTeam = db.prepare('SELECT * FROM teams WHERE id = ?').get('rfep');
   if (!rfepTeam) {
     db.prepare('INSERT INTO teams (id, name, wasabi_folder) VALUES (?, ?, ?)')
       .run('rfep', 'Real Federación Española de Piragüismo', 'CrownRFEP');
     console.log('[DB] Equipo RFEP creado (SQLite)');
+  }
+
+  // Insertar roles por defecto si no existen
+  const defaultRoles = [
+    {
+      id: 'admin',
+      name: 'Administrador Root',
+      description: 'Acceso total al sistema',
+      permissions: ['*']
+    },
+    {
+      id: 'org_admin',
+      name: 'Administrador de Organización',
+      description: 'CRUD total en Wasabi (solo su organización) y gestión de cuentas de su organización',
+      permissions: ['org:manage', 'wasabi:crud', 'users:crud']
+    },
+    {
+      id: 'coach',
+      name: 'Entrenador',
+      description: 'CRUD en sesiones y archivos de video desde la app',
+      permissions: ['sessions:crud', 'videos:crud', 'metadata:crud']
+    },
+    {
+      id: 'athlete',
+      name: 'Atleta',
+      description: 'Solo lectura en Wasabi',
+      permissions: ['wasabi:read']
+    }
+  ];
+
+  for (const role of defaultRoles) {
+    const existingRole = db.prepare('SELECT id FROM roles WHERE id = ?').get(role.id);
+    if (!existingRole) {
+      db.prepare('INSERT INTO roles (id, name, description, permissions_json) VALUES (?, ?, ?, ?)')
+        .run(role.id, role.name, role.description, JSON.stringify(role.permissions));
+    }
   }
   
   console.log('[DB] Usando better-sqlite3');

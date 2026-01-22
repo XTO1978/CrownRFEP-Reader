@@ -1,5 +1,6 @@
 import express from 'express';
 import db from '../db/database.js';
+import bcrypt from 'bcryptjs';
 import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3';
 
 const router = express.Router();
@@ -28,6 +29,22 @@ function getBucket() {
 function safeDbAll(sql, params = []) {
   try {
     return db.prepare(sql).all(...params);
+  } catch (err) {
+    return null;
+  }
+}
+
+function safeDbGet(sql, params = []) {
+  try {
+    return db.prepare(sql).get(...params);
+  } catch (err) {
+    return null;
+  }
+}
+
+function safeDbRun(sql, params = []) {
+  try {
+    return db.prepare(sql).run(...params);
   } catch (err) {
     return null;
   }
@@ -68,6 +85,90 @@ router.get('/users', (req, res) => {
   }
 });
 
+router.post('/users', async (req, res) => {
+  try {
+    const { email, password, name, role = 'user', teamId = 'rfep' } = req.body;
+
+    if (!email || !password || !name) {
+      return res.status(400).json({ error: 'Email, contraseña y nombre son requeridos' });
+    }
+
+    const existing = safeDbGet('SELECT id FROM users WHERE email = ?', [email]);
+    if (existing) {
+      return res.status(409).json({ error: 'Email ya existe' });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    const result = safeDbRun(
+      'INSERT INTO users (email, password_hash, name, role, team_id) VALUES (?, ?, ?, ?, ?)',
+      [email, passwordHash, name, role, teamId]
+    );
+
+    if (!result) {
+      return res.status(500).json({ error: 'No se pudo crear usuario' });
+    }
+
+    res.json({ success: true, userId: result.lastInsertRowid });
+  } catch (err) {
+    console.error('[Admin] Error creando usuario:', err);
+    res.status(500).json({ error: 'Error creando usuario' });
+  }
+});
+
+router.patch('/users/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, role, teamId, password } = req.body;
+
+    const fields = [];
+    const params = [];
+
+    if (name) { fields.push('name = ?'); params.push(name); }
+    if (role) { fields.push('role = ?'); params.push(role); }
+    if (teamId) { fields.push('team_id = ?'); params.push(teamId); }
+
+    if (password) {
+      const passwordHash = await bcrypt.hash(password, 12);
+      fields.push('password_hash = ?');
+      params.push(passwordHash);
+    }
+
+    if (fields.length === 0) {
+      return res.status(400).json({ error: 'Nada que actualizar' });
+    }
+
+    params.push(id);
+    const result = safeDbRun(`UPDATE users SET ${fields.join(', ')} WHERE id = ?`, params);
+
+    if (!result) {
+      return res.status(500).json({ error: 'No se pudo actualizar usuario' });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[Admin] Error actualizando usuario:', err);
+    res.status(500).json({ error: 'Error actualizando usuario' });
+  }
+});
+
+router.delete('/users/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    if (String(req.user?.userId) === String(id)) {
+      return res.status(400).json({ error: 'No puedes eliminar tu propio usuario' });
+    }
+
+    const result = safeDbRun('DELETE FROM users WHERE id = ?', [id]);
+    if (!result) {
+      return res.status(500).json({ error: 'No se pudo eliminar usuario' });
+    }
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[Admin] Error eliminando usuario:', err);
+    res.status(500).json({ error: 'Error eliminando usuario' });
+  }
+});
+
 router.get('/teams', (req, res) => {
   try {
     const teams = db.prepare('SELECT * FROM teams').all();
@@ -75,6 +176,92 @@ router.get('/teams', (req, res) => {
   } catch (err) {
     console.error('[Admin] Error listando equipos:', err);
     res.status(500).json({ error: 'Error listando equipos' });
+  }
+});
+
+router.get('/roles', (req, res) => {
+  try {
+    const roles = db.prepare('SELECT * FROM roles').all();
+    res.json({ success: true, roles });
+  } catch (err) {
+    console.error('[Admin] Error listando roles:', err);
+    res.status(500).json({ error: 'Error listando roles' });
+  }
+});
+
+router.post('/roles', (req, res) => {
+  try {
+    const { id, name, description, permissions = [] } = req.body;
+    if (!id || !name) {
+      return res.status(400).json({ error: 'ID y nombre son requeridos' });
+    }
+
+    const existing = safeDbGet('SELECT id FROM roles WHERE id = ?', [id]);
+    if (existing) {
+      return res.status(409).json({ error: 'Rol ya existe' });
+    }
+
+    const result = safeDbRun(
+      'INSERT INTO roles (id, name, description, permissions_json) VALUES (?, ?, ?, ?)',
+      [id, name, description || '', JSON.stringify(permissions)]
+    );
+
+    if (!result) {
+      return res.status(500).json({ error: 'No se pudo crear rol' });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[Admin] Error creando rol:', err);
+    res.status(500).json({ error: 'Error creando rol' });
+  }
+});
+
+router.patch('/roles/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description, permissions } = req.body;
+
+    const fields = [];
+    const params = [];
+
+    if (name) { fields.push('name = ?'); params.push(name); }
+    if (description !== undefined) { fields.push('description = ?'); params.push(description); }
+    if (permissions) { fields.push('permissions_json = ?'); params.push(JSON.stringify(permissions)); }
+
+    if (fields.length === 0) {
+      return res.status(400).json({ error: 'Nada que actualizar' });
+    }
+
+    params.push(id);
+    const result = safeDbRun(`UPDATE roles SET ${fields.join(', ')} WHERE id = ?`, params);
+    if (!result) {
+      return res.status(500).json({ error: 'No se pudo actualizar rol' });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[Admin] Error actualizando rol:', err);
+    res.status(500).json({ error: 'Error actualizando rol' });
+  }
+});
+
+router.delete('/roles/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    if (id === 'admin') {
+      return res.status(400).json({ error: 'No se puede eliminar el rol admin' });
+    }
+
+    const result = safeDbRun('DELETE FROM roles WHERE id = ?', [id]);
+    if (!result) {
+      return res.status(500).json({ error: 'No se pudo eliminar rol' });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[Admin] Error eliminando rol:', err);
+    res.status(500).json({ error: 'Error eliminando rol' });
   }
 });
 

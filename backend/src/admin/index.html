@@ -55,6 +55,14 @@
 
       <div class="card">
         <h2>Usuarios</h2>
+        <form id="user-form" class="inline-form">
+          <input type="email" id="user-email" placeholder="Email" required />
+          <input type="text" id="user-name" placeholder="Nombre" required />
+          <input type="password" id="user-password" placeholder="Contraseña" required />
+          <input type="text" id="user-team" placeholder="Team ID" value="rfep" />
+          <select id="user-role"></select>
+          <button type="submit">Crear</button>
+        </form>
         <table id="users-table">
           <thead>
             <tr>
@@ -63,6 +71,30 @@
               <th>Rol</th>
               <th>Equipo</th>
               <th>Último login</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h2>Roles</h2>
+        <form id="role-form" class="inline-form">
+          <input type="text" id="role-id" placeholder="ID (ej: org_admin)" required />
+          <input type="text" id="role-name" placeholder="Nombre" required />
+          <input type="text" id="role-description" placeholder="Descripción" />
+          <input type="text" id="role-perms" placeholder="Permisos (coma)" />
+          <button type="submit">Crear</button>
+        </form>
+        <table id="roles-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nombre</th>
+              <th>Descripción</th>
+              <th>Permisos</th>
+              <th>Acciones</th>
             </tr>
           </thead>
           <tbody></tbody>

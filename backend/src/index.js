@@ -9,6 +9,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import bcrypt from 'bcryptjs';
 import db from './db/database.js';
+import crypto from 'crypto';
 
 dotenv.config();
 
@@ -54,6 +55,38 @@ app.use(cors());
 app.use(express.json());
 app.use(trackActivity); // Rastrear cada petición
 
+// Protección básica para /admin (solo credenciales root)
+function adminBasicAuth(req, res, next) {
+  const adminEmail = process.env.ADMIN_EMAIL;
+  const adminPassword = process.env.ADMIN_PASSWORD;
+
+  if (!adminEmail || !adminPassword) {
+    return res.status(500).send('Admin no configurado');
+  }
+
+  const header = req.headers['authorization'] || '';
+  if (!header.startsWith('Basic ')) {
+    res.setHeader('WWW-Authenticate', 'Basic realm="CrownAnalyzer Admin"');
+    return res.status(401).send('Auth requerida');
+  }
+
+  try {
+    const decoded = Buffer.from(header.slice(6), 'base64').toString('utf8');
+    const [user, pass] = decoded.split(':');
+    const userOk = crypto.timingSafeEqual(Buffer.from(user || ''), Buffer.from(adminEmail));
+    const passOk = crypto.timingSafeEqual(Buffer.from(pass || ''), Buffer.from(adminPassword));
+    if (!userOk || !passOk) {
+      res.setHeader('WWW-Authenticate', 'Basic realm="CrownAnalyzer Admin"');
+      return res.status(401).send('Credenciales inválidas');
+    }
+  } catch (err) {
+    res.setHeader('WWW-Authenticate', 'Basic realm="CrownAnalyzer Admin"');
+    return res.status(401).send('Auth inválida');
+  }
+
+  next();
+}
+
 // Crear admin por env si no existe
 const adminEmail = process.env.ADMIN_EMAIL;
 const adminPassword = process.env.ADMIN_PASSWORD;
@@ -74,9 +107,9 @@ if (adminEmail && adminPassword) {
   }
 }
 
-// Admin UI estática
+// Admin UI estática (protegida por Basic Auth)
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-app.use('/admin', express.static(path.join(__dirname, 'admin')));
+app.use('/admin', adminBasicAuth, express.static(path.join(__dirname, 'admin')));
 
 // Rutas públicas
 app.get('/', (req, res) => {
