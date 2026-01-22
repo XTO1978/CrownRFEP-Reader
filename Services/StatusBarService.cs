@@ -70,6 +70,10 @@ public class StatusBarService : INotifyPropertyChanged
     private bool _isDatabaseOk = true;
     private string? _lastDatabaseError;
     private DateTime _lastDatabaseActivity;
+    private bool _isBackendAvailable;
+    private bool _isBackendChecking;
+    private string? _lastBackendError;
+    private DateTime _lastBackendCheck;
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event EventHandler? StatusChanged;
@@ -140,6 +144,106 @@ public class StatusBarService : INotifyPropertyChanged
         : $"Última: {_lastDatabaseActivity:HH:mm:ss}";
 
     /// <summary>
+    /// Indica si el backend está disponible
+    /// </summary>
+    public bool IsBackendAvailable
+    {
+        get => _isBackendAvailable;
+        private set
+        {
+            if (_isBackendAvailable != value)
+            {
+                _isBackendAvailable = value;
+                OnPropertyChanged(nameof(IsBackendAvailable));
+                OnPropertyChanged(nameof(BackendStatusText));
+                OnPropertyChanged(nameof(BackendStatusSymbol));
+                OnPropertyChanged(nameof(BackendStatusColor));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Indica si se está comprobando el backend
+    /// </summary>
+    public bool IsBackendChecking
+    {
+        get => _isBackendChecking;
+        private set
+        {
+            if (_isBackendChecking != value)
+            {
+                _isBackendChecking = value;
+                OnPropertyChanged(nameof(IsBackendChecking));
+                OnPropertyChanged(nameof(BackendStatusText));
+                OnPropertyChanged(nameof(BackendStatusSymbol));
+                OnPropertyChanged(nameof(BackendStatusColor));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Último error del backend
+    /// </summary>
+    public string? LastBackendError
+    {
+        get => _lastBackendError;
+        private set
+        {
+            if (_lastBackendError != value)
+            {
+                _lastBackendError = value;
+                OnPropertyChanged(nameof(LastBackendError));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Última comprobación del backend
+    /// </summary>
+    public DateTime LastBackendCheck
+    {
+        get => _lastBackendCheck;
+        private set
+        {
+            if (_lastBackendCheck != value)
+            {
+                _lastBackendCheck = value;
+                OnPropertyChanged(nameof(LastBackendCheck));
+            }
+        }
+    }
+
+    public string BackendStatusText
+    {
+        get
+        {
+            if (IsBackendChecking)
+                return "Backend...";
+            return IsBackendAvailable ? "Backend OK" : "Backend OFF";
+        }
+    }
+
+    public string BackendStatusSymbol
+    {
+        get
+        {
+            if (IsBackendChecking)
+                return "arrow.triangle.2.circlepath";
+            return IsBackendAvailable ? "checkmark.circle.fill" : "exclamationmark.triangle.fill";
+        }
+    }
+
+    public Color BackendStatusColor
+    {
+        get
+        {
+            if (IsBackendChecking)
+                return Color.FromArgb("#FF6DDDFF");
+            return IsBackendAvailable ? Color.FromArgb("#FF4CAF50") : Color.FromArgb("#FFFF9800");
+        }
+    }
+
+    /// <summary>
     /// Operación actual en curso (ej: "Importando sesión...", "Exportando vídeos...")
     /// </summary>
     public string? CurrentOperation
@@ -192,6 +296,18 @@ public class StatusBarService : INotifyPropertyChanged
     }
 
     public int OperationProgressPercent => (int)(_operationProgress * 100);
+
+    /// <summary>
+    /// Actualiza el estado del backend para el footer
+    /// </summary>
+    public void UpdateBackendStatus(bool isAvailable, string? errorMessage = null, bool isChecking = false)
+    {
+        IsBackendChecking = isChecking;
+        IsBackendAvailable = isAvailable;
+        LastBackendError = errorMessage;
+        LastBackendCheck = DateTime.UtcNow;
+        StatusChanged?.Invoke(this, EventArgs.Empty);
+    }
 
     /// <summary>
     /// Nombre del usuario actual

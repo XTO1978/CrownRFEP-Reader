@@ -20,6 +20,7 @@ public class CameraViewModel : INotifyPropertyChanged, IDisposable
 {
     private readonly ICameraRecordingService _cameraService;
     private readonly DatabaseService _databaseService;
+    private readonly VideoUploadQueueService? _uploadQueueService;
     private readonly Stopwatch _stopwatch = new();
     private IDispatcherTimer? _timer;
     private bool _disposed;
@@ -65,6 +66,10 @@ public class CameraViewModel : INotifyPropertyChanged, IDisposable
     {
         _cameraService = cameraService;
         _databaseService = databaseService;
+        
+        // Obtener el servicio de cola de subida (opcional, solo disponible cuando está registrado)
+        _uploadQueueService = Microsoft.Maui.Controls.Application.Current?.Handler?.MauiContext?.Services
+            .GetService<VideoUploadQueueService>();
 
         // Inicializar comandos
         StartPreviewCommand = new Command(async () => await StartPreviewAsync());
@@ -993,6 +998,9 @@ public class CameraViewModel : INotifyPropertyChanged, IDisposable
 
             // Guardar en la base de datos
             var videoId = await _databaseService.InsertVideoClipAsync(videoClip);
+            
+            // Actualizar el ID del video para la cola de subida
+            videoClip.Id = videoId;
 
             // Guardar tiempos/laps del cronometraje de ejecución en tabla dedicada (NO input/event_tags)
             await PersistExecutionTimingToDatabaseAsync(videoId, videoClip);
@@ -1003,6 +1011,15 @@ public class CameraViewModel : INotifyPropertyChanged, IDisposable
             await PersistEventTagsToDatabaseAsync(videoId, videoClip);
             
             AppLog.Info(nameof(CameraViewModel), $"Video saved to database: ID={videoId}, Session={CurrentSession.DatabaseSessionId}, Path={filePath}");
+            
+            // Encolar el video para subida automática a Wasabi (solo en iOS)
+#if IOS
+            if (_uploadQueueService != null)
+            {
+                _uploadQueueService.EnqueueVideo(videoClip, UploadPriority.High);
+                AppLog.Info(nameof(CameraViewModel), $"Video {videoId} añadido a la cola de subida a Wasabi");
+            }
+#endif
         }
         catch (Exception ex)
         {

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CrownAnalyzer Admin</title>
+  <link rel="stylesheet" href="/admin/styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>CrownAnalyzer Admin</h1>
+      <div id="status" class="status">Desconectado</div>
+    </header>
+
+    <section class="card" id="login-card">
+      <h2>Acceso</h2>
+      <form id="login-form">
+        <label>Email
+          <input type="email" id="email" required />
+        </label>
+        <label>Contraseña
+          <input type="password" id="password" required />
+        </label>
+        <button type="submit">Entrar</button>
+      </form>
+    </section>
+
+    <section class="grid">
+      <div class="card">
+        <h2>Totales</h2>
+        <div class="metrics">
+          <div><span id="total-users">-</span><small>Usuarios</small></div>
+          <div><span id="total-teams">-</span><small>Organizaciones</small></div>
+          <div><span id="total-objects">-</span><small>Objetos Wasabi</small></div>
+          <div><span id="total-bytes">-</span><small>Bytes Wasabi</small></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Organizaciones (Wasabi)</h2>
+        <table id="teams-table">
+          <thead>
+            <tr>
+              <th>Organización</th>
+              <th>Carpeta</th>
+              <th>Objetos</th>
+              <th>Bytes</th>
+              <th>Último</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h2>Usuarios</h2>
+        <table id="users-table">
+          <thead>
+            <tr>
+              <th>Email</th>
+              <th>Nombre</th>
+              <th>Rol</th>
+              <th>Equipo</th>
+              <th>Último login</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <script src="/admin/app.js"></script>
+</body>
+</html>

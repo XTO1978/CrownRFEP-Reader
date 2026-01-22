@@ -7,6 +7,8 @@ public partial class AppFooter : ContentView
     private StatusBarService? _statusBarService;
     private UserProfileNotifier? _userProfileNotifier;
     private DatabaseService? _databaseService;
+    private ICloudBackendService? _cloudBackendService;
+    private BackendInitializationService? _backendInitializationService;
     private Grid? _popupOverlay;
     private CollectionView? _popupLogsCollectionView;
     private Label? _popupLogCountLabel;
@@ -114,6 +116,8 @@ public partial class AppFooter : ContentView
         _statusBarService = services?.GetService<StatusBarService>();
         _userProfileNotifier = services?.GetService<UserProfileNotifier>();
         _databaseService = services?.GetService<DatabaseService>();
+        _cloudBackendService = services?.GetService<ICloudBackendService>();
+        _backendInitializationService = services?.GetService<BackendInitializationService>();
 
         if (_statusBarService != null)
         {
@@ -148,6 +152,8 @@ public partial class AppFooter : ContentView
         _statusBarService = null;
         _userProfileNotifier = null;
         _databaseService = null;
+        _cloudBackendService = null;
+        _backendInitializationService = null;
     }
 
     private async void OnUserProfileSaved(object? sender, EventArgs e)
@@ -188,6 +194,14 @@ public partial class AppFooter : ContentView
         {
             DatabaseStatusIcon.SymbolName = "exclamationmark.triangle.fill";
             DatabaseStatusIcon.TintColor = Color.FromArgb("#FFFF9800");
+        }
+
+        // Estado del backend
+        if (BackendStatusIcon != null && BackendStatusLabel != null)
+        {
+            BackendStatusIcon.SymbolName = _statusBarService.BackendStatusSymbol;
+            BackendStatusIcon.TintColor = _statusBarService.BackendStatusColor;
+            BackendStatusLabel.Text = _statusBarService.BackendStatusText;
         }
 
         // Operación en curso
@@ -236,6 +250,36 @@ public partial class AppFooter : ContentView
     private void OnDatabaseStatusTapped(object? sender, TappedEventArgs e)
     {
         ShowLogsPopup();
+    }
+
+    private async void OnBackendStatusTapped(object? sender, TappedEventArgs e)
+    {
+        if (_cloudBackendService == null)
+            return;
+
+        var currentUrl = _cloudBackendService.BaseUrl;
+        var lastError = _statusBarService?.LastBackendError;
+
+        var message = string.IsNullOrWhiteSpace(lastError)
+            ? "Configura la URL del backend para este dispositivo."
+            : $"Último error: {lastError}\n\nConfigura la URL del backend para este dispositivo.";
+
+        var newUrl = await Application.Current!.MainPage!.DisplayPromptAsync(
+            "Backend",
+            message,
+            "Guardar",
+            "Cancelar",
+            initialValue: currentUrl);
+
+        if (!string.IsNullOrWhiteSpace(newUrl) && !string.Equals(newUrl, currentUrl, StringComparison.OrdinalIgnoreCase))
+        {
+            _cloudBackendService.UpdateBaseUrl(newUrl);
+            _statusBarService?.UpdateBackendStatus(isAvailable: false, errorMessage: null, isChecking: true);
+            if (_backendInitializationService != null)
+            {
+                _ = Task.Run(async () => await _backendInitializationService.ForceCheckAsync());
+            }
+        }
     }
 
     private void ShowLogsPopup()

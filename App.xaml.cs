@@ -87,6 +87,55 @@ public partial class App : Application
 				});
 			}
 			
+#if MACCATALYST || WINDOWS
+			// Iniciar el proceso del backend automáticamente en desktop
+			var backendProcessService = activationState.Context.Services.GetService<BackendProcessService>();
+			if (backendProcessService != null)
+			{
+				_ = Task.Run(async () =>
+				{
+					try
+					{
+						AppLog.Info("App", "🚀 Iniciando proceso del backend...");
+						var started = await backendProcessService.StartAsync();
+						if (started)
+						{
+							AppLog.Info("App", "✅ Backend iniciado correctamente");
+						}
+						else
+						{
+							AppLog.Warn("App", "⚠️ No se pudo iniciar el backend automáticamente");
+						}
+					}
+					catch (Exception ex)
+					{
+						AppLog.Error("App", "Error iniciando proceso del backend", ex);
+					}
+				});
+			}
+#endif
+			
+			// Inicializar conexión con el backend y sincronizar galería (TODAS las plataformas)
+			var backendInitService = activationState.Context.Services.GetService<BackendInitializationService>();
+			if (backendInitService != null)
+			{
+				_ = Task.Run(async () =>
+				{
+					try
+					{
+#if MACCATALYST || WINDOWS
+						// Esperar un poco para que el backend se inicie
+						await Task.Delay(2000);
+#endif
+						await backendInitService.InitializeAsync();
+					}
+					catch (Exception ex)
+					{
+						AppLog.Error("App", "Error inicializando backend", ex);
+					}
+				});
+			}
+			
 #if !IOS
 			// Pre-instanciar SinglePlayerPage en background para evitar delay de InitializeComponent
 			// cuando el usuario abre un video por primera vez (~2 segundos de parsing XAML)

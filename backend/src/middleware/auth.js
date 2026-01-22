@@ -17,3 +17,10 @@ export function authenticateToken(req, res, next) {
     return res.status(403).json({ error: 'Token inválido o expirado' });
   }
 }
+
+export function requireAdmin(req, res, next) {
+  if (!req.user || req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Acceso restringido' });
+  }
+  next();
+}

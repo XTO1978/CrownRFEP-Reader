@@ -27,6 +27,16 @@ public interface ICloudBackendService
     string? TeamName { get; }
 
     /// <summary>
+    /// URL base actual del backend.
+    /// </summary>
+    string BaseUrl { get; }
+
+    /// <summary>
+    /// Actualiza la URL base del backend (se persiste en preferencias).
+    /// </summary>
+    void UpdateBaseUrl(string baseUrl);
+
+    /// <summary>
     /// Autentica al usuario con email y contraseña.
     /// </summary>
     Task<AuthResult> LoginAsync(string email, string password);
@@ -70,11 +80,41 @@ public interface ICloudBackendService
     /// Obtiene información del equipo y cuota de almacenamiento.
     /// </summary>
     Task<TeamInfoResult> GetTeamInfoAsync();
+
+/// <summary>
+/// Verifica si el backend está disponible y funcionando.
+/// </summary>
+Task<BackendHealthResult> CheckHealthAsync();
+
+/// <summary>
+/// Obtiene la lista de videos/archivos nuevos o actualizados desde la última sincronización.
+/// Útil para mantener la galería actualizada para atletas y entrenadores.
+/// </summary>
+Task<GallerySyncResult> CheckForGalleryUpdatesAsync(DateTime? lastSyncTime = null);
 }
 
 /// <summary>
-/// Resultado de autenticación.
+/// Resultado del health check del backend.
 /// </summary>
+public record BackendHealthResult(
+    bool IsHealthy,
+    string? ErrorMessage = null,
+    string? Version = null,
+    DateTime? ServerTime = null
+);
+
+/// <summary>
+/// Resultado de la verificación de actualizaciones de galería.
+/// </summary>
+public record GallerySyncResult(
+    bool Success,
+    string? ErrorMessage = null,
+    int NewFilesCount = 0,
+    int UpdatedFilesCount = 0,
+    List<CloudFileInfo>? NewFiles = null,
+    List<CloudFileInfo>? UpdatedFiles = null,
+    DateTime? LastCheckedUtc = null
+);
 public record AuthResult(
     bool Success,
     string? ErrorMessage = null,

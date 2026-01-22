@@ -187,6 +187,17 @@ public static class MauiProgram
 		// Servicio de sincronización local <-> remoto
 		builder.Services.AddSingleton<SyncService>();
 		
+		// Cola de subida automática de videos (iOS)
+		builder.Services.AddSingleton<VideoUploadQueueService>();
+		
+#if MACCATALYST || WINDOWS
+		// Servicio para iniciar el proceso del backend automáticamente en desktop
+		builder.Services.AddSingleton<BackendProcessService>();
+#endif
+		
+		// Servicio de inicialización del backend y sincronización automática
+		builder.Services.AddSingleton<BackendInitializationService>();
+		
 		// Servicio de migración de almacenamiento
 		builder.Services.AddSingleton<StorageMigrationService>();
 		

@@ -19,7 +19,7 @@ namespace CrownRFEP_Reader.Services;
 public class CloudBackendService : ICloudBackendService
 {
     private readonly HttpClient _httpClient;
-    private readonly string _baseUrl;
+    private string _baseUrl;
     
     private string? _accessToken;
     private DateTime? _tokenExpiresAt;
@@ -31,6 +31,7 @@ public class CloudBackendService : ICloudBackendService
     private const string TokenExpiresAtKey = "CloudBackend_TokenExpiresAt";
     private const string UserNameKey = "CloudBackend_UserName";
     private const string TeamNameKey = "CloudBackend_TeamName";
+    private const string BaseUrlKeyPrefix = "CloudBackend_BaseUrl";
 
     public bool IsAuthenticated => !string.IsNullOrEmpty(_accessToken) && 
                                     _tokenExpiresAt.HasValue && 
@@ -38,12 +39,21 @@ public class CloudBackendService : ICloudBackendService
 
     public string? CurrentUserName { get; private set; }
     public string? TeamName { get; private set; }
+    public string BaseUrl => _baseUrl;
 
     public CloudBackendService()
     {
         // URL del backend - configurar según el entorno
         // En producción, esto debería venir de configuración
-        _baseUrl = GetBackendUrl();
+        _baseUrl = Preferences.Get(GetBaseUrlKey(), GetBackendUrl());
+        if (_baseUrl.Contains("localhost", StringComparison.OrdinalIgnoreCase) ||
+            _baseUrl.Contains("192.168.1.10", StringComparison.OrdinalIgnoreCase) ||
+            _baseUrl.Contains("access853919316.webspace-data.io", StringComparison.OrdinalIgnoreCase) ||
+            _baseUrl.Contains("crownanalyzer.com/backend", StringComparison.OrdinalIgnoreCase))
+        {
+            _baseUrl = GetBackendUrl();
+            Preferences.Set(GetBaseUrlKey(), _baseUrl);
+        }
         
         // Configurar HttpClient con mejor manejo de conexiones para iOS
 #if IOS || MACCATALYST
@@ -53,7 +63,7 @@ public class CloudBackendService : ICloudBackendService
             TrustOverrideForUrl = (sender, url, trust) => 
             {
                 var host = new NSUrl(url).Host;
-                return host == "192.168.1.10" || host == "localhost";
+                return host == "backend.crownanalyzer.com";
             }
         };
         _httpClient = new HttpClient(handler)
@@ -71,27 +81,57 @@ public class CloudBackendService : ICloudBackendService
         RestoreSession();
     }
 
-    private static string GetBackendUrl()
+        private static string GetBackendUrl()
+        {
+        // Backend en VPS (subdominio dedicado)
+        return "https://backend.crownanalyzer.com/api";
+        }
+
+    public void UpdateBaseUrl(string baseUrl)
     {
-        // Para desarrollo local, usa el backend en localhost
-        // Para producción, cambiar a la URL del servidor desplegado
-        
-#if DEBUG
-        // En macOS Catalyst y Simulador iOS, localhost funciona directamente
-        // Para dispositivo físico iOS, usa la IP del Mac
-#if MACCATALYST
-        return "http://localhost:3000/api";
-#elif IOS
-        // Dispositivo físico iOS necesita la IP del Mac
-        // Cambiar esta IP cuando cambie tu red
-        return "http://192.168.1.10:3000/api";
-#else
-        return "http://localhost:3000/api";
-#endif
-#else
-        // URL de producción (cambiar cuando despliegues el backend)
-        return "https://api.crownanalyzer.com/v1";
-#endif
+        var normalized = NormalizeBaseUrl(baseUrl);
+        if (string.IsNullOrWhiteSpace(normalized))
+            return;
+
+        _baseUrl = normalized;
+        Preferences.Set(GetBaseUrlKey(), _baseUrl);
+        System.Diagnostics.Debug.WriteLine($"[CloudBackend] BaseUrl actualizado: {_baseUrl}");
+    }
+
+        private static string GetBaseUrlKey()
+        {
+    #if IOS
+        return $"{BaseUrlKeyPrefix}_iOS";
+    #elif MACCATALYST
+        return $"{BaseUrlKeyPrefix}_MacCatalyst";
+    #elif ANDROID
+        return $"{BaseUrlKeyPrefix}_Android";
+    #elif WINDOWS
+        return $"{BaseUrlKeyPrefix}_Windows";
+    #else
+        return BaseUrlKeyPrefix;
+    #endif
+        }
+
+    private static string NormalizeBaseUrl(string baseUrl)
+    {
+        if (string.IsNullOrWhiteSpace(baseUrl))
+            return string.Empty;
+
+        var url = baseUrl.Trim();
+        if (!url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+            !url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            url = "http://" + url;
+        }
+
+        // Asegurar que termine en /api
+        if (!url.EndsWith("/api", StringComparison.OrdinalIgnoreCase))
+        {
+            url = url.TrimEnd('/') + "/api";
+        }
+
+        return url;
     }
 
     private void RestoreSession()
@@ -625,6 +665,115 @@ public class CloudBackendService : ICloudBackendService
         }
     }
 
+    public async Task<BackendHealthResult> CheckHealthAsync()
+    {
+        try
+        {
+            // El endpoint /health no requiere autenticación
+            var baseUrlWithoutApi = _baseUrl.Replace("/api", "");
+            var response = await _httpClient.GetAsync($"{baseUrlWithoutApi}/health");
+            
+            if (!response.IsSuccessStatusCode)
+            {
+                return new BackendHealthResult(false, $"Backend no disponible: {response.StatusCode}");
+            }
+
+            var responseBody = await response.Content.ReadAsStringAsync();
+            var healthResponse = JsonSerializer.Deserialize<HealthResponseDto>(responseBody, JsonOptions);
+
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] Health check OK: status={healthResponse?.Status}, version={healthResponse?.Version}");
+
+            return new BackendHealthResult(
+                true,
+                null,
+                healthResponse?.Version,
+                DateTime.UtcNow
+            );
+        }
+        catch (HttpRequestException ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] Health check falló - backend no accesible: {ex.Message}");
+            return new BackendHealthResult(false, $"Backend no accesible: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] Health check error: {ex.Message}");
+            return new BackendHealthResult(false, $"Error: {ex.Message}");
+        }
+    }
+
+    public async Task<GallerySyncResult> CheckForGalleryUpdatesAsync(DateTime? lastSyncTime = null)
+    {
+        if (!await EnsureAuthenticatedAsync())
+        {
+            return new GallerySyncResult(false, "No autenticado");
+        }
+
+        try
+        {
+            // Listar todos los archivos del equipo
+            var allFiles = new List<CloudFileInfo>();
+            string? continuationToken = null;
+            
+            do
+            {
+                var result = await ListFilesAsync("", 500, continuationToken);
+                if (!result.Success)
+                {
+                    return new GallerySyncResult(false, result.ErrorMessage);
+                }
+                
+                if (result.Files != null)
+                {
+                    allFiles.AddRange(result.Files);
+                }
+                
+                continuationToken = result.ContinuationToken;
+            }
+            while (!string.IsNullOrEmpty(continuationToken));
+
+            // Filtrar archivos nuevos/actualizados desde la última sincronización
+            var newFiles = new List<CloudFileInfo>();
+            var updatedFiles = new List<CloudFileInfo>();
+
+            foreach (var file in allFiles)
+            {
+                if (file.IsFolder) continue;
+                
+                if (lastSyncTime.HasValue)
+                {
+                    if (file.LastModified > lastSyncTime.Value)
+                    {
+                        // Es un archivo nuevo o actualizado
+                        updatedFiles.Add(file);
+                    }
+                }
+                else
+                {
+                    // Primera sincronización - todos son nuevos
+                    newFiles.Add(file);
+                }
+            }
+
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] Gallery sync: {newFiles.Count} nuevos, {updatedFiles.Count} actualizados de {allFiles.Count} total");
+
+            return new GallerySyncResult(
+                true,
+                null,
+                newFiles.Count,
+                updatedFiles.Count,
+                newFiles,
+                updatedFiles,
+                DateTime.UtcNow
+            );
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] Error checking gallery updates: {ex.Message}");
+            return new GallerySyncResult(false, $"Error: {ex.Message}");
+        }
+    }
+
     private async Task<bool> EnsureAuthenticatedAsync()
     {
         if (!IsAuthenticated)
@@ -715,5 +864,12 @@ public class CloudBackendService : ICloudBackendService
         public string? Name { get; set; }
         public string? Email { get; set; }
         public string? Role { get; set; }
+    }
+
+    private class HealthResponseDto
+    {
+        public string? Status { get; set; }
+        public string? Version { get; set; }
+        public string? Timestamp { get; set; }
     }
 }
