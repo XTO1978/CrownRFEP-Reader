@@ -637,6 +637,33 @@ public class DatabaseService
         }
     }
 
+    /// <summary>
+    /// Elimina un VideoClip de la base de datos y sus dependencias (inputs, timing events)
+    /// No elimina archivos físicos, solo la referencia en BD.
+    /// </summary>
+    public async Task DeleteVideoClipAsync(int videoId)
+    {
+        try
+        {
+            var db = await GetConnectionAsync();
+            
+            // Eliminar dependencias primero
+            await db.ExecuteAsync("DELETE FROM \"execution_timing_events\" WHERE VideoID = ?;", videoId);
+            await db.ExecuteAsync("DELETE FROM \"input\" WHERE VideoID = ?;", videoId);
+            await db.ExecuteAsync("DELETE FROM \"split_time_data\" WHERE VideoID = ?;", videoId);
+            
+            // Eliminar el clip
+            await db.ExecuteAsync("DELETE FROM videoClip WHERE ID = ?;", videoId);
+            
+            LogInfo($"VideoClip eliminado: ID={videoId}");
+        }
+        catch (Exception ex)
+        {
+            LogError($"Error eliminando VideoClip {videoId}: {ex.Message}");
+            throw;
+        }
+    }
+
     // ==================== ATHLETES ====================
     public async Task<List<Athlete>> GetAllAthletesAsync()
     {

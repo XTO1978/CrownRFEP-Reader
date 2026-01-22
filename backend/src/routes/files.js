@@ -211,6 +211,64 @@ router.post('/sign-download', async (req, res) => {
   }
 });
 
+// POST /api/files/delete - Eliminar archivo (usado por CloudBackendService)
+router.post('/delete', async (req, res) => {
+  try {
+    const { path } = req.body;
+
+    console.log(`[Files] DELETE request recibido - path: ${path}`);
+
+    if (!path) {
+      return res.status(400).json({ error: 'Path del archivo requerido' });
+    }
+
+    // Validación de seguridad: solo permitir eliminar archivos, no carpetas
+    // El path debe terminar con una extensión de archivo conocida
+    const validExtensions = ['.mp4', '.jpg', '.jpeg', '.png', '.json', '.crown', '.mov', '.avi', '.webm'];
+    const hasValidExtension = validExtensions.some(ext => path.toLowerCase().endsWith(ext));
+    
+    if (!hasValidExtension) {
+      console.error(`[Files] ❌ BLOQUEADO: Intento de eliminar path sin extensión válida: ${path}`);
+      return res.status(400).json({ error: 'Solo se pueden eliminar archivos individuales, no carpetas' });
+    }
+
+    // Validación adicional: el path debe contener al menos una estructura de carpetas
+    if (!path.includes('/') || path.split('/').length < 2) {
+      console.error(`[Files] ❌ BLOQUEADO: Path demasiado corto o sin estructura: ${path}`);
+      return res.status(400).json({ error: 'Path de archivo inválido' });
+    }
+
+    const userFolder = req.user.wasabiFolder || 'CrownRFEP';
+    const fullKey = path.startsWith(userFolder) ? path : `${userFolder}/${path}`;
+
+    // Validación final: el fullKey debe tener estructura mínima
+    if (fullKey.split('/').length < 4) {
+      console.error(`[Files] ❌ BLOQUEADO: fullKey demasiado corto: ${fullKey}`);
+      return res.status(400).json({ error: 'Ruta de archivo inválida, muy cercana a la raíz' });
+    }
+
+    console.log(`[Files] Intentando eliminar: ${fullKey} (bucket: ${getBucket()})`);
+
+    const command = new DeleteObjectCommand({
+      Bucket: getBucket(),
+      Key: fullKey
+    });
+
+    await getS3Client().send(command);
+
+    console.log(`[Files] ✅ Archivo eliminado via POST: ${fullKey}`);
+
+    res.json({
+      success: true,
+      message: 'Archivo eliminado'
+    });
+
+  } catch (err) {
+    console.error('[Files] ❌ Error eliminando archivo:', err);
+    res.status(500).json({ error: 'Error al eliminar archivo' });
+  }
+});
+
 // DELETE /api/files/:key - Eliminar archivo
 router.delete('/:key(*)', async (req, res) => {
   try {

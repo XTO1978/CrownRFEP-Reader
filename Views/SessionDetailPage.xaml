@@ -132,7 +132,7 @@
                             
                             <Grid RowDefinitions="120,Auto">
                                 <!-- Thumbnail -->
-                                <Image Source="{Binding LocalThumbnailPath}"
+                                <Image Source="{Binding EffectiveThumbnailPath}"
                                        Aspect="AspectFill"
                                        BackgroundColor="{StaticResource Gray300}"/>
                                 

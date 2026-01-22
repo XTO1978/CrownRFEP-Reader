@@ -323,6 +323,12 @@
                                 Stroke="Transparent"
                                 StrokeThickness="0"
                                 StrokeShape="RoundRectangle 6">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer
+                                        Buttons="Secondary"
+                                        Tapped="OnRemoteLibraryHeaderContextMenu"
+                                        NumberOfTapsRequired="1" />
+                                </Border.GestureRecognizers>
                                 <Border.Padding>
                                     <OnPlatform x:TypeArguments="Thickness">
                                         <On Platform="iOS" Value="10,6,4,6" />
@@ -1562,7 +1568,7 @@
                                     </DataTrigger>
                                 </Border.Triggers>
                                 
-                                <controls:AspectRatioContainer AspectRatio="1.777">
+                                <controls:AspectRatioContainer AspectRatio="1.777" MinimumHeightRequest="100">
                                     <Grid>
                                         <!--  Behavior de long press para preview en iOS  -->
                                         <Grid.Behaviors>
@@ -1572,7 +1578,7 @@
                                         <Image
                                             Aspect="AspectFill"
                                             BackgroundColor="{StaticResource Gray300}"
-                                            Source="{Binding LocalThumbnailPath}" />
+                                            Source="{Binding EffectiveThumbnailPath}" />
 
                                         <!--  Overlay de play (oculto cuando está seleccionado en multiselect)  -->
                                         <controls:SymbolIcon
@@ -1814,7 +1820,18 @@
                                 Stroke="Transparent"
                                 StrokeShape="RoundRectangle 10"
                                 StrokeThickness="0">
+                                <Border.Triggers>
+                                    <DataTrigger TargetType="Border" Binding="{Binding IsSelected}" Value="True">
+                                        <Setter Property="Stroke" Value="#FF0066" />
+                                        <Setter Property="StrokeThickness" Value="3" />
+                                    </DataTrigger>
+                                </Border.Triggers>
                                 <Border.GestureRecognizers>
+                                    <!--  Tap simple: seleccionar si está en modo multi-select  -->
+                                    <TapGestureRecognizer
+                                        Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.ToggleRemoteVideoSelectionCommand}"
+                                        CommandParameter="{Binding .}"
+                                        NumberOfTapsRequired="1" />
                                     <!--  Doble clic: reproducir (descarga si es necesario)  -->
                                     <TapGestureRecognizer
                                         Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.PlayRemoteVideoCommand}"
@@ -1883,6 +1900,34 @@
                                                     TextColor="White"
                                                     VerticalOptions="Center" />
                                             </HorizontalStackLayout>
+                                        </Border>
+                                        
+                                        <!--  Checkbox de selección (visible en modo multi-select)  -->
+                                        <Border
+                                            Margin="8"
+                                            HeightRequest="28"
+                                            WidthRequest="28"
+                                            HorizontalOptions="Start"
+                                            VerticalOptions="Start"
+                                            StrokeShape="RoundRectangle 14"
+                                            StrokeThickness="2"
+                                            Stroke="White"
+                                            BackgroundColor="#80000000"
+                                            IsVisible="{Binding Source={x:Reference ThisPage}, Path=BindingContext.IsRemoteMultiSelectMode}">
+                                            <Border.Triggers>
+                                                <DataTrigger TargetType="Border" Binding="{Binding IsSelected}" Value="True">
+                                                    <Setter Property="BackgroundColor" Value="#FF0066" />
+                                                    <Setter Property="Stroke" Value="#FF0066" />
+                                                </DataTrigger>
+                                            </Border.Triggers>
+                                            <controls:SymbolIcon
+                                                HeightRequest="16"
+                                                WidthRequest="16"
+                                                SymbolName="checkmark"
+                                                TintColor="White"
+                                                HorizontalOptions="Center"
+                                                VerticalOptions="Center"
+                                                IsVisible="{Binding IsSelected}" />
                                         </Border>
                                     </Grid>
                                 </controls:AspectRatioContainer>
@@ -1995,7 +2040,7 @@
                                         <Image
                                             Aspect="AspectFill"
                                             BackgroundColor="{StaticResource Gray300}"
-                                            Source="{Binding LocalThumbnailPath}" />
+                                            Source="{Binding EffectiveThumbnailPath}" />
 
                                         <!--  Overlay de play  -->
                                         <controls:SymbolIcon
@@ -2466,6 +2511,213 @@
                             </HorizontalStackLayout>
                         </Border>
                     </Grid>
+
+                    <!--  ========== SECCIÓN: ACCIONES EN LOTE PARA VIDEOS REMOTOS ==========  -->
+                    <VerticalStackLayout
+                        Spacing="12"
+                        IsVisible="{Binding ShowRemoteGallery}">
+                        
+                        <!--  Separador  -->
+                        <Border
+                            HeightRequest="1"
+                            BackgroundColor="#FF464646"
+                            Stroke="Transparent"
+                            Margin="0,8,0,0" />
+                        
+                        <!--  Título sección remota  -->
+                        <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                            <controls:SymbolIcon
+                                HeightRequest="{StaticResource IconSizeLarge}"
+                                SymbolName="icloud"
+                                TintColor="#2196F3"
+                                VerticalOptions="Center"
+                                WidthRequest="{StaticResource IconSizeLarge}" />
+                            <Label
+                                FontSize="{StaticResource FontSizeHeader}"
+                                Text="Acciones Remotas"
+                                TextColor="White" />
+                        </HorizontalStackLayout>
+
+                        <!--  Toggles de selección remotos  -->
+                        <Label
+                            FontSize="{StaticResource FontSizeBody}"
+                            Text="Selección de vídeos remotos"
+                            TextColor="#FFCCCCCC" />
+
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                            <!--  Toggle: Selección múltiple remota  -->
+                            <Border
+                                Padding="10,8"
+                                BackgroundColor="#FF404040"
+                                Stroke="Transparent"
+                                StrokeShape="RoundRectangle 6">
+                                <Border.Triggers>
+                                    <DataTrigger TargetType="Border" Binding="{Binding IsRemoteMultiSelectMode}" Value="True">
+                                        <Setter Property="BackgroundColor" Value="#2196F3" />
+                                    </DataTrigger>
+                                </Border.Triggers>
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding ToggleRemoteMultiSelectModeCommand}" />
+                                </Border.GestureRecognizers>
+                                <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
+                                    <controls:SymbolIcon
+                                        HeightRequest="{StaticResource IconSizeMedium}"
+                                        SymbolName="checkmark.circle"
+                                        TintColor="White"
+                                        WidthRequest="{StaticResource IconSizeMedium}"
+                                        VerticalOptions="Center">
+                                        <controls:SymbolIcon.Triggers>
+                                            <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding IsRemoteMultiSelectMode}" Value="True">
+                                                <Setter Property="SymbolName" Value="checkmark.circle.fill" />
+                                            </DataTrigger>
+                                        </controls:SymbolIcon.Triggers>
+                                    </controls:SymbolIcon>
+                                    <Label Text="Seleccionar" TextColor="White" VerticalOptions="Center" />
+                                </HorizontalStackLayout>
+                            </Border>
+
+                            <!--  Toggle: Seleccionar todos remotos  -->
+                            <Border
+                                Grid.Column="1"
+                                Padding="10,8"
+                                BackgroundColor="#FF404040"
+                                Stroke="Transparent"
+                                StrokeShape="RoundRectangle 6">
+                                <Border.Triggers>
+                                    <DataTrigger TargetType="Border" Binding="{Binding IsRemoteSelectAllActive}" Value="True">
+                                        <Setter Property="BackgroundColor" Value="#2196F3" />
+                                    </DataTrigger>
+                                </Border.Triggers>
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding ToggleRemoteSelectAllCommand}" />
+                                </Border.GestureRecognizers>
+                                <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
+                                    <controls:SymbolIcon
+                                        HeightRequest="{StaticResource IconSizeMedium}"
+                                        SymbolName="checkmark.circle"
+                                        TintColor="White"
+                                        WidthRequest="{StaticResource IconSizeMedium}"
+                                        VerticalOptions="Center">
+                                        <controls:SymbolIcon.Triggers>
+                                            <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding IsRemoteSelectAllActive}" Value="True">
+                                                <Setter Property="SymbolName" Value="checkmark.circle.fill" />
+                                            </DataTrigger>
+                                        </controls:SymbolIcon.Triggers>
+                                    </controls:SymbolIcon>
+                                    <Label Text="Todos" TextColor="White" VerticalOptions="Center" />
+                                </HorizontalStackLayout>
+                            </Border>
+                        </Grid>
+
+                        <!--  Contador de selección  -->
+                        <Label
+                            FontSize="{StaticResource FontSizeBody}"
+                            HorizontalOptions="Center"
+                            TextColor="#2196F3"
+                            IsVisible="{Binding IsRemoteMultiSelectMode}">
+                            <Label.Text>
+                                <Binding Path="SelectedRemoteVideoCount" StringFormat="{}{0} vídeo(s) seleccionado(s)" />
+                            </Label.Text>
+                        </Label>
+
+                        <!--  Sección: Acciones remotas  -->
+                        <Label
+                            Margin="0,8,0,0"
+                            FontSize="{StaticResource FontSizeBody}"
+                            Text="Acciones en lote"
+                            TextColor="#FFCCCCCC" />
+
+                        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="8">
+                            <!--  Botón: Descargar selección  -->
+                            <Border
+                                Grid.Row="0"
+                                Grid.Column="0"
+                                Padding="{StaticResource PaddingActionButton}"
+                                BackgroundColor="#FF404040"
+                                Stroke="Transparent"
+                                StrokeShape="RoundRectangle 6">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding DownloadSelectedRemoteVideosCommand}" />
+                                </Border.GestureRecognizers>
+                                <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
+                                    <controls:SymbolIcon
+                                        HeightRequest="{StaticResource IconSizeMedium}"
+                                        SymbolName="arrow.down.circle"
+                                        TintColor="#4CAF50"
+                                        WidthRequest="{StaticResource IconSizeMedium}"
+                                        VerticalOptions="Center" />
+                                    <Label Text="Descargar" TextColor="#4CAF50" VerticalOptions="Center" />
+                                </HorizontalStackLayout>
+                            </Border>
+
+                            <!--  Botón: Añadir a biblioteca  -->
+                            <Border
+                                Grid.Row="0"
+                                Grid.Column="1"
+                                Padding="{StaticResource PaddingActionButton}"
+                                BackgroundColor="#FF404040"
+                                Stroke="Transparent"
+                                StrokeShape="RoundRectangle 6">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding AddSelectedRemoteToLibraryCommand}" />
+                                </Border.GestureRecognizers>
+                                <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
+                                    <controls:SymbolIcon
+                                        HeightRequest="{StaticResource IconSizeMedium}"
+                                        SymbolName="plus.circle"
+                                        TintColor="#2196F3"
+                                        WidthRequest="{StaticResource IconSizeMedium}"
+                                        VerticalOptions="Center" />
+                                    <Label Text="Añadir" TextColor="#2196F3" VerticalOptions="Center" />
+                                </HorizontalStackLayout>
+                            </Border>
+
+                            <!--  Botón: Quitar de biblioteca local  -->
+                            <Border
+                                Grid.Row="1"
+                                Grid.Column="0"
+                                Padding="{StaticResource PaddingActionButton}"
+                                BackgroundColor="#FF404040"
+                                Stroke="Transparent"
+                                StrokeShape="RoundRectangle 6">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding DeleteSelectedRemoteFromLibraryCommand}" />
+                                </Border.GestureRecognizers>
+                                <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
+                                    <controls:SymbolIcon
+                                        HeightRequest="{StaticResource IconSizeMedium}"
+                                        SymbolName="minus.circle"
+                                        TintColor="#FFA500"
+                                        WidthRequest="{StaticResource IconSizeMedium}"
+                                        VerticalOptions="Center" />
+                                    <Label Text="Quitar local" TextColor="#FFA500" VerticalOptions="Center" />
+                                </HorizontalStackLayout>
+                            </Border>
+
+                            <!--  Botón: Eliminar de la nube (destructivo)  -->
+                            <Border
+                                Grid.Row="1"
+                                Grid.Column="1"
+                                Padding="{StaticResource PaddingActionButton}"
+                                BackgroundColor="#FF404040"
+                                Stroke="Transparent"
+                                StrokeShape="RoundRectangle 6">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding DeleteSelectedRemoteFromCloudCommand}" />
+                                </Border.GestureRecognizers>
+                                <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
+                                    <controls:SymbolIcon
+                                        HeightRequest="{StaticResource IconSizeMedium}"
+                                        SymbolName="trash.circle"
+                                        TintColor="#FFFF6B6B"
+                                        WidthRequest="{StaticResource IconSizeMedium}"
+                                        VerticalOptions="Center" />
+                                    <Label Text="Eliminar nube" TextColor="#FFFF6B6B" VerticalOptions="Center" />
+                                </HorizontalStackLayout>
+                            </Border>
+                        </Grid>
+                    </VerticalStackLayout>
+                    <!--  ========== FIN SECCIÓN ACCIONES REMOTAS ==========  -->
 
                     <!--  Sección: Análisis técnico  -->
                     <Border
@@ -4333,7 +4585,7 @@
                                                             StrokeThickness="0"
                                                             BackgroundColor="#FF404040">
                                                             <Image
-                                                                Source="{Binding LocalThumbnailPath}"
+                                                                Source="{Binding EffectiveThumbnailPath}"
                                                                 Aspect="AspectFill" />
                                                         </Border>
                                                     </DataTemplate>

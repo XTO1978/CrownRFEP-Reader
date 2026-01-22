@@ -111,6 +111,14 @@ public class StoragePathService
     }
 
     /// <summary>
+    /// Obtiene la ruta remota del archivo de metadatos de un video
+    /// </summary>
+    public string GetRemoteMetadataPath(int sessionId, int videoId)
+    {
+        return $"{GetRemoteSessionPath(sessionId)}/metadata/{videoId}.json";
+    }
+
+    /// <summary>
     /// Genera un nombre de archivo único para un nuevo video
     /// </summary>
     public string GenerateVideoFileName(int sessionId, int athleteId, DateTime creationDate)

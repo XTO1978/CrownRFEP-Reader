@@ -1202,6 +1202,11 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
             {
                 options.Add("Añadir a Mi biblioteca");
             }
+            else
+            {
+                // Si ya está en la biblioteca, mostrar opción de eliminar
+                options.Add("Eliminar de Mi biblioteca");
+            }
             
             if (!remoteVideo.IsLocallyAvailable)
             {
@@ -1227,6 +1232,10 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
             {
                 vm.AddRemoteVideoToLibraryCommand.Execute(remoteVideo);
             }
+            else if (result == "Eliminar de Mi biblioteca")
+            {
+                vm.DeleteRemoteVideoFromLibraryCommand.Execute(remoteVideo);
+            }
             else if (result == "Descargar")
             {
                 vm.DownloadRemoteVideoCommand.Execute(remoteVideo);
@@ -1247,6 +1256,42 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
     }
 
     /// <summary>
+    /// Menú contextual para el header de la biblioteca remota (ej: "Real Federación Española...")
+    /// Permite eliminar toda la biblioteca remota del sistema (eliminación en cascada)
+    /// </summary>
+    private async void OnRemoteLibraryHeaderContextMenu(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            if (BindingContext is not DashboardViewModel vm)
+                return;
+
+            // Contar cuántos videos remotos están en la biblioteca local
+            var videosInLibrary = vm.RemoteVideos.Where(v => v.LinkedLocalVideo != null).ToList();
+            var totalRemoteVideos = vm.RemoteVideos.Count;
+            
+            var infoText = videosInLibrary.Count > 0 
+                ? $"{videosInLibrary.Count} videos en biblioteca local" 
+                : "Sin videos en biblioteca local";
+
+            var result = await DisplayActionSheet(
+                $"{vm.RemoteLibraryDisplayName}\n({infoText})",
+                "Cancelar",
+                "Eliminar biblioteca remota del sistema",
+                Array.Empty<string>());
+
+            if (result == "Eliminar biblioteca remota del sistema")
+            {
+                vm.DeleteAllRemoteVideosFromLibraryCommand.Execute(null);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "OnRemoteLibraryHeaderContextMenu error", ex);
+        }
+    }
+
+    /// <summary>
     /// Clic simple en video item: selecciona/deselecciona el video (solo en MacCatalyst/Windows).
     /// En iOS, este handler no se ejecuta (NumberOfTapsRequired=99).
     /// Detecta doble clic manualmente porque MacCatalyst no maneja bien múltiples TapGestureRecognizers.
@@ -1255,12 +1300,20 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
     {
         try
         {
+            AppLog.Info("DashboardPage", $"⏱️ OnVideoItemSingleTapped - sender={sender?.GetType().Name}");
+            
             if (sender is not VisualElement anchor)
+            {
+                AppLog.Warn("DashboardPage", "OnVideoItemSingleTapped: sender no es VisualElement");
                 return;
+            }
 
             var video = FindVideoClipFromContext(anchor);
             if (video == null)
+            {
+                AppLog.Warn("DashboardPage", $"OnVideoItemSingleTapped: No se encontró VideoClip, BindingContext={anchor.BindingContext?.GetType().Name}");
                 return;
+            }
 
             var now = DateTime.Now;
             var timeSinceLastTap = (now - _lastVideoTapTime).TotalMilliseconds;

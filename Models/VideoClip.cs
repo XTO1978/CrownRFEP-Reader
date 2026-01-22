@@ -1,5 +1,6 @@
 using SQLite;
 using System.ComponentModel;
+using System.IO;
 using System.Linq;
 
 namespace CrownRFEP_Reader.Models;
@@ -285,6 +286,50 @@ public class VideoClip : INotifyPropertyChanged
 
     [Column("localThumbnailPath")]
     public string? LocalThumbnailPath { get; set; }
+
+    /// <summary>
+    /// Ruta efectiva de la miniatura, verificando existencia.
+    /// Prioridad: LocalThumbnailPath (si existe) > ThumbnailPath > null
+    /// </summary>
+    [Ignore]
+    public string? EffectiveThumbnailPath
+    {
+        get
+        {
+            // 1. Si LocalThumbnailPath existe en disco, usarla
+            if (!string.IsNullOrWhiteSpace(LocalThumbnailPath) && File.Exists(LocalThumbnailPath))
+                return LocalThumbnailPath;
+            
+            // 2. Si ThumbnailPath es una ruta absoluta que existe, usarla
+            if (!string.IsNullOrWhiteSpace(ThumbnailPath) && Path.IsPathRooted(ThumbnailPath) && File.Exists(ThumbnailPath))
+                return ThumbnailPath;
+            
+            // 3. Intentar construir ruta desde CrownData estándar
+            var appDataPath = FileSystem.AppDataDirectory;
+            var standardPath = Path.Combine(appDataPath, "CrownData", "sessions", SessionId.ToString(), "thumbnails");
+            
+            // Buscar con nombre normalizado (CROWN{Id}_thumb.jpg)
+            var normalizedThumbName = $"CROWN{Id}_thumb.jpg";
+            var standardThumbPath = Path.Combine(standardPath, normalizedThumbName);
+            if (File.Exists(standardThumbPath))
+                return standardThumbPath;
+            
+            // Buscar con nombre del ThumbnailPath original
+            if (!string.IsNullOrWhiteSpace(ThumbnailPath))
+            {
+                var thumbFileName = Path.GetFileName(ThumbnailPath.Replace('\\', '/'));
+                if (!string.IsNullOrWhiteSpace(thumbFileName))
+                {
+                    var altPath = Path.Combine(standardPath, thumbFileName);
+                    if (File.Exists(altPath))
+                        return altPath;
+                }
+            }
+            
+            // 4. No se encontró miniatura
+            return null;
+        }
+    }
 
     [Ignore]
     public Athlete? Atleta { get; set; }

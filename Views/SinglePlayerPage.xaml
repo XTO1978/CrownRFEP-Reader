@@ -466,7 +466,7 @@
                                             <Image
                                                 Aspect="AspectFill"
                                                 BackgroundColor="{StaticResource Gray300}"
-                                                Source="{Binding LocalThumbnailPath}" />
+                                                Source="{Binding EffectiveThumbnailPath}" />
                                             <!-- Indicador de reproducción actual -->
                                             <Border
                                                 BackgroundColor="#CC000000"

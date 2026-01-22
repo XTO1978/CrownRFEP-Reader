@@ -5,6 +5,9 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+#if IOS || MACCATALYST
+using Foundation;
+#endif
 
 namespace CrownRFEP_Reader.Services;
 
@@ -42,10 +45,27 @@ public class CloudBackendService : ICloudBackendService
         // En producción, esto debería venir de configuración
         _baseUrl = GetBackendUrl();
         
+        // Configurar HttpClient con mejor manejo de conexiones para iOS
+#if IOS || MACCATALYST
+        var handler = new NSUrlSessionHandler
+        {
+            // Permitir conexiones inseguras en desarrollo (HTTP en lugar de HTTPS)
+            TrustOverrideForUrl = (sender, url, trust) => 
+            {
+                var host = new NSUrl(url).Host;
+                return host == "192.168.1.10" || host == "localhost";
+            }
+        };
+        _httpClient = new HttpClient(handler)
+        {
+            Timeout = TimeSpan.FromSeconds(60) // Timeout más largo para redes móviles
+        };
+#else
         _httpClient = new HttpClient
         {
             Timeout = TimeSpan.FromSeconds(30)
         };
+#endif
 
         // Restaurar sesión si existe
         RestoreSession();
@@ -57,9 +77,17 @@ public class CloudBackendService : ICloudBackendService
         // Para producción, cambiar a la URL del servidor desplegado
         
 #if DEBUG
-        // En macOS/iOS Simulator, localhost funciona directamente
-        // Para dispositivo físico iOS, usa la IP de tu Mac (ej: "http://192.168.1.100:3000/api")
+        // En macOS Catalyst y Simulador iOS, localhost funciona directamente
+        // Para dispositivo físico iOS, usa la IP del Mac
+#if MACCATALYST
         return "http://localhost:3000/api";
+#elif IOS
+        // Dispositivo físico iOS necesita la IP del Mac
+        // Cambiar esta IP cuando cambie tu red
+        return "http://192.168.1.10:3000/api";
+#else
+        return "http://localhost:3000/api";
+#endif
 #else
         // URL de producción (cambiar cuando despliegues el backend)
         return "https://api.crownanalyzer.com/v1";
@@ -128,6 +156,48 @@ public class CloudBackendService : ICloudBackendService
             Preferences.Remove(TokenExpiresAtKey);
         }
         catch { }
+    }
+
+    /// <summary>
+    /// Ejecuta una petición HTTP con reintentos automáticos para manejar conexiones perdidas.
+    /// </summary>
+    private async Task<HttpResponseMessage> ExecuteWithRetryAsync(Func<Task<HttpResponseMessage>> request, int maxRetries = 3)
+    {
+        Exception? lastException = null;
+        
+        for (int attempt = 1; attempt <= maxRetries; attempt++)
+        {
+            try
+            {
+                var response = await request();
+                return response;
+            }
+            catch (HttpRequestException ex)
+            {
+                lastException = ex;
+                AppLog.Warn("CloudBackend", $"Intento {attempt}/{maxRetries} falló: {ex.Message}");
+                
+                if (attempt < maxRetries)
+                {
+                    // Esperar con backoff exponencial antes de reintentar
+                    var delay = TimeSpan.FromSeconds(Math.Pow(2, attempt - 1));
+                    await Task.Delay(delay);
+                }
+            }
+            catch (TaskCanceledException ex) when (!ex.CancellationToken.IsCancellationRequested)
+            {
+                // Timeout - reintentar
+                lastException = ex;
+                AppLog.Warn("CloudBackend", $"Timeout en intento {attempt}/{maxRetries}");
+                
+                if (attempt < maxRetries)
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(1));
+                }
+            }
+        }
+        
+        throw lastException ?? new HttpRequestException("Error de conexión después de múltiples reintentos");
     }
 
     public async Task<AuthResult> LoginAsync(string email, string password)
@@ -286,7 +356,7 @@ public class CloudBackendService : ICloudBackendService
                 url += $"&token={Uri.EscapeDataString(continuationToken)}";
             }
 
-            var response = await _httpClient.GetAsync(url);
+            var response = await ExecuteWithRetryAsync(() => _httpClient.GetAsync(url));
             var responseBody = await response.Content.ReadAsStringAsync();
 
             if (!response.IsSuccessStatusCode)
@@ -346,7 +416,7 @@ public class CloudBackendService : ICloudBackendService
                 "application/json"
             );
 
-            var response = await _httpClient.PostAsync($"{_baseUrl}/files/download-url", content);
+            var response = await ExecuteWithRetryAsync(() => _httpClient.PostAsync($"{_baseUrl}/files/download-url", content));
             var responseBody = await response.Content.ReadAsStringAsync();
 
             if (!response.IsSuccessStatusCode)
@@ -395,7 +465,7 @@ public class CloudBackendService : ICloudBackendService
                 "application/json"
             );
 
-            var response = await _httpClient.PostAsync($"{_baseUrl}/files/upload-url", content);
+            var response = await ExecuteWithRetryAsync(() => _httpClient.PostAsync($"{_baseUrl}/files/upload-url", content));
             var responseBody = await response.Content.ReadAsStringAsync();
 
             if (!response.IsSuccessStatusCode)
@@ -444,7 +514,7 @@ public class CloudBackendService : ICloudBackendService
                 "application/json"
             );
 
-            var response = await _httpClient.PostAsync($"{_baseUrl}/files/confirm-upload", content);
+            var response = await ExecuteWithRetryAsync(() => _httpClient.PostAsync($"{_baseUrl}/files/confirm-upload", content));
             return response.IsSuccessStatusCode;
         }
         catch
@@ -457,11 +527,37 @@ public class CloudBackendService : ICloudBackendService
     {
         if (!await EnsureAuthenticatedAsync())
         {
+            System.Diagnostics.Debug.WriteLine("[CloudBackend] DeleteFileAsync: No autenticado");
+            return false;
+        }
+
+        // Validación de seguridad: solo eliminar archivos con extensión válida
+        if (string.IsNullOrWhiteSpace(filePath))
+        {
+            System.Diagnostics.Debug.WriteLine("[CloudBackend] DeleteFileAsync: BLOQUEADO - path vacío");
+            return false;
+        }
+
+        var validExtensions = new[] { ".mp4", ".jpg", ".jpeg", ".png", ".json", ".crown", ".mov", ".avi", ".webm" };
+        var hasValidExtension = validExtensions.Any(ext => filePath.EndsWith(ext, StringComparison.OrdinalIgnoreCase));
+        
+        if (!hasValidExtension)
+        {
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] DeleteFileAsync: BLOQUEADO - sin extensión válida: {filePath}");
+            return false;
+        }
+
+        // El path debe tener estructura de carpetas mínima
+        if (!filePath.Contains('/') || filePath.Split('/').Length < 3)
+        {
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] DeleteFileAsync: BLOQUEADO - path sin estructura válida: {filePath}");
             return false;
         }
 
         try
         {
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] DeleteFileAsync: Enviando DELETE para path={filePath}");
+            
             var requestBody = new { path = filePath };
             var content = new StringContent(
                 JsonSerializer.Serialize(requestBody),
@@ -469,11 +565,16 @@ public class CloudBackendService : ICloudBackendService
                 "application/json"
             );
 
-            var response = await _httpClient.PostAsync($"{_baseUrl}/files/delete", content);
+            var response = await ExecuteWithRetryAsync(() => _httpClient.PostAsync($"{_baseUrl}/files/delete", content));
+            var responseBody = await response.Content.ReadAsStringAsync();
+            
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] DeleteFileAsync: StatusCode={response.StatusCode}, Body={responseBody}");
+            
             return response.IsSuccessStatusCode;
         }
-        catch
+        catch (Exception ex)
         {
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] DeleteFileAsync: Exception={ex.Message}");
             return false;
         }
     }
@@ -487,7 +588,7 @@ public class CloudBackendService : ICloudBackendService
 
         try
         {
-            var response = await _httpClient.GetAsync($"{_baseUrl}/team/info");
+            var response = await ExecuteWithRetryAsync(() => _httpClient.GetAsync($"{_baseUrl}/team/info"));
             var responseBody = await response.Content.ReadAsStringAsync();
 
             if (!response.IsSuccessStatusCode)

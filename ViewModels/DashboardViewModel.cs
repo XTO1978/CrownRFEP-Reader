@@ -194,6 +194,10 @@ public class DashboardViewModel : BaseViewModel
     private ObservableCollection<RemoteVideoItem> _remoteVideos = new();
     private bool _isLoadingRemoteVideos;
     private List<CloudFileInfo>? _remoteFilesCache;
+    
+    // Selección múltiple de videos remotos
+    private bool _isRemoteMultiSelectMode;
+    private bool _isRemoteSelectAllActive;
 
     private GridLength _mainPanelWidth = new(2.5, GridUnitType.Star);
     private GridLength _rightPanelWidth = new(1.2, GridUnitType.Star);
@@ -496,6 +500,8 @@ public class DashboardViewModel : BaseViewModel
                     IsAllGallerySelected = false;
                     IsVideoLessonsSelected = false;
                     IsDiaryViewSelected = false;
+                    // Desactivar secciones remotas
+                    DeselectRemoteSections();
                 }
                 else
                 {
@@ -533,6 +539,8 @@ public class DashboardViewModel : BaseViewModel
                     IsVideoLessonsSelected = false;
                     IsDiaryViewSelected = false;
                     ClearSectionTimes();
+                    // Desactivar secciones remotas
+                    DeselectRemoteSections();
                 }
                 OnPropertyChanged(nameof(SelectedSessionTitle));
                 OnPropertyChanged(nameof(VideoCountDisplayText));
@@ -554,6 +562,8 @@ public class DashboardViewModel : BaseViewModel
                     IsAllGallerySelected = false;
                     IsDiaryViewSelected = false;
                     ClearSectionTimes();
+                    // Desactivar secciones remotas
+                    DeselectRemoteSections();
                 }
                 UpdateRightPanelLayout();
                 OnPropertyChanged(nameof(SelectedSessionTitle));
@@ -578,6 +588,8 @@ public class DashboardViewModel : BaseViewModel
                     IsVideoLessonsSelected = false;
                     SelectedSession = null;
                     ClearSectionTimes();
+                    // Desactivar secciones remotas
+                    DeselectRemoteSections();
                     _ = LoadDiaryViewDataAsync();
                 }
                 UpdateRightPanelLayout();
@@ -1135,6 +1147,40 @@ public class DashboardViewModel : BaseViewModel
         get => _isLoadingRemoteVideos;
         set => SetProperty(ref _isLoadingRemoteVideos, value);
     }
+
+    /// <summary>
+    /// Modo de selección múltiple para videos remotos
+    /// </summary>
+    public bool IsRemoteMultiSelectMode
+    {
+        get => _isRemoteMultiSelectMode;
+        set
+        {
+            if (SetProperty(ref _isRemoteMultiSelectMode, value))
+            {
+                if (!value)
+                {
+                    // Limpiar selección al desactivar
+                    ClearRemoteVideoSelection();
+                }
+                OnPropertyChanged(nameof(SelectedRemoteVideoCount));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Indica si está activo "Seleccionar todos" para videos remotos
+    /// </summary>
+    public bool IsRemoteSelectAllActive
+    {
+        get => _isRemoteSelectAllActive;
+        set => SetProperty(ref _isRemoteSelectAllActive, value);
+    }
+
+    /// <summary>
+    /// Número de videos remotos seleccionados
+    /// </summary>
+    public int SelectedRemoteVideoCount => RemoteVideos.Count(v => v.IsSelected);
 
     /// <summary>
     /// Indica si hay alguna sección remota seleccionada
@@ -2968,6 +3014,22 @@ public class DashboardViewModel : BaseViewModel
     }
 
     /// <summary>
+    /// Desactiva todas las secciones remotas y actualiza la UI
+    /// </summary>
+    private void DeselectRemoteSections()
+    {
+        if (IsRemoteAllGallerySelected || IsRemoteVideoLessonsSelected || IsRemoteTrashSelected)
+        {
+            IsRemoteAllGallerySelected = false;
+            IsRemoteVideoLessonsSelected = false;
+            IsRemoteTrashSelected = false;
+            OnPropertyChanged(nameof(ShowRemoteGallery));
+            OnPropertyChanged(nameof(IsAnyRemoteSectionSelected));
+            OnPropertyChanged(nameof(ShowVideoGallery));
+        }
+    }
+
+    /// <summary>
     /// Abre el popup con la tabla de tiempos detallados (incluye parciales)
     /// </summary>
     private async Task OpenDetailedTimesPopupAsync()
@@ -3262,8 +3324,19 @@ public class DashboardViewModel : BaseViewModel
     // Comandos para galería remota
     public ICommand AddRemoteVideoToLibraryCommand { get; }
     public ICommand AddRemoteSessionToLibraryCommand { get; }
+    public ICommand DeleteRemoteVideoFromLibraryCommand { get; }
+    public ICommand DeleteAllRemoteVideosFromLibraryCommand { get; }
     public ICommand DownloadRemoteVideoCommand { get; }
     public ICommand PlayRemoteVideoCommand { get; }
+    
+    // Comandos para acciones en lote de videos remotos
+    public ICommand ToggleRemoteMultiSelectModeCommand { get; }
+    public ICommand ToggleRemoteSelectAllCommand { get; }
+    public ICommand ToggleRemoteVideoSelectionCommand { get; }
+    public ICommand DownloadSelectedRemoteVideosCommand { get; }
+    public ICommand AddSelectedRemoteToLibraryCommand { get; }
+    public ICommand DeleteSelectedRemoteFromCloudCommand { get; }
+    public ICommand DeleteSelectedRemoteFromLibraryCommand { get; }
     
     public ICommand ToggleBatchTagCommand { get; }
     public ICommand SelectBatchAthleteCommand { get; }
@@ -3594,8 +3667,19 @@ public class DashboardViewModel : BaseViewModel
         // Comandos para galería remota
         AddRemoteVideoToLibraryCommand = new AsyncRelayCommand<RemoteVideoItem>(AddRemoteVideoToLibraryAsync);
         AddRemoteSessionToLibraryCommand = new AsyncRelayCommand<int>(AddRemoteSessionToLibraryAsync);
+        DeleteRemoteVideoFromLibraryCommand = new AsyncRelayCommand<RemoteVideoItem>(DeleteRemoteVideoFromLibraryAsync);
+        DeleteAllRemoteVideosFromLibraryCommand = new AsyncRelayCommand(DeleteAllRemoteVideosFromLibraryAsync);
         DownloadRemoteVideoCommand = new AsyncRelayCommand<RemoteVideoItem>(DownloadRemoteVideoAsync);
         PlayRemoteVideoCommand = new AsyncRelayCommand<RemoteVideoItem>(PlayRemoteVideoAsync);
+        
+        // Comandos para acciones en lote de videos remotos
+        ToggleRemoteMultiSelectModeCommand = new RelayCommand(ToggleRemoteMultiSelectMode);
+        ToggleRemoteSelectAllCommand = new RelayCommand(ToggleRemoteSelectAll);
+        ToggleRemoteVideoSelectionCommand = new RelayCommand<RemoteVideoItem>(ToggleRemoteVideoSelection);
+        DownloadSelectedRemoteVideosCommand = new AsyncRelayCommand(DownloadSelectedRemoteVideosAsync);
+        AddSelectedRemoteToLibraryCommand = new AsyncRelayCommand(AddSelectedRemoteToLibraryAsync);
+        DeleteSelectedRemoteFromCloudCommand = new AsyncRelayCommand(DeleteSelectedRemoteFromCloudAsync);
+        DeleteSelectedRemoteFromLibraryCommand = new AsyncRelayCommand(DeleteSelectedRemoteFromLibraryAsync);
 
         // Comandos de edición de sesión individual
         OpenSessionEditPopupCommand = new RelayCommand<SessionRow>(OpenSessionEditPopup);
@@ -4791,6 +4875,9 @@ public class DashboardViewModel : BaseViewModel
         _activeSmartFolder = null;
         _smartFolderFilteredVideosCache = null;
         
+        // SIEMPRE desactivar secciones remotas (incluso si IsAllGallerySelected ya era true)
+        DeselectRemoteSections();
+        
         IsAllGallerySelected = true;
         System.Diagnostics.Debug.WriteLine($"[SelectAllGalleryAsync] IsAllGallerySelected = true, calling LoadAllVideosAsync...");
         await LoadAllVideosAsync();
@@ -5051,8 +5138,13 @@ public class DashboardViewModel : BaseViewModel
     private async Task LoadMoreVideosAsync()
     {
         var videosSource = _filteredVideosCache ?? _allVideosCache;
+        AppLog.Info("DashboardVM", $"LoadMoreVideosAsync START | IsLoadingMore={IsLoadingMore} | HasMoreVideos={HasMoreVideos} | videosSource={videosSource?.Count ?? 0} | currentPage={_currentPage} | displayedCount={SelectedSessionVideos.Count}");
+        
         if (IsLoadingMore || !HasMoreVideos || videosSource == null)
+        {
+            AppLog.Info("DashboardVM", $"LoadMoreVideosAsync SKIPPED - conditions not met");
             return;
+        }
 
         try
         {
@@ -5063,6 +5155,7 @@ public class DashboardViewModel : BaseViewModel
 
             var skip = _currentPage * PageSize;
             var nextBatch = videosSource.Skip(skip).Take(PageSize).ToList();
+            AppLog.Info("DashboardVM", $"LoadMoreVideosAsync Loading batch: skip={skip}, batchSize={nextBatch.Count}");
 
             var ct = _selectedSessionVideosCts?.Token ?? CancellationToken.None;
             await MainThread.InvokeOnMainThreadAsync(async () =>
@@ -5071,7 +5164,10 @@ public class DashboardViewModel : BaseViewModel
                 foreach (var clip in nextBatch)
                 {
                     if (ct.IsCancellationRequested)
+                    {
+                        AppLog.Info("DashboardVM", "LoadMoreVideosAsync CANCELLED during batch add");
                         return;
+                    }
 
                     SelectedSessionVideos.Add(clip);
                     i++;
@@ -5082,6 +5178,7 @@ public class DashboardViewModel : BaseViewModel
 
             _currentPage++;
             HasMoreVideos = videosSource.Count > (_currentPage * PageSize);
+            AppLog.Info("DashboardVM", $"LoadMoreVideosAsync END | newPage={_currentPage} | HasMoreVideos={HasMoreVideos} | displayedCount={SelectedSessionVideos.Count}");
         }
         finally
         {
@@ -5609,6 +5706,9 @@ public class DashboardViewModel : BaseViewModel
         try
         {
             IsLoadingSelectedSessionVideos = true;
+
+            // SIEMPRE desactivar secciones remotas
+            DeselectRemoteSections();
 
             // Cambiar modo en el Dashboard (sin navegar)
             // NOTA: Esto cancela _selectedSessionVideosCts, así que creamos el token DESPUÉS
@@ -7128,6 +7228,205 @@ public class DashboardViewModel : BaseViewModel
     }
 
     /// <summary>
+    /// Elimina un video remoto de Mi biblioteca (borra la referencia local y el archivo descargado si existe)
+    /// El video permanece en la nube, solo se elimina de la biblioteca local.
+    /// </summary>
+    private async Task DeleteRemoteVideoFromLibraryAsync(RemoteVideoItem? remoteVideo)
+    {
+        if (remoteVideo == null) return;
+
+        try
+        {
+            // Verificar si tiene referencia en la biblioteca local
+            if (remoteVideo.LinkedLocalVideo == null)
+            {
+                var page = Application.Current?.MainPage;
+                await page?.DisplayAlert("No está en biblioteca", "Este video no está en tu biblioteca local.", "OK")!;
+                return;
+            }
+
+            var mainPage = Application.Current?.MainPage;
+            var confirm = await mainPage?.DisplayAlert(
+                "Eliminar de Mi biblioteca",
+                $"¿Eliminar '{remoteVideo.FileName}' de tu biblioteca local?\n\nEl video seguirá disponible en la nube.",
+                "Eliminar", "Cancelar")!;
+
+            if (!confirm) return;
+
+            var videoId = remoteVideo.LinkedLocalVideo.Id;
+
+            // Eliminar archivo local si existe
+            if (remoteVideo.IsLocallyAvailable && !string.IsNullOrEmpty(remoteVideo.LocalPath))
+            {
+                try
+                {
+                    if (File.Exists(remoteVideo.LocalPath))
+                    {
+                        File.Delete(remoteVideo.LocalPath);
+                        System.Diagnostics.Debug.WriteLine($"[Remote] Archivo local eliminado: {remoteVideo.LocalPath}");
+                    }
+                }
+                catch (Exception fileEx)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[Remote] Error eliminando archivo: {fileEx.Message}");
+                }
+            }
+
+            // Eliminar thumbnail local si existe
+            var localThumbPath = remoteVideo.LinkedLocalVideo.LocalThumbnailPath;
+            if (!string.IsNullOrEmpty(localThumbPath) && File.Exists(localThumbPath))
+            {
+                try
+                {
+                    File.Delete(localThumbPath);
+                }
+                catch { }
+            }
+
+            // Eliminar la referencia de la base de datos local
+            await _databaseService.DeleteVideoClipAsync(videoId);
+            _databaseService.InvalidateCache();
+
+            // Actualizar el item remoto
+            remoteVideo.LinkedLocalVideo = null;
+            remoteVideo.IsLocallyAvailable = false;
+            remoteVideo.LocalPath = null;
+
+            System.Diagnostics.Debug.WriteLine($"[Remote] Video {remoteVideo.VideoId} eliminado de biblioteca local");
+
+            // Refrescar contadores
+            await CheckPendingSyncAsync();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Remote] Error eliminando de biblioteca: {ex.Message}");
+            var page = Application.Current?.MainPage;
+            await page?.DisplayAlert("Error", $"No se pudo eliminar el video: {ex.Message}", "OK")!;
+        }
+    }
+
+    /// <summary>
+    /// Elimina la biblioteca remota del sistema: elimina todos los videos locales,
+    /// desconecta del cloud y oculta la sección de biblioteca remota.
+    /// </summary>
+    private async Task DeleteAllRemoteVideosFromLibraryAsync()
+    {
+        try
+        {
+            // Obtener todos los videos remotos que están en la biblioteca local
+            var videosInLibrary = RemoteVideos.Where(v => v.LinkedLocalVideo != null).ToList();
+
+            var mainPage = Application.Current?.MainPage;
+            var videoCountText = videosInLibrary.Count > 0 
+                ? $"\n\nSe eliminarán {videosInLibrary.Count} videos descargados del dispositivo."
+                : "";
+            
+            var confirm = await mainPage?.DisplayAlert(
+                "Eliminar biblioteca remota",
+                $"¿Desconectar de '{RemoteLibraryDisplayName}' y eliminar la biblioteca remota del sistema?{videoCountText}\n\nPodrás volver a conectarte más tarde.",
+                "Eliminar y desconectar", "Cancelar")!;
+
+            if (!confirm) return;
+
+            int deleted = 0;
+            int errors = 0;
+
+            // Eliminar videos locales si existen
+            foreach (var remoteVideo in videosInLibrary)
+            {
+                try
+                {
+                    if (remoteVideo.LinkedLocalVideo == null) continue;
+
+                    var videoId = remoteVideo.LinkedLocalVideo.Id;
+
+                    // Eliminar archivo local si existe
+                    if (remoteVideo.IsLocallyAvailable && !string.IsNullOrEmpty(remoteVideo.LocalPath))
+                    {
+                        try
+                        {
+                            if (File.Exists(remoteVideo.LocalPath))
+                            {
+                                File.Delete(remoteVideo.LocalPath);
+                            }
+                        }
+                        catch { }
+                    }
+
+                    // Eliminar thumbnail local si existe
+                    var localThumbPath = remoteVideo.LinkedLocalVideo.LocalThumbnailPath;
+                    if (!string.IsNullOrEmpty(localThumbPath) && File.Exists(localThumbPath))
+                    {
+                        try { File.Delete(localThumbPath); } catch { }
+                    }
+
+                    // Eliminar la referencia de la base de datos local
+                    await _databaseService.DeleteVideoClipAsync(videoId);
+                    deleted++;
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[Remote] Error eliminando video {remoteVideo.VideoId}: {ex.Message}");
+                    errors++;
+                }
+            }
+
+            // Desconectar del cloud
+            try
+            {
+                await _cloudBackendService.LogoutAsync();
+                System.Diagnostics.Debug.WriteLine("[Remote] Desconectado del cloud backend");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Remote] Error en logout: {ex.Message}");
+            }
+
+            // Limpiar la colección de videos remotos
+            RemoteVideos.Clear();
+            
+            // Ocultar la biblioteca remota
+            IsRemoteLibraryVisible = false;
+            IsRemoteLibraryExpanded = false;
+            RemoteLibraryDisplayName = "Equipo";
+            RemoteAllGalleryItemCount = "—";
+            
+            // Deseleccionar secciones remotas si estaban seleccionadas
+            if (IsAnyRemoteSectionSelected)
+            {
+                IsRemoteAllGallerySelected = false;
+                IsRemoteVideoLessonsSelected = false;
+                IsRemoteTrashSelected = false;
+                OnPropertyChanged(nameof(ShowRemoteGallery));
+                OnPropertyChanged(nameof(IsAnyRemoteSectionSelected));
+            }
+
+            _databaseService.InvalidateCache();
+            await CheckPendingSyncAsync();
+
+            var resultPage = Application.Current?.MainPage;
+            if (deleted > 0)
+            {
+                await resultPage?.DisplayAlert("Biblioteca eliminada", 
+                    $"Se desconectó de '{RemoteLibraryDisplayName}' y se eliminaron {deleted} videos del dispositivo.", "OK")!;
+            }
+            else
+            {
+                await resultPage?.DisplayAlert("Biblioteca eliminada", 
+                    "Se desconectó de la biblioteca remota.", "OK")!;
+            }
+
+            System.Diagnostics.Debug.WriteLine($"[Remote] Biblioteca remota eliminada. Videos eliminados: {deleted}, errores: {errors}");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Remote] Error eliminando biblioteca remota: {ex.Message}");
+            var page = Application.Current?.MainPage;
+            await page?.DisplayAlert("Error", $"No se pudo eliminar la biblioteca remota: {ex.Message}", "OK")!;
+        }
+    }
+
+    /// <summary>
     /// Descarga un video remoto al dispositivo local
     /// </summary>
     private async Task DownloadRemoteVideoAsync(RemoteVideoItem? remoteVideo)
@@ -7222,6 +7521,338 @@ public class DashboardViewModel : BaseViewModel
         OnPropertyChanged(nameof(IsAnyRemoteSectionSelected));
         OnPropertyChanged(nameof(SelectedSessionTitle));
     }
+
+    // ==================== ACCIONES EN LOTE DE VIDEOS REMOTOS ====================
+
+    /// <summary>
+    /// Alterna el modo de selección múltiple para videos remotos
+    /// </summary>
+    private void ToggleRemoteMultiSelectMode()
+    {
+        IsRemoteMultiSelectMode = !IsRemoteMultiSelectMode;
+        if (!IsRemoteMultiSelectMode)
+        {
+            ClearRemoteVideoSelection();
+        }
+    }
+
+    /// <summary>
+    /// Alterna "Seleccionar todos" para videos remotos
+    /// </summary>
+    private void ToggleRemoteSelectAll()
+    {
+        if (!IsRemoteMultiSelectMode)
+        {
+            IsRemoteMultiSelectMode = true;
+        }
+
+        IsRemoteSelectAllActive = !IsRemoteSelectAllActive;
+
+        foreach (var video in RemoteVideos)
+        {
+            video.IsSelected = IsRemoteSelectAllActive;
+        }
+        OnPropertyChanged(nameof(SelectedRemoteVideoCount));
+    }
+
+    /// <summary>
+    /// Alterna la selección de un video remoto individual
+    /// </summary>
+    private void ToggleRemoteVideoSelection(RemoteVideoItem? video)
+    {
+        if (video == null || !IsRemoteMultiSelectMode) return;
+        
+        video.IsSelected = !video.IsSelected;
+        OnPropertyChanged(nameof(SelectedRemoteVideoCount));
+        
+        // Actualizar estado de "Seleccionar todos"
+        IsRemoteSelectAllActive = RemoteVideos.All(v => v.IsSelected);
+    }
+
+    /// <summary>
+    /// Limpia la selección de todos los videos remotos
+    /// </summary>
+    private void ClearRemoteVideoSelection()
+    {
+        foreach (var video in RemoteVideos)
+        {
+            video.IsSelected = false;
+        }
+        IsRemoteSelectAllActive = false;
+        OnPropertyChanged(nameof(SelectedRemoteVideoCount));
+    }
+
+    /// <summary>
+    /// Descarga los videos remotos seleccionados
+    /// </summary>
+    private async Task DownloadSelectedRemoteVideosAsync()
+    {
+        var selectedVideos = RemoteVideos.Where(v => v.IsSelected).ToList();
+        
+        if (selectedVideos.Count == 0)
+        {
+            var page = Application.Current?.MainPage;
+            await page?.DisplayAlert("Descargar", "No hay videos seleccionados.", "OK")!;
+            return;
+        }
+
+        var page2 = Application.Current?.MainPage;
+        var confirm = await page2?.DisplayAlert(
+            "Descargar videos",
+            $"¿Descargar {selectedVideos.Count} video(s) al dispositivo?",
+            "Descargar",
+            "Cancelar")!;
+
+        if (!confirm) return;
+
+        int downloaded = 0;
+        int errors = 0;
+
+        foreach (var video in selectedVideos)
+        {
+            try
+            {
+                if (!video.IsLocallyAvailable)
+                {
+                    await DownloadRemoteVideoAsync(video);
+                    if (video.IsLocallyAvailable)
+                        downloaded++;
+                }
+                else
+                {
+                    downloaded++; // Ya estaba descargado
+                }
+            }
+            catch
+            {
+                errors++;
+            }
+        }
+
+        ClearRemoteVideoSelection();
+        IsRemoteMultiSelectMode = false;
+
+        var resultPage = Application.Current?.MainPage;
+        if (errors > 0)
+        {
+            await resultPage?.DisplayAlert("Descarga completada",
+                $"Se descargaron {downloaded} videos. {errors} fallaron.", "OK")!;
+        }
+        else
+        {
+            await resultPage?.DisplayAlert("Descarga completada",
+                $"Se descargaron {downloaded} videos correctamente.", "OK")!;
+        }
+    }
+
+    /// <summary>
+    /// Añade los videos remotos seleccionados a la biblioteca local
+    /// </summary>
+    private async Task AddSelectedRemoteToLibraryAsync()
+    {
+        var selectedVideos = RemoteVideos.Where(v => v.IsSelected && v.LinkedLocalVideo == null).ToList();
+        
+        if (selectedVideos.Count == 0)
+        {
+            var page = Application.Current?.MainPage;
+            await page?.DisplayAlert("Añadir a biblioteca", "No hay videos nuevos seleccionados para añadir.", "OK")!;
+            return;
+        }
+
+        int added = 0;
+        foreach (var video in selectedVideos)
+        {
+            try
+            {
+                await AddRemoteVideoToLibraryAsync(video);
+                added++;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Remote] Error añadiendo video {video.VideoId}: {ex.Message}");
+            }
+        }
+
+        ClearRemoteVideoSelection();
+        IsRemoteMultiSelectMode = false;
+
+        var resultPage = Application.Current?.MainPage;
+        await resultPage?.DisplayAlert("Añadidos a biblioteca",
+            $"Se añadieron {added} videos a tu biblioteca local.", "OK")!;
+    }
+
+    /// <summary>
+    /// Elimina los videos remotos seleccionados de la NUBE (Wasabi) - Acción destructiva
+    /// </summary>
+    private async Task DeleteSelectedRemoteFromCloudAsync()
+    {
+        var selectedVideos = RemoteVideos.Where(v => v.IsSelected).ToList();
+        
+        if (selectedVideos.Count == 0)
+        {
+            var page = Application.Current?.MainPage;
+            await page?.DisplayAlert("Eliminar de la nube", "No hay videos seleccionados.", "OK")!;
+            return;
+        }
+
+        var page2 = Application.Current?.MainPage;
+        var confirm = await page2?.DisplayAlert(
+            "⚠️ Eliminar de la nube",
+            $"¿Eliminar PERMANENTEMENTE {selectedVideos.Count} video(s) de la nube?\n\n" +
+            "Esta acción es IRREVERSIBLE. Los archivos se eliminarán del servidor remoto.",
+            "Eliminar permanentemente",
+            "Cancelar")!;
+
+        if (!confirm) return;
+
+        // Segunda confirmación para acción destructiva
+        var confirm2 = await page2?.DisplayAlert(
+            "Confirmar eliminación",
+            "¿Estás seguro? Esta acción no se puede deshacer.",
+            "Sí, eliminar",
+            "No, cancelar")!;
+
+        if (!confirm2) return;
+
+        int deleted = 0;
+        int errors = 0;
+
+        foreach (var video in selectedVideos)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"[Remote] Intentando eliminar: Key={video.Key}");
+                
+                // Eliminar del cloud usando el backend
+                var deleteSuccess = await _cloudBackendService.DeleteFileAsync(video.Key);
+                
+                System.Diagnostics.Debug.WriteLine($"[Remote] Resultado eliminación: {deleteSuccess}");
+                
+                if (deleteSuccess)
+                {
+                    // También eliminar el thumbnail si existe
+                    var thumbKey = video.Key.Replace("/videos/", "/thumbnails/").Replace(".mp4", ".jpg");
+                    await _cloudBackendService.DeleteFileAsync(thumbKey);
+                    
+                    // También eliminar metadatos si existe
+                    var metaKey = video.Key.Replace("/videos/", "/metadata/").Replace(".mp4", ".json");
+                    await _cloudBackendService.DeleteFileAsync(metaKey);
+
+                    // Si estaba en biblioteca local, eliminar también
+                    if (video.LinkedLocalVideo != null)
+                    {
+                        await _databaseService.DeleteVideoClipAsync(video.LinkedLocalVideo.Id);
+                        
+                        // Eliminar archivos locales
+                        if (!string.IsNullOrEmpty(video.LocalPath) && File.Exists(video.LocalPath))
+                        {
+                            try { File.Delete(video.LocalPath); } catch { }
+                        }
+                    }
+
+                    deleted++;
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"[Remote] Error eliminando {video.Key}");
+                    errors++;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Remote] Error eliminando video {video.VideoId}: {ex.Message}");
+                errors++;
+            }
+        }
+        // Refrescar la lista de videos remotos
+        await LoadRemoteGalleryAsync();
+
+        ClearRemoteVideoSelection();
+        IsRemoteMultiSelectMode = false;
+
+        var resultPage = Application.Current?.MainPage;
+        if (errors > 0)
+        {
+            await resultPage?.DisplayAlert("Eliminación completada",
+                $"Se eliminaron {deleted} videos de la nube. {errors} fallaron.", "OK")!;
+        }
+        else
+        {
+            await resultPage?.DisplayAlert("Eliminación completada",
+                $"Se eliminaron {deleted} videos de la nube permanentemente.", "OK")!;
+        }
+    }
+
+    /// <summary>
+    /// Elimina los videos remotos seleccionados de la biblioteca LOCAL (no de la nube)
+    /// </summary>
+    private async Task DeleteSelectedRemoteFromLibraryAsync()
+    {
+        var selectedVideos = RemoteVideos.Where(v => v.IsSelected && v.LinkedLocalVideo != null).ToList();
+        
+        if (selectedVideos.Count == 0)
+        {
+            var page = Application.Current?.MainPage;
+            await page?.DisplayAlert("Eliminar de biblioteca", "No hay videos en biblioteca seleccionados.", "OK")!;
+            return;
+        }
+
+        var page2 = Application.Current?.MainPage;
+        var confirm = await page2?.DisplayAlert(
+            "Eliminar de biblioteca local",
+            $"¿Eliminar {selectedVideos.Count} video(s) de tu biblioteca local?\n\n" +
+            "Los videos permanecerán en la nube y podrás añadirlos de nuevo.",
+            "Eliminar de biblioteca",
+            "Cancelar")!;
+
+        if (!confirm) return;
+
+        int deleted = 0;
+
+        foreach (var video in selectedVideos)
+        {
+            try
+            {
+                if (video.LinkedLocalVideo == null) continue;
+
+                // Eliminar archivo local si existe
+                if (!string.IsNullOrEmpty(video.LocalPath) && File.Exists(video.LocalPath))
+                {
+                    try { File.Delete(video.LocalPath); } catch { }
+                }
+
+                // Eliminar thumbnail local
+                var thumbPath = video.LinkedLocalVideo.LocalThumbnailPath;
+                if (!string.IsNullOrEmpty(thumbPath) && File.Exists(thumbPath))
+                {
+                    try { File.Delete(thumbPath); } catch { }
+                }
+
+                // Eliminar de base de datos local
+                await _databaseService.DeleteVideoClipAsync(video.LinkedLocalVideo.Id);
+
+                // Actualizar estado del item remoto
+                video.LinkedLocalVideo = null;
+                video.IsLocallyAvailable = false;
+                video.LocalPath = null;
+                
+                deleted++;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Remote] Error eliminando video {video.VideoId} de biblioteca: {ex.Message}");
+            }
+        }
+
+        ClearRemoteVideoSelection();
+        IsRemoteMultiSelectMode = false;
+
+        var resultPage = Application.Current?.MainPage;
+        await resultPage?.DisplayAlert("Eliminación completada",
+            $"Se eliminaron {deleted} videos de tu biblioteca local.", "OK")!;
+    }
+
+    // ==================== FIN ACCIONES EN LOTE DE VIDEOS REMOTOS ====================
 
     #region Smart Folder Context Menu
 

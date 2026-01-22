@@ -37,6 +37,13 @@ public class AspectRatioContainer : ContentView
     public AspectRatioContainer()
     {
         SizeChanged += OnSizeChanged;
+        Loaded += OnLoaded;
+    }
+
+    private void OnLoaded(object? sender, EventArgs e)
+    {
+        // Forzar actualización cuando el control se carga
+        UpdateHeight();
     }
 
     private void OnSizeChanged(object? sender, EventArgs e)
@@ -46,13 +53,55 @@ public class AspectRatioContainer : ContentView
 
     private void UpdateHeight()
     {
-        if (Width > 0 && AspectRatio > 0)
+        // Si el ancho es 0 o negativo, intentar usar el ancho del padre
+        var actualWidth = Width;
+        
+        if (actualWidth <= 0 && Parent is View parentView)
         {
-            var newHeight = Width / AspectRatio;
+            actualWidth = parentView.Width;
+        }
+        
+        if (actualWidth > 0 && AspectRatio > 0)
+        {
+            var newHeight = actualWidth / AspectRatio;
+            
+            // Establecer un mínimo razonable de altura (100px)
+            if (newHeight < 100)
+            {
+                newHeight = 100;
+            }
+            
             if (Math.Abs(HeightRequest - newHeight) > 1)
             {
                 HeightRequest = newHeight;
             }
         }
+        else
+        {
+            // Si no podemos calcular, establecer altura por defecto
+            if (HeightRequest < 100)
+            {
+                HeightRequest = 150; // Altura por defecto razonable para una miniatura
+            }
+        }
+    }
+
+    protected override Size MeasureOverride(double widthConstraint, double heightConstraint)
+    {
+        // Si tenemos un ancho válido, calcular la altura basada en el aspect ratio
+        if (widthConstraint > 0 && !double.IsInfinity(widthConstraint) && AspectRatio > 0)
+        {
+            var calculatedHeight = widthConstraint / AspectRatio;
+            
+            // Establecer HeightRequest si es necesario
+            if (Math.Abs(HeightRequest - calculatedHeight) > 1)
+            {
+                HeightRequest = calculatedHeight;
+            }
+            
+            return new Size(widthConstraint, calculatedHeight);
+        }
+        
+        return base.MeasureOverride(widthConstraint, heightConstraint);
     }
 }

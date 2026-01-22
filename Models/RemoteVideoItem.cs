@@ -38,6 +38,16 @@ public class RemoteVideoItem : INotifyPropertyChanged
     private bool _isDownloading;
     private double _downloadProgress;
     private VideoClip? _linkedLocalVideo;
+    private bool _isSelected;
+
+    /// <summary>
+    /// Indica si el video está seleccionado (para acciones en lote)
+    /// </summary>
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set => SetProperty(ref _isSelected, value);
+    }
 
     /// <summary>
     /// Clave completa del archivo en S3 (ej: "CrownRFEP/sessions/11/videos/67.mp4")
