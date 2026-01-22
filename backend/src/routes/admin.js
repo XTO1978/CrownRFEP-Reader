@@ -1,7 +1,7 @@
 import express from 'express';
 import db from '../db/database.js';
 import bcrypt from 'bcryptjs';
-import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3';
+import { S3Client, ListObjectsV2Command, PutObjectCommand } from '@aws-sdk/client-s3';
 
 const router = express.Router();
 
@@ -24,6 +24,18 @@ function getS3Client() {
 
 function getBucket() {
   return process.env.WASABI_BUCKET || 'crownanalyzer';
+}
+
+async function ensureWasabiFolder(folder) {
+  if (!folder) return;
+  const key = folder.endsWith('/') ? folder : `${folder}/`;
+  const client = getS3Client();
+  const command = new PutObjectCommand({
+    Bucket: getBucket(),
+    Key: key,
+    Body: ''
+  });
+  await client.send(command);
 }
 
 function safeDbAll(sql, params = []) {
@@ -179,7 +191,7 @@ router.get('/teams', (req, res) => {
   }
 });
 
-router.post('/teams', (req, res) => {
+router.post('/teams', async (req, res) => {
   try {
     const { id, name, wasabiFolder } = req.body;
     if (!id || !name || !wasabiFolder) {
@@ -191,9 +203,19 @@ router.post('/teams', (req, res) => {
       return res.status(409).json({ error: 'Organización ya existe' });
     }
 
+    const normalizedFolder = String(wasabiFolder).replace(/^\/+/, '').trim();
+
+    // Crear carpeta en Wasabi (objeto placeholder)
+    try {
+      await ensureWasabiFolder(normalizedFolder);
+    } catch (err) {
+      console.error('[Admin] Error creando carpeta Wasabi:', err);
+      return res.status(500).json({ error: 'No se pudo crear la carpeta en Wasabi' });
+    }
+
     const result = safeDbRun(
       'INSERT INTO teams (id, name, wasabi_folder) VALUES (?, ?, ?)',
-      [id, name, wasabiFolder]
+      [id, name, normalizedFolder]
     );
 
     if (!result) {
