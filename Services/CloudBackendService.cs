@@ -33,6 +33,7 @@ public class CloudBackendService : ICloudBackendService
     private const string TokenExpiresAtKey = "CloudBackend_TokenExpiresAt";
     private const string UserNameKey = "CloudBackend_UserName";
     private const string TeamNameKey = "CloudBackend_TeamName";
+    private const string UserRoleKey = "CloudBackend_UserRole";
     private const string BaseUrlKeyPrefix = "CloudBackend_BaseUrl";
     private const string DeviceIdKey = "CloudBackend_DeviceId";
 
@@ -42,6 +43,7 @@ public class CloudBackendService : ICloudBackendService
 
     public string? CurrentUserName { get; private set; }
     public string? TeamName { get; private set; }
+    public string? CurrentUserRole { get; private set; }
     public string BaseUrl => _baseUrl;
 
     public CloudBackendService()
@@ -145,6 +147,7 @@ public class CloudBackendService : ICloudBackendService
             _refreshToken = Preferences.Get(RefreshTokenKey, string.Empty);
             CurrentUserName = Preferences.Get(UserNameKey, string.Empty);
             TeamName = Preferences.Get(TeamNameKey, string.Empty);
+            CurrentUserRole = Preferences.Get(UserRoleKey, string.Empty);
 
             var expiresAtStr = Preferences.Get(TokenExpiresAtKey, string.Empty);
             if (!string.IsNullOrEmpty(expiresAtStr) && DateTime.TryParse(expiresAtStr, out var expiresAt))
@@ -173,6 +176,7 @@ public class CloudBackendService : ICloudBackendService
             Preferences.Set(RefreshTokenKey, _refreshToken ?? string.Empty);
             Preferences.Set(UserNameKey, CurrentUserName ?? string.Empty);
             Preferences.Set(TeamNameKey, TeamName ?? string.Empty);
+            Preferences.Set(UserRoleKey, CurrentUserRole ?? string.Empty);
             Preferences.Set(TokenExpiresAtKey, _tokenExpiresAt?.ToString("O") ?? string.Empty);
         }
         catch (Exception ex)
@@ -188,6 +192,7 @@ public class CloudBackendService : ICloudBackendService
         _tokenExpiresAt = null;
         CurrentUserName = null;
         TeamName = null;
+        CurrentUserRole = null;
         _httpClient.DefaultRequestHeaders.Authorization = null;
 
         try
@@ -196,6 +201,7 @@ public class CloudBackendService : ICloudBackendService
             Preferences.Remove(RefreshTokenKey);
             Preferences.Remove(UserNameKey);
             Preferences.Remove(TeamNameKey);
+            Preferences.Remove(UserRoleKey);
             Preferences.Remove(TokenExpiresAtKey);
         }
         catch { }
@@ -203,15 +209,19 @@ public class CloudBackendService : ICloudBackendService
 
     private static string GetPlatformName()
     {
-        return DeviceInfo.Platform switch
-        {
-            DevicePlatform.iOS => "iOS",
-            DevicePlatform.MacCatalyst => "MacCatalyst",
-            DevicePlatform.macOS => "macOS",
-            DevicePlatform.WinUI => "Windows",
-            DevicePlatform.Android => "Android",
-            _ => DeviceInfo.Platform.ToString()
-        };
+        var platform = DeviceInfo.Platform;
+        if (platform == DevicePlatform.iOS)
+            return "iOS";
+        if (platform == DevicePlatform.MacCatalyst)
+            return "MacCatalyst";
+        if (platform == DevicePlatform.macOS)
+            return "macOS";
+        if (platform == DevicePlatform.WinUI)
+            return "Windows";
+        if (platform == DevicePlatform.Android)
+            return "Android";
+
+        return platform.ToString();
     }
 
     private static async Task<string> GetOrCreateDeviceIdAsync()
@@ -329,6 +339,7 @@ public class CloudBackendService : ICloudBackendService
             _tokenExpiresAt = DateTime.UtcNow.AddSeconds(loginResponse.ExpiresIn);
             CurrentUserName = loginResponse.User?.Name ?? email;
             TeamName = loginResponse.User?.TeamName ?? "Equipo";
+            CurrentUserRole = loginResponse.User?.Role ?? string.Empty;
 
             _httpClient.DefaultRequestHeaders.Authorization = 
                 new AuthenticationHeaderValue("Bearer", _accessToken);
@@ -343,7 +354,8 @@ public class CloudBackendService : ICloudBackendService
                 CurrentUserName,
                 TeamName,
                 _accessToken,
-                _tokenExpiresAt
+                _tokenExpiresAt,
+                CurrentUserRole
             );
         }
         catch (HttpRequestException ex)
@@ -873,6 +885,7 @@ public class CloudBackendService : ICloudBackendService
         public string? Email { get; set; }
         public string? TeamId { get; set; }
         public string? TeamName { get; set; }
+        public string? Role { get; set; }
     }
 
     private class FileListResponseDto

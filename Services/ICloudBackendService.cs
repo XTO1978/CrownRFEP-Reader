@@ -27,6 +27,11 @@ public interface ICloudBackendService
     string? TeamName { get; }
 
     /// <summary>
+    /// Rol del usuario autenticado.
+    /// </summary>
+    string? CurrentUserRole { get; }
+
+    /// <summary>
     /// URL base actual del backend.
     /// </summary>
     string BaseUrl { get; }
@@ -121,7 +126,8 @@ public record AuthResult(
     string? UserName = null,
     string? TeamName = null,
     string? AccessToken = null,
-    DateTime? ExpiresAt = null
+    DateTime? ExpiresAt = null,
+    string? Role = null
 );
 
 /// <summary>

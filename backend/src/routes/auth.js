@@ -165,7 +165,8 @@ router.post('/login', async (req, res) => {
         email: user.email,
         name: user.name,
         teamId: user.team_id,
-        teamName: user.team_name
+        teamName: user.team_name,
+        role: user.role
       }
     });
 
@@ -239,7 +240,8 @@ router.get('/me', (req, res) => {
       email: user.email,
       name: user.name,
       teamId: user.teamId,
-      teamName: user.teamName
+      teamName: user.teamName,
+      role: user.role
     });
   } catch (err) {
     res.status(401).json({ error: 'Token inválido' });
