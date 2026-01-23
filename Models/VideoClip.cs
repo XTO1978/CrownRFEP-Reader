@@ -175,10 +175,10 @@ public class VideoClip : INotifyPropertyChanged
             if (Source == "both" || IsSynced == 1)
                 return "Sincronizado";
             if (Source == "remote")
-                return "Solo en nube";
+                return "Solo en organización";
             if (NeedsUpload)
                 return "Pendiente de subir";
-            return "Solo local";
+            return "Solo personal";
         }
     }
 

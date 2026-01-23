@@ -182,7 +182,7 @@ public class DashboardViewModel : BaseViewModel
     private bool _isRemoteVideoLessonsSelected;
     private bool _isRemoteTrashSelected;
     private bool _isRemoteSmartFoldersExpanded = true;
-    private string _remoteLibraryDisplayName = "Equipo";
+    private string _remoteLibraryDisplayName = "Organización";
     private string _remoteAllGalleryItemCount = "—";
     private string _remoteVideoLessonsCount = "—";
     private string _remoteTrashItemCount = "—";
@@ -5538,37 +5538,54 @@ public class DashboardViewModel : BaseViewModel
 
         var videoPath = video.LocalClipPath;
 
-        // Fallback: construir ruta local desde la carpeta de la sesión
-        if (string.IsNullOrWhiteSpace(videoPath) || !File.Exists(videoPath))
+        if (!IsStreamingUrl(videoPath))
         {
-            try
+            // Fallback: construir ruta local desde la carpeta de la sesión
+            if (string.IsNullOrWhiteSpace(videoPath) || !File.Exists(videoPath))
             {
-                var session = SelectedSession ?? await _databaseService.GetSessionByIdAsync(video.SessionId);
-                if (!string.IsNullOrWhiteSpace(session?.PathSesion))
+                try
                 {
-                    var normalized = (video.ClipPath ?? "").Replace('\\', '/');
-                    var fileName = Path.GetFileName(normalized);
-                    if (string.IsNullOrWhiteSpace(fileName))
-                        fileName = $"CROWN{video.Id}.mp4";
+                    var session = SelectedSession ?? await _databaseService.GetSessionByIdAsync(video.SessionId);
+                    if (!string.IsNullOrWhiteSpace(session?.PathSesion))
+                    {
+                        var normalized = (video.ClipPath ?? "").Replace('\\', '/');
+                        var fileName = Path.GetFileName(normalized);
+                        if (string.IsNullOrWhiteSpace(fileName))
+                            fileName = $"CROWN{video.Id}.mp4";
 
-                    var candidate = Path.Combine(session.PathSesion, "videos", fileName);
-                    if (File.Exists(candidate))
-                        videoPath = candidate;
+                        var candidate = Path.Combine(session.PathSesion, "videos", fileName);
+                        if (File.Exists(candidate))
+                            videoPath = candidate;
+                    }
+                }
+                catch
+                {
+                    // Ignorar: si falla, se mostrará el error estándar
                 }
             }
-            catch
+
+            // Último recurso: usar ClipPath si fuera una ruta real
+            if (string.IsNullOrWhiteSpace(videoPath))
+                videoPath = video.ClipPath;
+        }
+
+        // Si no hay archivo local y el video está en la organización, intentar streaming
+        if (!IsStreamingUrl(videoPath) && (string.IsNullOrEmpty(videoPath) || !File.Exists(videoPath)))
+        {
+            if (video.IsRemoteAvailable && _cloudBackendService.IsAuthenticated)
             {
-                // Ignorar: si falla, se mostrará el error estándar
+                var remotePath = NormalizeRemotePath(video.ClipPath);
+                var streamingUrl = await GetStreamingUrlAsync(remotePath);
+                if (!string.IsNullOrWhiteSpace(streamingUrl))
+                {
+                    videoPath = streamingUrl;
+                }
             }
         }
 
-        // Último recurso: usar ClipPath si fuera una ruta real
-        if (string.IsNullOrWhiteSpace(videoPath))
-            videoPath = video.ClipPath;
-
-        if (string.IsNullOrEmpty(videoPath) || !File.Exists(videoPath))
+        if (string.IsNullOrEmpty(videoPath) || (!IsStreamingUrl(videoPath) && !File.Exists(videoPath)))
         {
-            await Shell.Current.DisplayAlert("Error", "El archivo de video no existe", "OK");
+            await Shell.Current.DisplayAlert("Error", "El archivo de video no está disponible", "OK");
             return;
         }
 
@@ -6977,7 +6994,7 @@ public class DashboardViewModel : BaseViewModel
                 return;
             }
 
-            RemoteLibraryDisplayName = result.TeamName ?? "Equipo";
+            RemoteLibraryDisplayName = result.TeamName ?? "Organización";
             IsRemoteLibraryVisible = true;
             IsLoginRequired = false;
             CloudLoginStatusMessage = $"Sesión iniciada: {result.UserName}";
@@ -7006,7 +7023,7 @@ public class DashboardViewModel : BaseViewModel
         {
             if (_cloudBackendService.IsAuthenticated)
             {
-                RemoteLibraryDisplayName = _cloudBackendService.TeamName ?? "Equipo";
+                RemoteLibraryDisplayName = _cloudBackendService.TeamName ?? "Organización";
                 IsRemoteLibraryVisible = true;
                 IsLoginRequired = false;
                 OnPropertyChanged(nameof(IsCloudAuthenticated));
@@ -7095,7 +7112,7 @@ public class DashboardViewModel : BaseViewModel
                 return;
             }
 
-            RemoteLibraryDisplayName = result.TeamName ?? "Equipo";
+            RemoteLibraryDisplayName = result.TeamName ?? "Organización";
             IsRemoteLibraryVisible = true;
             IsLoginRequired = false;
             OnPropertyChanged(nameof(IsCloudAuthenticated));
@@ -7143,7 +7160,7 @@ public class DashboardViewModel : BaseViewModel
             var page = Application.Current?.MainPage;
             if (page != null)
             {
-                await page.DisplayAlert("Biblioteca del Equipo", $"La sección '{sectionName}' estará disponible próximamente.", "OK");
+                await page.DisplayAlert("Biblioteca de organización", $"La sección '{sectionName}' estará disponible próximamente.", "OK");
             }
         }
     }
@@ -7263,7 +7280,7 @@ public class DashboardViewModel : BaseViewModel
     }
 
     /// <summary>
-    /// Añade un video remoto a Mi biblioteca (solo crea referencia, sin descargar)
+    /// Añade un video remoto a la biblioteca personal (solo crea referencia, sin descargar)
     /// </summary>
     private async Task AddRemoteVideoToLibraryAsync(RemoteVideoItem? remoteVideo)
     {
@@ -7271,11 +7288,11 @@ public class DashboardViewModel : BaseViewModel
 
         try
         {
-            // Verificar si ya existe en la biblioteca local
+            // Verificar si ya existe en la biblioteca personal
             if (remoteVideo.LinkedLocalVideo != null)
             {
                 var page = Application.Current?.MainPage;
-                await page?.DisplayAlert("Ya existe", "Este video ya está en tu biblioteca.", "OK")!;
+                await page?.DisplayAlert("Ya existe", "Este video ya está en tu biblioteca personal.", "OK")!;
                 return;
             }
 
@@ -7298,9 +7315,9 @@ public class DashboardViewModel : BaseViewModel
 
             // Actualizar el item remoto
             remoteVideo.LinkedLocalVideo = newVideo;
-            remoteVideo.IsLocallyAvailable = false; // Está en biblioteca pero no descargado
+            remoteVideo.IsLocallyAvailable = false; // Está en biblioteca personal pero no descargado
 
-            System.Diagnostics.Debug.WriteLine($"[Remote] Video {remoteVideo.VideoId} añadido a biblioteca (solo referencia)");
+            System.Diagnostics.Debug.WriteLine($"[Remote] Video {remoteVideo.VideoId} añadido a biblioteca personal (solo referencia)");
 
             // Refrescar contadores
             await CheckPendingSyncAsync();
@@ -7312,7 +7329,7 @@ public class DashboardViewModel : BaseViewModel
     }
 
     /// <summary>
-    /// Añade todos los videos de una sesión remota a Mi biblioteca
+    /// Añade todos los videos de una sesión remota a la biblioteca personal
     /// </summary>
     private async Task AddRemoteSessionToLibraryAsync(int sessionId)
     {
@@ -7327,7 +7344,7 @@ public class DashboardViewModel : BaseViewModel
             if (videosToAdd.Count == 0)
             {
                 var page = Application.Current?.MainPage;
-                await page?.DisplayAlert("Ya importada", "Todos los videos de esta sesión ya están en tu biblioteca.", "OK")!;
+                await page?.DisplayAlert("Ya importada", "Todos los videos de esta sesión ya están en tu biblioteca personal.", "OK")!;
                 return;
             }
 
@@ -7337,7 +7354,7 @@ public class DashboardViewModel : BaseViewModel
             }
 
             var mainPage = Application.Current?.MainPage;
-            await mainPage?.DisplayAlert("Sesión añadida", $"Se han añadido {videosToAdd.Count} videos a tu biblioteca.", "OK")!;
+            await mainPage?.DisplayAlert("Sesión añadida", $"Se han añadido {videosToAdd.Count} videos a tu biblioteca personal.", "OK")!;
         }
         catch (Exception ex)
         {
@@ -7346,8 +7363,8 @@ public class DashboardViewModel : BaseViewModel
     }
 
     /// <summary>
-    /// Elimina un video remoto de Mi biblioteca (borra la referencia local y el archivo descargado si existe)
-    /// El video permanece en la nube, solo se elimina de la biblioteca local.
+    /// Elimina un video remoto de la biblioteca personal (borra la referencia local y el archivo descargado si existe)
+    /// El video permanece en la nube, solo se elimina de la biblioteca personal.
     /// </summary>
     private async Task DeleteRemoteVideoFromLibraryAsync(RemoteVideoItem? remoteVideo)
     {
@@ -7355,18 +7372,18 @@ public class DashboardViewModel : BaseViewModel
 
         try
         {
-            // Verificar si tiene referencia en la biblioteca local
+            // Verificar si tiene referencia en la biblioteca personal
             if (remoteVideo.LinkedLocalVideo == null)
             {
                 var page = Application.Current?.MainPage;
-                await page?.DisplayAlert("No está en biblioteca", "Este video no está en tu biblioteca local.", "OK")!;
+                await page?.DisplayAlert("No está en biblioteca", "Este video no está en tu biblioteca personal.", "OK")!;
                 return;
             }
 
             var mainPage = Application.Current?.MainPage;
             var confirm = await mainPage?.DisplayAlert(
-                "Eliminar de Mi biblioteca",
-                $"¿Eliminar '{remoteVideo.FileName}' de tu biblioteca local?\n\nEl video seguirá disponible en la nube.",
+                "Quitar de biblioteca personal",
+                $"¿Eliminar '{remoteVideo.FileName}' de tu biblioteca personal?\n\nEl video seguirá disponible en la organización.",
                 "Eliminar", "Cancelar")!;
 
             if (!confirm) return;
@@ -7410,7 +7427,7 @@ public class DashboardViewModel : BaseViewModel
             remoteVideo.IsLocallyAvailable = false;
             remoteVideo.LocalPath = null;
 
-            System.Diagnostics.Debug.WriteLine($"[Remote] Video {remoteVideo.VideoId} eliminado de biblioteca local");
+            System.Diagnostics.Debug.WriteLine($"[Remote] Video {remoteVideo.VideoId} eliminado de biblioteca personal");
 
             // Refrescar contadores
             await CheckPendingSyncAsync();
@@ -7424,14 +7441,14 @@ public class DashboardViewModel : BaseViewModel
     }
 
     /// <summary>
-    /// Elimina la biblioteca remota del sistema: elimina todos los videos locales,
-    /// desconecta del cloud y oculta la sección de biblioteca remota.
+    /// Elimina la biblioteca de organización del sistema: elimina todos los videos locales,
+    /// desconecta del cloud y oculta la sección de biblioteca de organización.
     /// </summary>
     private async Task DeleteAllRemoteVideosFromLibraryAsync()
     {
         try
         {
-            // Obtener todos los videos remotos que están en la biblioteca local
+            // Obtener todos los videos remotos que están en la biblioteca personal
             var videosInLibrary = RemoteVideos.Where(v => v.LinkedLocalVideo != null).ToList();
 
             var mainPage = Application.Current?.MainPage;
@@ -7440,8 +7457,8 @@ public class DashboardViewModel : BaseViewModel
                 : "";
             
             var confirm = await mainPage?.DisplayAlert(
-                "Eliminar biblioteca remota",
-                $"¿Desconectar de '{RemoteLibraryDisplayName}' y eliminar la biblioteca remota del sistema?{videoCountText}\n\nPodrás volver a conectarte más tarde.",
+                "Eliminar biblioteca de organización",
+                $"¿Desconectar de '{RemoteLibraryDisplayName}' y eliminar la biblioteca de organización del sistema?{videoCountText}\n\nPodrás volver a conectarte más tarde.",
                 "Eliminar y desconectar", "Cancelar")!;
 
             if (!confirm) return;
@@ -7503,10 +7520,10 @@ public class DashboardViewModel : BaseViewModel
             // Limpiar la colección de videos remotos
             RemoteVideos.Clear();
             
-            // Ocultar la biblioteca remota
+            // Ocultar la biblioteca de organización
             IsRemoteLibraryVisible = false;
             IsRemoteLibraryExpanded = false;
-            RemoteLibraryDisplayName = "Equipo";
+            RemoteLibraryDisplayName = "Organización";
             RemoteAllGalleryItemCount = "—";
             IsLoginRequired = true;
             OnPropertyChanged(nameof(IsCloudAuthenticated));
@@ -7533,16 +7550,16 @@ public class DashboardViewModel : BaseViewModel
             else
             {
                 await resultPage?.DisplayAlert("Biblioteca eliminada", 
-                    "Se desconectó de la biblioteca remota.", "OK")!;
+                    "Se desconectó de la biblioteca de organización.", "OK")!;
             }
 
-            System.Diagnostics.Debug.WriteLine($"[Remote] Biblioteca remota eliminada. Videos eliminados: {deleted}, errores: {errors}");
+            System.Diagnostics.Debug.WriteLine($"[Remote] Biblioteca de organización eliminada. Videos eliminados: {deleted}, errores: {errors}");
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[Remote] Error eliminando biblioteca remota: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[Remote] Error eliminando biblioteca de organización: {ex.Message}");
             var page = Application.Current?.MainPage;
-            await page?.DisplayAlert("Error", $"No se pudo eliminar la biblioteca remota: {ex.Message}", "OK")!;
+            await page?.DisplayAlert("Error", $"No se pudo eliminar la biblioteca de organización: {ex.Message}", "OK")!;
         }
     }
 
@@ -7593,6 +7610,32 @@ public class DashboardViewModel : BaseViewModel
         }
     }
 
+    private static bool IsStreamingUrl(string? path)
+    {
+        return !string.IsNullOrWhiteSpace(path) &&
+               (path.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                path.StartsWith("https://", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static string? NormalizeRemotePath(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return null;
+
+        return path.StartsWith("CrownRFEP/", StringComparison.OrdinalIgnoreCase)
+            ? path.Substring("CrownRFEP/".Length)
+            : path;
+    }
+
+    private async Task<string?> GetStreamingUrlAsync(string? relativePath)
+    {
+        if (string.IsNullOrWhiteSpace(relativePath))
+            return null;
+
+        var result = await _cloudBackendService.GetDownloadUrlAsync(relativePath);
+        return result.Success ? result.Url : null;
+    }
+
     /// <summary>
     /// Reproduce un video remoto (descarga si es necesario y abre el reproductor)
     /// </summary>
@@ -7602,26 +7645,36 @@ public class DashboardViewModel : BaseViewModel
 
         try
         {
-            // Si no está descargado, preguntar si descargar
-            if (!remoteVideo.IsLocallyAvailable)
+            // Streaming desde organización (prioridad)
+            var remotePath = NormalizeRemotePath(remoteVideo.Key);
+            var streamingUrl = await GetStreamingUrlAsync(remotePath);
+            if (!string.IsNullOrWhiteSpace(streamingUrl))
             {
-                var page = Application.Current?.MainPage;
-                var download = await page?.DisplayAlert(
-                    "Video en la nube",
-                    "Este video no está descargado. ¿Deseas descargarlo para reproducirlo?",
-                    "Descargar",
-                    "Cancelar")!;
+                var clip = remoteVideo.LinkedLocalVideo ?? new VideoClip
+                {
+                    Id = 0,
+                    SessionId = 0,
+                    ClipPath = remotePath,
+                    ClipSize = remoteVideo.Size,
+                    CreationDate = new DateTimeOffset(remoteVideo.LastModified).ToUnixTimeSeconds(),
+                    Source = "remote",
+                    IsSynced = 1
+                };
 
-                if (!download) return;
-
-                await DownloadRemoteVideoAsync(remoteVideo);
+                clip.LocalClipPath = streamingUrl;
+                await PlaySelectedVideoAsync(clip);
+                return;
             }
 
-            // Si ahora está disponible localmente, reproducir
+            // Fallback: si no hay streaming, reproducir local si existe
             if (remoteVideo.IsLocallyAvailable && remoteVideo.LinkedLocalVideo != null)
             {
                 await PlaySelectedVideoAsync(remoteVideo.LinkedLocalVideo);
+                return;
             }
+
+            var page = Application.Current?.MainPage;
+            await page?.DisplayAlert("No disponible", "No se pudo obtener el stream del video.", "OK")!;
         }
         catch (Exception ex)
         {
@@ -7766,7 +7819,7 @@ public class DashboardViewModel : BaseViewModel
     }
 
     /// <summary>
-    /// Añade los videos remotos seleccionados a la biblioteca local
+    /// Añade los videos remotos seleccionados a la biblioteca personal
     /// </summary>
     private async Task AddSelectedRemoteToLibraryAsync()
     {
@@ -7775,7 +7828,7 @@ public class DashboardViewModel : BaseViewModel
         if (selectedVideos.Count == 0)
         {
             var page = Application.Current?.MainPage;
-            await page?.DisplayAlert("Añadir a biblioteca", "No hay videos nuevos seleccionados para añadir.", "OK")!;
+            await page?.DisplayAlert("Añadir a biblioteca personal", "No hay videos nuevos seleccionados para añadir.", "OK")!;
             return;
         }
 
@@ -7797,8 +7850,8 @@ public class DashboardViewModel : BaseViewModel
         IsRemoteMultiSelectMode = false;
 
         var resultPage = Application.Current?.MainPage;
-        await resultPage?.DisplayAlert("Añadidos a biblioteca",
-            $"Se añadieron {added} videos a tu biblioteca local.", "OK")!;
+        await resultPage?.DisplayAlert("Añadidos a biblioteca personal",
+            $"Se añadieron {added} videos a tu biblioteca personal.", "OK")!;
     }
 
     /// <summary>
@@ -7858,7 +7911,7 @@ public class DashboardViewModel : BaseViewModel
                     var metaKey = video.Key.Replace("/videos/", "/metadata/").Replace(".mp4", ".json");
                     await _cloudBackendService.DeleteFileAsync(metaKey);
 
-                    // Si estaba en biblioteca local, eliminar también
+                    // Si estaba en biblioteca personal, eliminar también
                     if (video.LinkedLocalVideo != null)
                     {
                         await _databaseService.DeleteVideoClipAsync(video.LinkedLocalVideo.Id);
@@ -7904,7 +7957,7 @@ public class DashboardViewModel : BaseViewModel
     }
 
     /// <summary>
-    /// Elimina los videos remotos seleccionados de la biblioteca LOCAL (no de la nube)
+    /// Elimina los videos remotos seleccionados de la biblioteca personal (no de la nube)
     /// </summary>
     private async Task DeleteSelectedRemoteFromLibraryAsync()
     {
@@ -7913,16 +7966,16 @@ public class DashboardViewModel : BaseViewModel
         if (selectedVideos.Count == 0)
         {
             var page = Application.Current?.MainPage;
-            await page?.DisplayAlert("Eliminar de biblioteca", "No hay videos en biblioteca seleccionados.", "OK")!;
+            await page?.DisplayAlert("Eliminar de biblioteca personal", "No hay videos en biblioteca seleccionados.", "OK")!;
             return;
         }
 
         var page2 = Application.Current?.MainPage;
         var confirm = await page2?.DisplayAlert(
-            "Eliminar de biblioteca local",
-            $"¿Eliminar {selectedVideos.Count} video(s) de tu biblioteca local?\n\n" +
-            "Los videos permanecerán en la nube y podrás añadirlos de nuevo.",
-            "Eliminar de biblioteca",
+            "Eliminar de biblioteca personal",
+            $"¿Eliminar {selectedVideos.Count} video(s) de tu biblioteca personal?\n\n" +
+            "Los videos permanecerán en la organización y podrás añadirlos de nuevo.",
+            "Eliminar de biblioteca personal",
             "Cancelar")!;
 
         if (!confirm) return;
@@ -7969,7 +8022,7 @@ public class DashboardViewModel : BaseViewModel
 
         var resultPage = Application.Current?.MainPage;
         await resultPage?.DisplayAlert("Eliminación completada",
-            $"Se eliminaron {deleted} videos de tu biblioteca local.", "OK")!;
+            $"Se eliminaron {deleted} videos de tu biblioteca personal.", "OK")!;
     }
 
     // ==================== FIN ACCIONES EN LOTE DE VIDEOS REMOTOS ====================

@@ -311,7 +311,7 @@
                     </OnPlatform>
                 </VerticalStackLayout.Spacing>
 
-                        <!--  Equipo (biblioteca remota en Wasabi) - PRIMERO  -->
+                        <!--  Organización (biblioteca remota en Wasabi) - PRIMERO  -->
                         <VerticalStackLayout
                             x:Name="RemoteLibraryContainer"
                             HorizontalOptions="Fill"
@@ -354,15 +354,25 @@
                                             SymbolName="person.2"
                                             TintColor="White"
                                             VerticalOptions="Center" />
-                                        <Label
+                                        <VerticalStackLayout
                                             Grid.Column="1"
                                             Margin="8,0,0,0"
-                                            FontFamily="{StaticResource AppFontEmphasis}"
-                                            FontSize="{StaticResource FontSizeBody}"
-                                            FontAttributes="Bold"
-                                            Text="{Binding RemoteLibraryDisplayName}"
-                                            TextColor="White"
-                                            VerticalOptions="Center" />
+                                            Spacing="2"
+                                            VerticalOptions="Center">
+                                            <Label
+                                                FontFamily="{StaticResource AppFontEmphasis}"
+                                                FontSize="{StaticResource FontSizeBody}"
+                                                FontAttributes="Bold"
+                                                Text="Biblioteca de organización"
+                                                TextColor="White"
+                                                VerticalOptions="Center" />
+                                            <Label
+                                                FontFamily="{StaticResource AppFontBody}"
+                                                FontSize="{StaticResource FontSizeSmall}"
+                                                Text="{Binding RemoteLibraryDisplayName}"
+                                                TextColor="#FFDDDDDD"
+                                                VerticalOptions="Center" />
+                                        </VerticalStackLayout>
                                     </Grid>
 
                                     <Border
@@ -646,7 +656,7 @@
                             </VerticalStackLayout>
                         </VerticalStackLayout>
 
-                        <!--  Separador entre Equipo y Mi biblioteca  -->
+                        <!--  Separador entre organización y biblioteca personal  -->
                         <BoxView
                             Margin="0,12,0,6"
                             BackgroundColor="#FF2A2A2A"
@@ -739,7 +749,7 @@
                             </Grid>
                         </Border>
 
-                        <!--  Item padre: Mi biblioteca (colección del usuario con lectura/escritura)  -->
+                        <!--  Item padre: Biblioteca personal (colección del usuario con lectura/escritura)  -->
                         <Border
                             x:Name="UserLibraryHeaderBorder"
                             Style="{StaticResource SidebarMenuItemBorder}"
@@ -786,7 +796,7 @@
                                         FontFamily="{StaticResource AppFontEmphasis}"
                                         FontSize="{StaticResource FontSizeBody}"
                                         FontAttributes="Bold"
-                                        Text="Mi biblioteca"
+                                        Text="Biblioteca personal"
                                         TextColor="White"
                                         VerticalOptions="Center" />
                                 </Grid>
@@ -1760,7 +1770,7 @@
                                         Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.ToggleRemoteVideoSelectionCommand}"
                                         CommandParameter="{Binding .}"
                                         NumberOfTapsRequired="1" />
-                                    <!--  Doble clic: reproducir (descarga si es necesario)  -->
+                                    <!--  Doble clic: reproducir en streaming  -->
                                     <TapGestureRecognizer
                                         Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.PlayRemoteVideoCommand}"
                                         CommandParameter="{Binding .}"
@@ -2580,11 +2590,11 @@
                                         TintColor="#4CAF50"
                                         WidthRequest="{StaticResource IconSizeMedium}"
                                         VerticalOptions="Center" />
-                                    <Label Text="Descargar" TextColor="#4CAF50" VerticalOptions="Center" />
+                                    <Label Text="Descargar a personal" TextColor="#4CAF50" VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                             </Border>
 
-                            <!--  Botón: Añadir a biblioteca  -->
+                            <!--  Botón: Añadir a biblioteca personal  -->
                             <Border
                                 Grid.Row="0"
                                 Grid.Column="1"
@@ -2602,11 +2612,11 @@
                                         TintColor="#2196F3"
                                         WidthRequest="{StaticResource IconSizeMedium}"
                                         VerticalOptions="Center" />
-                                    <Label Text="Añadir" TextColor="#2196F3" VerticalOptions="Center" />
+                                    <Label Text="Añadir a personal" TextColor="#2196F3" VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                             </Border>
 
-                            <!--  Botón: Quitar de biblioteca local  -->
+                            <!--  Botón: Quitar de biblioteca personal  -->
                             <Border
                                 Grid.Row="1"
                                 Grid.Column="0"
@@ -2624,7 +2634,7 @@
                                         TintColor="#FFA500"
                                         WidthRequest="{StaticResource IconSizeMedium}"
                                         VerticalOptions="Center" />
-                                    <Label Text="Quitar local" TextColor="#FFA500" VerticalOptions="Center" />
+                                    <Label Text="Quitar personal" TextColor="#FFA500" VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                             </Border>
 
@@ -6889,7 +6899,7 @@
             </BoxView.GestureRecognizers>
         </BoxView>
 
-        <!--  Menú contextual (overlay) para Mi biblioteca  -->
+        <!--  Menú contextual (overlay) para Biblioteca personal  -->
         <Grid
             x:Name="UserLibraryContextMenuOverlay"
             Grid.RowSpan="3"

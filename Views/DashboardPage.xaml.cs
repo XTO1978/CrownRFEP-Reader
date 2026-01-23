@@ -504,7 +504,7 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
             HideSessionRowContextMenu();
             HideSmartFolderContextMenu();
 
-            // Posicionar el menú al lado del item "Mi biblioteca".
+            // Posicionar el menú al lado del item "Biblioteca personal".
             var anchor = UserLibraryHeaderBorder;
             var anchorPos = GetPositionRelativeTo(anchor, RootGrid);
 
@@ -1219,22 +1219,20 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
             
             if (remoteVideo.LinkedLocalVideo == null)
             {
-                options.Add("Añadir a Mi biblioteca");
+                options.Add("Añadir a biblioteca personal");
             }
             else
             {
                 // Si ya está en la biblioteca, mostrar opción de eliminar
-                options.Add("Eliminar de Mi biblioteca");
+                options.Add("Quitar de biblioteca personal");
             }
             
             if (!remoteVideo.IsLocallyAvailable)
             {
-                options.Add("Descargar");
+                options.Add("Descargar a biblioteca personal");
             }
-            else
-            {
-                options.Add("Reproducir");
-            }
+
+            options.Add("Reproducir en streaming");
 
             options.Add($"Añadir toda la sesión {remoteVideo.SessionId}");
 
@@ -1247,19 +1245,19 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
             if (string.IsNullOrEmpty(result) || result == "Cancelar")
                 return;
 
-            if (result == "Añadir a Mi biblioteca")
+            if (result == "Añadir a biblioteca personal")
             {
                 vm.AddRemoteVideoToLibraryCommand.Execute(remoteVideo);
             }
-            else if (result == "Eliminar de Mi biblioteca")
+            else if (result == "Quitar de biblioteca personal")
             {
                 vm.DeleteRemoteVideoFromLibraryCommand.Execute(remoteVideo);
             }
-            else if (result == "Descargar")
+            else if (result == "Descargar a biblioteca personal")
             {
                 vm.DownloadRemoteVideoCommand.Execute(remoteVideo);
             }
-            else if (result == "Reproducir")
+            else if (result == "Reproducir en streaming")
             {
                 vm.PlayRemoteVideoCommand.Execute(remoteVideo);
             }
@@ -1275,8 +1273,8 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
     }
 
     /// <summary>
-    /// Menú contextual para el header de la biblioteca remota (ej: "Real Federación Española...")
-    /// Permite eliminar toda la biblioteca remota del sistema (eliminación en cascada)
+    /// Menú contextual para el header de la biblioteca de organización (ej: "Real Federación Española...")
+    /// Permite eliminar toda la biblioteca de organización del sistema (eliminación en cascada)
     /// </summary>
     private async void OnRemoteLibraryHeaderContextMenu(object? sender, TappedEventArgs e)
     {
@@ -1285,21 +1283,21 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
             if (BindingContext is not DashboardViewModel vm)
                 return;
 
-            // Contar cuántos videos remotos están en la biblioteca local
+            // Contar cuántos videos remotos están en la biblioteca personal
             var videosInLibrary = vm.RemoteVideos.Where(v => v.LinkedLocalVideo != null).ToList();
             var totalRemoteVideos = vm.RemoteVideos.Count;
             
             var infoText = videosInLibrary.Count > 0 
-                ? $"{videosInLibrary.Count} videos en biblioteca local" 
-                : "Sin videos en biblioteca local";
+                ? $"{videosInLibrary.Count} videos en biblioteca personal" 
+                : "Sin videos en biblioteca personal";
 
             var result = await DisplayActionSheet(
                 $"{vm.RemoteLibraryDisplayName}\n({infoText})",
                 "Cancelar",
-                "Eliminar biblioteca remota del sistema",
+                "Eliminar biblioteca de organización del sistema",
                 Array.Empty<string>());
 
-            if (result == "Eliminar biblioteca remota del sistema")
+            if (result == "Eliminar biblioteca de organización del sistema")
             {
                 vm.DeleteAllRemoteVideosFromLibraryCommand.Execute(null);
             }

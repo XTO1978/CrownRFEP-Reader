@@ -221,7 +221,7 @@ public class RemoteVideoItem : INotifyPropertyChanged
     /// <summary>
     /// Texto de estado
     /// </summary>
-    public string StatusText => IsLocallyAvailable ? "Disponible localmente" : "Solo en la nube";
+    public string StatusText => IsLocallyAvailable ? "Disponible en personal" : "Solo en organización";
 
     /// <summary>
     /// Crea un RemoteVideoItem desde un CloudFileInfo
