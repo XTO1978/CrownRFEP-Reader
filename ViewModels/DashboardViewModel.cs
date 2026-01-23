@@ -194,6 +194,11 @@ public class DashboardViewModel : BaseViewModel
     private ObservableCollection<RemoteVideoItem> _remoteVideos = new();
     private bool _isLoadingRemoteVideos;
     private List<CloudFileInfo>? _remoteFilesCache;
+    private bool _isLoginRequired;
+    private bool _isCloudLoginBusy;
+    private string _cloudLoginEmail = "";
+    private string _cloudLoginPassword = "";
+    private string _cloudLoginStatusMessage = "";
     
     // Selección múltiple de videos remotos
     private bool _isRemoteMultiSelectMode;
@@ -1324,6 +1329,36 @@ public class DashboardViewModel : BaseViewModel
     /// Indica si el usuario está autenticado en el servidor cloud
     /// </summary>
     public bool IsCloudAuthenticated => _cloudBackendService?.IsAuthenticated ?? false;
+
+    public bool IsLoginRequired
+    {
+        get => _isLoginRequired;
+        set => SetProperty(ref _isLoginRequired, value);
+    }
+
+    public bool IsCloudLoginBusy
+    {
+        get => _isCloudLoginBusy;
+        set => SetProperty(ref _isCloudLoginBusy, value);
+    }
+
+    public string CloudLoginEmail
+    {
+        get => _cloudLoginEmail;
+        set => SetProperty(ref _cloudLoginEmail, value);
+    }
+
+    public string CloudLoginPassword
+    {
+        get => _cloudLoginPassword;
+        set => SetProperty(ref _cloudLoginPassword, value);
+    }
+
+    public string CloudLoginStatusMessage
+    {
+        get => _cloudLoginStatusMessage;
+        set => SetProperty(ref _cloudLoginStatusMessage, value);
+    }
 
     public bool IsStatsTabSelected
     {
@@ -3315,6 +3350,7 @@ public class DashboardViewModel : BaseViewModel
     public ICommand ApplyBatchEditCommand { get; }
     
     // Comandos de sincronización cloud
+    public ICommand CloudLoginCommand { get; }
     public ICommand SyncAllCommand { get; }
     public ICommand SyncSessionCommand { get; }
     public ICommand UploadVideoCommand { get; }
@@ -3658,6 +3694,7 @@ public class DashboardViewModel : BaseViewModel
         AddNewBatchTagCommand = new AsyncRelayCommand(AddNewBatchTagAsync);
 
         // Comandos de sincronización cloud
+        CloudLoginCommand = new AsyncRelayCommand(CloudLoginAsync);
         SyncAllCommand = new AsyncRelayCommand(SyncAllVideosAsync);
         SyncSessionCommand = new AsyncRelayCommand<Session>(SyncSessionAsync);
         UploadVideoCommand = new AsyncRelayCommand<VideoClip>(UploadVideoAsync);
@@ -6914,6 +6951,52 @@ public class DashboardViewModel : BaseViewModel
     }
 
     /// <summary>
+    /// Login desde el modal obligatorio de inicio de sesión.
+    /// </summary>
+    private async Task CloudLoginAsync()
+    {
+        if (IsCloudLoginBusy)
+            return;
+
+        if (string.IsNullOrWhiteSpace(CloudLoginEmail) || string.IsNullOrWhiteSpace(CloudLoginPassword))
+        {
+            CloudLoginStatusMessage = "Introduce email y contraseña.";
+            return;
+        }
+
+        try
+        {
+            IsCloudLoginBusy = true;
+            CloudLoginStatusMessage = "Iniciando sesión...";
+
+            var result = await _cloudBackendService.LoginAsync(CloudLoginEmail.Trim(), CloudLoginPassword);
+
+            if (!result.Success)
+            {
+                CloudLoginStatusMessage = result.ErrorMessage ?? "No se pudo iniciar sesión";
+                return;
+            }
+
+            RemoteLibraryDisplayName = result.TeamName ?? "Equipo";
+            IsRemoteLibraryVisible = true;
+            IsLoginRequired = false;
+            CloudLoginStatusMessage = $"Sesión iniciada: {result.UserName}";
+            CloudLoginPassword = string.Empty;
+            OnPropertyChanged(nameof(IsCloudAuthenticated));
+
+            await LoadTeamFilesAsync();
+        }
+        catch (Exception ex)
+        {
+            CloudLoginStatusMessage = $"No se pudo conectar: {ex.Message}";
+        }
+        finally
+        {
+            IsCloudLoginBusy = false;
+        }
+    }
+
+    /// <summary>
     /// Verifica y restaura la sesión del backend si existe.
     /// NO hay credenciales de Wasabi en el cliente - todo pasa por el backend seguro.
     /// </summary>
@@ -6925,6 +7008,7 @@ public class DashboardViewModel : BaseViewModel
             {
                 RemoteLibraryDisplayName = _cloudBackendService.TeamName ?? "Equipo";
                 IsRemoteLibraryVisible = true;
+                IsLoginRequired = false;
                 OnPropertyChanged(nameof(IsCloudAuthenticated));
                 System.Diagnostics.Debug.WriteLine($"[CloudBackend] Sesión restaurada para {_cloudBackendService.CurrentUserName}");
                 
@@ -6935,6 +7019,7 @@ public class DashboardViewModel : BaseViewModel
             {
                 // No hay sesión activa - mostrar opción de login
                 IsRemoteLibraryVisible = false;
+                IsLoginRequired = true;
                 OnPropertyChanged(nameof(IsCloudAuthenticated));
                 System.Diagnostics.Debug.WriteLine("[CloudBackend] No hay sesión activa");
             }
@@ -6943,6 +7028,7 @@ public class DashboardViewModel : BaseViewModel
         {
             System.Diagnostics.Debug.WriteLine($"[CloudBackend] Error verificando sesión: {ex.Message}");
             IsRemoteLibraryVisible = false;
+            IsLoginRequired = true;
         }
     }
 
@@ -7011,6 +7097,7 @@ public class DashboardViewModel : BaseViewModel
 
             RemoteLibraryDisplayName = result.TeamName ?? "Equipo";
             IsRemoteLibraryVisible = true;
+            IsLoginRequired = false;
             OnPropertyChanged(nameof(IsCloudAuthenticated));
 
             await page.DisplayAlert("Sesión iniciada",
@@ -7421,6 +7508,7 @@ public class DashboardViewModel : BaseViewModel
             IsRemoteLibraryExpanded = false;
             RemoteLibraryDisplayName = "Equipo";
             RemoteAllGalleryItemCount = "—";
+            IsLoginRequired = true;
             OnPropertyChanged(nameof(IsCloudAuthenticated));
             
             // Deseleccionar secciones remotas si estaban seleccionadas

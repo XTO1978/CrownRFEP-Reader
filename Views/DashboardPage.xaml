@@ -7398,5 +7398,75 @@
                 </VerticalStackLayout>
             </Border>
         </Grid>
+
+        <!-- Modal obligatorio de inicio de sesión (anti piratería) -->
+        <Grid
+            Grid.Row="0"
+            Grid.RowSpan="3"
+            Grid.Column="0"
+            Grid.ColumnSpan="5"
+            BackgroundColor="#CC000000"
+            IsVisible="{Binding IsLoginRequired}">
+            <Grid
+                HorizontalOptions="Center"
+                VerticalOptions="Center"
+                Padding="24">
+                <Border
+                    BackgroundColor="#FF1F1F1F"
+                    Stroke="#FF3A3A3A"
+                    StrokeThickness="1"
+                    StrokeShape="RoundRectangle 16"
+                    Padding="24"
+                    WidthRequest="420">
+                    <VerticalStackLayout Spacing="16">
+                        <Label
+                            Text="Acceso requerido"
+                            FontFamily="{StaticResource AppFontEmphasis}"
+                            FontSize="{StaticResource FontSizeTitle}"
+                            TextColor="White" />
+                        <Label
+                            Text="Inicia sesión con tu cuenta del equipo para continuar."
+                            FontFamily="{StaticResource AppFontBody}"
+                            FontSize="{StaticResource FontSizeBody}"
+                            TextColor="#FFB0B0B0" />
+
+                        <Entry
+                            Placeholder="Email"
+                            Keyboard="Email"
+                            Text="{Binding CloudLoginEmail}"
+                            TextColor="White"
+                            PlaceholderColor="#FF777777"
+                            ClearButtonVisibility="WhileEditing" />
+                        <Entry
+                            Placeholder="Contraseña"
+                            IsPassword="True"
+                            Text="{Binding CloudLoginPassword}"
+                            TextColor="White"
+                            PlaceholderColor="#FF777777" />
+
+                        <Button
+                            Text="Iniciar sesión"
+                            Command="{Binding CloudLoginCommand}"
+                            BackgroundColor="#FF3B82F6"
+                            TextColor="White"
+                            CornerRadius="12"
+                            HeightRequest="44"
+                            IsEnabled="{Binding IsCloudLoginBusy, Converter={toolkit:InvertedBoolConverter}}" />
+
+                        <ActivityIndicator
+                            IsRunning="{Binding IsCloudLoginBusy}"
+                            IsVisible="{Binding IsCloudLoginBusy}"
+                            Color="#FF3B82F6" />
+
+                        <Label
+                            Text="{Binding CloudLoginStatusMessage}"
+                            FontFamily="{StaticResource AppFontBody}"
+                            FontSize="{StaticResource FontSizeSmall}"
+                            TextColor="#FFFFB703"
+                            IsVisible="{Binding CloudLoginStatusMessage, Converter={StaticResource NotNullOrEmptyBoolConverter}}" />
+                    </VerticalStackLayout>
+                </Border>
+            </Grid>
+        </Grid>
     </Grid>
 </ContentPage>
