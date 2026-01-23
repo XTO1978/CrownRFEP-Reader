@@ -177,6 +177,77 @@
 
                 <!-- Columna derecha: Formulario -->
                 <VerticalStackLayout Grid.Column="1" Spacing="16">
+
+                    <!-- Cuenta del equipo -->
+                    <Border
+                        Padding="20"
+                        BackgroundColor="#FF2A2A2A"
+                        Stroke="Transparent"
+                        StrokeShape="RoundRectangle 8">
+                        <VerticalStackLayout Spacing="12">
+                            <Label
+                                FontAttributes="Bold"
+                                FontSize="{StaticResource FontSizeSubtitle}"
+                                Text="Cuenta del equipo"
+                                TextColor="White" />
+
+                            <!-- Estado conectado -->
+                            <VerticalStackLayout IsVisible="{Binding IsCloudAuthenticated}" Spacing="10">
+                                <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="12" RowSpacing="6">
+                                    <Label Grid.Row="0" Text="Usuario:" TextColor="#FFB1B1B1" />
+                                    <Label Grid.Row="0" Grid.Column="1" Text="{Binding CloudUserName}" TextColor="White" />
+
+                                    <Label Grid.Row="1" Text="Equipo:" TextColor="#FFB1B1B1" />
+                                    <Label Grid.Row="1" Grid.Column="1" Text="{Binding CloudTeamName}" TextColor="White" />
+
+                                    <Label Grid.Row="2" Text="Rol:" TextColor="#FFB1B1B1" />
+                                    <Label Grid.Row="2" Grid.Column="1" Text="{Binding CloudUserRole}" TextColor="White" />
+                                </Grid>
+
+                                <Button
+                                    Padding="12,8"
+                                    BackgroundColor="#FF3A3A3A"
+                                    Command="{Binding CloudLogoutCommand}"
+                                    CornerRadius="6"
+                                    FontSize="{StaticResource FontSizeBody}"
+                                    Text="Cerrar sesión"
+                                    TextColor="#FFFF6B6B" />
+                            </VerticalStackLayout>
+
+                            <!-- Formulario de login -->
+                            <VerticalStackLayout IsVisible="{Binding IsCloudAuthenticated, Converter={StaticResource InvertedBoolConverter}}" Spacing="10">
+                                <Entry
+                                    BackgroundColor="#FF3A3A3A"
+                                    Placeholder="Email"
+                                    Keyboard="Email"
+                                    Text="{Binding CloudEmail}" />
+                                <Entry
+                                    BackgroundColor="#FF3A3A3A"
+                                    Placeholder="Contraseña"
+                                    IsPassword="True"
+                                    Text="{Binding CloudPassword}" />
+                                <Button
+                                    Padding="12,8"
+                                    BackgroundColor="#FF6DDDFF"
+                                    Command="{Binding CloudLoginCommand}"
+                                    CornerRadius="6"
+                                    FontSize="{StaticResource FontSizeBody}"
+                                    IsEnabled="{Binding IsCloudBusy, Converter={StaticResource InvertedBoolConverter}}"
+                                    Text="Iniciar sesión"
+                                    TextColor="#FF1B1B1B" />
+                                <ActivityIndicator
+                                    IsVisible="{Binding IsCloudBusy}"
+                                    IsRunning="{Binding IsCloudBusy}"
+                                    Color="#FF6DDDFF" />
+                            </VerticalStackLayout>
+
+                            <Label
+                                FontSize="{StaticResource FontSizeSmall}"
+                                IsVisible="{Binding HasCloudStatusMessage}"
+                                Text="{Binding CloudStatusMessage}"
+                                TextColor="#FF6DDDFF" />
+                        </VerticalStackLayout>
+                    </Border>
                     
                     <!-- Datos personales -->
                     <Border

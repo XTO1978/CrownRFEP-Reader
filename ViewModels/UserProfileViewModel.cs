@@ -14,10 +14,16 @@ public class UserProfileViewModel : BaseViewModel
 {
     private readonly DatabaseService _databaseService;
     private readonly UserProfileNotifier _userProfileNotifier;
+    private readonly ICloudBackendService _cloudBackendService;
     private UserProfile? _profile;
     private bool _isEditing;
     private string? _statusMessage;
     private bool _hasChanges;
+
+    private string? _cloudEmail;
+    private string? _cloudPassword;
+    private string? _cloudStatusMessage;
+    private bool _isCloudBusy;
 
     // Campos editables
     private string? _nombre;
@@ -59,6 +65,41 @@ public class UserProfileViewModel : BaseViewModel
     }
 
     public bool HasStatusMessage => !string.IsNullOrWhiteSpace(StatusMessage);
+
+    public string? CloudEmail
+    {
+        get => _cloudEmail;
+        set => SetProperty(ref _cloudEmail, value);
+    }
+
+    public string? CloudPassword
+    {
+        get => _cloudPassword;
+        set => SetProperty(ref _cloudPassword, value);
+    }
+
+    public string? CloudStatusMessage
+    {
+        get => _cloudStatusMessage;
+        set
+        {
+            if (SetProperty(ref _cloudStatusMessage, value))
+                OnPropertyChanged(nameof(HasCloudStatusMessage));
+        }
+    }
+
+    public bool HasCloudStatusMessage => !string.IsNullOrWhiteSpace(CloudStatusMessage);
+
+    public bool IsCloudBusy
+    {
+        get => _isCloudBusy;
+        set => SetProperty(ref _isCloudBusy, value);
+    }
+
+    public bool IsCloudAuthenticated => _cloudBackendService.IsAuthenticated;
+    public string CloudUserName => _cloudBackendService.CurrentUserName ?? string.Empty;
+    public string CloudTeamName => _cloudBackendService.TeamName ?? string.Empty;
+    public string CloudUserRole => _cloudBackendService.CurrentUserRole ?? string.Empty;
 
     public bool HasChanges
     {
@@ -192,11 +233,14 @@ public class UserProfileViewModel : BaseViewModel
     public ICommand SelectSexoCommand { get; }
     public ICommand SelectManoHabilCommand { get; }
     public ICommand SelectReferenceAthleteCommand { get; }
+    public ICommand CloudLoginCommand { get; }
+    public ICommand CloudLogoutCommand { get; }
 
-    public UserProfileViewModel(DatabaseService databaseService, UserProfileNotifier userProfileNotifier)
+    public UserProfileViewModel(DatabaseService databaseService, UserProfileNotifier userProfileNotifier, ICloudBackendService cloudBackendService)
     {
         _databaseService = databaseService;
         _userProfileNotifier = userProfileNotifier;
+        _cloudBackendService = cloudBackendService;
         Title = "Mi Perfil";
 
         // Inicializar opciones
@@ -216,6 +260,70 @@ public class UserProfileViewModel : BaseViewModel
         SelectSexoCommand = new RelayCommand<SelectableOption>(SelectSexo);
         SelectManoHabilCommand = new RelayCommand<SelectableOption>(SelectManoHabil);
         SelectReferenceAthleteCommand = new AsyncRelayCommand(SelectReferenceAthleteAsync);
+        CloudLoginCommand = new AsyncRelayCommand(LoginCloudAsync);
+        CloudLogoutCommand = new AsyncRelayCommand(LogoutCloudAsync);
+    }
+
+    private void NotifyCloudStateChanged()
+    {
+        OnPropertyChanged(nameof(IsCloudAuthenticated));
+        OnPropertyChanged(nameof(CloudUserName));
+        OnPropertyChanged(nameof(CloudTeamName));
+        OnPropertyChanged(nameof(CloudUserRole));
+    }
+
+    private async Task LoginCloudAsync()
+    {
+        if (string.IsNullOrWhiteSpace(CloudEmail) || string.IsNullOrWhiteSpace(CloudPassword))
+        {
+            CloudStatusMessage = "Email y contraseña son requeridos.";
+            return;
+        }
+
+        try
+        {
+            IsCloudBusy = true;
+            CloudStatusMessage = null;
+
+            var result = await _cloudBackendService.LoginAsync(CloudEmail, CloudPassword);
+            if (!result.Success)
+            {
+                CloudStatusMessage = result.ErrorMessage ?? "No se pudo iniciar sesión.";
+                return;
+            }
+
+            CloudPassword = string.Empty;
+            CloudStatusMessage = "Sesión iniciada correctamente.";
+            NotifyCloudStateChanged();
+        }
+        catch (Exception ex)
+        {
+            CloudStatusMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            IsCloudBusy = false;
+        }
+    }
+
+    private async Task LogoutCloudAsync()
+    {
+        try
+        {
+            IsCloudBusy = true;
+            CloudStatusMessage = null;
+            await _cloudBackendService.LogoutAsync();
+            CloudStatusMessage = "Sesión cerrada.";
+            NotifyCloudStateChanged();
+        }
+        catch (Exception ex)
+        {
+            CloudStatusMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            IsCloudBusy = false;
+        }
     }
 
     public int? ReferenceAthleteId
