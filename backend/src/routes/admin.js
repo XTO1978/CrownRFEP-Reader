@@ -210,6 +210,37 @@ router.delete('/users/:id', (req, res) => {
   }
 });
 
+router.get('/users/:id/devices', (req, res) => {
+  try {
+    const { id } = req.params;
+    const devices = safeDbAll(
+      'SELECT device_id, platform, device_name, created_at, last_seen, revoked_at FROM user_devices WHERE user_id = ? ORDER BY last_seen DESC',
+      [id]
+    ) || [];
+    res.json({ success: true, devices });
+  } catch (err) {
+    console.error('[Admin] Error listando dispositivos:', err);
+    res.status(500).json({ error: 'Error listando dispositivos' });
+  }
+});
+
+router.delete('/users/:id/devices/:deviceId', (req, res) => {
+  try {
+    const { id, deviceId } = req.params;
+    const result = safeDbRun(
+      'UPDATE user_devices SET revoked_at = CURRENT_TIMESTAMP WHERE user_id = ? AND device_id = ?',
+      [id, deviceId]
+    );
+    if (!result) {
+      return res.status(500).json({ error: 'No se pudo revocar el dispositivo' });
+    }
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[Admin] Error revocando dispositivo:', err);
+    res.status(500).json({ error: 'Error revocando dispositivo' });
+  }
+});
+
 router.get('/teams', (req, res) => {
   try {
     const teams = db.prepare('SELECT * FROM teams').all();

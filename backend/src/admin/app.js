@@ -49,6 +49,15 @@ function formatBytes(bytes) {
   return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
 }
 
+function formatDate(value) {
+  if (!value) return '';
+  try {
+    return new Date(value).toLocaleString();
+  } catch {
+    return String(value);
+  }
+}
+
 async function api(path) {
   const token = localStorage.getItem(tokenKey);
   const res = await fetch(path, {
@@ -110,6 +119,10 @@ function renderUsers(users) {
           ? '<span style="color: #888; font-style: italic;">Root (sin org)</span>' 
           : `<select data-user-team="${u.id}">${teamOptions}</select>`}
       </td>
+      <td>
+        <button class="btn-secondary" data-user-devices="${u.id}">Ver</button>
+        <div data-user-devices-container="${u.id}" style="margin-top:6px;font-size:12px;color:#bbb;"></div>
+      </td>
       <td>${u.last_login || ''}</td>
       <td>
         ${isRootUser 
@@ -148,6 +161,60 @@ function renderUsers(users) {
         headers: { Authorization: `Bearer ${localStorage.getItem(tokenKey)}` }
       });
       await loadAll();
+    });
+  });
+
+  usersTableBody.querySelectorAll('[data-user-devices]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.getAttribute('data-user-devices');
+      const container = usersTableBody.querySelector(`[data-user-devices-container="${id}"]`);
+      if (!container) return;
+
+      container.textContent = 'Cargando...';
+      try {
+        const res = await fetch(`/api/admin/users/${id}/devices`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem(tokenKey)}` }
+        });
+        if (!res.ok) {
+          container.textContent = 'Error cargando dispositivos';
+          return;
+        }
+        const data = await res.json();
+        const devices = data.devices || [];
+        if (devices.length === 0) {
+          container.textContent = 'Sin dispositivos';
+          return;
+        }
+
+        container.innerHTML = devices.map(d => {
+          const revoked = d.revoked_at ? ' (revocado)' : '';
+          const revokeBtn = d.revoked_at
+            ? ''
+            : `<button class="btn-danger" data-device-revoke="${id}" data-device-id="${d.device_id}">Revocar</button>`;
+          return `
+            <div style="margin-bottom:6px;">
+              <div><strong>${d.platform || 'unknown'}</strong> - ${d.device_name || d.device_id}${revoked}</div>
+              <div>Último uso: ${formatDate(d.last_seen)}</div>
+              ${revokeBtn}
+            </div>
+          `;
+        }).join('');
+
+        container.querySelectorAll('[data-device-revoke]').forEach(rbtn => {
+          rbtn.addEventListener('click', async () => {
+            const deviceId = rbtn.getAttribute('data-device-id');
+            if (!confirm('¿Revocar este dispositivo?')) return;
+            await fetch(`/api/admin/users/${id}/devices/${encodeURIComponent(deviceId)}`, {
+              method: 'DELETE',
+              headers: { Authorization: `Bearer ${localStorage.getItem(tokenKey)}` }
+            });
+            btn.click();
+          });
+        });
+      } catch (err) {
+        console.error(err);
+        container.textContent = 'Error cargando dispositivos';
+      }
     });
   });
 }

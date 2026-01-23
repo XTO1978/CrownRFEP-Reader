@@ -8,6 +8,8 @@ using System.Threading.Tasks;
 #if IOS || MACCATALYST
 using Foundation;
 #endif
+using Microsoft.Maui.Storage;
+using Microsoft.Maui.Devices;
 
 namespace CrownRFEP_Reader.Services;
 
@@ -32,6 +34,7 @@ public class CloudBackendService : ICloudBackendService
     private const string UserNameKey = "CloudBackend_UserName";
     private const string TeamNameKey = "CloudBackend_TeamName";
     private const string BaseUrlKeyPrefix = "CloudBackend_BaseUrl";
+    private const string DeviceIdKey = "CloudBackend_DeviceId";
 
     public bool IsAuthenticated => !string.IsNullOrEmpty(_accessToken) && 
                                     _tokenExpiresAt.HasValue && 
@@ -198,6 +201,46 @@ public class CloudBackendService : ICloudBackendService
         catch { }
     }
 
+    private static string GetPlatformName()
+    {
+        return DeviceInfo.Platform switch
+        {
+            DevicePlatform.iOS => "iOS",
+            DevicePlatform.MacCatalyst => "MacCatalyst",
+            DevicePlatform.macOS => "macOS",
+            DevicePlatform.WinUI => "Windows",
+            DevicePlatform.Android => "Android",
+            _ => DeviceInfo.Platform.ToString()
+        };
+    }
+
+    private static async Task<string> GetOrCreateDeviceIdAsync()
+    {
+        try
+        {
+            var stored = await SecureStorage.GetAsync(DeviceIdKey);
+            if (!string.IsNullOrWhiteSpace(stored))
+                return stored;
+        }
+        catch { }
+
+        var fallback = Preferences.Get(DeviceIdKey, string.Empty);
+        if (!string.IsNullOrWhiteSpace(fallback))
+            return fallback;
+
+        var deviceId = Guid.NewGuid().ToString();
+        try
+        {
+            await SecureStorage.SetAsync(DeviceIdKey, deviceId);
+        }
+        catch
+        {
+            Preferences.Set(DeviceIdKey, deviceId);
+        }
+
+        return deviceId;
+    }
+
     /// <summary>
     /// Ejecuta una petición HTTP con reintentos automáticos para manejar conexiones perdidas.
     /// </summary>
@@ -246,10 +289,17 @@ public class CloudBackendService : ICloudBackendService
         {
             System.Diagnostics.Debug.WriteLine($"[CloudBackend] Iniciando login para {email}...");
 
+            var deviceId = await GetOrCreateDeviceIdAsync();
+            var devicePlatform = GetPlatformName();
+            var deviceName = DeviceInfo.Name;
+
             var requestBody = new
             {
                 email,
-                password
+                password,
+                deviceId,
+                devicePlatform,
+                deviceName
             };
 
             var content = new StringContent(

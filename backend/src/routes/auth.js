@@ -5,6 +5,22 @@ import db from '../db/database.js';
 
 const router = express.Router();
 
+function normalizePlatform(platform) {
+  if (!platform) return 'unknown';
+  const value = String(platform).toLowerCase().trim();
+  if (value.includes('ios') || value.includes('ipad') || value.includes('iphone')) return 'ios';
+  if (value.includes('mac') || value.includes('maccatalyst')) return 'macos';
+  if (value.includes('win')) return 'windows';
+  if (value.includes('android')) return 'android';
+  return value;
+}
+
+function getPlatformCategory(platform) {
+  if (platform === 'ios') return 'ios';
+  if (platform === 'windows' || platform === 'macos') return 'desktop';
+  return 'desktop';
+}
+
 // POST /api/auth/register - Registrar nuevo usuario
 router.post('/register', async (req, res) => {
   try {
@@ -51,7 +67,7 @@ router.post('/register', async (req, res) => {
 // POST /api/auth/login - Iniciar sesión
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, deviceId, devicePlatform, deviceName } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ error: 'Email y contraseña son requeridos' });
@@ -70,6 +86,46 @@ router.post('/login', async (req, res) => {
     const validPassword = await bcrypt.compare(password, user.password_hash);
     if (!validPassword) {
       return res.status(401).json({ error: 'Credenciales inválidas' });
+    }
+
+    // Validar y registrar dispositivo si se proporciona
+    if (deviceId) {
+      const normalizedPlatform = normalizePlatform(devicePlatform);
+      const category = getPlatformCategory(normalizedPlatform);
+
+      const existingDevice = db.prepare(
+        'SELECT * FROM user_devices WHERE user_id = ? AND device_id = ?'
+      ).get(user.id, deviceId);
+
+      const activeDevices = db.prepare(
+        'SELECT * FROM user_devices WHERE user_id = ? AND revoked_at IS NULL'
+      ).all(user.id);
+
+      const activeInCategory = activeDevices.filter(d => {
+        const plat = normalizePlatform(d.platform);
+        return getPlatformCategory(plat) === category;
+      });
+
+      const maxAllowed = category === 'ios' ? 1 : 1;
+      const isExistingActive = existingDevice && !existingDevice.revoked_at;
+
+      if (!isExistingActive && activeInCategory.length >= maxAllowed) {
+        return res.status(403).json({
+          error: category === 'ios'
+            ? 'Límite de instalaciones iOS alcanzado (1 dispositivo).'
+            : 'Límite de instalaciones desktop alcanzado (1 dispositivo).'
+        });
+      }
+
+      if (existingDevice) {
+        db.prepare(
+          'UPDATE user_devices SET platform = ?, device_name = ?, last_seen = CURRENT_TIMESTAMP, revoked_at = NULL WHERE user_id = ? AND device_id = ?'
+        ).run(normalizedPlatform, deviceName || null, user.id, deviceId);
+      } else {
+        db.prepare(
+          'INSERT INTO user_devices (user_id, device_id, platform, device_name) VALUES (?, ?, ?, ?)'
+        ).run(user.id, deviceId, normalizedPlatform, deviceName || null);
+      }
     }
 
     // Actualizar último login

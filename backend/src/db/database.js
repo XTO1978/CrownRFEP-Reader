@@ -33,6 +33,21 @@ try {
     )
   `);
 
+  // Crear tabla de dispositivos por usuario si no existe
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS user_devices (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      device_id TEXT NOT NULL,
+      platform TEXT,
+      device_name TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      last_seen DATETIME DEFAULT CURRENT_TIMESTAMP,
+      revoked_at DATETIME,
+      UNIQUE(user_id, device_id)
+    )
+  `);
+
   // Crear tabla de equipos si no existe
   db.exec(`
     CREATE TABLE IF NOT EXISTS teams (
