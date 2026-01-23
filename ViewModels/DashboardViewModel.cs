@@ -6925,6 +6925,7 @@ public class DashboardViewModel : BaseViewModel
             {
                 RemoteLibraryDisplayName = _cloudBackendService.TeamName ?? "Equipo";
                 IsRemoteLibraryVisible = true;
+                OnPropertyChanged(nameof(IsCloudAuthenticated));
                 System.Diagnostics.Debug.WriteLine($"[CloudBackend] Sesión restaurada para {_cloudBackendService.CurrentUserName}");
                 
                 // Cargar información del equipo
@@ -6934,6 +6935,7 @@ public class DashboardViewModel : BaseViewModel
             {
                 // No hay sesión activa - mostrar opción de login
                 IsRemoteLibraryVisible = false;
+                OnPropertyChanged(nameof(IsCloudAuthenticated));
                 System.Diagnostics.Debug.WriteLine("[CloudBackend] No hay sesión activa");
             }
         }
@@ -7009,6 +7011,7 @@ public class DashboardViewModel : BaseViewModel
 
             RemoteLibraryDisplayName = result.TeamName ?? "Equipo";
             IsRemoteLibraryVisible = true;
+            OnPropertyChanged(nameof(IsCloudAuthenticated));
 
             await page.DisplayAlert("Sesión iniciada",
                 $"Bienvenido, {result.UserName}\nEquipo: {result.TeamName}",
@@ -7418,6 +7421,7 @@ public class DashboardViewModel : BaseViewModel
             IsRemoteLibraryExpanded = false;
             RemoteLibraryDisplayName = "Equipo";
             RemoteAllGalleryItemCount = "—";
+            OnPropertyChanged(nameof(IsCloudAuthenticated));
             
             // Deseleccionar secciones remotas si estaban seleccionadas
             if (IsAnyRemoteSectionSelected)

@@ -311,6 +311,42 @@
                     </OnPlatform>
                 </VerticalStackLayout.Spacing>
 
+                <!--  Inicio de sesión en Equipo (visible si no hay sesión)  -->
+                <Border
+                    IsVisible="{Binding IsCloudAuthenticated, Converter={StaticResource InvertedBoolConverter}}"
+                    Style="{StaticResource SidebarMenuItemBorder}">
+                    <Border.Padding>
+                        <OnPlatform x:TypeArguments="Thickness">
+                            <On Platform="iOS" Value="10,8,4,8" />
+                            <On Platform="Default" Value="10,6,4,6" />
+                        </OnPlatform>
+                    </Border.Padding>
+                    <Border.Behaviors>
+                        <behaviors:SidebarHoverBehavior />
+                    </Border.Behaviors>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding ConnectNasCommand}" />
+                    </Border.GestureRecognizers>
+                    <Grid ColumnDefinitions="Auto,*" VerticalOptions="Center" HorizontalOptions="Fill">
+                        <controls:SymbolIcon
+                            Grid.Column="0"
+                            Margin="4,0,0,0"
+                            HeightRequest="{StaticResource IconSizeSidebarMenu}"
+                            WidthRequest="{StaticResource IconSizeSidebarMenu}"
+                            SymbolName="person.badge.plus"
+                            TintColor="White"
+                            VerticalOptions="Center" />
+                        <Label
+                            Grid.Column="1"
+                            Margin="8,0,0,0"
+                            FontFamily="{StaticResource AppFontEmphasis}"
+                            FontSize="{StaticResource FontSizeBody}"
+                            Text="Iniciar sesión en Equipo"
+                            TextColor="White"
+                            VerticalOptions="Center" />
+                    </Grid>
+                </Border>
+
                         <!--  Equipo (biblioteca remota en Wasabi) - PRIMERO  -->
                         <VerticalStackLayout
                             x:Name="RemoteLibraryContainer"
