@@ -182,11 +182,14 @@ public class DashboardViewModel : BaseViewModel
     private bool _isRemoteVideoLessonsSelected;
     private bool _isRemoteTrashSelected;
     private bool _isRemoteSmartFoldersExpanded = true;
+    private bool _isRemoteSessionsListExpanded = true;
     private string _remoteLibraryDisplayName = "Organización";
     private string _remoteAllGalleryItemCount = "—";
     private string _remoteVideoLessonsCount = "—";
     private string _remoteTrashItemCount = "—";
     private ObservableCollection<SmartFolderDefinition> _remoteSmartFolders = new();
+    private ObservableCollection<RemoteSessionListItem> _remoteSessions = new();
+    private int _selectedRemoteSessionId;
     private bool _isSessionsListExpanded = true;
     private bool _isLoadingSelectedSessionVideos;
 
@@ -1190,7 +1193,7 @@ public class DashboardViewModel : BaseViewModel
     /// <summary>
     /// Indica si hay alguna sección remota seleccionada
     /// </summary>
-    public bool IsAnyRemoteSectionSelected => IsRemoteAllGallerySelected || IsRemoteVideoLessonsSelected || IsRemoteTrashSelected;
+    public bool IsAnyRemoteSectionSelected => IsRemoteAllGallerySelected || IsRemoteVideoLessonsSelected || IsRemoteTrashSelected || IsRemoteSessionSelected;
 
     public ObservableCollection<SmartFolderDefinition> RemoteSmartFolders
     {
@@ -1198,15 +1201,52 @@ public class DashboardViewModel : BaseViewModel
         set => SetProperty(ref _remoteSmartFolders, value);
     }
 
+    public ObservableCollection<RemoteSessionListItem> RemoteSessions
+    {
+        get => _remoteSessions;
+        set => SetProperty(ref _remoteSessions, value);
+    }
+
+    public bool IsRemoteSessionsListExpanded
+    {
+        get => _isRemoteSessionsListExpanded;
+        set => SetProperty(ref _isRemoteSessionsListExpanded, value);
+    }
+
+    public int SelectedRemoteSessionId
+    {
+        get => _selectedRemoteSessionId;
+        set
+        {
+            if (SetProperty(ref _selectedRemoteSessionId, value))
+            {
+                UpdateRemoteSessionSelectionStates(value);
+                OnPropertyChanged(nameof(IsRemoteSessionSelected));
+                OnPropertyChanged(nameof(RemoteGalleryItems));
+                OnPropertyChanged(nameof(ShowRemoteGallery));
+                OnPropertyChanged(nameof(IsAnyRemoteSectionSelected));
+                OnPropertyChanged(nameof(SelectedSessionTitle));
+            }
+        }
+    }
+
+    public bool IsRemoteSessionSelected => SelectedRemoteSessionId > 0;
+
+    public IEnumerable<RemoteVideoItem> RemoteGalleryItems => SelectedRemoteSessionId > 0
+        ? RemoteVideos.Where(v => v.SessionId == SelectedRemoteSessionId)
+        : RemoteVideos;
+
     public string SelectedSessionTitle => IsRemoteAllGallerySelected
         ? $"Galería {RemoteLibraryDisplayName}"
-        : (IsDiaryViewSelected
-            ? "Diario Personal"
-            : (IsVideoLessonsSelected
-                ? "Videolecciones"
-                : (IsAllGallerySelected
-                    ? "Galería General"
-                    : (SelectedSession?.DisplayName ?? "Selecciona una sesión"))));
+        : (IsRemoteSessionSelected
+            ? (RemoteSessions.FirstOrDefault(s => s.SessionId == SelectedRemoteSessionId)?.Title ?? $"Sesión {SelectedRemoteSessionId}")
+            : (IsDiaryViewSelected
+                ? "Diario Personal"
+                : (IsVideoLessonsSelected
+                    ? "Videolecciones"
+                    : (IsAllGallerySelected
+                        ? "Galería General"
+                        : (SelectedSession?.DisplayName ?? "Selecciona una sesión")))));
 
     public bool IsLoadingSelectedSessionVideos
     {
@@ -1519,7 +1559,7 @@ public class DashboardViewModel : BaseViewModel
     public bool ShowVideoGallery => !IsVideoLessonsSelected && !IsDiaryViewSelected && !IsAnyRemoteSectionSelected;
 
     /// <summary>Indica si debe mostrarse la galería de vídeos remotos</summary>
-    public bool ShowRemoteGallery => IsRemoteAllGallerySelected;
+    public bool ShowRemoteGallery => IsRemoteAllGallerySelected || IsRemoteSessionSelected;
 
     public bool IsMultiSelectMode
     {
@@ -3053,11 +3093,12 @@ public class DashboardViewModel : BaseViewModel
     /// </summary>
     private void DeselectRemoteSections()
     {
-        if (IsRemoteAllGallerySelected || IsRemoteVideoLessonsSelected || IsRemoteTrashSelected)
+        if (IsRemoteAllGallerySelected || IsRemoteVideoLessonsSelected || IsRemoteTrashSelected || IsRemoteSessionSelected)
         {
             IsRemoteAllGallerySelected = false;
             IsRemoteVideoLessonsSelected = false;
             IsRemoteTrashSelected = false;
+            ClearRemoteSessionSelection();
             OnPropertyChanged(nameof(ShowRemoteGallery));
             OnPropertyChanged(nameof(IsAnyRemoteSectionSelected));
             OnPropertyChanged(nameof(ShowVideoGallery));
@@ -3305,6 +3346,8 @@ public class DashboardViewModel : BaseViewModel
     public ICommand RemoteSelectAllGalleryCommand { get; }
     public ICommand RemoteViewVideoLessonsCommand { get; }
     public ICommand RemoteViewTrashCommand { get; }
+    public ICommand ToggleRemoteSessionsListExpandedCommand { get; }
+    public ICommand SelectRemoteSessionCommand { get; }
     public ICommand ToggleRemoteSmartFoldersExpandedCommand { get; }
     public ICommand RenameSmartFolderCommand { get; }
     public ICommand DeleteSmartFolderCommand { get; }
@@ -3567,6 +3610,8 @@ public class DashboardViewModel : BaseViewModel
         RemoteSelectAllGalleryCommand = new AsyncRelayCommand(() => HandleRemoteSectionSelectedAsync("Galería General"));
         RemoteViewVideoLessonsCommand = new AsyncRelayCommand(() => HandleRemoteSectionSelectedAsync("Videolecciones"));
         RemoteViewTrashCommand = new AsyncRelayCommand(() => HandleRemoteSectionSelectedAsync("Papelera"));
+        ToggleRemoteSessionsListExpandedCommand = new RelayCommand(() => IsRemoteSessionsListExpanded = !IsRemoteSessionsListExpanded);
+        SelectRemoteSessionCommand = new AsyncRelayCommand<RemoteSessionListItem>(SelectRemoteSessionAsync);
         ToggleRemoteSmartFoldersExpandedCommand = new RelayCommand(() => IsRemoteSmartFoldersExpanded = !IsRemoteSmartFoldersExpanded);
         RenameSmartFolderCommand = new AsyncRelayCommand<SmartFolderDefinition>(RenameSmartFolderAsync);
         DeleteSmartFolderCommand = new AsyncRelayCommand<SmartFolderDefinition>(DeleteSmartFolderAsync);
@@ -7244,8 +7289,40 @@ public class DashboardViewModel : BaseViewModel
                 }
             }
 
+            var localSessions = await _databaseService.GetAllSessionsAsync();
+            var localSessionNames = localSessions.ToDictionary(s => s.Id, s => s.DisplayName);
+            var remoteSessionItems = RemoteVideos
+                .Where(v => v.SessionId > 0)
+                .GroupBy(v => v.SessionId)
+                .Select(group =>
+                {
+                    var sessionId = group.Key;
+                    var title = localSessionNames.TryGetValue(sessionId, out var name)
+                        ? name
+                        : $"Sesión {sessionId}";
+                    return new RemoteSessionListItem(
+                        sessionId,
+                        title,
+                        group.Count(),
+                        group.Max(v => v.LastModified));
+                })
+                .OrderByDescending(item => item.LastModified)
+                .ToList();
+
+            RemoteSessions = new ObservableCollection<RemoteSessionListItem>(remoteSessionItems);
+            if (SelectedRemoteSessionId > 0 && !RemoteSessions.Any(s => s.SessionId == SelectedRemoteSessionId))
+            {
+                SelectedRemoteSessionId = 0;
+            }
+            else
+            {
+                UpdateRemoteSessionSelectionStates(SelectedRemoteSessionId);
+            }
+
             RemoteAllGalleryItemCount = RemoteVideos.Count.ToString();
+            OnPropertyChanged(nameof(RemoteGalleryItems));
             OnPropertyChanged(nameof(IsAnyRemoteSectionSelected));
+            OnPropertyChanged(nameof(SelectedSessionTitle));
 
             System.Diagnostics.Debug.WriteLine($"[Remote] Galería cargada: {RemoteVideos.Count} videos");
         }
@@ -7684,6 +7761,7 @@ public class DashboardViewModel : BaseViewModel
 
     private void SetRemoteSelection(string sectionName)
     {
+        ClearRemoteSessionSelection();
         IsRemoteAllGallerySelected = sectionName == "Galería General";
         IsRemoteVideoLessonsSelected = sectionName == "Videolecciones";
         IsRemoteTrashSelected = sectionName == "Papelera";
@@ -7693,6 +7771,56 @@ public class DashboardViewModel : BaseViewModel
         OnPropertyChanged(nameof(ShowRemoteGallery));
         OnPropertyChanged(nameof(IsAnyRemoteSectionSelected));
         OnPropertyChanged(nameof(SelectedSessionTitle));
+    }
+
+    private async Task SelectRemoteSessionAsync(RemoteSessionListItem? sessionItem)
+    {
+        if (sessionItem == null) return;
+
+        ClearRemoteVideoSelection();
+        ClearLocalSelection();
+
+        if (!_cloudBackendService.IsAuthenticated)
+        {
+            var page = Application.Current?.MainPage;
+            if (page != null)
+            {
+                await page.DisplayAlert("No autenticado", "Inicia sesión para acceder a los archivos del equipo.", "OK");
+            }
+            return;
+        }
+
+        IsRemoteAllGallerySelected = false;
+        IsRemoteVideoLessonsSelected = false;
+        IsRemoteTrashSelected = false;
+        SelectedRemoteSessionId = sessionItem.SessionId;
+
+        if (RemoteVideos.Count == 0)
+        {
+            await LoadRemoteGalleryAsync();
+        }
+        else
+        {
+            OnPropertyChanged(nameof(RemoteGalleryItems));
+        }
+    }
+
+    private void ClearRemoteSessionSelection()
+    {
+        if (SelectedRemoteSessionId > 0)
+        {
+            SelectedRemoteSessionId = 0;
+        }
+
+        UpdateRemoteSessionSelectionStates(0);
+    }
+
+    private void UpdateRemoteSessionSelectionStates(int selectedSessionId)
+    {
+        foreach (var session in RemoteSessions)
+        {
+            session.IsSelected = session.SessionId == selectedSessionId;
+        }
     }
 
     // ==================== ACCIONES EN LOTE DE VIDEOS REMOTOS ====================
