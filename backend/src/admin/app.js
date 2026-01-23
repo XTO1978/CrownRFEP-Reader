@@ -80,10 +80,10 @@ async function loadAll() {
 
     renderOrgs(teamsRes.teams || []);
     renderTeamSelect(teamsRes.teams || []);
-    renderUsers(usersRes.users || []);
-    renderTeams(statsRes.teams || []);
     renderRoles(rolesRes.roles || []);
     renderRoleSelect(rolesRes.roles || []);
+    renderUsers(usersRes.users || []);
+    renderTeams(statsRes.teams || []);
 
     totalUsers.textContent = metricsRes.totals?.users ?? '-';
     totalTeams.textContent = metricsRes.totals?.teams ?? '-';
