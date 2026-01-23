@@ -280,8 +280,7 @@
         <Grid
             Grid.Row="1"
             Grid.Column="0"
-            BackgroundColor="#FF1E1E1E"
-            RowDefinitions="Auto,*,Auto">
+            BackgroundColor="#FF1E1E1E">
 
             <Grid.Padding>
                 <OnPlatform x:TypeArguments="Thickness">
@@ -290,10 +289,12 @@
                 </OnPlatform>
             </Grid.Padding>
 
+            <ScrollView>
+            <VerticalStackLayout>
+
             <!--  Items fijos del sidebar (fuera del CollectionView para que funcionen gestos en WinUI)  -->
             <VerticalStackLayout
                 x:Name="SidebarFixedItemsHeader"
-                Grid.Row="0"
                 HorizontalOptions="Fill">
 
                 <VerticalStackLayout.Margin>
@@ -1344,95 +1345,22 @@
                         </Border>
             </VerticalStackLayout>
 
-            <!--  CollectionView de sesiones (ahora en Row="1" para quedar debajo de los items fijos)  -->
-            <CollectionView
-                x:Name="SidebarSessionsCollectionView"
-                Grid.Row="1"
-                BackgroundColor="#00BBBABA"
-                ItemsSource="{Binding SessionRows}"
-                ItemTemplate="{StaticResource SessionsListRowTemplateSelector}"
-                SelectionMode="None">
-
-                <CollectionView.ItemsLayout>
-                    <LinearItemsLayout Orientation="Vertical">
-                        <LinearItemsLayout.ItemSpacing>
-                            <OnPlatform x:TypeArguments="x:Double">
-                                <On Platform="iOS" Value="2" />
-                                <On Platform="Default" Value="{StaticResource SpacingXSmall}" />
-                            </OnPlatform>
-                        </LinearItemsLayout.ItemSpacing>
-                    </LinearItemsLayout>
-                </CollectionView.ItemsLayout>
-
-                <CollectionView.EmptyView>
-                    <VerticalStackLayout
-                        Padding="40"
-                        HorizontalOptions="Center"
-                        VerticalOptions="Center">
-                        <Label
-                            FontSize="{StaticResource FontSizeTitle}"
-                            HorizontalOptions="Center"
-                            Text="No hay sesiones"
-                            TextColor="Gray" />
-                    </VerticalStackLayout>
-                </CollectionView.EmptyView>
-            </CollectionView>
-
-            <!--  Acciones de sesión  -->
-            <VerticalStackLayout Grid.Row="2" Spacing="{StaticResource SpacingSmall}" Margin="{StaticResource MarginVerticalSection}">
-                
-                <!--  Botón Nueva sesión (solo iOS)  -->
-                <Border
-                    Padding="{StaticResource PaddingActionButton}"
-                    BackgroundColor="#FF404040"
-                    Stroke="Transparent"
-                    StrokeShape="RoundRectangle 4">
-                    <Border.IsVisible>
-                        <OnPlatform x:TypeArguments="x:Boolean">
-                            <On Platform="iOS" Value="True" />
-                            <On Platform="MacCatalyst,WinUI,Android" Value="False" />
-                        </OnPlatform>
-                    </Border.IsVisible>
-                    <Border.GestureRecognizers>
-                        <TapGestureRecognizer Command="{Binding OpenNewSessionSidebarPopupCommand}" />
-                    </Border.GestureRecognizers>
-                    <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
-                        <controls:SymbolIcon
-                            HeightRequest="{StaticResource IconSizeMedium}"
-                            SymbolName="video.badge.plus"
-                            TintColor="White"
-                            WidthRequest="{StaticResource IconSizeMedium}"
-                            VerticalOptions="Center" />
-                        <Label Text="Nueva sesión" TextColor="White" VerticalOptions="Center" />
-                    </HorizontalStackLayout>
-                </Border>
-                
-                <!--  Botón Exportar sesión (solo iOS)  -->
-                <Border
-                    Padding="{StaticResource PaddingActionButton}"
-                    BackgroundColor="#FF404040"
-                    Stroke="Transparent"
-                    StrokeShape="RoundRectangle 4">
-                    <Border.IsVisible>
-                        <OnPlatform x:TypeArguments="x:Boolean">
-                            <On Platform="iOS" Value="True" />
-                            <On Platform="MacCatalyst,WinUI,Android" Value="False" />
-                        </OnPlatform>
-                    </Border.IsVisible>
-                    <Border.GestureRecognizers>
-                        <TapGestureRecognizer Command="{Binding ExportSelectedSessionCommand}" />
-                    </Border.GestureRecognizers>
-                    <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
-                        <controls:SymbolIcon
-                            HeightRequest="{StaticResource IconSizeMedium}"
-                            SymbolName="square.and.arrow.up"
-                            TintColor="#FF0066"
-                            WidthRequest="{StaticResource IconSizeMedium}"
-                            VerticalOptions="Center" />
-                        <Label Text="Exportar" TextColor="#FF0066" VerticalOptions="Center" />
-                    </HorizontalStackLayout>
-                </Border>
+            <!--  Lista de sesiones usando BindableLayout  -->
+            <VerticalStackLayout
+                x:Name="SidebarSessionsList"
+                BindableLayout.ItemsSource="{Binding SessionRows}"
+                BindableLayout.ItemTemplateSelector="{StaticResource SessionsListRowTemplateSelector}">
+                <VerticalStackLayout.Spacing>
+                    <OnPlatform x:TypeArguments="x:Double">
+                        <On Platform="iOS" Value="2" />
+                        <On Platform="Default" Value="{StaticResource SpacingXSmall}" />
+                    </OnPlatform>
+                </VerticalStackLayout.Spacing>
             </VerticalStackLayout>
+
+            </VerticalStackLayout>
+            </ScrollView>
+
         </Grid>
 
         <!--  Panel derecho: vídeos de la sesión seleccionada  -->
@@ -7092,6 +7020,27 @@
                 InputTransparent="False"
                 Style="{StaticResource ContextMenuOverlayBorder}">
                 <VerticalStackLayout Spacing="2">
+                    <!--  Nueva sesión  -->
+                    <Border Style="{StaticResource ContextMenuItemBorder}">
+                        <Border.Behaviors>
+                            <behaviors:SidebarHoverBehavior />
+                        </Border.Behaviors>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnSessionsMenuNewSessionTapped" />
+                        </Border.GestureRecognizers>
+                        <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                            <controls:SymbolIcon
+                                HeightRequest="18"
+                                WidthRequest="18"
+                                SymbolName="plus.circle"
+                                TintColor="#FFAAAAAA"
+                                VerticalOptions="Center" />
+                            <Label
+                                Text="Nueva sesión"
+                                Style="{StaticResource ContextMenuItemLabel}" />
+                        </HorizontalStackLayout>
+                    </Border>
+
                     <!--  Importar desde .crown  -->
                     <Border Style="{StaticResource ContextMenuItemBorder}">
                         <Border.Behaviors>

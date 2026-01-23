@@ -119,7 +119,7 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
                 {
                     try
                     {
-                        SidebarSessionsCollectionView?.InvalidateMeasure();
+                        SidebarSessionsList?.InvalidateMeasure();
                     }
                     catch { }
                 });
@@ -136,16 +136,16 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         try
         {
             if (!OperatingSystem.IsWindows())
-                SidebarSessionsCollectionView?.InvalidateMeasure();
+                SidebarSessionsList?.InvalidateMeasure();
         }
         catch { }
 
 
         try
         {
-            if (SidebarSessionsCollectionView != null)
+            if (SidebarSessionsList != null)
             {
-                SidebarSessionsCollectionView.SizeChanged += OnSidebarSessionsSizeChanged;
+                SidebarSessionsList.SizeChanged += OnSidebarSessionsSizeChanged;
                 // Forzar un primer ajuste (por si ya hay tamaño en este punto)
                 OnSidebarSessionsSizeChanged(this, EventArgs.Empty);
             }
@@ -282,7 +282,7 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         }
         catch { }
 
-        try { SidebarSessionsCollectionView.SizeChanged -= OnSidebarSessionsSizeChanged; } catch { }
+        try { SidebarSessionsList.SizeChanged -= OnSidebarSessionsSizeChanged; } catch { }
 
         try { VideoGallery.SizeChanged -= OnVideoGallerySizeChanged; } catch { }
         try { VideoLessonsGallery.SizeChanged -= OnVideoGallerySizeChanged; } catch { }
@@ -302,10 +302,10 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
     {
         try
         {
-            if (SidebarSessionsCollectionView == null || SidebarFixedItemsHeader == null)
+            if (SidebarSessionsList == null || SidebarFixedItemsHeader == null)
                 return;
 
-            var width = SidebarSessionsCollectionView.Width;
+            var width = SidebarSessionsList.Width;
             if (width <= 0)
                 return;
 
@@ -324,7 +324,7 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 
             // Re-medición para que los layouts recalculen truncado y columnas.
             SidebarFixedItemsHeader.InvalidateMeasure();
-            SidebarSessionsCollectionView.InvalidateMeasure();
+            SidebarSessionsList.InvalidateMeasure();
         }
         catch { }
     }
@@ -604,6 +604,24 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         catch (Exception ex)
         {
             AppLog.Error("DashboardPage", "OnSessionsMenuImportCrownTapped error", ex);
+        }
+    }
+
+    private void OnSessionsMenuNewSessionTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            HideSessionsContextMenu();
+
+            if (BindingContext is DashboardViewModel vm)
+            {
+                if (vm.OpenNewSessionSidebarPopupCommand?.CanExecute(null) ?? false)
+                    vm.OpenNewSessionSidebarPopupCommand.Execute(null);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "OnSessionsMenuNewSessionTapped error", ex);
         }
     }
 
