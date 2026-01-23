@@ -1,7 +1,12 @@
 using Microsoft.Maui.Controls;
+using MauiGridLength = Microsoft.Maui.GridLength;
+using MauiGridUnitType = Microsoft.Maui.GridUnitType;
+using MauiThickness = Microsoft.Maui.Thickness;
+using MauiPointerEventArgs = Microsoft.Maui.Controls.PointerEventArgs;
 #if WINDOWS
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
+using WinUIElement = Microsoft.UI.Xaml.UIElement;
 #endif
 #if MACCATALYST
 using AppKit;
@@ -42,17 +47,17 @@ public class GridSplitter : ContentView
     public static readonly BindableProperty LeftColumnWidthProperty =
         BindableProperty.Create(
             nameof(LeftColumnWidth),
-            typeof(GridLength),
+            typeof(MauiGridLength),
             typeof(GridSplitter),
-            GridLength.Auto,
+            MauiGridLength.Auto,
             defaultBindingMode: BindingMode.TwoWay);
 
     public static readonly BindableProperty RightColumnWidthProperty =
         BindableProperty.Create(
             nameof(RightColumnWidth),
-            typeof(GridLength),
+            typeof(MauiGridLength),
             typeof(GridSplitter),
-            GridLength.Auto,
+            MauiGridLength.Auto,
             defaultBindingMode: BindingMode.TwoWay);
 
     /// <summary>
@@ -94,18 +99,18 @@ public class GridSplitter : ContentView
     /// <summary>
     /// Permite enlazar (TwoWay) el ancho de la columna izquierda para persistir el ajuste del usuario.
     /// </summary>
-    public GridLength LeftColumnWidth
+    public MauiGridLength LeftColumnWidth
     {
-        get => (GridLength)GetValue(LeftColumnWidthProperty);
+        get => (MauiGridLength)GetValue(LeftColumnWidthProperty);
         set => SetValue(LeftColumnWidthProperty, value);
     }
 
     /// <summary>
     /// Permite enlazar (TwoWay) el ancho de la columna derecha para persistir el ajuste del usuario.
     /// </summary>
-    public GridLength RightColumnWidth
+    public MauiGridLength RightColumnWidth
     {
-        get => (GridLength)GetValue(RightColumnWidthProperty);
+        get => (MauiGridLength)GetValue(RightColumnWidthProperty);
         set => SetValue(RightColumnWidthProperty, value);
     }
 
@@ -141,7 +146,7 @@ public class GridSplitter : ContentView
 #endif
     }
 
-    private void OnPointerEntered(object? sender, PointerEventArgs e)
+    private void OnPointerEntered(object? sender, MauiPointerEventArgs e)
     {
         _visualIndicator.BackgroundColor = Color.FromArgb("#FF8A8A8A");
         _visualIndicator.WidthRequest = 4;
@@ -149,7 +154,7 @@ public class GridSplitter : ContentView
         SetHoverCursor(true);
     }
 
-    private void OnPointerExited(object? sender, PointerEventArgs e)
+    private void OnPointerExited(object? sender, MauiPointerEventArgs e)
     {
         _visualIndicator.BackgroundColor = Color.FromArgb("#FF4A4A4A");
         _visualIndicator.WidthRequest = 0.8;
@@ -160,12 +165,8 @@ public class GridSplitter : ContentView
     private void SetHoverCursor(bool isResize)
     {
 #if WINDOWS
-        if (Handler?.PlatformView is UIElement element)
-        {
-            element.InputCursor = isResize
-                ? InputSystemCursor.Create(InputSystemCursorShape.SizeWestEast)
-                : InputSystemCursor.Create(InputSystemCursorShape.Arrow);
-        }
+        // TODO: Implement cursor change for Windows using native interop if needed
+        // The visual indicator already provides feedback to the user
 #elif MACCATALYST
         if (isResize)
             NSCursor.ResizeLeftRightCursor.Set();
@@ -198,7 +199,7 @@ public class GridSplitter : ContentView
         }
 
         // Posicionar la línea de previsualización usando Margin
-        _previewLine.Margin = new Thickness(xPosition - 1.5, 0, 0, 0);
+        _previewLine.Margin = new MauiThickness(xPosition - 1.5, 0, 0, 0);
         _previewLine.IsVisible = true;
     }
 
@@ -314,8 +315,8 @@ public class GridSplitter : ContentView
                     
                     if (lIdx >= 0 && rIdx < _parentGrid.ColumnDefinitions.Count)
                     {
-                        GridLength newLeft;
-                        GridLength newRight;
+                        MauiGridLength newLeft;
+                        MauiGridLength newRight;
 
                         // Si ambas columnas eran Star, devolvemos Star (ratio) para que el Grid
                         // siga rellenando el ancho disponible y no queden huecos ni overflow.
@@ -324,32 +325,32 @@ public class GridSplitter : ContentView
                             var total = _pendingLeftWidth + _pendingRightWidth;
                             if (total <= 0)
                             {
-                                newLeft = new GridLength(1, GridUnitType.Star);
-                                newRight = new GridLength(1, GridUnitType.Star);
+                                newLeft = new MauiGridLength(1, MauiGridUnitType.Star);
+                                newRight = new MauiGridLength(1, MauiGridUnitType.Star);
                             }
                             else
                             {
-                                newLeft = new GridLength(_pendingLeftWidth / total, GridUnitType.Star);
-                                newRight = new GridLength(_pendingRightWidth / total, GridUnitType.Star);
+                                newLeft = new MauiGridLength(_pendingLeftWidth / total, MauiGridUnitType.Star);
+                                newRight = new MauiGridLength(_pendingRightWidth / total, MauiGridUnitType.Star);
                             }
                         }
                         // Si una era Absolute y la otra Star, mantenemos la fija en Absolute
                         // y dejamos la otra en Star para que absorba el resto.
                         else if (_leftStartWasAbsolute && _rightStartWasStar)
                         {
-                            newLeft = new GridLength(_pendingLeftWidth, GridUnitType.Absolute);
-                            newRight = new GridLength(1, GridUnitType.Star);
+                            newLeft = new MauiGridLength(_pendingLeftWidth, MauiGridUnitType.Absolute);
+                            newRight = new MauiGridLength(1, MauiGridUnitType.Star);
                         }
                         else if (_leftStartWasStar && _rightStartWasAbsolute)
                         {
-                            newLeft = new GridLength(1, GridUnitType.Star);
-                            newRight = new GridLength(_pendingRightWidth, GridUnitType.Absolute);
+                            newLeft = new MauiGridLength(1, MauiGridUnitType.Star);
+                            newRight = new MauiGridLength(_pendingRightWidth, MauiGridUnitType.Absolute);
                         }
                         else
                         {
                             // Fallback: usar absolutos.
-                            newLeft = new GridLength(_pendingLeftWidth, GridUnitType.Absolute);
-                            newRight = new GridLength(_pendingRightWidth, GridUnitType.Absolute);
+                            newLeft = new MauiGridLength(_pendingLeftWidth, MauiGridUnitType.Absolute);
+                            newRight = new MauiGridLength(_pendingRightWidth, MauiGridUnitType.Absolute);
                         }
 
                         // Si hay bindings TwoWay, actualizamos el VM para que el cambio persista.

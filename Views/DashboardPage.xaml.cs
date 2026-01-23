@@ -6,6 +6,7 @@ using CrownRFEP_Reader.Services;
 using System.Collections.Specialized;
 using System.Collections.Generic;
 using System.Reflection;
+using MauiDragStartingEventArgs = Microsoft.Maui.Controls.DragStartingEventArgs;
 
 #if MACCATALYST
 using CoreGraphics;
@@ -2329,7 +2330,7 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         }
     }
 
-    private void OnDragStarting(object? sender, DragStartingEventArgs e)
+    private void OnDragStarting(object? sender, MauiDragStartingEventArgs e)
     {
         if (sender is GestureRecognizer gestureRecognizer && 
             gestureRecognizer.Parent is View view && 
