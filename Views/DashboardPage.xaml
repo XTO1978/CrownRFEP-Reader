@@ -1701,6 +1701,28 @@
                                                 VerticalOptions="Center"
                                                 WidthRequest="{StaticResource IconSizeLarge}" />
                                         </Border>
+
+                                        <!--  Botón de menú (tres puntos)  -->
+                                        <Border
+                                            Margin="6"
+                                            HeightRequest="28"
+                                            WidthRequest="28"
+                                            HorizontalOptions="End"
+                                            VerticalOptions="End"
+                                            BackgroundColor="#66000000"
+                                            StrokeThickness="0"
+                                            StrokeShape="RoundRectangle 14">
+                                            <Border.GestureRecognizers>
+                                                <TapGestureRecognizer Tapped="OnVideoItemContextMenuTapped" />
+                                            </Border.GestureRecognizers>
+                                            <controls:SymbolIcon
+                                                HeightRequest="14"
+                                                WidthRequest="14"
+                                                SymbolName="ellipsis.circle"
+                                                TintColor="White"
+                                                HorizontalOptions="Center"
+                                                VerticalOptions="Center" />
+                                        </Border>
                                         
                                         <!--  Indicador de video comparativo  -->
                                         <Border
@@ -1781,7 +1803,7 @@
                                             Padding="6,2"
                                             StrokeShape="RoundRectangle 12"
                                             StrokeThickness="0"
-                                            VerticalOptions="End">
+                                            VerticalOptions="Start">
                                             <Label
                                                 FontSize="11"
                                                 Text="{Binding SyncStatusIcon}"
@@ -2009,6 +2031,28 @@
                                                 HorizontalOptions="Center"
                                                 VerticalOptions="Center"
                                                 IsVisible="{Binding IsSelected}" />
+                                        </Border>
+
+                                        <!--  Botón de menú (tres puntos)  -->
+                                        <Border
+                                            Margin="8"
+                                            HeightRequest="28"
+                                            WidthRequest="28"
+                                            HorizontalOptions="End"
+                                            VerticalOptions="End"
+                                            BackgroundColor="#66000000"
+                                            StrokeThickness="0"
+                                            StrokeShape="RoundRectangle 14">
+                                            <Border.GestureRecognizers>
+                                                <TapGestureRecognizer Tapped="OnRemoteVideoContextMenu" />
+                                            </Border.GestureRecognizers>
+                                            <controls:SymbolIcon
+                                                HeightRequest="14"
+                                                WidthRequest="14"
+                                                SymbolName="ellipsis.circle"
+                                                TintColor="White"
+                                                HorizontalOptions="Center"
+                                                VerticalOptions="Center" />
                                         </Border>
                                     </Grid>
                                 </controls:AspectRatioContainer>
@@ -7576,6 +7620,134 @@
                         </Border.Behaviors>
                         <Border.GestureRecognizers>
                             <TapGestureRecognizer Tapped="OnVideoItemMenuDeleteTapped" />
+                        </Border.GestureRecognizers>
+                        <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                            <controls:SymbolIcon
+                                HeightRequest="18"
+                                WidthRequest="18"
+                                SymbolName="trash"
+                                TintColor="#FFFF453A"
+                                VerticalOptions="Center" />
+                            <Label
+                                Text="Eliminar"
+                                Style="{StaticResource ContextMenuItemLabel}"
+                                TextColor="#FFFF453A" />
+                        </HorizontalStackLayout>
+                    </Border>
+                </VerticalStackLayout>
+            </Border>
+
+            <!--  Menú contextual para Video remoto  -->
+            <Border
+                x:Name="RemoteVideoItemContextMenu"
+                IsVisible="False"
+                WidthRequest="280"
+                InputTransparent="False"
+                Style="{StaticResource ContextMenuOverlayBorder}">
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Buttons="Primary" Tapped="OnContextMenuSurfaceTapped" />
+                </Border.GestureRecognizers>
+                <VerticalStackLayout Spacing="2">
+                    <!--  Abrir  -->
+                    <Border Style="{StaticResource ContextMenuItemBorder}">
+                        <Border.Behaviors>
+                            <behaviors:SidebarHoverBehavior />
+                        </Border.Behaviors>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnRemoteVideoItemMenuOpenTapped" />
+                        </Border.GestureRecognizers>
+                        <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                            <controls:SymbolIcon
+                                HeightRequest="18"
+                                WidthRequest="18"
+                                SymbolName="play.rectangle"
+                                TintColor="#FFAAAAAA"
+                                VerticalOptions="Center" />
+                            <Label
+                                Text="Abrir"
+                                Style="{StaticResource ContextMenuItemLabel}" />
+                        </HorizontalStackLayout>
+                    </Border>
+
+                    <!--  Añadir a mi biblioteca  -->
+                    <Border Style="{StaticResource ContextMenuItemBorder}">
+                        <Border.Behaviors>
+                            <behaviors:SidebarHoverBehavior />
+                        </Border.Behaviors>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnRemoteVideoItemMenuAddToLibraryTapped" />
+                        </Border.GestureRecognizers>
+                        <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                            <controls:SymbolIcon
+                                HeightRequest="18"
+                                WidthRequest="18"
+                                SymbolName="plus"
+                                TintColor="#FFAAAAAA"
+                                VerticalOptions="Center" />
+                            <Label
+                                Text="+ Añadir a mi biblioteca"
+                                Style="{StaticResource ContextMenuItemLabel}" />
+                        </HorizontalStackLayout>
+                    </Border>
+
+                    <!--  Favoritos  -->
+                    <Border Style="{StaticResource ContextMenuItemBorder}">
+                        <Border.Behaviors>
+                            <behaviors:SidebarHoverBehavior />
+                        </Border.Behaviors>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnRemoteVideoItemMenuFavoriteTapped" />
+                        </Border.GestureRecognizers>
+                        <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                            <controls:SymbolIcon
+                                HeightRequest="18"
+                                WidthRequest="18"
+                                SymbolName="star"
+                                TintColor="#FFAAAAAA"
+                                VerticalOptions="Center" />
+                            <Label
+                                Text="Favoritos"
+                                Style="{StaticResource ContextMenuItemLabel}" />
+                        </HorizontalStackLayout>
+                    </Border>
+
+                    <!--  Compartir  -->
+                    <Border Style="{StaticResource ContextMenuItemBorder}">
+                        <Border.Behaviors>
+                            <behaviors:SidebarHoverBehavior />
+                        </Border.Behaviors>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnRemoteVideoItemMenuShareTapped" />
+                        </Border.GestureRecognizers>
+                        <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                            <controls:SymbolIcon
+                                HeightRequest="18"
+                                WidthRequest="18"
+                                SymbolName="square.and.arrow.up"
+                                TintColor="#FFAAAAAA"
+                                VerticalOptions="Center" />
+                            <Label
+                                Text="Compartir"
+                                Style="{StaticResource ContextMenuItemLabel}" />
+                        </HorizontalStackLayout>
+                    </Border>
+
+                    <!-- Separador -->
+                    <Border 
+                        HeightRequest="1" 
+                        BackgroundColor="#FF3A3A3A" 
+                        Margin="4,6" 
+                        HorizontalOptions="Fill"
+                        Stroke="Transparent"
+                        StrokeThickness="0" />
+
+                    <!--  Eliminar  -->
+                    <Border Style="{StaticResource ContextMenuItemBorder}">
+                        <Border.Behaviors>
+                            <behaviors:SidebarHoverBehavior />
+                        </Border.Behaviors>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnRemoteVideoItemMenuDeleteTapped" />
                         </Border.GestureRecognizers>
                         <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
                             <controls:SymbolIcon

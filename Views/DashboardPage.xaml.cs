@@ -35,6 +35,7 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
     private SessionRow? _contextMenuSessionRow;
     private SmartFolderDefinition? _contextMenuSmartFolder;
     private VideoClip? _contextMenuVideo;
+    private RemoteVideoItem? _contextMenuRemoteVideo;
     
     // Detección manual de doble clic (MacCatalyst no maneja bien NumberOfTapsRequired=2)
     private DateTime _lastVideoTapTime = DateTime.MinValue;
@@ -249,7 +250,8 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 
             var anyVisible = (SessionRowContextMenu?.IsVisible ?? false)
                 || (SmartFolderContextMenu?.IsVisible ?? false)
-                || (VideoItemContextMenu?.IsVisible ?? false);
+                || (VideoItemContextMenu?.IsVisible ?? false)
+                || (RemoteVideoItemContextMenu?.IsVisible ?? false);
 
             SubItemContextMenusLayer.IsVisible = anyVisible;
         }
@@ -1026,6 +1028,7 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         HideSessionRowContextMenu();
         HideSmartFolderContextMenu();
         HideVideoItemContextMenu();
+        HideRemoteVideoItemContextMenu();
 
         UpdateSubItemContextMenusLayerVisibility();
         UpdateGlobalDismissOverlayVisibility();
@@ -1050,7 +1053,8 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
                 || (SessionsContextMenuOverlay?.IsVisible ?? false)
                 || (SessionRowContextMenu?.IsVisible ?? false)
                 || (SmartFolderContextMenu?.IsVisible ?? false)
-                || (VideoItemContextMenu?.IsVisible ?? false);
+                || (VideoItemContextMenu?.IsVisible ?? false)
+                || (RemoteVideoItemContextMenu?.IsVisible ?? false);
 
             GlobalDismissOverlay.IsVisible = anyVisible;
         }
@@ -1163,6 +1167,7 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
             HideSessionsContextMenu();
             HideSessionRowContextMenu();
             HideSmartFolderContextMenu();
+            HideRemoteVideoItemContextMenu();
 
             var clickPos = TryGetTappedPosition(e, SubItemContextMenusLayer);
             if (clickPos.HasValue)
@@ -1189,82 +1194,49 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
     /// <summary>
     /// Menú contextual para videos remotos (galería del equipo)
     /// </summary>
-    private async void OnRemoteVideoContextMenu(object? sender, TappedEventArgs e)
+    private void OnRemoteVideoContextMenu(object? sender, TappedEventArgs e)
     {
         try
         {
+            if (RemoteVideoItemContextMenu == null || SubItemContextMenusLayer == null)
+                return;
+
             if (sender is not VisualElement anchor)
                 return;
 
-            var remoteVideo = anchor.BindingContext as CrownRFEP_Reader.Models.RemoteVideoItem;
+            var remoteVideo = FindRemoteVideoItemFromContext(anchor);
             if (remoteVideo == null)
+                return;
+
+            if (RemoteVideoItemContextMenu.IsVisible && ReferenceEquals(_contextMenuRemoteVideo, remoteVideo))
             {
-                // Buscar en el contexto padre
-                var parent = anchor;
-                while (parent != null && remoteVideo == null)
-                {
-                    parent = parent.Parent as VisualElement;
-                    remoteVideo = parent?.BindingContext as CrownRFEP_Reader.Models.RemoteVideoItem;
-                }
+                HideRemoteVideoItemContextMenu();
+                return;
             }
 
-            if (remoteVideo == null)
-                return;
+            _contextMenuRemoteVideo = remoteVideo;
 
-            if (BindingContext is not DashboardViewModel vm)
-                return;
+            HideUserLibraryContextMenu();
+            HideSessionsContextMenu();
+            HideSessionRowContextMenu();
+            HideSmartFolderContextMenu();
+            HideVideoItemContextMenu();
 
-            // Construir opciones del menú
-            var options = new List<string>();
-            
-            if (remoteVideo.LinkedLocalVideo == null)
+            var clickPos = TryGetTappedPosition(e, SubItemContextMenusLayer);
+            if (clickPos.HasValue)
             {
-                options.Add("Añadir a biblioteca personal");
+                PositionContextMenuAtPoint(RemoteVideoItemContextMenu, clickPos.Value, SubItemContextMenusLayer, xOffset: 10, yOffset: 10);
             }
             else
             {
-                // Si ya está en la biblioteca, mostrar opción de eliminar
-                options.Add("Quitar de biblioteca personal");
-            }
-            
-            if (!remoteVideo.IsLocallyAvailable)
-            {
-                options.Add("Descargar a biblioteca personal");
+                var anchorPos = GetPositionRelativeTo(anchor, SubItemContextMenusLayer);
+                RemoteVideoItemContextMenu.TranslationX = anchorPos.X + anchor.Width + 8;
+                RemoteVideoItemContextMenu.TranslationY = anchorPos.Y;
             }
 
-            options.Add("Reproducir en streaming");
-
-            options.Add($"Añadir toda la sesión {remoteVideo.SessionId}");
-
-            var result = await DisplayActionSheet(
-                $"Video {remoteVideo.FileName}",
-                "Cancelar",
-                null,
-                options.ToArray());
-
-            if (string.IsNullOrEmpty(result) || result == "Cancelar")
-                return;
-
-            if (result == "Añadir a biblioteca personal")
-            {
-                vm.AddRemoteVideoToLibraryCommand.Execute(remoteVideo);
-            }
-            else if (result == "Quitar de biblioteca personal")
-            {
-                vm.DeleteRemoteVideoFromLibraryCommand.Execute(remoteVideo);
-            }
-            else if (result == "Descargar a biblioteca personal")
-            {
-                vm.DownloadRemoteVideoCommand.Execute(remoteVideo);
-            }
-            else if (result == "Reproducir en streaming")
-            {
-                vm.PlayRemoteVideoCommand.Execute(remoteVideo);
-            }
-            else if (result.StartsWith("Añadir toda la sesión"))
-            {
-                vm.AddRemoteSessionToLibraryCommand.Execute(remoteVideo.SessionId);
-            }
+            RemoteVideoItemContextMenu.IsVisible = true;
+            UpdateSubItemContextMenusLayerVisibility();
+            UpdateGlobalDismissOverlayVisibility();
         }
         catch (Exception ex)
         {
@@ -1398,12 +1370,37 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         return null;
     }
 
+    private static RemoteVideoItem? FindRemoteVideoItemFromContext(VisualElement element)
+    {
+        Element? current = element;
+        while (current != null)
+        {
+            if (current.BindingContext is RemoteVideoItem remoteVideo)
+                return remoteVideo;
+            current = current.Parent;
+        }
+        return null;
+    }
+
     private void HideVideoItemContextMenu()
     {
         try
         {
             if (VideoItemContextMenu != null)
                 VideoItemContextMenu.IsVisible = false;
+        }
+        catch { }
+
+        UpdateSubItemContextMenusLayerVisibility();
+        UpdateGlobalDismissOverlayVisibility();
+    }
+
+    private void HideRemoteVideoItemContextMenu()
+    {
+        try
+        {
+            if (RemoteVideoItemContextMenu != null)
+                RemoteVideoItemContextMenu.IsVisible = false;
         }
         catch { }
 
@@ -1546,6 +1543,134 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         catch (Exception ex)
         {
             AppLog.Error("DashboardPage", "OnVideoItemMenuDeleteTapped error", ex);
+        }
+    }
+
+    private void OnRemoteVideoItemMenuOpenTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            HideRemoteVideoItemContextMenu();
+
+            if (_contextMenuRemoteVideo == null)
+                return;
+
+            if (BindingContext is DashboardViewModel vm)
+            {
+                if (vm.PlayRemoteVideoCommand?.CanExecute(_contextMenuRemoteVideo) ?? false)
+                    vm.PlayRemoteVideoCommand.Execute(_contextMenuRemoteVideo);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "OnRemoteVideoItemMenuOpenTapped error", ex);
+        }
+    }
+
+    private async void OnRemoteVideoItemMenuAddToLibraryTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            HideRemoteVideoItemContextMenu();
+
+            if (_contextMenuRemoteVideo == null)
+                return;
+
+            if (_contextMenuRemoteVideo.LinkedLocalVideo != null)
+            {
+                await DisplayAlert("Biblioteca", "Este video ya está en tu biblioteca.", "OK");
+                return;
+            }
+
+            if (BindingContext is DashboardViewModel vm)
+            {
+                if (vm.AddRemoteVideoToLibraryCommand?.CanExecute(_contextMenuRemoteVideo) ?? false)
+                    vm.AddRemoteVideoToLibraryCommand.Execute(_contextMenuRemoteVideo);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "OnRemoteVideoItemMenuAddToLibraryTapped error", ex);
+        }
+    }
+
+    private async void OnRemoteVideoItemMenuFavoriteTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            HideRemoteVideoItemContextMenu();
+
+            if (_contextMenuRemoteVideo == null)
+                return;
+
+            await DisplayAlert("Favoritos", "Funcionalidad en desarrollo.", "OK");
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "OnRemoteVideoItemMenuFavoriteTapped error", ex);
+        }
+    }
+
+    private async void OnRemoteVideoItemMenuShareTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            HideRemoteVideoItemContextMenu();
+
+            if (_contextMenuRemoteVideo == null)
+                return;
+
+            var localPath = _contextMenuRemoteVideo.LinkedLocalVideo?.LocalClipPath;
+            if (string.IsNullOrEmpty(localPath) || !File.Exists(localPath))
+            {
+                await DisplayAlert("Compartir", "Descarga el video para poder compartirlo.", "OK");
+                return;
+            }
+
+            await Share.Default.RequestAsync(new ShareFileRequest
+            {
+                Title = _contextMenuRemoteVideo.FileName ?? "Video",
+                File = new ShareFile(localPath)
+            });
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "OnRemoteVideoItemMenuShareTapped error", ex);
+        }
+    }
+
+    private async void OnRemoteVideoItemMenuDeleteTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            HideRemoteVideoItemContextMenu();
+
+            if (_contextMenuRemoteVideo == null)
+                return;
+
+            var confirm = await DisplayAlert(
+                "Eliminar video",
+                $"¿Seguro que quieres eliminar este video de la nube?\n\n{_contextMenuRemoteVideo.FileName}",
+                "Eliminar",
+                "Cancelar");
+
+            if (!confirm)
+                return;
+
+            if (BindingContext is DashboardViewModel vm)
+            {
+                foreach (var item in vm.RemoteVideos)
+                    item.IsSelected = false;
+
+                _contextMenuRemoteVideo.IsSelected = true;
+
+                if (vm.DeleteSelectedRemoteFromCloudCommand?.CanExecute(null) ?? false)
+                    vm.DeleteSelectedRemoteFromCloudCommand.Execute(null);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "OnRemoteVideoItemMenuDeleteTapped error", ex);
         }
     }
 
@@ -1756,7 +1881,8 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
                 || (SessionsContextMenuOverlay?.IsVisible ?? false)
                 || (SessionRowContextMenu?.IsVisible ?? false)
                 || (SmartFolderContextMenu?.IsVisible ?? false)
-                || (VideoItemContextMenu?.IsVisible ?? false);
+                || (VideoItemContextMenu?.IsVisible ?? false)
+                || (RemoteVideoItemContextMenu?.IsVisible ?? false);
             if (!anyVisible)
                 return;
 
@@ -1777,12 +1903,15 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
                 return;
             if (IsPointInsideVisibleMenu(point, VideoItemContextMenu))
                 return;
+            if (IsPointInsideVisibleMenu(point, RemoteVideoItemContextMenu))
+                return;
 
             HideUserLibraryContextMenu();
             HideSessionsContextMenu();
             HideSessionRowContextMenu();
             HideSmartFolderContextMenu();
             HideVideoItemContextMenu();
+            HideRemoteVideoItemContextMenu();
         }
         catch { }
     }
@@ -1914,7 +2043,8 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
                 || (SessionsContextMenuOverlay?.IsVisible ?? false)
                 || (SessionRowContextMenu?.IsVisible ?? false)
                 || (SmartFolderContextMenu?.IsVisible ?? false)
-                || (VideoItemContextMenu?.IsVisible ?? false);
+                || (VideoItemContextMenu?.IsVisible ?? false)
+                || (RemoteVideoItemContextMenu?.IsVisible ?? false);
             if (!anyVisible)
                 return;
 
@@ -1932,12 +2062,15 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
                 return;
             if (IsPointInsideVisibleMenu(host, location, VideoItemContextMenu))
                 return;
+            if (IsPointInsideVisibleMenu(host, location, RemoteVideoItemContextMenu))
+                return;
 
             HideUserLibraryContextMenu();
             HideSessionsContextMenu();
             HideSessionRowContextMenu();
             HideSmartFolderContextMenu();
             HideVideoItemContextMenu();
+            HideRemoteVideoItemContextMenu();
         }
         catch { }
     }
@@ -1957,7 +2090,8 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
                 || (SessionsContextMenuOverlay?.IsVisible ?? false)
                 || (SessionRowContextMenu?.IsVisible ?? false)
                 || (SmartFolderContextMenu?.IsVisible ?? false)
-                || (VideoItemContextMenu?.IsVisible ?? false);
+                || (VideoItemContextMenu?.IsVisible ?? false)
+                || (RemoteVideoItemContextMenu?.IsVisible ?? false);
             if (!anyVisible)
                 return;
 
@@ -1975,12 +2109,15 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
                 return;
             if (IsPointInsideVisibleMenu(host, location, VideoItemContextMenu))
                 return;
+            if (IsPointInsideVisibleMenu(host, location, RemoteVideoItemContextMenu))
+                return;
 
             HideUserLibraryContextMenu();
             HideSessionsContextMenu();
             HideSessionRowContextMenu();
             HideSmartFolderContextMenu();
             HideVideoItemContextMenu();
+            HideRemoteVideoItemContextMenu();
         }
         catch { }
     }
