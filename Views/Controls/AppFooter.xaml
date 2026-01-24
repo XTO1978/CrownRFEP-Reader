@@ -18,7 +18,7 @@
         <Grid
             Padding="16,0"
             BackgroundColor="{StaticResource OffBlack}"
-            ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto,Auto"
+            ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto,Auto,Auto"
             ColumnSpacing="20"
             VerticalOptions="Center">
 
@@ -55,9 +55,6 @@
                 BackgroundColor="Transparent"
                 Stroke="Transparent"
                 StrokeShape="RoundRectangle 4">
-                <Border.GestureRecognizers>
-                    <TapGestureRecognizer Tapped="OnBackendStatusTapped" />
-                </Border.GestureRecognizers>
                 <HorizontalStackLayout Spacing="5">
                     <controls:SymbolIcon
                         x:Name="BackendStatusIcon"
@@ -70,6 +67,37 @@
                         x:Name="BackendStatusLabel"
                         FontSize="{StaticResource FontSizeSmall}"
                         Text="Backend..."
+                        TextColor="#FF8A8A8A"
+                        VerticalOptions="Center" />
+                    <BoxView
+                        WidthRequest="1"
+                        HeightRequest="16"
+                        Margin="6,0"
+                        Color="#FF3A3A3A"
+                        VerticalOptions="Center" />
+                    <controls:SymbolIcon
+                        x:Name="NetworkStatusIcon"
+                        SymbolName="wifi"
+                        TintColor="#FF4CAF50"
+                        HeightRequest="{StaticResource IconSizeSmall}"
+                        WidthRequest="{StaticResource IconSizeSmall}"
+                        VerticalOptions="Center" />
+                    <Label
+                        x:Name="NetworkStatusLabel"
+                        FontSize="{StaticResource FontSizeSmall}"
+                        Text="Red..."
+                        TextColor="#FF8A8A8A"
+                        VerticalOptions="Center" />
+                    <Label
+                        Text="·"
+                        FontSize="{StaticResource FontSizeSmall}"
+                        TextColor="#FF5A5A5A"
+                        VerticalOptions="Center" />
+                    <Label
+                        x:Name="NetworkSpeedLabel"
+                        FontSize="{StaticResource FontSizeSmall}"
+                        FontFamily="{StaticResource AppFontMono}"
+                        Text="Velocidad --"
                         TextColor="#FF8A8A8A"
                         VerticalOptions="Center" />
                 </HorizontalStackLayout>
@@ -154,9 +182,96 @@
                     VerticalOptions="Center" />
             </HorizontalStackLayout>
 
+            <!--  Barra de sincronización cloud (Dashboard)  -->
+            <Border
+                x:Name="SyncStatusBar"
+                Grid.Column="4"
+                Padding="10,6"
+                BackgroundColor="#FF1E1E1E"
+                Stroke="#FF333333"
+                StrokeShape="RoundRectangle 8"
+                StrokeThickness="1"
+                IsVisible="{Binding SyncStatusText, Converter={StaticResource IsNotNullConverter}}">
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                    <!--  Icono de cloud  -->
+                    <controls:SymbolIcon
+                        Grid.Column="0"
+                        HeightRequest="{StaticResource IconSizeSmall}"
+                        WidthRequest="{StaticResource IconSizeSmall}"
+                        SymbolName="icloud.and.arrow.up"
+                        TintColor="{Binding SyncStatusColor, FallbackValue='#9E9E9E'}"
+                        VerticalOptions="Center" />
+
+                    <!--  Texto de estado  -->
+                    <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">
+                        <Label
+                            FontSize="{StaticResource FontSizeSmall}"
+                            Text="{Binding SyncStatusText, FallbackValue='Sincronización'}"
+                            TextColor="White"
+                            IsVisible="{Binding IsSyncing, Converter={StaticResource InvertedBoolConverter}}" />
+                        <Label
+                            FontSize="{StaticResource FontSizeSmall}"
+                            Text="{Binding SyncStatusText}"
+                            TextColor="#4CAF50"
+                            IsVisible="{Binding IsSyncing}" />
+                        <Label
+                            FontSize="{StaticResource FontSizeCaption}"
+                            TextColor="#888888"
+                            IsVisible="{Binding HasPendingSync}">
+                            <Label.Text>
+                                <MultiBinding StringFormat="{}{0} videos pendientes">
+                                    <Binding Path="PendingSyncCount" />
+                                </MultiBinding>
+                            </Label.Text>
+                        </Label>
+                        <!--  Barra de progreso durante sincronización  -->
+                        <ProgressBar
+                            HeightRequest="4"
+                            Progress="{Binding SyncProgress, Converter={StaticResource ProgressConverter}, ConverterParameter=100}"
+                            ProgressColor="#4CAF50"
+                            IsVisible="{Binding IsSyncing}" />
+                    </VerticalStackLayout>
+
+                    <!--  Botón de sincronización  -->
+                    <Border
+                        Grid.Column="2"
+                        Padding="10,6"
+                        BackgroundColor="#FF0066"
+                        StrokeShape="RoundRectangle 6"
+                        StrokeThickness="0"
+                        IsVisible="{Binding IsSyncing, Converter={StaticResource InvertedBoolConverter}}">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding SyncAllCommand}" />
+                        </Border.GestureRecognizers>
+                        <HorizontalStackLayout Spacing="6">
+                            <controls:SymbolIcon
+                                HeightRequest="{StaticResource IconSizeSmall}"
+                                WidthRequest="{StaticResource IconSizeSmall}"
+                                SymbolName="arrow.triangle.2.circlepath"
+                                TintColor="White"
+                                VerticalOptions="Center" />
+                            <Label
+                                FontSize="{StaticResource FontSizeSmall}"
+                                Text="Sincronizar"
+                                TextColor="White"
+                                VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                    </Border>
+
+                    <!--  Indicador de progreso giratorio durante sincronización  -->
+                    <ActivityIndicator
+                        Grid.Column="2"
+                        Color="#4CAF50"
+                        IsRunning="{Binding IsSyncing}"
+                        IsVisible="{Binding IsSyncing}"
+                        HeightRequest="20"
+                        WidthRequest="20" />
+                </Grid>
+            </Border>
+
             <!--  Contador de vídeos  -->
             <HorizontalStackLayout
-                Grid.Column="4"
+                Grid.Column="5"
                 Spacing="6"
                 VerticalOptions="Center">
                 <controls:SymbolIcon
@@ -176,7 +291,7 @@
 
             <!--  Contador de sesiones  -->
             <HorizontalStackLayout
-                Grid.Column="5"
+                Grid.Column="6"
                 Spacing="6"
                 VerticalOptions="Center">
                 <controls:SymbolIcon
@@ -196,7 +311,7 @@
 
             <!--  Separador vertical  -->
             <BoxView
-                Grid.Column="6"
+                Grid.Column="7"
                 Margin="2,6"
                 BackgroundColor="#FF3A3A3A"
                 WidthRequest="1"
@@ -204,7 +319,7 @@
 
             <!--  Usuario actual  -->
             <HorizontalStackLayout
-                Grid.Column="7"
+                Grid.Column="8"
                 Spacing="8"
                 VerticalOptions="Center">
                 <Border

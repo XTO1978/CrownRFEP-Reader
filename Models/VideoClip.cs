@@ -64,6 +64,9 @@ public class VideoClip : INotifyPropertyChanged
     [Column("deleted_at_utc")]
     public long DeletedAtUtc { get; set; }
 
+    [Column("is_favorite")]
+    public int IsFavorite { get; set; }
+
     // Campos de sincronización remota
     /// <summary>
     /// Indica si el video está sincronizado con el servidor remoto
@@ -115,6 +118,19 @@ public class VideoClip : INotifyPropertyChanged
     /// </summary>
     [Ignore]
     public bool IsRemoteAvailable => Source == "remote" || Source == "both" || IsSynced == 1;
+
+    [Ignore]
+    public bool IsFavoriteFlag
+    {
+        get => IsFavorite == 1;
+        set
+        {
+            var newValue = value ? 1 : 0;
+            if (IsFavorite == newValue) return;
+            IsFavorite = newValue;
+            OnPropertyChanged(nameof(IsFavoriteFlag));
+        }
+    }
 
     /// <summary>
     /// Indica si el video necesita subirse al servidor

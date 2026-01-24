@@ -51,6 +51,9 @@ public class Session : INotifyPropertyChanged
     [Column("deleted_at_utc")]
     public long DeletedAtUtc { get; set; }
 
+    [Column("is_favorite")]
+    public int IsFavorite { get; set; }
+
     // Propiedades computadas
     [Ignore]
     public DateTime FechaDateTime => DateTimeOffset.FromUnixTimeSeconds(Fecha).LocalDateTime;
@@ -68,6 +71,19 @@ public class Session : INotifyPropertyChanged
 
     [Ignore]
     public int VideoCount { get; set; }
+
+    [Ignore]
+    public bool IsFavoriteFlag
+    {
+        get => IsFavorite == 1;
+        set
+        {
+            var newValue = value ? 1 : 0;
+            if (IsFavorite == newValue) return;
+            IsFavorite = newValue;
+            OnPropertyChanged();
+        }
+    }
 
     [Ignore]
     public bool IsSelected

@@ -431,6 +431,36 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         }
     }
 
+    private void OnFavoriteSessionsTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            if (BindingContext is DashboardViewModel vm)
+            {
+                vm.SelectFavoriteSessionsCommand.Execute(null);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "OnFavoriteSessionsTapped error", ex);
+        }
+    }
+
+    private void OnFavoriteVideosTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            if (BindingContext is DashboardViewModel vm)
+            {
+                vm.SelectFavoriteVideosCommand.Execute(null);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "OnFavoriteVideosTapped error", ex);
+        }
+    }
+
     private void OnDiaryTapped(object? sender, TappedEventArgs e)
     {
         try
@@ -892,6 +922,27 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         catch (Exception ex)
         {
             AppLog.Error("DashboardPage", "OnSessionRowMenuExportTapped error", ex);
+        }
+    }
+
+    private async void OnSessionRowMenuFavoriteTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            HideSessionRowContextMenu();
+
+            if (_contextMenuSessionRow == null)
+                return;
+
+            if (BindingContext is DashboardViewModel vm)
+            {
+                if (vm.ToggleSessionFavoriteCommand?.CanExecute(_contextMenuSessionRow) ?? false)
+                    vm.ToggleSessionFavoriteCommand.Execute(_contextMenuSessionRow);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "OnSessionRowMenuFavoriteTapped error", ex);
         }
     }
 
@@ -1659,6 +1710,27 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         catch (Exception ex)
         {
             AppLog.Error("DashboardPage", "OnVideoItemMenuShareTapped error", ex);
+        }
+    }
+
+    private void OnVideoItemMenuFavoriteTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            HideVideoItemContextMenu();
+
+            if (_contextMenuVideo == null)
+                return;
+
+            if (BindingContext is DashboardViewModel vm)
+            {
+                if (vm.ToggleVideoFavoriteCommand?.CanExecute(_contextMenuVideo) ?? false)
+                    vm.ToggleVideoFavoriteCommand.Execute(_contextMenuVideo);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "OnVideoItemMenuFavoriteTapped error", ex);
         }
     }
 

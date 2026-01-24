@@ -1,4 +1,8 @@
 using CrownRFEP_Reader.Services;
+using Microsoft.Maui.Networking;
+using System.Diagnostics;
+using System.Net.Http;
+using System.Net.Http.Headers;
 
 namespace CrownRFEP_Reader.Views.Controls;
 
@@ -13,6 +17,12 @@ public partial class AppFooter : ContentView
     private CollectionView? _popupLogsCollectionView;
     private Label? _popupLogCountLabel;
     private Label? _popupLastActivityLabel;
+    private CancellationTokenSource? _networkSpeedCts;
+    private static readonly HttpClient NetworkSpeedClient = new()
+    {
+        Timeout = TimeSpan.FromSeconds(6)
+    };
+    private string _networkSpeedText = "Velocidad --";
 
     // ==================== BINDABLE PROPERTIES PARA SINCRONIZACIÓN ====================
     
@@ -131,6 +141,10 @@ public partial class AppFooter : ContentView
             _userProfileNotifier.ProfileSaved += OnUserProfileSaved;
         }
 
+        Connectivity.Current.ConnectivityChanged += OnConnectivityChanged;
+        RefreshNetworkStatus();
+        StartNetworkSpeedMonitor();
+
         // Cargar datos iniciales
         _ = RefreshAllDataAsync();
     }
@@ -145,6 +159,9 @@ public partial class AppFooter : ContentView
         
         if (_userProfileNotifier != null)
             _userProfileNotifier.ProfileSaved -= OnUserProfileSaved;
+
+        Connectivity.Current.ConnectivityChanged -= OnConnectivityChanged;
+        StopNetworkSpeedMonitor();
 
         // Limpiar popup si existe
         RemovePopupFromPage();
@@ -245,6 +262,160 @@ public partial class AppFooter : ContentView
             UserPhotoContainer.IsVisible = false;
             UserIconPlaceholder.IsVisible = true;
         }
+
+        RefreshNetworkStatus();
+    }
+
+    private void OnConnectivityChanged(object? sender, ConnectivityChangedEventArgs e)
+    {
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            RefreshNetworkStatus();
+            StartNetworkSpeedMonitor();
+        });
+    }
+
+    private void RefreshNetworkStatus()
+    {
+        if (NetworkStatusIcon == null || NetworkStatusLabel == null)
+            return;
+
+        var access = Connectivity.Current.NetworkAccess;
+        var profiles = Connectivity.Current.ConnectionProfiles;
+
+        var profileText = profiles.Contains(ConnectionProfile.WiFi) ? "WiFi"
+            : profiles.Contains(ConnectionProfile.Cellular) ? "Móvil"
+            : profiles.Contains(ConnectionProfile.Ethernet) ? "Ethernet"
+            : profiles.Contains(ConnectionProfile.Bluetooth) ? "Bluetooth"
+            : "Red";
+
+        if (access == NetworkAccess.Internet)
+        {
+            NetworkStatusIcon.SymbolName = profiles.Contains(ConnectionProfile.Cellular)
+                ? "antenna.radiowaves.left.and.right"
+                : "wifi";
+            NetworkStatusIcon.TintColor = Color.FromArgb("#FF4CAF50");
+            NetworkStatusLabel.Text = $"Red OK ({profileText})";
+        }
+        else if (access == NetworkAccess.Local)
+        {
+            NetworkStatusIcon.SymbolName = "wifi.exclamationmark";
+            NetworkStatusIcon.TintColor = Color.FromArgb("#FFFF9800");
+            NetworkStatusLabel.Text = $"Red limitada ({profileText})";
+        }
+        else
+        {
+            NetworkStatusIcon.SymbolName = "wifi.slash";
+            NetworkStatusIcon.TintColor = Color.FromArgb("#FFFF5252");
+            NetworkStatusLabel.Text = "Sin Internet";
+        }
+
+        if (NetworkSpeedLabel != null)
+        {
+            NetworkSpeedLabel.Text = _networkSpeedText;
+        }
+    }
+
+    private void StartNetworkSpeedMonitor()
+    {
+        StopNetworkSpeedMonitor();
+        _networkSpeedCts = new CancellationTokenSource();
+        _ = Task.Run(() => RunNetworkSpeedLoopAsync(_networkSpeedCts.Token));
+    }
+
+    private void StopNetworkSpeedMonitor()
+    {
+        try
+        {
+            _networkSpeedCts?.Cancel();
+        }
+        catch { }
+        _networkSpeedCts = null;
+    }
+
+    private async Task RunNetworkSpeedLoopAsync(CancellationToken ct)
+    {
+        await UpdateNetworkSpeedAsync(ct);
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(30));
+        while (await timer.WaitForNextTickAsync(ct))
+        {
+            await UpdateNetworkSpeedAsync(ct);
+        }
+    }
+
+    private async Task UpdateNetworkSpeedAsync(CancellationToken ct)
+    {
+        var access = Connectivity.Current.NetworkAccess;
+        if (access != NetworkAccess.Internet)
+        {
+            SetNetworkSpeedText("Velocidad --");
+            return;
+        }
+
+        var healthUrl = GetHealthUrl();
+        if (string.IsNullOrWhiteSpace(healthUrl))
+        {
+            SetNetworkSpeedText("Velocidad --");
+            return;
+        }
+
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, healthUrl);
+            request.Headers.CacheControl = new CacheControlHeaderValue { NoCache = true };
+
+            var sw = Stopwatch.StartNew();
+            using var response = await NetworkSpeedClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+            response.EnsureSuccessStatusCode();
+
+            await using var stream = await response.Content.ReadAsStreamAsync(ct);
+            var buffer = new byte[8192];
+            long totalBytes = 0;
+            int read;
+            while ((read = await stream.ReadAsync(buffer.AsMemory(0, buffer.Length), ct)) > 0)
+            {
+                totalBytes += read;
+            }
+            sw.Stop();
+
+            var seconds = Math.Max(sw.Elapsed.TotalSeconds, 0.05);
+            var bytesPerSecond = totalBytes / seconds;
+            var speedText = FormatSpeed(bytesPerSecond);
+            SetNetworkSpeedText($"Velocidad {speedText}");
+        }
+        catch
+        {
+            SetNetworkSpeedText("Velocidad --");
+        }
+    }
+
+    private void SetNetworkSpeedText(string text)
+    {
+        _networkSpeedText = text;
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            if (NetworkSpeedLabel != null)
+                NetworkSpeedLabel.Text = _networkSpeedText;
+        });
+    }
+
+    private string? GetHealthUrl()
+    {
+        var baseUrl = _cloudBackendService?.BaseUrl;
+        if (string.IsNullOrWhiteSpace(baseUrl))
+            return null;
+
+        var baseUrlWithoutApi = baseUrl.Replace("/api", "", StringComparison.OrdinalIgnoreCase).TrimEnd('/');
+        return $"{baseUrlWithoutApi}/health";
+    }
+
+    private static string FormatSpeed(double bytesPerSecond)
+    {
+        if (bytesPerSecond >= 1024 * 1024)
+            return $"{bytesPerSecond / (1024 * 1024):0.0} MB/s";
+        if (bytesPerSecond >= 1024)
+            return $"{bytesPerSecond / 1024:0} KB/s";
+        return $"{bytesPerSecond:0} B/s";
     }
 
     private void OnDatabaseStatusTapped(object? sender, TappedEventArgs e)
@@ -252,35 +423,6 @@ public partial class AppFooter : ContentView
         ShowLogsPopup();
     }
 
-    private async void OnBackendStatusTapped(object? sender, TappedEventArgs e)
-    {
-        if (_cloudBackendService == null)
-            return;
-
-        var currentUrl = _cloudBackendService.BaseUrl;
-        var lastError = _statusBarService?.LastBackendError;
-
-        var message = string.IsNullOrWhiteSpace(lastError)
-            ? "Configura la URL del backend para este dispositivo."
-            : $"Último error: {lastError}\n\nConfigura la URL del backend para este dispositivo.";
-
-        var newUrl = await Application.Current!.MainPage!.DisplayPromptAsync(
-            "Backend",
-            message,
-            "Guardar",
-            "Cancelar",
-            initialValue: currentUrl);
-
-        if (!string.IsNullOrWhiteSpace(newUrl) && !string.Equals(newUrl, currentUrl, StringComparison.OrdinalIgnoreCase))
-        {
-            _cloudBackendService.UpdateBaseUrl(newUrl);
-            _statusBarService?.UpdateBackendStatus(isAvailable: false, errorMessage: null, isChecking: true);
-            if (_backendInitializationService != null)
-            {
-                _ = Task.Run(async () => await _backendInitializationService.ForceCheckAsync());
-            }
-        }
-    }
 
     private void ShowLogsPopup()
     {
@@ -582,14 +724,33 @@ public partial class AppFooter : ContentView
             if (_databaseService == null || _statusBarService == null) return;
 
             var db = await _databaseService.GetConnectionAsync();
-            var videoCount = await db.Table<Models.VideoClip>().CountAsync();
-            var sessionCount = await db.Table<Models.Session>().CountAsync();
+            await CleanupOrphanVideoReferencesAsync(db);
+            var videoCount = await db.ExecuteScalarAsync<int>(
+                "SELECT COUNT(*) FROM videoClip v INNER JOIN sesion s ON s.id = v.SessionID WHERE v.is_deleted = 0 AND s.is_deleted = 0;");
+            var sessionCount = await db.Table<Models.Session>().Where(s => s.IsDeleted == 0).CountAsync();
             
             _statusBarService.UpdateCounts(videoCount, sessionCount);
         }
         catch
         {
             // Ignorar errores al cargar contadores
+        }
+    }
+
+    private static async Task CleanupOrphanVideoReferencesAsync(SQLite.SQLiteAsyncConnection db)
+    {
+        try
+        {
+            var nowUtc = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            await db.ExecuteAsync(
+                "UPDATE videoClip SET is_deleted = 1, deleted_at_utc = ? " +
+                "WHERE is_deleted = 0 AND (SessionID IS NULL OR SessionID = 0 " +
+                "OR SessionID NOT IN (SELECT id FROM sesion WHERE is_deleted = 0));",
+                nowUtc);
+        }
+        catch
+        {
+            // Ignorar errores de limpieza
         }
     }
 

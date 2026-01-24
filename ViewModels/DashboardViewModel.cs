@@ -216,12 +216,18 @@ public class DashboardViewModel : BaseViewModel
     private ObservableCollection<RemoteSessionListItem> _remoteSessions = new();
     private int _selectedRemoteSessionId;
     private bool _isSessionsListExpanded = true;
+    private bool _isFavoritesExpanded = true;
+    private bool _isFavoriteSessionsSelected;
+    private bool _isFavoriteVideosSelected;
+    private int _favoriteSessionsCount;
+    private int _favoriteVideosCount;
     private bool _isLoadingSelectedSessionVideos;
 
     // Videos remotos (de Wasabi)
     private ObservableCollection<RemoteVideoItem> _remoteVideos = new();
     private bool _isLoadingRemoteVideos;
     private List<CloudFileInfo>? _remoteFilesCache;
+    private List<VideoClip>? _favoriteVideosCache;
     private readonly HttpClient _remoteMetadataHttpClient = new();
     private bool _isLoginRequired;
     private bool _isCloudLoginBusy;
@@ -534,6 +540,7 @@ public class DashboardViewModel : BaseViewModel
                     IsAllGallerySelected = false;
                     IsVideoLessonsSelected = false;
                     IsDiaryViewSelected = false;
+                    IsFavoriteVideosSelected = false;
                     // Desactivar secciones remotas
                     DeselectRemoteSections();
                 }
@@ -572,6 +579,8 @@ public class DashboardViewModel : BaseViewModel
                 {
                     IsVideoLessonsSelected = false;
                     IsDiaryViewSelected = false;
+                    IsFavoriteSessionsSelected = false;
+                    IsFavoriteVideosSelected = false;
                     ClearSectionTimes();
                     // Desactivar secciones remotas
                     DeselectRemoteSections();
@@ -595,6 +604,8 @@ public class DashboardViewModel : BaseViewModel
                 {
                     IsAllGallerySelected = false;
                     IsDiaryViewSelected = false;
+                    IsFavoriteSessionsSelected = false;
+                    IsFavoriteVideosSelected = false;
                     ClearSectionTimes();
                     // Desactivar secciones remotas
                     DeselectRemoteSections();
@@ -620,6 +631,8 @@ public class DashboardViewModel : BaseViewModel
                 {
                     IsAllGallerySelected = false;
                     IsVideoLessonsSelected = false;
+                    IsFavoriteSessionsSelected = false;
+                    IsFavoriteVideosSelected = false;
                     SelectedSession = null;
                     ClearSectionTimes();
                     // Desactivar secciones remotas
@@ -1087,6 +1100,62 @@ public class DashboardViewModel : BaseViewModel
         }
     }
 
+    public bool IsFavoritesExpanded
+    {
+        get => _isFavoritesExpanded;
+        set => SetProperty(ref _isFavoritesExpanded, value);
+    }
+
+    public bool IsFavoriteSessionsSelected
+    {
+        get => _isFavoriteSessionsSelected;
+        set
+        {
+            if (SetProperty(ref _isFavoriteSessionsSelected, value) && value)
+            {
+                IsFavoriteVideosSelected = false;
+                IsAllGallerySelected = false;
+                IsVideoLessonsSelected = false;
+                IsDiaryViewSelected = false;
+                DeselectRemoteSections();
+                SyncVisibleSessionRows();
+                OnPropertyChanged(nameof(SelectedSessionTitle));
+                OnPropertyChanged(nameof(ShowVideoGallery));
+            }
+        }
+    }
+
+    public bool IsFavoriteVideosSelected
+    {
+        get => _isFavoriteVideosSelected;
+        set
+        {
+            if (SetProperty(ref _isFavoriteVideosSelected, value) && value)
+            {
+                IsFavoriteSessionsSelected = false;
+                IsAllGallerySelected = false;
+                IsVideoLessonsSelected = false;
+                IsDiaryViewSelected = false;
+                SelectedSession = null;
+                DeselectRemoteSections();
+                OnPropertyChanged(nameof(SelectedSessionTitle));
+                OnPropertyChanged(nameof(ShowVideoGallery));
+            }
+        }
+    }
+
+    public int FavoriteSessionsCount
+    {
+        get => _favoriteSessionsCount;
+        private set => SetProperty(ref _favoriteSessionsCount, value);
+    }
+
+    public int FavoriteVideosCount
+    {
+        get => _favoriteVideosCount;
+        private set => SetProperty(ref _favoriteVideosCount, value);
+    }
+
     public bool IsUserLibraryExpanded
     {
         get => _isUserLibraryExpanded;
@@ -1269,11 +1338,15 @@ public class DashboardViewModel : BaseViewModel
             ? (RemoteSessions.FirstOrDefault(s => s.SessionId == SelectedRemoteSessionId)?.Title ?? $"Sesión {SelectedRemoteSessionId}")
             : (IsDiaryViewSelected
                 ? "Diario Personal"
-                : (IsVideoLessonsSelected
-                    ? "Videolecciones"
-                    : (IsAllGallerySelected
-                        ? "Galería General"
-                        : (SelectedSession?.DisplayName ?? "Selecciona una sesión")))));
+                : (IsFavoriteVideosSelected
+                    ? "Favoritos (vídeos)"
+                    : (IsFavoriteSessionsSelected && SelectedSession == null
+                        ? "Favoritos (sesiones)"
+                        : (IsVideoLessonsSelected
+                            ? "Videolecciones"
+                            : (IsAllGallerySelected
+                                ? "Galería General"
+                                : (SelectedSession?.DisplayName ?? "Selecciona una sesión")))))));
 
     public bool IsLoadingSelectedSessionVideos
     {
@@ -2317,6 +2390,7 @@ public class DashboardViewModel : BaseViewModel
 
     public ObservableCollection<Session> RecentSessions { get; } = new();
     public ObservableCollection<Session> VisibleRecentSessions { get; } = new();
+    public ObservableCollection<Session> FavoriteSessions { get; } = new();
     public ObservableCollection<SessionsListRow> SessionRows { get; } = new();
     public ObservableCollection<VideoClip> SelectedSessionVideos { get; } = new();
     public ObservableCollection<VideoLesson> VideoLessons { get; } = new();
@@ -2382,7 +2456,9 @@ public class DashboardViewModel : BaseViewModel
         if (!IsUserLibraryExpanded || !IsSessionsListExpanded)
             return;
 
-        var sessionsSnapshot = RecentSessions.ToList();
+        var sessionsSnapshot = IsFavoriteSessionsSelected
+            ? RecentSessions.Where(s => s.IsFavorite == 1).ToList()
+            : RecentSessions.ToList();
         var groups = BuildSessionGroups(sessionsSnapshot);
 
         foreach (var g in groups)
@@ -3322,6 +3398,12 @@ public class DashboardViewModel : BaseViewModel
     public ICommand ViewVideoLessonsCommand { get; }
     public ICommand ViewTrashCommand { get; }
     public ICommand ViewDiaryCommand { get; }
+    public ICommand ToggleFavoritesExpandedCommand { get; }
+    public ICommand SelectFavoriteSessionsCommand { get; }
+    public ICommand SelectFavoriteVideosCommand { get; }
+    public ICommand ToggleSessionFavoriteCommand { get; }
+    public ICommand ToggleVideoFavoriteCommand { get; }
+    public ICommand SelectFavoriteSessionCommand { get; }
     public ICommand SelectDiaryDateCommand { get; }
     public ICommand LoadMoreVideosCommand { get; }
     public ICommand ClearFiltersCommand { get; }
@@ -3604,6 +3686,12 @@ public class DashboardViewModel : BaseViewModel
         ViewVideoLessonsCommand = new AsyncRelayCommand(ViewVideoLessonsAsync);
         ViewTrashCommand = new AsyncRelayCommand(ViewTrashAsync);
         ViewDiaryCommand = new RelayCommand(() => IsDiaryViewSelected = true);
+        ToggleFavoritesExpandedCommand = new RelayCommand(() => IsFavoritesExpanded = !IsFavoritesExpanded);
+        SelectFavoriteSessionsCommand = new AsyncRelayCommand(SelectFavoriteSessionsAsync);
+        SelectFavoriteVideosCommand = new AsyncRelayCommand(SelectFavoriteVideosAsync);
+        ToggleSessionFavoriteCommand = new AsyncRelayCommand<SessionRow>(ToggleSessionFavoriteAsync);
+        ToggleVideoFavoriteCommand = new AsyncRelayCommand<VideoClip>(ToggleVideoFavoriteAsync);
+        SelectFavoriteSessionCommand = new RelayCommand<Session>(SelectFavoriteSession);
         SelectDiaryDateCommand = new RelayCommand<DateTime>(date => SelectedDiaryDate = date);
         LoadMoreVideosCommand = new AsyncRelayCommand(LoadMoreVideosAsync);
         ClearFiltersCommand = new RelayCommand(() => ClearFilters());
@@ -4042,6 +4130,8 @@ public class DashboardViewModel : BaseViewModel
                 {
                     RecentSessions.Add(session);
                 }
+
+                SyncFavoriteSessionsFromRecent();
                 
                 // Asegurar que la lista esté expandida para mostrar la nueva sesión
                 if (!IsSessionsListExpanded)
@@ -4831,15 +4921,18 @@ public class DashboardViewModel : BaseViewModel
 
     private async Task ApplyFiltersAsync()
     {
-        if (!IsAllGallerySelected || _allVideosCache == null)
+        if ((!IsAllGallerySelected && !IsFavoriteVideosSelected) || _allVideosCache == null)
             return;
 
         var version = Interlocked.Increment(ref _filtersVersion);
 
         // Si hay una carpeta inteligente activa, usar sus videos filtrados como base
-        var allVideos = _activeSmartFolder != null && _smartFolderFilteredVideosCache != null
-            ? _smartFolderFilteredVideosCache
-            : _allVideosCache;
+        var baseVideos = IsFavoriteVideosSelected
+            ? (_favoriteVideosCache ?? _allVideosCache.Where(v => v.IsFavorite == 1).ToList())
+            : (_activeSmartFolder != null && _smartFolderFilteredVideosCache != null
+                ? _smartFolderFilteredVideosCache
+                : _allVideosCache);
+        var allVideos = baseVideos;
         var sessionsSnapshot = RecentSessions.ToList();
         var inputsSnapshot = _allInputsCache;
 
@@ -4995,6 +5088,197 @@ public class DashboardViewModel : BaseViewModel
         System.Diagnostics.Debug.WriteLine($"[SelectAllGalleryAsync] IsAllGallerySelected = true, calling LoadAllVideosAsync...");
         await LoadAllVideosAsync();
         System.Diagnostics.Debug.WriteLine($"[SelectAllGalleryAsync] Done");
+    }
+
+    private async Task SelectFavoriteSessionsAsync()
+    {
+        SelectedSession = null;
+        _activeSmartFolder = null;
+        _smartFolderFilteredVideosCache = null;
+
+        IsFavoriteSessionsSelected = true;
+
+        if (!IsSessionsListExpanded)
+            IsSessionsListExpanded = true;
+
+        SyncFavoriteSessionsFromRecent();
+        SyncVisibleSessionRows();
+        OnPropertyChanged(nameof(SelectedSessionTitle));
+        await RefreshFavoritesCountsAsync();
+    }
+
+    private async Task SelectFavoriteVideosAsync()
+    {
+        SelectedSession = null;
+        _activeSmartFolder = null;
+        _smartFolderFilteredVideosCache = null;
+
+        IsFavoriteVideosSelected = true;
+
+        await EnsureAllVideosCacheAsync();
+        await RefreshFavoriteVideosViewAsync();
+        await RefreshFavoritesCountsAsync();
+    }
+
+    private async Task EnsureAllVideosCacheAsync()
+    {
+        if (_allVideosCache != null)
+            return;
+
+        _allVideosCache = await _databaseService.GetAllVideoClipsAsync();
+
+        var sessionIds = _allVideosCache?.Select(c => c.SessionId).Distinct().ToList() ?? new List<int>();
+        var sessionsDict = new Dictionary<int, Session>();
+        foreach (var sessionId in sessionIds)
+        {
+            var session = await _databaseService.GetSessionByIdAsync(sessionId);
+            if (session != null)
+                sessionsDict[sessionId] = session;
+        }
+
+        if (_allVideosCache != null)
+        {
+            foreach (var clip in _allVideosCache)
+            {
+                if (sessionsDict.TryGetValue(clip.SessionId, out var session))
+                    clip.Session = session;
+            }
+        }
+    }
+
+    private async Task RefreshFavoriteVideosViewAsync()
+    {
+        _selectedSessionVideosCts?.Cancel();
+        _selectedSessionVideosCts?.Dispose();
+        _selectedSessionVideosCts = new CancellationTokenSource();
+        var ct = _selectedSessionVideosCts.Token;
+
+        SelectedSessionVideos.Clear();
+        SelectedSessionSectionStats.Clear();
+        SelectedSessionAthleteTimes.Clear();
+        SelectedSessionSectionDurationMinutes.Clear();
+        SelectedSessionSectionLabels.Clear();
+        SelectedSessionTagVideoCounts.Clear();
+        SelectedSessionTagLabels.Clear();
+        SelectedSessionPenaltyCounts.Clear();
+        SelectedSessionPenaltyLabels.Clear();
+        SelectedSessionInputs.Clear();
+        SelectedSessionValoraciones.Clear();
+
+        _currentPage = 0;
+        _favoriteVideosCache = _allVideosCache?.Where(v => v.IsFavorite == 1).ToList() ?? new List<VideoClip>();
+        _filteredVideosCache = _favoriteVideosCache;
+
+        var firstBatch = _favoriteVideosCache.Take(PageSize).ToList();
+        await MainThread.InvokeOnMainThreadAsync(async () =>
+        {
+            await ReplaceCollectionInBatchesAsync(SelectedSessionVideos, firstBatch, ct);
+        });
+        _currentPage = 1;
+        HasMoreVideos = _favoriteVideosCache.Count > PageSize;
+
+        var snapshot = await Task.Run(() => BuildGalleryStatsSnapshot(_favoriteVideosCache), ct);
+        if (!ct.IsCancellationRequested)
+            await ApplyGalleryStatsSnapshotAsync(snapshot, ct);
+
+        OnPropertyChanged(nameof(TotalFilteredVideoCount));
+        OnPropertyChanged(nameof(TotalAvailableVideoCount));
+        OnPropertyChanged(nameof(VideoCountDisplayText));
+        OnPropertyChanged(nameof(TotalFilteredDurationSeconds));
+        OnPropertyChanged(nameof(SelectedSessionTotalDurationSeconds));
+        OnPropertyChanged(nameof(SelectedSessionTotalDurationFormatted));
+    }
+
+    private async Task RefreshFavoritesCountsAsync()
+    {
+        try
+        {
+            var db = await _databaseService.GetConnectionAsync();
+            FavoriteSessionsCount = await db.ExecuteScalarAsync<int>(
+                "SELECT COUNT(*) FROM sesion WHERE is_deleted = 0 AND is_favorite = 1;");
+            FavoriteVideosCount = await db.ExecuteScalarAsync<int>(
+                "SELECT COUNT(*) FROM videoClip v INNER JOIN sesion s ON s.id = v.SessionID " +
+                "WHERE v.is_deleted = 0 AND s.is_deleted = 0 AND v.is_favorite = 1;");
+        }
+        catch
+        {
+            // Ignorar errores de conteo
+        }
+    }
+
+    private void SyncFavoriteSessionsFromRecent()
+    {
+        FavoriteSessions.Clear();
+        foreach (var session in RecentSessions.Where(s => s.IsFavorite == 1))
+            FavoriteSessions.Add(session);
+    }
+
+    private void SelectFavoriteSession(Session? session)
+    {
+        if (session == null)
+            return;
+
+        IsFavoriteSessionsSelected = true;
+        if (!IsSessionsListExpanded)
+            IsSessionsListExpanded = true;
+
+        SelectedSession = session;
+        SyncVisibleSessionRows();
+        OnPropertyChanged(nameof(SelectedSessionTitle));
+    }
+
+    private async Task ToggleSessionFavoriteAsync(SessionRow? row)
+    {
+        if (row?.Session == null)
+            return;
+
+        try
+        {
+            var session = row.Session;
+            session.IsFavorite = session.IsFavorite == 1 ? 0 : 1;
+            await _databaseService.SaveSessionAsync(session);
+
+            if (IsFavoriteSessionsSelected && session.IsFavorite == 0 && SelectedSession?.Id == session.Id)
+                SelectedSession = null;
+
+            SyncFavoriteSessionsFromRecent();
+            SyncVisibleSessionRows();
+            await RefreshFavoritesCountsAsync();
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardVM", "ToggleSessionFavoriteAsync error", ex);
+        }
+    }
+
+    private async Task ToggleVideoFavoriteAsync(VideoClip? video)
+    {
+        if (video == null)
+            return;
+
+        try
+        {
+            video.IsFavorite = video.IsFavorite == 1 ? 0 : 1;
+            await _databaseService.SaveVideoClipAsync(video);
+
+            if (_allVideosCache != null)
+            {
+                var cached = _allVideosCache.FirstOrDefault(v => v.Id == video.Id);
+                if (cached != null)
+                    cached.IsFavorite = video.IsFavorite;
+            }
+
+            if (IsFavoriteVideosSelected)
+            {
+                await RefreshFavoriteVideosViewAsync();
+            }
+
+            await RefreshFavoritesCountsAsync();
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardVM", "ToggleVideoFavoriteAsync error", ex);
+        }
     }
 
     private async Task LoadAllVideosAsync()
@@ -5359,6 +5643,8 @@ public class DashboardViewModel : BaseViewModel
                 RecentSessions.Add(session);
             }
 
+            SyncFavoriteSessionsFromRecent();
+
             SyncVisibleSessionRows();
 
             // Cargar el atleta de referencia del perfil del usuario
@@ -5387,6 +5673,7 @@ public class DashboardViewModel : BaseViewModel
             }
 
             await RefreshTrashItemCountAsync();
+            await RefreshFavoritesCountsAsync();
             
             // Verificar videos pendientes de sincronización
             await CheckPendingSyncAsync();

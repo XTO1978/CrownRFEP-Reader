@@ -184,16 +184,28 @@
                                         TextColor="#FF888888"
                                         Text="{Binding Session.Coach}" />
                                 </VerticalStackLayout>
-                                <Label
+                                <HorizontalStackLayout
                                     Grid.Column="2"
                                     Margin="0,0,8,0"
-                                    FontFamily="{StaticResource AppFontMono}"
-                                    FontSize="{StaticResource FontSizeSmall}"
+                                    Spacing="6"
                                     HorizontalOptions="End"
-                                    HorizontalTextAlignment="End"
-                                    TextColor="#FF888888"
-                                    Text="{Binding Session.VideoCount}"
-                                    VerticalOptions="Center" />
+                                    VerticalOptions="Center">
+                                    <controls:SymbolIcon
+                                        HeightRequest="{StaticResource IconSizeSmall}"
+                                        WidthRequest="{StaticResource IconSizeSmall}"
+                                        SymbolName="star.fill"
+                                        TintColor="#FFFFAB40"
+                                        VerticalOptions="Center"
+                                        IsVisible="{Binding Session.IsFavorite, Converter={StaticResource IntToBoolConverter}}" />
+                                    <Label
+                                        FontFamily="{StaticResource AppFontMono}"
+                                        FontSize="{StaticResource FontSizeSmall}"
+                                        HorizontalOptions="End"
+                                        HorizontalTextAlignment="End"
+                                        TextColor="#FF888888"
+                                        Text="{Binding Session.VideoCount}"
+                                        VerticalOptions="Center" />
+                                </HorizontalStackLayout>
                                 <Border
                                     ClassId="ContextMenuButton"
                                     Grid.Column="3"
@@ -203,12 +215,6 @@
                                     StrokeThickness="0"
                                     HorizontalOptions="End"
                                     VerticalOptions="Center">
-                                    <Border.IsVisible>
-                                        <OnPlatform x:TypeArguments="x:Boolean">
-                                            <On Platform="iOS" Value="True" />
-                                            <On Platform="Default" Value="False" />
-                                        </OnPlatform>
-                                    </Border.IsVisible>
                                     <Border.GestureRecognizers>
                                         <TapGestureRecognizer Tapped="OnSessionRowContextMenuTapped" />
                                     </Border.GestureRecognizers>
@@ -825,92 +831,6 @@
                             HeightRequest="1"
                             HorizontalOptions="Fill" />
 
-                        <!--  Barra de sincronización cloud  -->
-                        <Border
-                            x:Name="SyncStatusBar"
-                            Margin="0,0,0,8"
-                            Padding="10,8"
-                            BackgroundColor="#FF1E1E1E"
-                            Stroke="#FF333333"
-                            StrokeShape="RoundRectangle 8"
-                            StrokeThickness="1">
-                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
-                                <!--  Icono de cloud  -->
-                                <controls:SymbolIcon
-                                    Grid.Column="0"
-                                    HeightRequest="{StaticResource IconSizeMedium}"
-                                    WidthRequest="{StaticResource IconSizeMedium}"
-                                    SymbolName="icloud.and.arrow.up"
-                                    TintColor="{Binding SyncStatusColor, FallbackValue='#9E9E9E'}"
-                                    VerticalOptions="Center" />
-
-                                <!--  Texto de estado  -->
-                                <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">
-                                    <Label
-                                        FontSize="{StaticResource FontSizeSmall}"
-                                        Text="{Binding SyncStatusText, FallbackValue='Sincronización'}"
-                                        TextColor="White"
-                                        IsVisible="{Binding IsSyncing, Converter={StaticResource InvertedBoolConverter}}" />
-                                    <Label
-                                        FontSize="{StaticResource FontSizeSmall}"
-                                        Text="{Binding SyncStatusText}"
-                                        TextColor="#4CAF50"
-                                        IsVisible="{Binding IsSyncing}" />
-                                    <Label
-                                        FontSize="{StaticResource FontSizeCaption}"
-                                        TextColor="#888888"
-                                        IsVisible="{Binding HasPendingSync}">
-                                        <Label.Text>
-                                            <MultiBinding StringFormat="{}{0} videos pendientes">
-                                                <Binding Path="PendingSyncCount" />
-                                            </MultiBinding>
-                                        </Label.Text>
-                                    </Label>
-                                    <!--  Barra de progreso durante sincronización  -->
-                                    <ProgressBar
-                                        HeightRequest="4"
-                                        Progress="{Binding SyncProgress, Converter={StaticResource ProgressConverter}, ConverterParameter=100}"
-                                        ProgressColor="#4CAF50"
-                                        IsVisible="{Binding IsSyncing}" />
-                                </VerticalStackLayout>
-
-                                <!--  Botón de sincronización  -->
-                                <Border
-                                    Grid.Column="2"
-                                    Padding="10,6"
-                                    BackgroundColor="#FF0066"
-                                    StrokeShape="RoundRectangle 6"
-                                    StrokeThickness="0"
-                                    IsVisible="{Binding IsSyncing, Converter={StaticResource InvertedBoolConverter}}">
-                                    <Border.GestureRecognizers>
-                                        <TapGestureRecognizer Command="{Binding SyncAllCommand}" />
-                                    </Border.GestureRecognizers>
-                                    <HorizontalStackLayout Spacing="6">
-                                        <controls:SymbolIcon
-                                            HeightRequest="{StaticResource IconSizeSmall}"
-                                            WidthRequest="{StaticResource IconSizeSmall}"
-                                            SymbolName="arrow.triangle.2.circlepath"
-                                            TintColor="White"
-                                            VerticalOptions="Center" />
-                                        <Label
-                                            FontSize="{StaticResource FontSizeSmall}"
-                                            Text="Sincronizar"
-                                            TextColor="White"
-                                            VerticalOptions="Center" />
-                                    </HorizontalStackLayout>
-                                </Border>
-
-                                <!--  Indicador de progreso giratorio durante sincronización  -->
-                                <ActivityIndicator
-                                    Grid.Column="2"
-                                    Color="#4CAF50"
-                                    IsRunning="{Binding IsSyncing}"
-                                    IsVisible="{Binding IsSyncing}"
-                                    HeightRequest="24"
-                                    WidthRequest="24" />
-                            </Grid>
-                        </Border>
-
                         <!--  Item padre: Biblioteca personal (colección del usuario con lectura/escritura)  -->
                         <Border
                             x:Name="UserLibraryHeaderBorder"
@@ -1101,6 +1021,221 @@
                                     VerticalOptions="Center" />
                             </Grid>
                         </Border>
+
+                        <!--  Favoritos  -->
+                        <Border
+                            x:Name="FavoritesHeaderBorder"
+                            Style="{StaticResource SidebarMenuItemBorder}">
+                            <Border.Padding>
+                                <OnPlatform x:TypeArguments="Thickness">
+                                    <On Platform="iOS" Value="10,8,4,8" />
+                                    <On Platform="Default" Value="10,6,4,6" />
+                                </OnPlatform>
+                            </Border.Padding>
+                            <Border.Behaviors>
+                                <behaviors:SidebarHoverBehavior />
+                            </Border.Behaviors>
+                            <Grid ColumnDefinitions="Auto,Auto,*" VerticalOptions="Center" HorizontalOptions="Fill">
+                                <Border
+                                    Grid.Column="0"
+                                    Padding="2"
+                                    BackgroundColor="Transparent"
+                                    StrokeThickness="0">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Command="{Binding ToggleFavoritesExpandedCommand}" />
+                                    </Border.GestureRecognizers>
+                                    <controls:SymbolIcon
+                                        HeightRequest="{StaticResource IconSizeSmall}"
+                                        WidthRequest="{StaticResource IconSizeSmall}"
+                                        TintColor="#FF888888"
+                                        VerticalOptions="Center">
+                                        <controls:SymbolIcon.Triggers>
+                                            <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding IsFavoritesExpanded}" Value="True">
+                                                <Setter Property="SymbolName" Value="chevron.down" />
+                                            </DataTrigger>
+                                            <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding IsFavoritesExpanded}" Value="False">
+                                                <Setter Property="SymbolName" Value="chevron.right" />
+                                            </DataTrigger>
+                                        </controls:SymbolIcon.Triggers>
+                                    </controls:SymbolIcon>
+                                </Border>
+                                <controls:SymbolIcon
+                                    Grid.Column="1"
+                                    Margin="4,0,0,0"
+                                    HeightRequest="{StaticResource IconSizeSidebarMenu}"
+                                    SymbolName="star"
+                                    TintColor="#FFFFAB40"
+                                    VerticalOptions="Center"
+                                    WidthRequest="{StaticResource IconSizeSidebarMenu}" />
+                                <Label
+                                    Grid.Column="2"
+                                    Margin="8,0,0,0"
+                                    Style="{StaticResource SidebarMenuItemLabel}"
+                                    Text="Favoritos" />
+                            </Grid>
+                        </Border>
+
+                        <VerticalStackLayout
+                            Spacing="{StaticResource SpacingXSmall}"
+                            HorizontalOptions="Fill"
+                            IsVisible="{Binding IsFavoritesExpanded}">
+                            <VerticalStackLayout.Margin>
+                                <OnPlatform x:TypeArguments="Thickness">
+                                    <On Platform="iOS" Value="0,0,0,2" />
+                                    <On Platform="Default" Value="0,0,0,6" />
+                                </OnPlatform>
+                            </VerticalStackLayout.Margin>
+
+                            <Border Style="{StaticResource SidebarMenuSubItemBorder}">
+                                <Border.Behaviors>
+                                    <behaviors:SidebarHoverBehavior />
+                                </Border.Behaviors>
+                                <Border.Triggers>
+                                    <DataTrigger TargetType="Border" Binding="{Binding IsFavoriteSessionsSelected}" Value="True">
+                                        <Setter Property="BackgroundColor" Value="#FF2A2A2A" />
+                                    </DataTrigger>
+                                </Border.Triggers>
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding SelectFavoriteSessionsCommand}" Tapped="OnFavoriteSessionsTapped" />
+                                </Border.GestureRecognizers>
+                                <Grid ColumnDefinitions="Auto,*,Auto" VerticalOptions="Center" HorizontalOptions="Fill">
+                                    <controls:SymbolIcon
+                                        Grid.Column="0"
+                                        HeightRequest="{StaticResource IconSizeSidebarMenu}"
+                                        WidthRequest="{StaticResource IconSizeSidebarMenu}"
+                                        SymbolName="star"
+                                        TintColor="#FFFFAB40"
+                                        VerticalOptions="Center" />
+                                    <Label
+                                        Grid.Column="1"
+                                        Margin="8,0,0,0"
+                                        Style="{StaticResource SidebarMenuSubItemLabel}"
+                                        Text="Sesiones" />
+                                    <Label
+                                        Grid.Column="2"
+                                        Margin="0,0,8,0"
+                                        FontFamily="{StaticResource AppFontMono}"
+                                        FontSize="{StaticResource FontSizeSmall}"
+                                        HorizontalOptions="End"
+                                        HorizontalTextAlignment="End"
+                                        TextColor="#FF888888"
+                                        Text="{Binding FavoriteSessionsCount}"
+                                        VerticalOptions="Center" />
+                                </Grid>
+                            </Border>
+
+                            <VerticalStackLayout
+                                Spacing="{StaticResource SpacingXSmall}"
+                                HorizontalOptions="Fill"
+                                IsVisible="{Binding FavoriteSessionsCount, Converter={StaticResource IntToBoolConverter}}"
+                                BindableLayout.ItemsSource="{Binding FavoriteSessions}">
+                                <VerticalStackLayout.Margin>
+                                    <OnPlatform x:TypeArguments="Thickness">
+                                        <On Platform="iOS" Value="0,0,0,2" />
+                                        <On Platform="Default" Value="0,0,0,6" />
+                                    </OnPlatform>
+                                </VerticalStackLayout.Margin>
+                                <BindableLayout.ItemTemplate>
+                                    <DataTemplate x:DataType="models:Session">
+                                        <Border Style="{StaticResource SidebarMenuSubItemBorder}">
+                                            <Border.Behaviors>
+                                                <behaviors:SidebarHoverBehavior />
+                                            </Border.Behaviors>
+                                            <Border.GestureRecognizers>
+                                                <TapGestureRecognizer
+                                                    Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.SelectFavoriteSessionCommand}"
+                                                    CommandParameter="{Binding .}" />
+                                            </Border.GestureRecognizers>
+                                            <Grid ColumnDefinitions="Auto,*,Auto" VerticalOptions="Center" HorizontalOptions="Fill">
+                                                <controls:SymbolIcon
+                                                    Grid.Column="0"
+                                                    HeightRequest="{StaticResource IconSizeSidebarMenu}"
+                                                    WidthRequest="{StaticResource IconSizeSidebarMenu}"
+                                                    SymbolName="clock"
+                                                    TintColor="White"
+                                                    VerticalOptions="Center" />
+                                                <VerticalStackLayout Grid.Column="1" Margin="8,0,0,0" Spacing="2">
+                                                    <Label Style="{StaticResource SidebarMenuSubItemLabel}">
+                                                        <Label.FormattedText>
+                                                            <FormattedString>
+                                                                <Span Text="{Binding Lugar}" TextColor="White" />
+                                                                <Span Text=" · " TextColor="White" />
+                                                                <Span Text="{Binding FechaDateTime, StringFormat='{0:dd/MM}'}" TextColor="White" />
+                                                            </FormattedString>
+                                                        </Label.FormattedText>
+                                                    </Label>
+                                                    <Label
+                                                        FontFamily="{StaticResource AppFontBody}"
+                                                        FontSize="{StaticResource FontSizeSmall}"
+                                                        TextColor="#FF888888"
+                                                        Text="{Binding Coach}" />
+                                                </VerticalStackLayout>
+                                                <HorizontalStackLayout
+                                                    Grid.Column="2"
+                                                    Margin="0,0,8,0"
+                                                    Spacing="6"
+                                                    HorizontalOptions="End"
+                                                    VerticalOptions="Center">
+                                                    <controls:SymbolIcon
+                                                        HeightRequest="{StaticResource IconSizeSmall}"
+                                                        WidthRequest="{StaticResource IconSizeSmall}"
+                                                        SymbolName="star.fill"
+                                                        TintColor="#FFFFAB40"
+                                                        VerticalOptions="Center"
+                                                        IsVisible="{Binding IsFavorite, Converter={StaticResource IntToBoolConverter}}" />
+                                                    <Label
+                                                        FontFamily="{StaticResource AppFontMono}"
+                                                        FontSize="{StaticResource FontSizeSmall}"
+                                                        HorizontalOptions="End"
+                                                        HorizontalTextAlignment="End"
+                                                        TextColor="#FF888888"
+                                                        Text="{Binding VideoCount}"
+                                                        VerticalOptions="Center" />
+                                                </HorizontalStackLayout>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </BindableLayout.ItemTemplate>
+                            </VerticalStackLayout>
+
+                            <Border Style="{StaticResource SidebarMenuSubItemBorder}">
+                                <Border.Behaviors>
+                                    <behaviors:SidebarHoverBehavior />
+                                </Border.Behaviors>
+                                <Border.Triggers>
+                                    <DataTrigger TargetType="Border" Binding="{Binding IsFavoriteVideosSelected}" Value="True">
+                                        <Setter Property="BackgroundColor" Value="#FF2A2A2A" />
+                                    </DataTrigger>
+                                </Border.Triggers>
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding SelectFavoriteVideosCommand}" Tapped="OnFavoriteVideosTapped" />
+                                </Border.GestureRecognizers>
+                                <Grid ColumnDefinitions="Auto,*,Auto" VerticalOptions="Center" HorizontalOptions="Fill">
+                                    <controls:SymbolIcon
+                                        Grid.Column="0"
+                                        HeightRequest="{StaticResource IconSizeSidebarMenu}"
+                                        WidthRequest="{StaticResource IconSizeSidebarMenu}"
+                                        SymbolName="star.fill"
+                                        TintColor="#FFFFAB40"
+                                        VerticalOptions="Center" />
+                                    <Label
+                                        Grid.Column="1"
+                                        Margin="8,0,0,0"
+                                        Style="{StaticResource SidebarMenuSubItemLabel}"
+                                        Text="Videos" />
+                                    <Label
+                                        Grid.Column="2"
+                                        Margin="0,0,8,0"
+                                        FontFamily="{StaticResource AppFontMono}"
+                                        FontSize="{StaticResource FontSizeSmall}"
+                                        HorizontalOptions="End"
+                                        HorizontalTextAlignment="End"
+                                        TextColor="#FF888888"
+                                        Text="{Binding FavoriteVideosCount}"
+                                        VerticalOptions="Center" />
+                                </Grid>
+                            </Border>
+                        </VerticalStackLayout>
 
                         <Border
                             x:Name="TrashHeaderBorder"
@@ -1809,6 +1944,25 @@
                                                 TintColor="White"
                                                 VerticalOptions="Center"
                                                 WidthRequest="{StaticResource IconSizeMedium}" />
+                                        </Border>
+
+                                        <!--  Indicador de favorito  -->
+                                        <Border
+                                            BackgroundColor="#CC000000"
+                                            HeightRequest="26"
+                                            HorizontalOptions="Start"
+                                            Margin="6,34,0,0"
+                                            Padding="6,2"
+                                            StrokeShape="RoundRectangle 4"
+                                            StrokeThickness="0"
+                                            VerticalOptions="Start"
+                                            IsVisible="{Binding IsFavorite, Converter={StaticResource IntToBoolConverter}}">
+                                            <controls:SymbolIcon
+                                                HeightRequest="{StaticResource IconSizeMedium}"
+                                                WidthRequest="{StaticResource IconSizeMedium}"
+                                                SymbolName="star.fill"
+                                                TintColor="#FFFFAB40"
+                                                VerticalOptions="Center" />
                                         </Border>
 
                                         <!--  Indicador de sincronización cloud  -->
@@ -7430,6 +7584,26 @@
                         </HorizontalStackLayout>
                     </Border>
 
+                    <Border Style="{StaticResource ContextMenuItemBorder}">
+                        <Border.Behaviors>
+                            <behaviors:SidebarHoverBehavior />
+                        </Border.Behaviors>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnSessionRowMenuFavoriteTapped" />
+                        </Border.GestureRecognizers>
+                        <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                            <controls:SymbolIcon
+                                HeightRequest="18"
+                                WidthRequest="18"
+                                SymbolName="star"
+                                TintColor="#FFFFAB40"
+                                VerticalOptions="Center" />
+                            <Label
+                                Text="Agregar a favoritos"
+                                Style="{StaticResource ContextMenuItemLabel}" />
+                        </HorizontalStackLayout>
+                    </Border>
+
                     <!-- Separador -->
                     <Border 
                         HeightRequest="1" 
@@ -7574,26 +7748,6 @@
                         </HorizontalStackLayout>
                     </Border>
 
-                    <Border Style="{StaticResource ContextMenuItemBorder}">
-                        <Border.Behaviors>
-                            <behaviors:SidebarHoverBehavior />
-                        </Border.Behaviors>
-                        <Border.GestureRecognizers>
-                            <TapGestureRecognizer Tapped="OnRemoteSessionMenuFavoriteTapped" />
-                        </Border.GestureRecognizers>
-                        <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
-                            <controls:SymbolIcon
-                                HeightRequest="18"
-                                WidthRequest="18"
-                                SymbolName="star"
-                                TintColor="#FFAAAAAA"
-                                VerticalOptions="Center" />
-                            <Label
-                                Text="Añadir a favoritos"
-                                Style="{StaticResource ContextMenuItemLabel}" />
-                        </HorizontalStackLayout>
-                    </Border>
-
                     <!-- Separador -->
                     <Border 
                         HeightRequest="1" 
@@ -7658,27 +7812,6 @@
                         </HorizontalStackLayout>
                     </Border>
 
-                    <!--  Editar  -->
-                    <Border Style="{StaticResource ContextMenuItemBorder}">
-                        <Border.Behaviors>
-                            <behaviors:SidebarHoverBehavior />
-                        </Border.Behaviors>
-                        <Border.GestureRecognizers>
-                            <TapGestureRecognizer Tapped="OnVideoItemMenuEditTapped" />
-                        </Border.GestureRecognizers>
-                        <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
-                            <controls:SymbolIcon
-                                HeightRequest="18"
-                                WidthRequest="18"
-                                SymbolName="pencil"
-                                TintColor="#FFAAAAAA"
-                                VerticalOptions="Center" />
-                            <Label
-                                Text="Editar..."
-                                Style="{StaticResource ContextMenuItemLabel}" />
-                        </HorizontalStackLayout>
-                    </Border>
-
                     <!--  Compartir  -->
                     <Border Style="{StaticResource ContextMenuItemBorder}">
                         <Border.Behaviors>
@@ -7696,6 +7829,27 @@
                                 VerticalOptions="Center" />
                             <Label
                                 Text="Compartir"
+                                Style="{StaticResource ContextMenuItemLabel}" />
+                        </HorizontalStackLayout>
+                    </Border>
+
+                    <!--  Favoritos  -->
+                    <Border Style="{StaticResource ContextMenuItemBorder}">
+                        <Border.Behaviors>
+                            <behaviors:SidebarHoverBehavior />
+                        </Border.Behaviors>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnVideoItemMenuFavoriteTapped" />
+                        </Border.GestureRecognizers>
+                        <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                            <controls:SymbolIcon
+                                HeightRequest="18"
+                                WidthRequest="18"
+                                SymbolName="star"
+                                TintColor="#FFFFAB40"
+                                VerticalOptions="Center" />
+                            <Label
+                                Text="Agregar a favoritos"
                                 Style="{StaticResource ContextMenuItemLabel}" />
                         </HorizontalStackLayout>
                     </Border>

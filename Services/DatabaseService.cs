@@ -213,6 +213,10 @@ public class DatabaseService
         await EnsureColumnExistsAsync(_database, "videoClip", "is_deleted", "INTEGER DEFAULT 0");
         await EnsureColumnExistsAsync(_database, "videoClip", "deleted_at_utc", "INTEGER DEFAULT 0");
 
+        // Favoritos
+        await EnsureColumnExistsAsync(_database, "sesion", "is_favorite", "INTEGER DEFAULT 0");
+        await EnsureColumnExistsAsync(_database, "videoClip", "is_favorite", "INTEGER DEFAULT 0");
+
         // Migraciones ligeras: columnas nuevas en userProfile
         await EnsureColumnExistsAsync(_database, "userProfile", "referenceAthleteId", "INTEGER");
 
@@ -1072,6 +1076,7 @@ public class DatabaseService
                 existing.LocalThumbnailPath = clip.LocalThumbnailPath;
                 existing.AtletaId = clip.AtletaId;
                 existing.Section = clip.Section;
+                existing.IsFavorite = clip.IsFavorite;
                 await db.UpdateAsync(existing);
                 LogInfo($"VideoClip actualizado: ID {existing.Id}");
                 return existing.Id;
