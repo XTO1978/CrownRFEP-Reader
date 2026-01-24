@@ -1210,6 +1210,10 @@ public class DashboardViewModel : BaseViewModel
         => string.Equals(_cloudBackendService.CurrentUserRole, "admin_org", StringComparison.OrdinalIgnoreCase)
             || string.Equals(_cloudBackendService.CurrentUserRole, "coach", StringComparison.OrdinalIgnoreCase);
 
+    public bool CanWriteRemoteLibrary
+        => string.Equals(_cloudBackendService.CurrentUserRole, "admin_org", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(_cloudBackendService.CurrentUserRole, "coach", StringComparison.OrdinalIgnoreCase);
+
     public bool IsRemoteAllGallerySelected
     {
         get => _isRemoteAllGallerySelected;

@@ -2829,27 +2829,6 @@
                         Spacing="12"
                         IsVisible="{Binding ShowRemoteGallery}">
                         
-                        <!--  Separador  -->
-                        <Border
-                            HeightRequest="1"
-                            BackgroundColor="#FF464646"
-                            Stroke="Transparent"
-                            Margin="0,8,0,0" />
-                        
-                        <!--  Título sección remota  -->
-                        <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
-                            <controls:SymbolIcon
-                                HeightRequest="{StaticResource IconSizeLarge}"
-                                SymbolName="icloud"
-                                TintColor="#2196F3"
-                                VerticalOptions="Center"
-                                WidthRequest="{StaticResource IconSizeLarge}" />
-                            <Label
-                                FontSize="{StaticResource FontSizeHeader}"
-                                Text="Acciones Remotas"
-                                TextColor="White" />
-                        </HorizontalStackLayout>
-
                         <!--  Toggles de selección remotos  -->
                         <Label
                             FontSize="{StaticResource FontSizeBody}"
@@ -3013,7 +2992,8 @@
                                 Padding="{StaticResource PaddingActionButton}"
                                 BackgroundColor="#FF404040"
                                 Stroke="Transparent"
-                                StrokeShape="RoundRectangle 6">
+                                StrokeShape="RoundRectangle 6"
+                                IsVisible="{Binding CanWriteRemoteLibrary}">
                                 <Border.GestureRecognizers>
                                     <TapGestureRecognizer Command="{Binding DeleteSelectedRemoteFromCloudCommand}" />
                                 </Border.GestureRecognizers>
@@ -7319,6 +7299,9 @@
                 <VerticalStackLayout Spacing="2">
                     <!--  Crear nueva biblioteca  -->
                     <Border Style="{StaticResource ContextMenuItemBorder}">
+                        <Border.IsVisible>
+                            <Binding Path="CanWriteRemoteLibrary" />
+                        </Border.IsVisible>
                         <Border.Behaviors>
                             <behaviors:SidebarHoverBehavior />
                         </Border.Behaviors>
@@ -7340,6 +7323,9 @@
 
                     <!--  Importar otra biblioteca  -->
                     <Border Style="{StaticResource ContextMenuItemBorder}">
+                        <Border.IsVisible>
+                            <Binding Path="CanWriteRemoteLibrary" />
+                        </Border.IsVisible>
                         <Border.Behaviors>
                             <behaviors:SidebarHoverBehavior />
                         </Border.Behaviors>
