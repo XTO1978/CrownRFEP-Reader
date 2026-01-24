@@ -39,6 +39,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     private readonly DatabaseService _databaseService;
     private readonly StatisticsService _statisticsService;
     private readonly ITableExportService _tableExportService;
+    private readonly ICloudBackendService _cloudBackendService;
     private readonly SemaphoreSlim _videoPathInitLock = new(1, 1);
 
     private CancellationTokenSource? _lapSyncInitCts;
@@ -212,11 +213,12 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     private ObservableCollection<int> _evolutionTecnicaValues = new();
     private ObservableCollection<string> _evolutionLabels = new();
 
-    public SinglePlayerViewModel(DatabaseService databaseService, StatisticsService statisticsService, ITableExportService tableExportService)
+    public SinglePlayerViewModel(DatabaseService databaseService, StatisticsService statisticsService, ITableExportService tableExportService, ICloudBackendService cloudBackendService)
     {
         _databaseService = databaseService;
         _statisticsService = statisticsService;
         _tableExportService = tableExportService;
+        _cloudBackendService = cloudBackendService;
         
         // Comandos de reproducción
         PlayPauseCommand = new Command(TogglePlayPause);
@@ -3474,10 +3476,12 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(HasCurrentAthlete));
         OnPropertyChanged(nameof(CurrentAthleteText));
         
-        // Actualizar path
-        if (newVideo.LocalClipPath != null)
+        // Actualizar path (local o streaming si no hay archivo local)
+        var resolvedPath = await ResolveVideoPathAsync(newVideo);
+        if (!string.IsNullOrWhiteSpace(resolvedPath))
         {
-            _videoPath = newVideo.LocalClipPath;
+            _videoPath = resolvedPath;
+            newVideo.LocalClipPath = resolvedPath;
             OnPropertyChanged(nameof(VideoPath));
         }
         
@@ -3519,6 +3523,72 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         // Actualizar estado de comandos
         ((Command)PreviousVideoCommand).ChangeCanExecute();
         ((Command)NextVideoCommand).ChangeCanExecute();
+    }
+
+    private async Task<string?> ResolveVideoPathAsync(VideoClip video)
+    {
+        var videoPath = video.LocalClipPath;
+
+        if (!IsStreamingUrl(videoPath))
+        {
+            // Fallback: construir ruta local desde la carpeta de la sesión
+            if (string.IsNullOrWhiteSpace(videoPath) || !File.Exists(videoPath))
+            {
+                try
+                {
+                    var session = video.Session ?? (video.SessionId > 0 ? await _databaseService.GetSessionByIdAsync(video.SessionId) : null);
+                    if (!string.IsNullOrWhiteSpace(session?.PathSesion))
+                    {
+                        var normalized = (video.ClipPath ?? "").Replace('\\', '/');
+                        var fileName = Path.GetFileName(normalized);
+                        if (string.IsNullOrWhiteSpace(fileName))
+                            fileName = $"CROWN{video.Id}.mp4";
+
+                        var candidate = Path.Combine(session.PathSesion, "videos", fileName);
+                        if (File.Exists(candidate))
+                            videoPath = candidate;
+                    }
+                }
+                catch
+                {
+                    // Ignorar: si falla, se intentará streaming
+                }
+            }
+
+            // Último recurso: usar ClipPath si fuera una ruta real
+            if (string.IsNullOrWhiteSpace(videoPath))
+                videoPath = video.ClipPath;
+        }
+
+        // Si no hay archivo local y el video está en la organización, intentar streaming
+        if (!IsStreamingUrl(videoPath) && (string.IsNullOrWhiteSpace(videoPath) || !File.Exists(videoPath)))
+        {
+            if (video.IsRemoteAvailable && _cloudBackendService.IsAuthenticated)
+            {
+                var remotePath = NormalizeRemotePath(video.ClipPath);
+                var signResult = await _cloudBackendService.GetDownloadUrlAsync(remotePath, expirationMinutes: 10);
+                if (signResult.Success && !string.IsNullOrWhiteSpace(signResult.Url))
+                    videoPath = signResult.Url;
+            }
+        }
+
+        return videoPath;
+    }
+
+    private static bool IsStreamingUrl(string? path)
+        => !string.IsNullOrWhiteSpace(path)
+            && (path.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+                || path.StartsWith("https://", StringComparison.OrdinalIgnoreCase));
+
+    private static string? NormalizeRemotePath(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return null;
+
+        var normalized = path.Replace('\\', '/');
+        return normalized.StartsWith("CrownRFEP/", StringComparison.OrdinalIgnoreCase)
+            ? normalized.Substring("CrownRFEP/".Length)
+            : normalized;
     }
 
     /// <summary>
