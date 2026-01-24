@@ -299,12 +299,20 @@ public class VideoClip : INotifyPropertyChanged
             // 1. Si LocalThumbnailPath existe en disco, usarla
             if (!string.IsNullOrWhiteSpace(LocalThumbnailPath) && File.Exists(LocalThumbnailPath))
                 return LocalThumbnailPath;
+
+            // 2. Si ThumbnailPath es una URL remota, usarla directamente
+            if (!string.IsNullOrWhiteSpace(ThumbnailPath)
+                && (ThumbnailPath.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+                    || ThumbnailPath.StartsWith("https://", StringComparison.OrdinalIgnoreCase)))
+            {
+                return ThumbnailPath;
+            }
             
-            // 2. Si ThumbnailPath es una ruta absoluta que existe, usarla
+            // 3. Si ThumbnailPath es una ruta absoluta que existe, usarla
             if (!string.IsNullOrWhiteSpace(ThumbnailPath) && Path.IsPathRooted(ThumbnailPath) && File.Exists(ThumbnailPath))
                 return ThumbnailPath;
             
-            // 3. Intentar construir ruta desde CrownData estándar
+            // 4. Intentar construir ruta desde CrownData estándar
             var appDataPath = FileSystem.AppDataDirectory;
             var standardPath = Path.Combine(appDataPath, "CrownData", "sessions", SessionId.ToString(), "thumbnails");
             
@@ -326,7 +334,7 @@ public class VideoClip : INotifyPropertyChanged
                 }
             }
             
-            // 4. No se encontró miniatura
+            // 5. No se encontró miniatura
             return null;
         }
     }

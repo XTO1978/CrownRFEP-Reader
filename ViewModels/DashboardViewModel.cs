@@ -7871,13 +7871,22 @@ public class DashboardViewModel : BaseViewModel
                 return;
             }
 
+            var session = await EnsureRemoteSessionExistsAsync(remoteVideo);
+            if (session == null)
+            {
+                var page = Application.Current?.MainPage;
+                await page?.DisplayAlert("Error", "No se pudo crear la sesión contenedora.", "OK")!;
+                return;
+            }
+
             // Crear entrada en la base de datos local (solo referencia, sin archivo físico)
             var newVideo = new VideoClip
             {
-                SessionId = remoteVideo.SessionId,
+                SessionId = session.Id,
                 ClipPath = remoteVideo.Key.StartsWith("CrownRFEP/") 
                     ? remoteVideo.Key.Substring("CrownRFEP/".Length) 
                     : remoteVideo.Key,
+                ThumbnailPath = remoteVideo.ThumbnailUrl,
                 ClipSize = remoteVideo.Size,
                 CreationDate = new DateTimeOffset(remoteVideo.LastModified).ToUnixTimeSeconds(),
                 Source = "remote", // Solo existe en remoto, no hay archivo local
@@ -7892,7 +7901,27 @@ public class DashboardViewModel : BaseViewModel
             remoteVideo.LinkedLocalVideo = newVideo;
             remoteVideo.IsLocallyAvailable = false; // Está en biblioteca personal pero no descargado
 
+            // Enlazar sesión para mostrar metadatos en UI local
+            newVideo.Session = session;
+
+            // Aplicar metadatos remotos (tags, eventos, tiempos, atleta, etc.)
+            await ApplyRemoteMetadataToLocalVideoAsync(remoteVideo, newVideo);
+
             System.Diagnostics.Debug.WriteLine($"[Remote] Video {remoteVideo.VideoId} añadido a biblioteca personal (solo referencia)");
+
+            // Refrescar colecciones locales
+            if (IsAllGallerySelected)
+            {
+                await LoadAllVideosAsync();
+            }
+            else if (SelectedSession?.Id == session.Id)
+            {
+                await LoadSelectedSessionVideosAsync(SelectedSession);
+            }
+            else if (_allVideosCache != null)
+            {
+                _allVideosCache.Insert(0, newVideo);
+            }
 
             // Refrescar contadores
             await CheckPendingSyncAsync();
@@ -7901,6 +7930,311 @@ public class DashboardViewModel : BaseViewModel
         {
             System.Diagnostics.Debug.WriteLine($"[Remote] Error añadiendo a biblioteca: {ex.Message}");
         }
+    }
+
+    private async Task<Session?> EnsureRemoteSessionExistsAsync(RemoteVideoItem remoteVideo)
+    {
+        if (remoteVideo.SessionId <= 0)
+            return null;
+
+        var existing = await _databaseService.GetSessionByIdAsync(remoteVideo.SessionId);
+        if (existing != null)
+        {
+            await EnsureSessionVisibleAsync(existing);
+            return existing;
+        }
+
+        var sessionName = GetRemoteSessionName(remoteVideo);
+        var sessionDate = GetRemoteSessionDate(remoteVideo);
+        var sessionPlace = GetRemoteSessionPlace(remoteVideo);
+
+        var matched = await FindMatchingLocalSessionAsync(sessionName, sessionDate, sessionPlace);
+        if (matched != null)
+        {
+            await EnsureSessionVisibleAsync(matched);
+            return matched;
+        }
+
+        var remoteSession = RemoteSessions.FirstOrDefault(s => s.SessionId == remoteVideo.SessionId);
+        var session = new Session
+        {
+            Id = remoteVideo.SessionId,
+            NombreSesion = sessionName,
+            Lugar = sessionPlace,
+            Coach = remoteSession?.Coach,
+            Fecha = new DateTimeOffset(sessionDate).ToUnixTimeSeconds(),
+            Participantes = ""
+        };
+
+        await _databaseService.InsertSessionWithIdAsync(session);
+
+        if (!string.IsNullOrWhiteSpace(session.Lugar))
+            await EnsurePlaceExistsAsync(session.Lugar);
+
+        await EnsureSessionVisibleAsync(session);
+        return session;
+    }
+
+    private string GetRemoteSessionName(RemoteVideoItem remoteVideo)
+    {
+        var remoteSession = RemoteSessions.FirstOrDefault(s => s.SessionId == remoteVideo.SessionId);
+        if (!string.IsNullOrWhiteSpace(remoteSession?.Title))
+            return remoteSession.Title;
+        if (!string.IsNullOrWhiteSpace(remoteVideo.SessionName))
+            return remoteVideo.SessionName;
+        return $"Sesión {remoteVideo.SessionId}";
+    }
+
+    private DateTime GetRemoteSessionDate(RemoteVideoItem remoteVideo)
+    {
+        var remoteSession = RemoteSessions.FirstOrDefault(s => s.SessionId == remoteVideo.SessionId);
+        return remoteSession?.SessionDate ?? remoteVideo.LastModified;
+    }
+
+    private string? GetRemoteSessionPlace(RemoteVideoItem remoteVideo)
+        => RemoteSessions.FirstOrDefault(s => s.SessionId == remoteVideo.SessionId)?.Place;
+
+    private async Task<Session?> FindMatchingLocalSessionAsync(string sessionName, DateTime sessionDate, string? sessionPlace)
+    {
+        var candidates = RecentSessions.AsEnumerable();
+        var matched = candidates.FirstOrDefault(s => IsMatchingSession(s, sessionName, sessionDate, sessionPlace));
+        if (matched != null)
+            return matched;
+
+        var allSessions = await _databaseService.GetAllSessionsAsync();
+        return allSessions.FirstOrDefault(s => IsMatchingSession(s, sessionName, sessionDate, sessionPlace));
+    }
+
+    private static bool IsMatchingSession(Session session, string sessionName, DateTime sessionDate, string? sessionPlace)
+    {
+        var name = session.NombreSesion ?? session.DisplayName;
+        if (!string.Equals(name?.Trim(), sessionName.Trim(), StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        if (session.Fecha > 0 && sessionDate != DateTime.MinValue)
+        {
+            var localDate = DateTimeOffset.FromUnixTimeSeconds(session.Fecha).LocalDateTime.Date;
+            if (localDate != sessionDate.Date)
+                return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(sessionPlace))
+        {
+            if (!string.Equals(sessionPlace.Trim(), session.Lugar?.Trim(), StringComparison.OrdinalIgnoreCase))
+                return false;
+        }
+
+        return true;
+    }
+
+    private async Task ApplyRemoteMetadataToLocalVideoAsync(RemoteVideoItem remoteVideo, VideoClip localVideo)
+    {
+        try
+        {
+            var metadataKey = $"sessions/{remoteVideo.SessionId}/metadata/{remoteVideo.VideoId}.json";
+            var metadata = await LoadRemoteVideoMetadataAsync(metadataKey);
+            if (metadata == null)
+                return;
+
+            if (metadata.Video != null)
+            {
+                if (!string.IsNullOrWhiteSpace(metadata.Video.ComparisonName))
+                    localVideo.ComparisonName = metadata.Video.ComparisonName;
+                if (metadata.Video.Section > 0)
+                    localVideo.Section = metadata.Video.Section;
+                if (metadata.Video.ClipDuration > 0)
+                    localVideo.ClipDuration = metadata.Video.ClipDuration;
+                if (metadata.Video.ClipSize > 0)
+                    localVideo.ClipSize = metadata.Video.ClipSize;
+                if (!string.IsNullOrWhiteSpace(metadata.Video.ThumbnailPath)
+                    && (metadata.Video.ThumbnailPath.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+                        || metadata.Video.ThumbnailPath.StartsWith("https://", StringComparison.OrdinalIgnoreCase)))
+                {
+                    localVideo.ThumbnailPath = metadata.Video.ThumbnailPath;
+                }
+
+                await _databaseService.UpdateVideoClipAsync(localVideo);
+            }
+
+            if (metadata.Athlete != null && metadata.Athlete.Id > 0)
+            {
+                var localAthlete = await _databaseService.GetAthleteByIdAsync(metadata.Athlete.Id);
+                if (localAthlete == null)
+                {
+                    var newAthlete = new Athlete
+                    {
+                        Id = metadata.Athlete.Id,
+                        Nombre = metadata.Athlete.Nombre ?? "",
+                        Apellido = metadata.Athlete.Apellido ?? "",
+                        Category = metadata.Athlete.Category,
+                        CategoriaId = metadata.Athlete.CategoriaId,
+                        Favorite = metadata.Athlete.Favorite
+                    };
+                    await _databaseService.SaveAthleteAsync(newAthlete);
+                    localAthlete = newAthlete;
+                }
+
+                if (localVideo.AtletaId <= 0)
+                {
+                    localVideo.AtletaId = metadata.Athlete.Id;
+                    await _databaseService.UpdateVideoClipAsync(localVideo);
+                }
+
+                localVideo.Atleta = localAthlete;
+            }
+
+            if (metadata.Inputs.Count > 0)
+            {
+                if (metadata.Tags.Count > 0)
+                {
+                    foreach (var tagDef in metadata.Tags)
+                    {
+                        if (tagDef.Id <= 0) continue;
+                        await _databaseService.SaveTagAsync(new Tag
+                        {
+                            Id = tagDef.Id,
+                            NombreTag = tagDef.Name
+                        });
+                    }
+                }
+
+                var eventGroups = metadata.Inputs
+                    .Where(i => i.IsEvent == 1 && i.InputTypeId > 0)
+                    .GroupBy(i => i.InputTypeId)
+                    .ToList();
+
+                foreach (var group in eventGroups)
+                {
+                    var existingEvent = await _databaseService.GetEventTagByIdAsync(group.Key);
+                    if (existingEvent == null)
+                    {
+                        var name = metadata.Tags.FirstOrDefault(t => t.Id == group.Key)?.Name
+                            ?? group.Select(i => i.InputValue).FirstOrDefault(v => !string.IsNullOrWhiteSpace(v))
+                            ?? $"Tag {group.Key}";
+                        await _databaseService.InsertEventTagAsync(new EventTagDefinition
+                        {
+                            Id = group.Key,
+                            Nombre = name
+                        });
+                    }
+                }
+
+                foreach (var inputData in metadata.Inputs)
+                {
+                    var input = inputData.ToInput();
+                    input.Id = 0;
+                    input.VideoId = localVideo.Id;
+                    input.SessionId = localVideo.SessionId;
+                    await _databaseService.SaveInputAsync(input);
+                }
+            }
+            else if (metadata.Tags.Count > 0)
+            {
+                foreach (var tag in metadata.Tags)
+                {
+                    if (tag.Id <= 0) continue;
+                    await _databaseService.SaveTagAsync(new Tag
+                    {
+                        Id = tag.Id,
+                        NombreTag = tag.Name
+                    });
+                    var input = new Input
+                    {
+                        Id = 0,
+                        VideoId = localVideo.Id,
+                        SessionId = localVideo.SessionId,
+                        AthleteId = localVideo.AtletaId,
+                        InputTypeId = tag.Id,
+                        InputDateTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                        InputValue = tag.Name,
+                        TimeStamp = 0,
+                        IsEvent = 0
+                    };
+                    await _databaseService.SaveInputAsync(input);
+                }
+            }
+
+            await _databaseService.DeleteExecutionTimingEventsByVideoAsync(localVideo.Id);
+            var timingEvents = metadata.TimingEvents.Select(t =>
+            {
+                var evt = t.ToEvent();
+                evt.Id = 0;
+                evt.VideoId = localVideo.Id;
+                evt.SessionId = localVideo.SessionId;
+                return evt;
+            }).ToList();
+
+            if (timingEvents.Count > 0)
+            {
+                await _databaseService.InsertExecutionTimingEventsAsync(timingEvents);
+                localVideo.HasTiming = true;
+            }
+
+            ApplyMetadataTagsToLocalVideo(localVideo, metadata);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Remote] Error aplicando metadatos a video local: {ex.Message}");
+        }
+    }
+
+    private static void ApplyMetadataTagsToLocalVideo(VideoClip localVideo, VideoSyncData metadata)
+    {
+        if (metadata.Tags.Count == 0 && metadata.Inputs.Count == 0)
+            return;
+
+        var tagMap = metadata.Tags
+            .Where(t => t.Id > 0)
+            .GroupBy(t => t.Id)
+            .ToDictionary(g => g.Key, g => g.First().Name ?? string.Empty);
+
+        var tags = metadata.Tags
+            .Where(t => !string.IsNullOrWhiteSpace(t.Name))
+            .Select(t => new Tag { Id = t.Id, NombreTag = t.Name })
+            .ToList();
+
+        var eventGroups = metadata.Inputs
+            .Where(i => i.IsEvent == 1 && i.InputTypeId > 0)
+            .GroupBy(i => i.InputTypeId)
+            .ToList();
+
+        var eventTags = new List<Tag>();
+        foreach (var group in eventGroups)
+        {
+            var name = tagMap.TryGetValue(group.Key, out var tagName)
+                ? tagName
+                : group.Select(i => i.InputValue).FirstOrDefault(v => !string.IsNullOrWhiteSpace(v)) ?? $"Tag {group.Key}";
+            eventTags.Add(new Tag
+            {
+                Id = group.Key,
+                NombreTag = name,
+                IsEventTag = true,
+                EventCount = group.Count()
+            });
+        }
+
+        localVideo.Tags = tags.Count > 0 ? tags : null;
+        localVideo.EventTags = eventTags.Count > 0 ? eventTags : null;
+    }
+
+    private async Task EnsureSessionVisibleAsync(Session session)
+    {
+        await MainThread.InvokeOnMainThreadAsync(() =>
+        {
+            if (RecentSessions.Any(s => s.Id == session.Id))
+                return;
+
+            var insertIndex = 0;
+            while (insertIndex < RecentSessions.Count && RecentSessions[insertIndex].Fecha > session.Fecha)
+                insertIndex++;
+
+            RecentSessions.Insert(insertIndex, session);
+
+            if (!IsSessionsListExpanded)
+                IsSessionsListExpanded = true;
+
+            SyncVisibleSessionRows();
+        });
     }
 
     /// <summary>

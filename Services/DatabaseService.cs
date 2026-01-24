@@ -559,6 +559,22 @@ public class DatabaseService
         }
     }
 
+    public async Task<int> InsertSessionWithIdAsync(Session session)
+    {
+        try
+        {
+            var db = await GetConnectionAsync();
+            await db.InsertAsync(session);
+            LogSuccess($"Sesión creada con Id explícito: {session.DisplayName}");
+            return session.Id;
+        }
+        catch (Exception ex)
+        {
+            LogError($"Error insertando sesión con Id explícito: {ex.Message}");
+            throw;
+        }
+    }
+
     public async Task<int> DeleteSessionAsync(Session session)
     {
         try
