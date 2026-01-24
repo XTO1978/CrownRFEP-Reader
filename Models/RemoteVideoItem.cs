@@ -27,10 +27,14 @@ public class RemoteVideoItem : INotifyPropertyChanged
 
     private string _key = string.Empty;
     private string _fileName = string.Empty;
+    private string _sessionName = string.Empty;
     private int _sessionId;
     private int _videoId;
     private long _size;
     private DateTime _lastModified;
+    private int _section;
+    private List<Tag>? _tags;
+    private List<Tag>? _eventTags;
     private string? _downloadUrl;
     private string? _thumbnailUrl;
     private bool _isLocallyAvailable;
@@ -68,6 +72,15 @@ public class RemoteVideoItem : INotifyPropertyChanged
     }
 
     /// <summary>
+    /// Nombre de la sesión mostrado en la UI
+    /// </summary>
+    public string SessionName
+    {
+        get => _sessionName;
+        set => SetProperty(ref _sessionName, value);
+    }
+
+    /// <summary>
     /// ID de la sesión extraído de la ruta
     /// </summary>
     public int SessionId
@@ -83,6 +96,15 @@ public class RemoteVideoItem : INotifyPropertyChanged
     {
         get => _videoId;
         set => SetProperty(ref _videoId, value);
+    }
+
+    /// <summary>
+    /// Tramo/Sección del video
+    /// </summary>
+    public int Section
+    {
+        get => _section;
+        set => SetProperty(ref _section, value);
     }
 
     /// <summary>
@@ -187,6 +209,72 @@ public class RemoteVideoItem : INotifyPropertyChanged
     }
 
     /// <summary>
+    /// Tags asignadas al video (no eventos)
+    /// </summary>
+    public List<Tag>? Tags
+    {
+        get => _tags;
+        set
+        {
+            if (ReferenceEquals(_tags, value)) return;
+            _tags = value;
+            OnPropertyChanged(nameof(Tags));
+            OnPropertyChanged(nameof(HasTagsSummary));
+            OnPropertyChanged(nameof(TagsSummary));
+        }
+    }
+
+    /// <summary>
+    /// Tags de eventos del video
+    /// </summary>
+    public List<Tag>? EventTags
+    {
+        get => _eventTags;
+        set
+        {
+            if (ReferenceEquals(_eventTags, value)) return;
+            _eventTags = value;
+            OnPropertyChanged(nameof(EventTags));
+            OnPropertyChanged(nameof(HasTagsSummary));
+            OnPropertyChanged(nameof(TagsSummary));
+        }
+    }
+
+    public string TagsSummary
+    {
+        get
+        {
+            var names = new List<string>();
+            if (Tags != null)
+            {
+                names.AddRange(
+                    Tags.Where(t => t != null)
+                        .Select(t => t!.NombreTag)
+                        .Where(n => !string.IsNullOrWhiteSpace(n))
+                        .Select(n => n!));
+            }
+            if (EventTags != null)
+            {
+                names.AddRange(
+                    EventTags.Where(t => t != null)
+                        .Select(t => t!.DisplayText)
+                        .Where(n => !string.IsNullOrWhiteSpace(n))
+                        .Select(n => n!));
+            }
+
+            if (names.Count == 0)
+                return string.Empty;
+
+            var shown = names.Take(3).ToList();
+            var remaining = names.Count - shown.Count;
+            var summary = string.Join(", ", shown);
+            return remaining > 0 ? $"{summary} +{remaining}" : summary;
+        }
+    }
+
+    public bool HasTagsSummary => !string.IsNullOrWhiteSpace(TagsSummary);
+
+    /// <summary>
     /// Tamaño formateado para mostrar (ej: "12.5 MB")
     /// </summary>
     public string SizeFormatted
@@ -204,9 +292,9 @@ public class RemoteVideoItem : INotifyPropertyChanged
     }
 
     /// <summary>
-    /// Nombre de sesión extraído del path
+    /// Nombre de sesión extraído del path (fallback)
     /// </summary>
-    public string SessionName => $"Sesión {SessionId}";
+    public string SessionNameFallback => $"Sesión {SessionId}";
 
     /// <summary>
     /// Color de estado: verde si local, azul si solo remoto
@@ -258,7 +346,8 @@ public class RemoteVideoItem : INotifyPropertyChanged
             ThumbnailUrl = file.ThumbnailUrl,
             LinkedLocalVideo = linkedLocal,
             IsLocallyAvailable = linkedLocal != null,
-            LocalPath = linkedLocal?.LocalClipPath
+            LocalPath = linkedLocal?.LocalClipPath,
+            SessionName = $"Sesión {sessionId}"
         };
     }
 }

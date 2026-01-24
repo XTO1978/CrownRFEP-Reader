@@ -7486,6 +7486,8 @@ public class DashboardViewModel : BaseViewModel
                 }
             }
 
+            await ApplyRemoteVideoMetadataAsync(files, remoteSessionMetadata);
+
             var localSessions = await _databaseService.GetAllSessionsAsync();
             var localSessionsById = localSessions.ToDictionary(s => s.Id, s => s);
             var remoteSessionItems = RemoteVideos
@@ -7615,6 +7617,168 @@ public class DashboardViewModel : BaseViewModel
         }
 
         return result;
+    }
+
+    private async Task ApplyRemoteVideoMetadataAsync(List<CloudFileInfo> files, Dictionary<int, RemoteSessionMetadata> sessionMetadata)
+    {
+        var metadataFiles = files
+            .Where(f => !f.IsFolder && f.Key.EndsWith(".json", StringComparison.OrdinalIgnoreCase) && f.Key.Contains("/metadata/", StringComparison.OrdinalIgnoreCase))
+            .ToDictionary(f => NormalizeCloudKey(f.Key), f => f);
+
+        if (metadataFiles.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var remoteItem in RemoteVideos)
+        {
+            if (remoteItem.SessionId <= 0 || remoteItem.VideoId <= 0)
+            {
+                continue;
+            }
+
+            var metadataKey = $"sessions/{remoteItem.SessionId}/metadata/{remoteItem.VideoId}.json";
+            if (!metadataFiles.TryGetValue(metadataKey, out _))
+            {
+                continue;
+            }
+
+            try
+            {
+                var metadata = await LoadRemoteVideoMetadataAsync(metadataKey);
+                if (metadata == null)
+                {
+                    continue;
+                }
+
+                ApplyRemoteVideoMetadata(remoteItem, metadata, sessionMetadata);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Remote] Error aplicando metadatos de video {remoteItem.VideoId}: {ex.Message}");
+            }
+        }
+    }
+
+    private async Task<VideoSyncData?> LoadRemoteVideoMetadataAsync(string normalizedKey)
+    {
+        var signResult = await _cloudBackendService.GetDownloadUrlAsync(normalizedKey, expirationMinutes: 10);
+        if (!signResult.Success || string.IsNullOrWhiteSpace(signResult.Url))
+        {
+            return null;
+        }
+
+        var json = await _remoteMetadataHttpClient.GetStringAsync(signResult.Url);
+        return JsonSerializer.Deserialize<VideoSyncData>(json);
+    }
+
+    private void ApplyRemoteVideoMetadata(RemoteVideoItem remoteItem, VideoSyncData metadata, Dictionary<int, RemoteSessionMetadata> sessionMetadata)
+    {
+        var sessionName = sessionMetadata.TryGetValue(remoteItem.SessionId, out var sessionInfo)
+            ? (sessionInfo.SessionName ?? remoteItem.SessionName)
+            : remoteItem.SessionName;
+
+        remoteItem.SessionName = string.IsNullOrWhiteSpace(sessionName) ? remoteItem.SessionNameFallback : sessionName;
+
+        if (metadata.Video?.Section > 0)
+        {
+            remoteItem.Section = metadata.Video.Section;
+        }
+
+        ApplyRemoteVideoTags(remoteItem, metadata);
+
+        var athleteName = BuildAthleteDisplayName(metadata.Athlete);
+        var displayName = BuildRemoteVideoDisplayName(metadata.Video?.ComparisonName, athleteName, remoteItem.SessionName, remoteItem.FileName);
+        remoteItem.FileName = displayName;
+
+        if (metadata.Video?.CreationDate > 0)
+        {
+            remoteItem.LastModified = DateTimeOffset.FromUnixTimeSeconds(metadata.Video.CreationDate).LocalDateTime;
+        }
+
+        if (metadata.Video?.ClipSize > 0)
+        {
+            remoteItem.Size = metadata.Video.ClipSize;
+        }
+    }
+
+    private static void ApplyRemoteVideoTags(RemoteVideoItem remoteItem, VideoSyncData metadata)
+    {
+        if (metadata.Tags.Count == 0 && metadata.Inputs.Count == 0)
+        {
+            return;
+        }
+
+        var tagMap = metadata.Tags
+            .Where(t => t.Id > 0)
+            .GroupBy(t => t.Id)
+            .ToDictionary(g => g.Key, g => g.First().Name ?? string.Empty);
+
+        var tags = metadata.Tags
+            .Where(t => !string.IsNullOrWhiteSpace(t.Name))
+            .Select(t => new Tag { Id = t.Id, NombreTag = t.Name })
+            .ToList();
+
+        var eventGroups = metadata.Inputs
+            .Where(i => i.IsEvent == 1 && i.InputTypeId > 0)
+            .GroupBy(i => i.InputTypeId)
+            .ToList();
+
+        var eventTags = new List<Tag>();
+        foreach (var group in eventGroups)
+        {
+            var name = tagMap.TryGetValue(group.Key, out var tagName)
+                ? tagName
+                : group.Select(i => i.InputValue).FirstOrDefault(v => !string.IsNullOrWhiteSpace(v)) ?? $"Tag {group.Key}";
+            eventTags.Add(new Tag
+            {
+                Id = group.Key,
+                NombreTag = name,
+                IsEventTag = true,
+                EventCount = group.Count()
+            });
+        }
+
+        remoteItem.Tags = tags.Count > 0 ? tags : null;
+        remoteItem.EventTags = eventTags.Count > 0 ? eventTags : null;
+    }
+
+    private static string BuildAthleteDisplayName(AthleteSyncData? athlete)
+    {
+        if (athlete == null)
+        {
+            return string.Empty;
+        }
+
+        if (!string.IsNullOrWhiteSpace(athlete.Apellido))
+        {
+            var apellido = athlete.Apellido!.ToUpperInvariant();
+            var nombre = athlete.Nombre ?? "";
+            return $"{apellido} {nombre}".Trim();
+        }
+
+        return athlete.Nombre ?? string.Empty;
+    }
+
+    private static string BuildRemoteVideoDisplayName(string? comparisonName, string athleteName, string sessionName, string fallback)
+    {
+        if (!string.IsNullOrWhiteSpace(comparisonName))
+        {
+            return comparisonName;
+        }
+
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(athleteName))
+        {
+            parts.Add(athleteName);
+        }
+
+        if (!string.IsNullOrWhiteSpace(sessionName))
+        {
+            parts.Add(sessionName);
+        }
+
+        return parts.Count > 0 ? string.Join(" - ", parts) : fallback;
     }
 
     private static DateTime ResolveRemoteSessionDate(RemoteSessionMetadata? metadata, DateTime fallback)
@@ -8071,6 +8235,21 @@ public class DashboardViewModel : BaseViewModel
                     Source = "remote",
                     IsSynced = 1
                 };
+
+                if (remoteVideo.Section > 0)
+                {
+                    clip.Section = remoteVideo.Section;
+                }
+
+                if (remoteVideo.Tags != null)
+                {
+                    clip.Tags = remoteVideo.Tags.ToList();
+                }
+
+                if (remoteVideo.EventTags != null)
+                {
+                    clip.EventTags = remoteVideo.EventTags.ToList();
+                }
 
                 clip.LocalClipPath = streamingUrl;
                 await PlaySelectedVideoAsync(clip);

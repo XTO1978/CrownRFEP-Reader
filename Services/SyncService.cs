@@ -453,9 +453,39 @@ public class SyncService
             syncData.Athlete = AthleteSyncData.FromAthlete(athlete);
         }
 
-        // Obtener inputs (eventos y tags asignados)
+        // Obtener inputs (eventos y etiquetas)
         var inputs = await _databaseService.GetInputsForVideoAsync(video.Id);
-        syncData.Inputs = inputs.Select(InputSyncData.FromInput).ToList();
+        var inputSync = inputs.Select(InputSyncData.FromInput).ToList();
+
+        // Para eventos, rellenar InputValue con el nombre del tag de evento
+        if (inputSync.Count > 0)
+        {
+            var eventTagMap = new Dictionary<int, string>();
+            try
+            {
+                var eventTags = await _databaseService.GetAllEventTagsAsync();
+                eventTagMap = eventTags
+                    .Where(t => t.Id > 0 && !string.IsNullOrWhiteSpace(t.Nombre))
+                    .ToDictionary(t => t.Id, t => t.Nombre!);
+            }
+            catch
+            {
+                // Ignorar si no se pueden cargar tags de evento
+            }
+
+            foreach (var input in inputSync)
+            {
+                if (input.IsEvent == 1 && string.IsNullOrWhiteSpace(input.InputValue))
+                {
+                    if (eventTagMap.TryGetValue(input.InputTypeId, out var eventName))
+                    {
+                        input.InputValue = eventName;
+                    }
+                }
+            }
+        }
+
+        syncData.Inputs = inputSync;
 
         // Obtener eventos de timing/cronometraje
         var timingEvents = await _databaseService.GetExecutionTimingEventsByVideoAsync(video.Id);
@@ -637,7 +667,7 @@ public class SyncService
             }
         }
 
-        // 3. Sincronizar inputs (eventos y tags)
+        // 3. Sincronizar inputs (eventos y etiquetas)
         // Primero, obtener inputs locales existentes para evitar duplicados
         var localInputs = await _databaseService.GetInputsForVideoAsync(video.Id);
         var localInputTimestamps = new HashSet<long>(localInputs.Select(i => i.TimeStamp));

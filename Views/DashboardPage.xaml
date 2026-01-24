@@ -1887,7 +1887,7 @@
 
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="models:RemoteVideoItem">
-                        <Grid RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="4">
+                        <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="4">
                             <!--  Fila 0: Thumbnail con Border  -->
                             <Border
                                 Grid.Row="0"
@@ -2040,6 +2040,26 @@
                                 HorizontalTextAlignment="Center"
                                 Text="{Binding LastModified, StringFormat='{0:dd/MM/yyyy HH:mm}'}"
                                 TextColor="#888888" />
+
+                            <!--  Fila 4: Etiquetas  -->
+                            <HorizontalStackLayout
+                                Grid.Row="4"
+                                HorizontalOptions="Center"
+                                Spacing="4"
+                                IsVisible="{Binding HasTagsSummary}">
+                                <controls:SymbolIcon
+                                    HeightRequest="{StaticResource IconSizeSmall}"
+                                    SymbolName="tag.fill"
+                                    TintColor="White"
+                                    VerticalOptions="Center"
+                                    WidthRequest="{StaticResource IconSizeSmall}" />
+                                <Label
+                                    FontSize="{StaticResource FontSizeSmall}"
+                                    LineBreakMode="TailTruncation"
+                                    Text="{Binding TagsSummary}"
+                                    TextColor="White"
+                                    VerticalOptions="Center" />
+                            </HorizontalStackLayout>
                         </Grid>
                     </DataTemplate>
                 </CollectionView.ItemTemplate>
