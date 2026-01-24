@@ -1137,6 +1137,10 @@ public class DashboardViewModel : BaseViewModel
         set => SetProperty(ref _remoteTrashItemCount, value);
     }
 
+    public bool CanDeleteRemoteSessions
+        => string.Equals(_cloudBackendService.CurrentUserRole, "admin_org", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(_cloudBackendService.CurrentUserRole, "coach", StringComparison.OrdinalIgnoreCase);
+
     public bool IsRemoteAllGallerySelected
     {
         get => _isRemoteAllGallerySelected;
@@ -3431,6 +3435,7 @@ public class DashboardViewModel : BaseViewModel
     public ICommand DeleteAllRemoteVideosFromLibraryCommand { get; }
     public ICommand DownloadRemoteVideoCommand { get; }
     public ICommand PlayRemoteVideoCommand { get; }
+    public ICommand DeleteRemoteSessionFromCloudCommand { get; }
     
     // Comandos para acciones en lote de videos remotos
     public ICommand ToggleRemoteMultiSelectModeCommand { get; }
@@ -3778,6 +3783,7 @@ public class DashboardViewModel : BaseViewModel
         DeleteAllRemoteVideosFromLibraryCommand = new AsyncRelayCommand(DeleteAllRemoteVideosFromLibraryAsync);
         DownloadRemoteVideoCommand = new AsyncRelayCommand<RemoteVideoItem>(DownloadRemoteVideoAsync);
         PlayRemoteVideoCommand = new AsyncRelayCommand<RemoteVideoItem>(PlayRemoteVideoAsync);
+        DeleteRemoteSessionFromCloudCommand = new AsyncRelayCommand<int>(DeleteRemoteSessionFromCloudAsync);
         
         // Comandos para acciones en lote de videos remotos
         ToggleRemoteMultiSelectModeCommand = new RelayCommand(ToggleRemoteMultiSelectMode);
@@ -8268,6 +8274,75 @@ public class DashboardViewModel : BaseViewModel
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[Remote] Error añadiendo sesión: {ex.Message}");
+        }
+    }
+
+    private async Task DeleteRemoteSessionFromCloudAsync(int sessionId)
+    {
+        if (sessionId <= 0)
+            return;
+
+        if (!CanDeleteRemoteSessions)
+        {
+            await Shell.Current.DisplayAlert("Permisos", "No tienes permisos para eliminar sesiones de la organización.", "OK");
+            return;
+        }
+
+        try
+        {
+            var prefix = $"sessions/{sessionId}/";
+            var result = await _cloudBackendService.ListFilesAsync(prefix, maxItems: 5000);
+            if (!result.Success || result.Files == null)
+            {
+                await Shell.Current.DisplayAlert("Error", "No se pudieron listar los archivos de la sesión.", "OK");
+                return;
+            }
+
+            foreach (var file in result.Files.Where(f => !f.IsFolder))
+            {
+                try
+                {
+                    await _cloudBackendService.DeleteFileAsync(file.Key);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[Remote] Error eliminando archivo {file.Key}: {ex.Message}");
+                }
+            }
+
+            var removedVideos = RemoteVideos.Where(v => v.SessionId == sessionId).ToList();
+            var removedSession = RemoteSessions.FirstOrDefault(s => s.SessionId == sessionId);
+
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                foreach (var video in removedVideos)
+                {
+                    RemoteVideos.Remove(video);
+                }
+
+                if (removedSession != null)
+                    RemoteSessions.Remove(removedSession);
+
+                if (SelectedRemoteSessionId == sessionId)
+                {
+                    SelectedRemoteSessionId = 0;
+                    OnPropertyChanged(nameof(RemoteGalleryItems));
+                }
+            });
+
+            if (_remoteFilesCache != null)
+            {
+                _remoteFilesCache = _remoteFilesCache
+                    .Where(f => !f.Key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+            }
+
+            await Shell.Current.DisplayAlert("Sesión eliminada", "La sesión se eliminó de la biblioteca de organización.", "OK");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Remote] Error eliminando sesión remota {sessionId}: {ex.Message}");
+            await Shell.Current.DisplayAlert("Error", $"No se pudo eliminar la sesión: {ex.Message}", "OK");
         }
     }
 

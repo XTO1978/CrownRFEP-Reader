@@ -31,8 +31,6 @@
             <converters:SessionIconParameterConverter x:Key="SessionIconParameterConverter" />
             <converters:SessionColorParameterConverter x:Key="SessionColorParameterConverter" />
             <converters:StringEqualsConverter x:Key="StringEqualsConverter" />
-            <converters:BoolToStrokeColorConverter x:Key="BoolToStrokeColorConverter" />
-
             <controls:SessionsListRowTemplateSelector x:Key="SessionsListRowTemplateSelector">
                 <controls:SessionsListRowTemplateSelector.HeaderTemplate>
                     <DataTemplate x:DataType="vm:SessionGroupHeaderRow">
@@ -666,7 +664,7 @@
                                                         Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.SelectRemoteSessionCommand}"
                                                         CommandParameter="{Binding .}" />
                                                 </Border.GestureRecognizers>
-                                                <Grid ColumnDefinitions="Auto,*,Auto" VerticalOptions="Center" HorizontalOptions="Fill">
+                                                <Grid ColumnDefinitions="Auto,*,Auto,Auto" VerticalOptions="Center" HorizontalOptions="Fill">
                                                     <controls:SymbolIcon
                                                         Grid.Column="0"
                                                         HeightRequest="{StaticResource IconSizeSidebarMenu}"
@@ -694,6 +692,25 @@
                                                         TextColor="#FF888888"
                                                         Text="{Binding VideoCount}"
                                                         VerticalOptions="Center" />
+                                                    <Border
+                                                        ClassId="ContextMenuButton"
+                                                        Grid.Column="3"
+                                                        Margin="0,0,4,0"
+                                                        Padding="4"
+                                                        BackgroundColor="Transparent"
+                                                        StrokeThickness="0"
+                                                        HorizontalOptions="End"
+                                                        VerticalOptions="Center">
+                                                        <Border.GestureRecognizers>
+                                                            <TapGestureRecognizer Tapped="OnRemoteSessionContextMenuTapped" />
+                                                        </Border.GestureRecognizers>
+                                                        <controls:SymbolIcon
+                                                            HeightRequest="{StaticResource IconSizeSmall}"
+                                                            WidthRequest="{StaticResource IconSizeSmall}"
+                                                            SymbolName="ellipsis.circle"
+                                                            TintColor="#FF888888"
+                                                            VerticalOptions="Center" />
+                                                    </Border>
                                                 </Grid>
                                             </Border>
                                         </DataTemplate>
@@ -1804,11 +1821,13 @@
                                             StrokeShape="RoundRectangle 12"
                                             StrokeThickness="0"
                                             VerticalOptions="Start">
-                                            <Label
-                                                FontSize="11"
-                                                Text="{Binding SyncStatusIcon}"
-                                                TextColor="White"
-                                                VerticalOptions="Center" />
+                                            <controls:SymbolIcon
+                                                HeightRequest="12"
+                                                WidthRequest="12"
+                                                SymbolName="{Binding SyncStatusIcon}"
+                                                TintColor="White"
+                                                VerticalOptions="Center"
+                                                HorizontalOptions="Center" />
                                         </Border>
                                     </Grid>
                                 </controls:AspectRatioContainer>
@@ -1997,11 +2016,6 @@
                                                     WidthRequest="12"
                                                     SymbolName="{Binding StatusIcon}"
                                                     TintColor="White" />
-                                                <Label
-                                                    FontSize="10"
-                                                    Text="{Binding IsLocallyAvailable, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Local|Nube'}"
-                                                    TextColor="White"
-                                                    VerticalOptions="Center" />
                                             </HorizontalStackLayout>
                                         </Border>
                                         
@@ -2067,7 +2081,6 @@
                                 LineBreakMode="TailTruncation"
                                 Text="{Binding FileName}"
                                 TextColor="White" />
-                            
                             <!--  Fila 2: Sesión y tamaño  -->
                             <Label
                                 Grid.Row="2"
@@ -7525,6 +7538,89 @@
                             <Label
                                 Text="Eliminar"
                                 Style="{StaticResource ContextMenuItemLabel}" />
+                        </HorizontalStackLayout>
+                    </Border>
+                </VerticalStackLayout>
+            </Border>
+
+            <!--  Menú contextual para subitem de Sesión remota  -->
+            <Border
+                x:Name="RemoteSessionContextMenu"
+                IsVisible="False"
+                WidthRequest="300"
+                InputTransparent="False"
+                Style="{StaticResource ContextMenuOverlayBorder}">
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Buttons="Primary" Tapped="OnContextMenuSurfaceTapped" />
+                </Border.GestureRecognizers>
+                <VerticalStackLayout Spacing="2">
+                    <Border Style="{StaticResource ContextMenuItemBorder}">
+                        <Border.Behaviors>
+                            <behaviors:SidebarHoverBehavior />
+                        </Border.Behaviors>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnRemoteSessionMenuAddToLibraryTapped" />
+                        </Border.GestureRecognizers>
+                        <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                            <controls:SymbolIcon
+                                HeightRequest="18"
+                                WidthRequest="18"
+                                SymbolName="plus"
+                                TintColor="#FFAAAAAA"
+                                VerticalOptions="Center" />
+                            <Label
+                                Text="Añadir a biblioteca personal"
+                                Style="{StaticResource ContextMenuItemLabel}" />
+                        </HorizontalStackLayout>
+                    </Border>
+
+                    <Border Style="{StaticResource ContextMenuItemBorder}">
+                        <Border.Behaviors>
+                            <behaviors:SidebarHoverBehavior />
+                        </Border.Behaviors>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnRemoteSessionMenuFavoriteTapped" />
+                        </Border.GestureRecognizers>
+                        <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                            <controls:SymbolIcon
+                                HeightRequest="18"
+                                WidthRequest="18"
+                                SymbolName="star"
+                                TintColor="#FFAAAAAA"
+                                VerticalOptions="Center" />
+                            <Label
+                                Text="Añadir a favoritos"
+                                Style="{StaticResource ContextMenuItemLabel}" />
+                        </HorizontalStackLayout>
+                    </Border>
+
+                    <!-- Separador -->
+                    <Border 
+                        HeightRequest="1" 
+                        BackgroundColor="#FF3A3A3A" 
+                        Margin="4,6" 
+                        HorizontalOptions="Fill"
+                        Stroke="Transparent"
+                        StrokeThickness="0" />
+
+                    <Border Style="{StaticResource ContextMenuItemBorder}">
+                        <Border.Behaviors>
+                            <behaviors:SidebarHoverBehavior />
+                        </Border.Behaviors>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnRemoteSessionMenuDeleteTapped" />
+                        </Border.GestureRecognizers>
+                        <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                            <controls:SymbolIcon
+                                HeightRequest="18"
+                                WidthRequest="18"
+                                SymbolName="trash"
+                                TintColor="#FFFF453A"
+                                VerticalOptions="Center" />
+                            <Label
+                                Text="Eliminar sesión"
+                                Style="{StaticResource ContextMenuItemLabel}"
+                                TextColor="#FFFF453A" />
                         </HorizontalStackLayout>
                     </Border>
                 </VerticalStackLayout>
