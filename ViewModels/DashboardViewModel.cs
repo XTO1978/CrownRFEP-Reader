@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Windows.Input;
 using CrownRFEP_Reader.Models;
@@ -36,6 +37,30 @@ public class SessionTypeOption : INotifyPropertyChanged
         }
     }
     
+    public event PropertyChangedEventHandler? PropertyChanged;
+    protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+}
+
+public class PlaceOption : INotifyPropertyChanged
+{
+    private bool _isSelected;
+
+    public string Name { get; set; } = "";
+
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set
+        {
+            if (_isSelected != value)
+            {
+                _isSelected = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
     public event PropertyChangedEventHandler? PropertyChanged;
     protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
@@ -197,6 +222,7 @@ public class DashboardViewModel : BaseViewModel
     private ObservableCollection<RemoteVideoItem> _remoteVideos = new();
     private bool _isLoadingRemoteVideos;
     private List<CloudFileInfo>? _remoteFilesCache;
+    private readonly HttpClient _remoteMetadataHttpClient = new();
     private bool _isLoginRequired;
     private bool _isCloudLoginBusy;
     private string _cloudLoginEmail = "";
@@ -713,7 +739,13 @@ public class DashboardViewModel : BaseViewModel
     public string NewSessionLugar
     {
         get => _newSessionLugar;
-        set => SetProperty(ref _newSessionLugar, value);
+        set
+        {
+            if (SetProperty(ref _newSessionLugar, value))
+            {
+                UpdatePlaceSelectionStates(value);
+            }
+        }
     }
 
     public bool ShowNewSessionSidebarPopup
@@ -869,17 +901,8 @@ public class DashboardViewModel : BaseViewModel
     /// </summary>
     public bool CanShowRecordButton => SelectedSession != null && DeviceInfo.Platform == DevicePlatform.iOS;
 
-    public ObservableCollection<SessionTypeOption> SessionTypeOptions { get; } = new()
-    {
-        new SessionTypeOption { Name = "Gimnasio", IsSelected = true },
-        new SessionTypeOption { Name = "Aguas tranquilas" },
-        new SessionTypeOption { Name = "Carrera" },
-        new SessionTypeOption { Name = "Ciclismo" },
-        new SessionTypeOption { Name = "Esquí de fondo" },
-        new SessionTypeOption { Name = "Natación" },
-        new SessionTypeOption { Name = "Recuperación" },
-        new SessionTypeOption { Name = "Otro" }
-    };
+    public ObservableCollection<SessionTypeOption> SessionTypeOptions { get; } = new();
+    public ObservableCollection<PlaceOption> SessionPlaceOptions { get; } = new();
 
     // Propiedades HealthKit
     public DailyHealthData? SelectedDateHealthData
@@ -3366,6 +3389,7 @@ public class DashboardViewModel : BaseViewModel
     public ICommand DeleteSessionCommand { get; }
     public ICommand SetSessionIconCommand { get; }
     public ICommand SetSessionColorCommand { get; }
+    public ICommand SelectPlaceOptionCommand { get; }
     public ICommand RecordForSelectedSessionCommand { get; }
     public ICommand ExportSelectedSessionCommand { get; }
     public ICommand SetEvolutionPeriodCommand { get; }
@@ -3632,6 +3656,7 @@ public class DashboardViewModel : BaseViewModel
         SelectPickerColorCommand = new RelayCommand<string>(SelectPickerColor);
         ToggleSmartFoldersExpansionCommand = new RelayCommand(ToggleSmartFoldersExpansion);
         ToggleSessionsExpansionCommand = new RelayCommand(ToggleSessionsExpansion);
+        SelectPlaceOptionCommand = new RelayCommand<PlaceOption>(SelectPlaceOption);
 
         SelectStatsTabCommand = new RelayCommand(() => IsStatsTabSelected = true);
         SelectCrudTechTabCommand = new RelayCommand(() => IsCrudTechTabSelected = true);
@@ -3659,11 +3684,11 @@ public class DashboardViewModel : BaseViewModel
             {
                 // Valores por defecto
                 NewSessionName = "";
-                NewSessionType = "Gimnasio";
+                NewSessionType = SessionTypeOptions.FirstOrDefault()?.Name ?? "Entrenamiento";
                 NewSessionLugar = "";
                 // Reset selection
                 foreach (var opt in SessionTypeOptions)
-                    opt.IsSelected = opt.Name == "Gimnasio";
+                    opt.IsSelected = opt.Name == NewSessionType;
             }
         });
         CreateNewSessionCommand = new AsyncRelayCommand(CreateNewSessionAsync);
@@ -3674,10 +3699,10 @@ public class DashboardViewModel : BaseViewModel
             ShowNewSessionSidebarPopup = true;
             // Valores por defecto
             NewSessionName = "";
-            NewSessionType = "Entrenamiento";
+            NewSessionType = SessionTypeOptions.FirstOrDefault()?.Name ?? "Entrenamiento";
             NewSessionLugar = "";
             foreach (var opt in SessionTypeOptions)
-                opt.IsSelected = opt.Name == "Entrenamiento" || (opt.Name == "Gimnasio" && !SessionTypeOptions.Any(o => o.Name == "Entrenamiento"));
+                opt.IsSelected = opt.Name == NewSessionType;
         });
         CancelNewSessionSidebarPopupCommand = new RelayCommand(() => ShowNewSessionSidebarPopup = false);
         CreateSessionAndRecordCommand = new AsyncRelayCommand(CreateSessionAndRecordAsync);
@@ -5359,6 +5384,8 @@ public class DashboardViewModel : BaseViewModel
             
             // Verificar videos pendientes de sincronización
             await CheckPendingSyncAsync();
+
+            await LoadSessionFormOptionsAsync();
             
             AppLog.Info("DashboardVM", "LoadDataAsync END");
         }
@@ -5381,6 +5408,118 @@ public class DashboardViewModel : BaseViewModel
         catch
         {
             VideoLessonsCount = VideoLessons.Count;
+        }
+    }
+
+    private async Task LoadSessionFormOptionsAsync()
+    {
+        await LoadSessionTypeOptionsAsync();
+        await LoadPlaceOptionsAsync();
+    }
+
+    private async Task LoadSessionTypeOptionsAsync()
+    {
+        try
+        {
+            var sessionTypes = await _databaseService.GetAllSessionTypesAsync();
+            if (sessionTypes.Count == 0)
+            {
+                var defaultTypes = new[]
+                {
+                    "Cuartos",
+                    "Medios",
+                    "Largos",
+                    "Gimnasio",
+                    "Aguas tranquilas",
+                    "Carrera",
+                    "Ciclismo",
+                    "Esquí de fondo",
+                    "Natación",
+                    "Recuperación",
+                    "Otro"
+                };
+
+                foreach (var typeName in defaultTypes)
+                {
+                    await _databaseService.SaveSessionTypeAsync(new SessionType { TipoSesion = typeName });
+                }
+
+                sessionTypes = await _databaseService.GetAllSessionTypesAsync();
+            }
+
+            SessionTypeOptions.Clear();
+            foreach (var type in sessionTypes)
+            {
+                if (string.IsNullOrWhiteSpace(type.TipoSesion)) continue;
+                SessionTypeOptions.Add(new SessionTypeOption { Name = type.TipoSesion.Trim() });
+            }
+
+            if (SessionTypeOptions.Count > 0)
+            {
+                var selected = SessionTypeOptions.FirstOrDefault(o => o.Name == NewSessionType);
+                if (selected == null)
+                {
+                    selected = SessionTypeOptions[0];
+                    NewSessionType = selected.Name;
+                }
+
+                foreach (var opt in SessionTypeOptions)
+                    opt.IsSelected = opt == selected;
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[SessionTypeOptions] Error: {ex.Message}");
+        }
+    }
+
+    private async Task LoadPlaceOptionsAsync()
+    {
+        try
+        {
+            var places = await _databaseService.GetAllPlacesAsync();
+
+            SessionPlaceOptions.Clear();
+            foreach (var place in places)
+            {
+                if (string.IsNullOrWhiteSpace(place.NombreLugar)) continue;
+                SessionPlaceOptions.Add(new PlaceOption { Name = place.NombreLugar.Trim() });
+            }
+
+            if (!string.IsNullOrWhiteSpace(NewSessionLugar))
+            {
+                var selected = SessionPlaceOptions.FirstOrDefault(p => p.Name == NewSessionLugar.Trim());
+                if (selected != null)
+                {
+                    foreach (var opt in SessionPlaceOptions)
+                        opt.IsSelected = opt == selected;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[PlaceOptions] Error: {ex.Message}");
+        }
+    }
+
+    private void SelectPlaceOption(PlaceOption? option)
+    {
+        if (option == null) return;
+
+        foreach (var opt in SessionPlaceOptions)
+            opt.IsSelected = opt == option;
+
+        NewSessionLugar = option.Name;
+    }
+
+    private void UpdatePlaceSelectionStates(string? placeName)
+    {
+        if (SessionPlaceOptions.Count == 0) return;
+
+        var normalized = placeName?.Trim();
+        foreach (var option in SessionPlaceOptions)
+        {
+            option.IsSelected = !string.IsNullOrWhiteSpace(normalized) && option.Name == normalized;
         }
     }
 
@@ -6387,12 +6526,15 @@ public class DashboardViewModel : BaseViewModel
                 return;
             }
 
+            var coachName = await GetCurrentCoachNameAsync();
+
             // Crear la nueva sesión con la fecha seleccionada en el calendario
             var newSession = new Session
             {
                 NombreSesion = NewSessionName,
                 TipoSesion = NewSessionType,
                 Lugar = NewSessionLugar,
+                Coach = coachName,
                 Fecha = new DateTimeOffset(SelectedDiaryDate.Date.AddHours(DateTime.Now.Hour).AddMinutes(DateTime.Now.Minute)).ToUnixTimeSeconds(),
                 IsMerged = 0
             };
@@ -6451,10 +6593,26 @@ public class DashboardViewModel : BaseViewModel
     {
         try
         {
+            if (string.IsNullOrWhiteSpace(NewSessionLugar))
+            {
+                await Shell.Current.DisplayAlert("Error", "Por favor, introduce el lugar de la sesión.", "OK");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(NewSessionName))
+            {
+                await Shell.Current.DisplayAlert("Error", "Por favor, introduce el nombre de la sesión.", "OK");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(NewSessionType))
+            {
+                await Shell.Current.DisplayAlert("Error", "Por favor, selecciona el tipo de sesión.", "OK");
+                return;
+            }
+
             // Crear la sesión sin requerir deportista
-            var sessionName = string.IsNullOrWhiteSpace(NewSessionName) 
-                ? $"Sesión {DateTime.Now:dd/MM/yyyy HH:mm}" 
-                : NewSessionName;
+            var sessionName = NewSessionName.Trim();
 
             // Intentar obtener deportista de referencia o el primero disponible (opcional)
             string participantes = "";
@@ -6482,16 +6640,21 @@ public class DashboardViewModel : BaseViewModel
                 // Ignorar errores al obtener deportista - la sesión se creará sin él
             }
 
+            var coachName = await GetCurrentCoachNameAsync();
+
             var session = new Session
             {
                 NombreSesion = sessionName,
-                TipoSesion = NewSessionType ?? "Entrenamiento",
-                Lugar = string.IsNullOrWhiteSpace(NewSessionLugar) ? null : NewSessionLugar,
+                TipoSesion = NewSessionType.Trim(),
+                Lugar = NewSessionLugar.Trim(),
+                Coach = coachName,
                 Fecha = DateTimeOffset.Now.ToUnixTimeSeconds(),
                 Participantes = participantes
             };
 
             await _databaseService.SaveSessionAsync(session);
+
+            await EnsurePlaceExistsAsync(NewSessionLugar.Trim());
             
             // Cerrar el popup
             ShowNewSessionSidebarPopup = false;
@@ -6516,6 +6679,38 @@ public class DashboardViewModel : BaseViewModel
             System.Diagnostics.Debug.WriteLine($"Error creando sesión y grabando: {ex}");
             await Shell.Current.DisplayAlert("Error", $"No se pudo crear la sesión: {ex.Message}", "OK");
         }
+    }
+
+    private async Task<string?> GetCurrentCoachNameAsync()
+    {
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(_cloudBackendService.CurrentUserName))
+            {
+                return _cloudBackendService.CurrentUserName;
+            }
+
+            var profile = await _databaseService.GetUserProfileAsync();
+            if (profile == null) return null;
+
+            var name = profile.NombreCompleto;
+            return string.IsNullOrWhiteSpace(name) ? profile.Nombre : name;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private async Task EnsurePlaceExistsAsync(string placeName)
+    {
+        if (string.IsNullOrWhiteSpace(placeName)) return;
+
+        var places = await _databaseService.GetAllPlacesAsync();
+        if (places.Any(p => string.Equals(p.NombreLugar?.Trim(), placeName, StringComparison.OrdinalIgnoreCase))) return;
+
+        await _databaseService.SavePlaceAsync(new Place { NombreLugar = placeName });
+        await LoadPlaceOptionsAsync();
     }
 
     /// <summary>
@@ -7248,6 +7443,8 @@ public class DashboardViewModel : BaseViewModel
             var files = result.Files ?? new List<CloudFileInfo>();
             _remoteFilesCache = files;
 
+            var remoteSessionMetadata = await LoadRemoteSessionMetadataAsync(files);
+
             // Filtrar solo archivos de video
             var videoFiles = files
                 .Where(f => !f.IsFolder && f.Key.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase))
@@ -7290,19 +7487,28 @@ public class DashboardViewModel : BaseViewModel
             }
 
             var localSessions = await _databaseService.GetAllSessionsAsync();
-            var localSessionNames = localSessions.ToDictionary(s => s.Id, s => s.DisplayName);
+            var localSessionsById = localSessions.ToDictionary(s => s.Id, s => s);
             var remoteSessionItems = RemoteVideos
                 .Where(v => v.SessionId > 0)
                 .GroupBy(v => v.SessionId)
                 .Select(group =>
                 {
                     var sessionId = group.Key;
-                    var title = localSessionNames.TryGetValue(sessionId, out var name)
-                        ? name
-                        : $"Sesión {sessionId}";
+                    localSessionsById.TryGetValue(sessionId, out var localSession);
+                    remoteSessionMetadata.TryGetValue(sessionId, out var metadata);
+
+                    var title = metadata?.SessionName
+                        ?? localSession?.DisplayName
+                        ?? $"Sesión {sessionId}";
+                    var place = metadata?.Place ?? localSession?.Lugar;
+                    var sessionDate = ResolveRemoteSessionDate(metadata, localSession?.FechaDateTime ?? group.Max(v => v.LastModified));
+                    var coach = metadata?.Coach ?? localSession?.Coach;
                     return new RemoteSessionListItem(
                         sessionId,
                         title,
+                        place,
+                        sessionDate,
+                        coach,
                         group.Count(),
                         group.Max(v => v.LastModified));
                 })
@@ -7354,6 +7560,134 @@ public class DashboardViewModel : BaseViewModel
         {
             System.Diagnostics.Debug.WriteLine($"[Remote] Error obteniendo thumbnail: {ex.Message}");
         }
+    }
+
+    private async Task<Dictionary<int, RemoteSessionMetadata>> LoadRemoteSessionMetadataAsync(List<CloudFileInfo> files)
+    {
+        var result = new Dictionary<int, RemoteSessionMetadata>();
+
+        var metadataFiles = files
+            .Where(f => !f.IsFolder && f.Key.EndsWith("session.json", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        if (metadataFiles.Count == 0)
+        {
+            return result;
+        }
+
+        foreach (var file in metadataFiles)
+        {
+            var normalizedKey = NormalizeCloudKey(file.Key);
+            if (!TryParseSessionIdFromMetadataKey(normalizedKey, out var sessionId))
+            {
+                continue;
+            }
+
+            if (result.ContainsKey(sessionId))
+            {
+                continue;
+            }
+
+            try
+            {
+                var signResult = await _cloudBackendService.GetDownloadUrlAsync(normalizedKey, expirationMinutes: 10);
+                if (!signResult.Success || string.IsNullOrWhiteSpace(signResult.Url))
+                {
+                    continue;
+                }
+
+                var json = await _remoteMetadataHttpClient.GetStringAsync(signResult.Url);
+                var metadata = JsonSerializer.Deserialize<RemoteSessionMetadata>(json);
+                if (metadata != null)
+                {
+                    if (metadata.SessionId == 0)
+                    {
+                        metadata.SessionId = sessionId;
+                    }
+
+                    result[sessionId] = metadata;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Remote] Error leyendo metadatos de sesión {sessionId}: {ex.Message}");
+            }
+        }
+
+        return result;
+    }
+
+    private static DateTime ResolveRemoteSessionDate(RemoteSessionMetadata? metadata, DateTime fallback)
+    {
+        if (metadata == null)
+        {
+            return fallback;
+        }
+
+        if (metadata.SessionDateUtc.HasValue && metadata.SessionDateUtc.Value > 0)
+        {
+            return DateTimeOffset.FromUnixTimeSeconds(metadata.SessionDateUtc.Value).LocalDateTime;
+        }
+
+        if (metadata.SessionDate.HasValue)
+        {
+            return metadata.SessionDate.Value;
+        }
+
+        return fallback;
+    }
+
+    private static string NormalizeCloudKey(string key)
+    {
+        return key.StartsWith("CrownRFEP/", StringComparison.OrdinalIgnoreCase)
+            ? key.Substring("CrownRFEP/".Length)
+            : key;
+    }
+
+    private static bool TryParseSessionIdFromMetadataKey(string key, out int sessionId)
+    {
+        sessionId = 0;
+        var parts = key.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length < 3)
+        {
+            return false;
+        }
+
+        if (!string.Equals(parts[0], "sessions", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (!string.Equals(parts[^1], "session.json", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return int.TryParse(parts[1], out sessionId);
+    }
+
+    private sealed class RemoteSessionMetadata
+    {
+        [JsonPropertyName("sessionId")]
+        public int SessionId { get; set; }
+
+        [JsonPropertyName("sessionName")]
+        public string? SessionName { get; set; }
+
+        [JsonPropertyName("place")]
+        public string? Place { get; set; }
+
+        [JsonPropertyName("coach")]
+        public string? Coach { get; set; }
+
+        [JsonPropertyName("sessionType")]
+        public string? SessionType { get; set; }
+
+        [JsonPropertyName("sessionDateUtc")]
+        public long? SessionDateUtc { get; set; }
+
+        [JsonPropertyName("sessionDate")]
+        public DateTime? SessionDate { get; set; }
     }
 
     /// <summary>

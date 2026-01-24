@@ -164,21 +164,28 @@
                                     TintColor="{Binding Session.IconColor, Converter={StaticResource HexStringToColorConverter}}"
                                     VerticalOptions="Center"
                                     WidthRequest="{StaticResource IconSizeSidebarMenu}" />
-                                <Label Grid.Column="1" Margin="8,0,0,0" Style="{StaticResource SidebarMenuSubItemLabel}">
-                                    <Label.FormattedText>
-                                        <FormattedString>
-                                            <Span
-                                                Text="{Binding Session.Lugar}"
-                                                TextColor="White" />
-                                            <Span
-                                                Text=" · "
-                                                TextColor="White" />
-                                            <Span
-                                                Text="{Binding Session.FechaDateTime, StringFormat='{0:dd/MM}'}"
-                                                TextColor="White" />
-                                        </FormattedString>
-                                    </Label.FormattedText>
-                                </Label>
+                                <VerticalStackLayout Grid.Column="1" Margin="8,0,0,0" Spacing="2">
+                                    <Label Style="{StaticResource SidebarMenuSubItemLabel}">
+                                        <Label.FormattedText>
+                                            <FormattedString>
+                                                <Span
+                                                    Text="{Binding Session.Lugar}"
+                                                    TextColor="White" />
+                                                <Span
+                                                    Text=" · "
+                                                    TextColor="White" />
+                                                <Span
+                                                    Text="{Binding Session.FechaDateTime, StringFormat='{0:dd/MM}'}"
+                                                    TextColor="White" />
+                                            </FormattedString>
+                                        </Label.FormattedText>
+                                    </Label>
+                                    <Label
+                                        FontFamily="{StaticResource AppFontBody}"
+                                        FontSize="{StaticResource FontSizeSmall}"
+                                        TextColor="#FF888888"
+                                        Text="{Binding Session.Coach}" />
+                                </VerticalStackLayout>
                                 <Label
                                     Grid.Column="2"
                                     Margin="0,0,8,0"
@@ -567,7 +574,7 @@
                                     <Border.Behaviors>
                                         <behaviors:SidebarHoverBehavior />
                                     </Border.Behaviors>
-                                    <Grid ColumnDefinitions="Auto,Auto,*" VerticalOptions="Center" HorizontalOptions="Fill">
+                                    <Grid ColumnDefinitions="Auto,Auto,*,Auto" VerticalOptions="Center" HorizontalOptions="Fill">
                                         <Border
                                             Grid.Column="0"
                                             Padding="2"
@@ -604,6 +611,31 @@
                                             Margin="8,0,0,0"
                                             Style="{StaticResource SidebarMenuItemLabel}"
                                             Text="Sesiones" />
+                                        <Border
+                                            x:Name="RemoteSessionsAddButton"
+                                            Grid.Column="3"
+                                            Margin="8,0,0,0"
+                                            Padding="2"
+                                            BackgroundColor="Transparent"
+                                            Stroke="Transparent"
+                                            StrokeShape="RoundRectangle 4"
+                                            HorizontalOptions="End"
+                                            VerticalOptions="Center">
+                                            <Border.Opacity>
+                                                <OnPlatform x:TypeArguments="x:Double">
+                                                    <On Platform="iOS" Value="1" />
+                                                    <On Platform="Default" Value="0" />
+                                                </OnPlatform>
+                                            </Border.Opacity>
+                                            <Border.GestureRecognizers>
+                                                <TapGestureRecognizer Tapped="OnSessionsMenuNewSessionTapped" />
+                                            </Border.GestureRecognizers>
+                                            <controls:SymbolIcon
+                                                HeightRequest="{StaticResource IconSizeSmall}"
+                                                SymbolName="plus"
+                                                TintColor="#FF888888"
+                                                WidthRequest="{StaticResource IconSizeSmall}" />
+                                        </Border>
                                     </Grid>
                                 </Border>
 
@@ -642,11 +674,16 @@
                                                         SymbolName="clock"
                                                         TintColor="White"
                                                         VerticalOptions="Center" />
-                                                    <Label
-                                                        Grid.Column="1"
-                                                        Margin="8,0,0,0"
-                                                        Style="{StaticResource SidebarMenuSubItemLabel}"
-                                                        Text="{Binding Title}" />
+                                                    <VerticalStackLayout Grid.Column="1" Margin="8,0,0,0" Spacing="2">
+                                                        <Label
+                                                            Style="{StaticResource SidebarMenuSubItemLabel}"
+                                                            Text="{Binding PlaceDateText}" />
+                                                        <Label
+                                                            FontFamily="{StaticResource AppFontBody}"
+                                                            FontSize="{StaticResource FontSizeSmall}"
+                                                            TextColor="#FF888888"
+                                                            Text="{Binding CoachText}" />
+                                                    </VerticalStackLayout>
                                                     <Label
                                                         Grid.Column="2"
                                                         Margin="0,0,8,0"
@@ -1385,15 +1422,7 @@
                                         </OnPlatform>
                                     </Border.Opacity>
                                     <Border.GestureRecognizers>
-                                        <TapGestureRecognizer Buttons="Primary" Tapped="OnSessionsMenuTapped" />
-                                        <TapGestureRecognizer Buttons="Secondary" Tapped="OnSessionsMenuTapped">
-                                            <TapGestureRecognizer.NumberOfTapsRequired>
-                                                <OnPlatform x:TypeArguments="x:Int32">
-                                                    <On Platform="iOS" Value="99" />
-                                                    <On Platform="MacCatalyst,WinUI" Value="1" />
-                                                </OnPlatform>
-                                            </TapGestureRecognizer.NumberOfTapsRequired>
-                                        </TapGestureRecognizer>
+                                        <TapGestureRecognizer Tapped="OnSessionsMenuNewSessionTapped" />
                                     </Border.GestureRecognizers>
                                     <controls:SymbolIcon
                                         HeightRequest="{StaticResource IconSizeSmall}"
@@ -5639,32 +5668,24 @@
                         </Border>
                     </Grid>
 
-                    <!--  Nombre de la sesión  -->
+                    <!--  Lugar  -->
                     <VerticalStackLayout Spacing="4">
                         <Label
                             FontSize="{StaticResource FontSizeSmall}"
-                            Text="Nombre de la sesión"
+                            Text="Lugar *"
                             TextColor="#FFCCCCCC" />
                         <Entry
-                            Placeholder="Ej: Entrenamiento mañana"
+                            Placeholder="Ej: Canal olímpico"
                             PlaceholderColor="#FF666666"
-                            Text="{Binding NewSessionName}"
+                            Text="{Binding NewSessionLugar}"
                             TextColor="White"
                             BackgroundColor="#FF404040" />
-                    </VerticalStackLayout>
-
-                    <!--  Tipo de sesión  -->
-                    <VerticalStackLayout Spacing="8">
-                        <Label
-                            FontSize="{StaticResource FontSizeSmall}"
-                            Text="Tipo de sesión"
-                            TextColor="#FFCCCCCC" />
-                        <FlexLayout 
-                            Wrap="Wrap" 
+                        <FlexLayout
+                            Wrap="Wrap"
                             JustifyContent="Start"
-                            BindableLayout.ItemsSource="{Binding SessionTypeOptions}">
+                            BindableLayout.ItemsSource="{Binding SessionPlaceOptions}">
                             <BindableLayout.ItemTemplate>
-                                <DataTemplate x:DataType="vm:SessionTypeOption">
+                                <DataTemplate x:DataType="vm:PlaceOption">
                                     <Border
                                         Margin="0,0,8,8"
                                         Padding="12,6"
@@ -5673,8 +5694,8 @@
                                         BackgroundColor="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF0066|#FF2A2A2A}"
                                         Stroke="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF0066|#FF404040}">
                                         <Border.GestureRecognizers>
-                                            <TapGestureRecognizer 
-                                                Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.SelectSessionTypeCommand}"
+                                            <TapGestureRecognizer
+                                                Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.SelectPlaceOptionCommand}"
                                                 CommandParameter="{Binding .}" />
                                         </Border.GestureRecognizers>
                                         <Label
@@ -5689,18 +5710,54 @@
                         </FlexLayout>
                     </VerticalStackLayout>
 
-                    <!--  Lugar  -->
+                    <!--  Nombre de la sesión  -->
                     <VerticalStackLayout Spacing="4">
                         <Label
                             FontSize="{StaticResource FontSizeSmall}"
-                            Text="Lugar (opcional)"
+                            Text="Nombre de sesión *"
                             TextColor="#FFCCCCCC" />
                         <Entry
-                            Placeholder="Ej: Canal olímpico"
+                            Placeholder="Ej: Entrenamiento mañana"
                             PlaceholderColor="#FF666666"
-                            Text="{Binding NewSessionLugar}"
+                            Text="{Binding NewSessionName}"
                             TextColor="White"
                             BackgroundColor="#FF404040" />
+                    </VerticalStackLayout>
+
+                    <!--  Tipo de sesión  -->
+                    <VerticalStackLayout Spacing="8">
+                        <Label
+                            FontSize="{StaticResource FontSizeSmall}"
+                            Text="Tipo de sesión * (cuartos, medios, largos, etc.)"
+                            TextColor="#FFCCCCCC" />
+                        <FlexLayout
+                            Wrap="Wrap"
+                            JustifyContent="Start"
+                            BindableLayout.ItemsSource="{Binding SessionTypeOptions}">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate x:DataType="vm:SessionTypeOption">
+                                    <Border
+                                        Margin="0,0,8,8"
+                                        Padding="12,6"
+                                        StrokeShape="RoundRectangle 6"
+                                        StrokeThickness="0"
+                                        BackgroundColor="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF0066|#FF2A2A2A}"
+                                        Stroke="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF0066|#FF404040}">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer
+                                                Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.SelectSessionTypeCommand}"
+                                                CommandParameter="{Binding .}" />
+                                        </Border.GestureRecognizers>
+                                        <Label
+                                            FontSize="{StaticResource FontSizeSmall}"
+                                            Text="{Binding Name}"
+                                            TextColor="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF121212|#FFB1B1B1}"
+                                            FontAttributes="{Binding IsSelected, Converter={StaticResource BoolToFontAttributesConverter}}"
+                                            VerticalOptions="Center" />
+                                    </Border>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </FlexLayout>
                     </VerticalStackLayout>
 
                     <!--  Botones  -->

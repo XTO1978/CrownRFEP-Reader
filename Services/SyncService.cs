@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using CrownRFEP_Reader.Models;
@@ -17,6 +19,7 @@ public class SyncService
     private readonly ICloudBackendService _cloudService;
     private readonly DatabaseService _databaseService;
     private readonly HttpClient _httpClient;
+    private readonly HashSet<int> _sessionMetadataUploaded = new();
 
     private static readonly JsonSerializerOptions _jsonOptions = new()
     {
@@ -113,6 +116,9 @@ public class SyncService
             // Subir metadatos asociados
             await UploadVideoMetadataAsync(video);
 
+            // Subir metadatos de la sesión (session.json)
+            await UploadSessionMetadataAsync(video.SessionId);
+
             // Subir thumbnail si existe
             await UploadThumbnailAsync(video);
 
@@ -130,6 +136,94 @@ public class SyncService
         }
 
         return result;
+    }
+
+    private async Task UploadSessionMetadataAsync(int sessionId)
+    {
+        if (_sessionMetadataUploaded.Contains(sessionId)) return;
+
+        try
+        {
+            var session = await _databaseService.GetSessionByIdAsync(sessionId);
+            if (session == null) return;
+
+            string? coachName = session.Coach;
+            if (string.IsNullOrWhiteSpace(coachName) && !string.IsNullOrWhiteSpace(_cloudService.CurrentUserName))
+            {
+                coachName = _cloudService.CurrentUserName;
+            }
+            if (string.IsNullOrWhiteSpace(coachName))
+            {
+                var profile = await _databaseService.GetUserProfileAsync();
+                coachName = profile?.NombreCompleto;
+                if (string.IsNullOrWhiteSpace(coachName))
+                {
+                    coachName = profile?.Nombre;
+                }
+
+                if (!string.IsNullOrWhiteSpace(coachName))
+                {
+                    session.Coach = coachName;
+                    await _databaseService.SaveSessionAsync(session);
+                }
+            }
+
+            var metadata = new SessionMetadataPayload
+            {
+                SessionId = session.Id,
+                SessionName = session.NombreSesion ?? session.DisplayName,
+                Place = session.Lugar,
+                Coach = coachName ?? session.Coach,
+                SessionType = session.TipoSesion,
+                SessionDateUtc = session.Fecha
+            };
+
+            var json = JsonSerializer.Serialize(metadata, _jsonOptions);
+            var content = new ByteArrayContent(Encoding.UTF8.GetBytes(json));
+            content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
+            var remotePath = _pathService.GetRemoteSessionMetadataPath(sessionId);
+            var signResult = await _cloudService.GetUploadUrlAsync(remotePath, "application/json");
+
+            if (!signResult.Success || string.IsNullOrWhiteSpace(signResult.Url))
+            {
+                System.Diagnostics.Debug.WriteLine($"[Sync] No se pudo obtener URL de subida para metadatos de sesión {sessionId}");
+                return;
+            }
+
+            if (signResult.Headers != null)
+            {
+                foreach (var header in signResult.Headers)
+                {
+                    content.Headers.TryAddWithoutValidation(header.Key, header.Value);
+                }
+            }
+
+            var response = await _httpClient.PutAsync(signResult.Url, content);
+            if (response.IsSuccessStatusCode)
+            {
+                _sessionMetadataUploaded.Add(sessionId);
+                System.Diagnostics.Debug.WriteLine($"[Sync] Metadatos de sesión {sessionId} subidos: {remotePath}");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"[Sync] Error subiendo metadatos de sesión {sessionId}: {response.StatusCode}");
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Sync] Error subiendo metadatos de sesión {sessionId}: {ex.Message}");
+        }
+    }
+
+    private sealed class SessionMetadataPayload
+    {
+        public int SessionId { get; set; }
+        public string? SessionName { get; set; }
+        public string? Place { get; set; }
+        public string? Coach { get; set; }
+        public string? SessionType { get; set; }
+        public long SessionDateUtc { get; set; }
     }
 
     /// <summary>
