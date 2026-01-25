@@ -449,8 +449,9 @@ public class DashboardViewModel : BaseViewModel
                 TotalDuration = g.Sum(v => v.ClipDuration)
             })
             .ToList();
-
-        var sectionMinutes = sectionStats.Select(s => Math.Round(s.TotalDuration / 60.0, 1)).ToList();
+        var sectionMinutes = sectionStats
+            .Select(s => Math.Round(s.TotalDuration / 60.0, 1))
+            .ToList();
         var sectionLabels = sectionStats.Select(s => s.Section.ToString()).ToList();
 
         var byAthlete = clips
@@ -1206,13 +1207,14 @@ public class DashboardViewModel : BaseViewModel
         set => SetProperty(ref _remoteTrashItemCount, value);
     }
 
-    public bool CanDeleteRemoteSessions
-        => string.Equals(_cloudBackendService.CurrentUserRole, "admin_org", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(_cloudBackendService.CurrentUserRole, "coach", StringComparison.OrdinalIgnoreCase);
+    public bool CanDeleteRemoteSessions => IsOrgWriteRole(_cloudBackendService.CurrentUserRole);
 
-    public bool CanWriteRemoteLibrary
-        => string.Equals(_cloudBackendService.CurrentUserRole, "admin_org", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(_cloudBackendService.CurrentUserRole, "coach", StringComparison.OrdinalIgnoreCase);
+    public bool CanWriteRemoteLibrary => IsOrgWriteRole(_cloudBackendService.CurrentUserRole);
+
+    private static bool IsOrgWriteRole(string? role)
+        => string.Equals(role, "admin_org", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(role, "org_admin", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(role, "coach", StringComparison.OrdinalIgnoreCase);
 
     public bool IsRemoteAllGallerySelected
     {
@@ -7754,7 +7756,36 @@ public class DashboardViewModel : BaseViewModel
             var localVideos = await _databaseService.GetAllVideoClipsAsync();
             var localVideosByRemotePath = localVideos
                 .Where(v => !string.IsNullOrEmpty(v.ClipPath))
-                .ToDictionary(v => v.ClipPath!, v => v);
+                .ToDictionary(v => v.ClipPath!, v => v, StringComparer.OrdinalIgnoreCase);
+
+            var metadataFiles = files
+                .Where(f => !f.IsFolder && f.Key.EndsWith(".json", StringComparison.OrdinalIgnoreCase)
+                    && f.Key.Contains("/metadata/", StringComparison.OrdinalIgnoreCase))
+                .ToDictionary(f => NormalizeCloudKey(f.Key), f => f, StringComparer.OrdinalIgnoreCase);
+
+            var remotePaths = new HashSet<string>(
+                videoFiles.Select(f => f.Key.StartsWith("CrownRFEP/", StringComparison.OrdinalIgnoreCase)
+                    ? f.Key.Substring("CrownRFEP/".Length)
+                    : f.Key),
+                StringComparer.OrdinalIgnoreCase);
+
+            var orphanedLocal = localVideos
+                .Where(v => string.Equals(v.Source, "remote", StringComparison.OrdinalIgnoreCase))
+                .Where(v => !string.IsNullOrEmpty(v.ClipPath) && !remotePaths.Contains(v.ClipPath!))
+                .ToList();
+
+            if (orphanedLocal.Count > 0)
+            {
+                var orphanSessionIds = new HashSet<int>();
+                foreach (var local in orphanedLocal)
+                {
+                    orphanSessionIds.Add(local.SessionId);
+                    await RemoveLocalVideoClipAsync(local);
+                }
+
+                foreach (var sessionId in orphanSessionIds)
+                    await RemoveLocalSessionIfEmptyAsync(sessionId);
+            }
 
             // Crear items remotos
             foreach (var file in videoFiles)
@@ -7823,6 +7854,8 @@ public class DashboardViewModel : BaseViewModel
             {
                 UpdateRemoteSessionSelectionStates(SelectedRemoteSessionId);
             }
+
+            await SyncRemoteChangesToPersonalLibraryAsync(remoteSessionMetadata, metadataFiles);
 
             RemoteAllGalleryItemCount = RemoteVideos.Count.ToString();
             OnPropertyChanged(nameof(RemoteGalleryItems));
@@ -8324,7 +8357,11 @@ public class DashboardViewModel : BaseViewModel
         return true;
     }
 
-    private async Task ApplyRemoteMetadataToLocalVideoAsync(RemoteVideoItem remoteVideo, VideoClip localVideo)
+    private async Task ApplyRemoteMetadataToLocalVideoAsync(
+        RemoteVideoItem remoteVideo,
+        VideoClip localVideo,
+        bool replaceInputs = false,
+        long? metadataLastModifiedUtc = null)
     {
         try
         {
@@ -8332,6 +8369,9 @@ public class DashboardViewModel : BaseViewModel
             var metadata = await LoadRemoteVideoMetadataAsync(metadataKey);
             if (metadata == null)
                 return;
+
+            if (replaceInputs)
+                await _databaseService.DeleteInputsByVideoAsync(localVideo.Id);
 
             if (metadata.Video != null)
             {
@@ -8468,10 +8508,136 @@ public class DashboardViewModel : BaseViewModel
             }
 
             ApplyMetadataTagsToLocalVideo(localVideo, metadata);
+
+            localVideo.LastSyncUtc = metadataLastModifiedUtc ?? DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            await _databaseService.UpdateVideoClipAsync(localVideo);
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[Remote] Error aplicando metadatos a video local: {ex.Message}");
+        }
+    }
+
+    private async Task SyncRemoteChangesToPersonalLibraryAsync(
+        Dictionary<int, RemoteSessionMetadata> sessionMetadata,
+        Dictionary<string, CloudFileInfo> metadataFiles)
+    {
+        try
+        {
+            var sessionsToSync = RemoteVideos
+                .Where(v => v.SessionId > 0 && v.LinkedLocalVideo != null)
+                .Select(v => v.SessionId)
+                .Distinct()
+                .ToList();
+            if (sessionsToSync.Count == 0)
+                return;
+
+            // Actualizar metadatos de sesiones locales
+            var sessionsChanged = false;
+            foreach (var sessionId in sessionsToSync)
+            {
+                if (!sessionMetadata.TryGetValue(sessionId, out var metadata))
+                    continue;
+
+                var session = await _databaseService.GetSessionByIdAsync(sessionId);
+                if (session == null)
+                    continue;
+
+                var changed = false;
+                if (!string.IsNullOrWhiteSpace(metadata.SessionName) && session.NombreSesion != metadata.SessionName)
+                {
+                    session.NombreSesion = metadata.SessionName;
+                    changed = true;
+                }
+
+                if (!string.IsNullOrWhiteSpace(metadata.Place) && session.Lugar != metadata.Place)
+                {
+                    session.Lugar = metadata.Place;
+                    changed = true;
+                }
+
+                if (!string.IsNullOrWhiteSpace(metadata.Coach) && session.Coach != metadata.Coach)
+                {
+                    session.Coach = metadata.Coach;
+                    changed = true;
+                }
+
+                if (!string.IsNullOrWhiteSpace(metadata.SessionType) && session.TipoSesion != metadata.SessionType)
+                {
+                    session.TipoSesion = metadata.SessionType;
+                    changed = true;
+                }
+
+                var newFecha = metadata.SessionDateUtc.HasValue && metadata.SessionDateUtc.Value > 0
+                    ? metadata.SessionDateUtc.Value
+                    : (metadata.SessionDate.HasValue
+                        ? new DateTimeOffset(metadata.SessionDate.Value).ToUnixTimeSeconds()
+                        : 0);
+
+                if (newFecha > 0 && session.Fecha != newFecha)
+                {
+                    session.Fecha = newFecha;
+                    changed = true;
+                }
+
+                if (!changed)
+                    continue;
+
+                await _databaseService.SaveSessionAsync(session);
+                sessionsChanged = true;
+
+                var existing = RecentSessions.FirstOrDefault(s => s.Id == sessionId);
+                if (existing != null)
+                {
+                    var index = RecentSessions.IndexOf(existing);
+                    if (index >= 0)
+                        RecentSessions[index] = session;
+
+                    if (SelectedSession?.Id == sessionId)
+                        SelectedSession = session;
+                }
+            }
+
+            if (sessionsChanged)
+            {
+                SyncVisibleSessionRows();
+                OnPropertyChanged(nameof(SelectedSessionTitle));
+            }
+
+            // Añadir nuevos videos remotos en sesiones ya importadas
+            foreach (var remoteVideo in RemoteVideos
+                .Where(v => v.LinkedLocalVideo == null && sessionsToSync.Contains(v.SessionId)))
+            {
+                await AddRemoteVideoToLibraryAsync(remoteVideo);
+            }
+
+            // Actualizar metadatos de videos existentes si cambiaron en remoto
+            foreach (var remoteVideo in RemoteVideos
+                .Where(v => v.LinkedLocalVideo != null && sessionsToSync.Contains(v.SessionId)))
+            {
+                var localVideo = remoteVideo.LinkedLocalVideo;
+                if (localVideo == null)
+                    continue;
+
+                var metadataKey = $"sessions/{remoteVideo.SessionId}/metadata/{remoteVideo.VideoId}.json";
+                if (!metadataFiles.TryGetValue(metadataKey, out var metadataFile))
+                    continue;
+
+                var metadataUtc = new DateTimeOffset(metadataFile.LastModified).ToUnixTimeSeconds();
+                if (localVideo.LastSyncUtc > 0 && localVideo.LastSyncUtc >= metadataUtc)
+                    continue;
+
+                await ApplyRemoteMetadataToLocalVideoAsync(remoteVideo, localVideo, replaceInputs: true, metadataLastModifiedUtc: metadataUtc);
+
+                if (SelectedSession?.Id == localVideo.SessionId)
+                {
+                    await RefreshVideoClipInGalleryAsync(localVideo.Id);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Remote] Error sincronizando cambios remotos: {ex.Message}");
         }
     }
 
@@ -8604,6 +8770,18 @@ public class DashboardViewModel : BaseViewModel
             var removedVideos = RemoteVideos.Where(v => v.SessionId == sessionId).ToList();
             var removedSession = RemoteSessions.FirstOrDefault(s => s.SessionId == sessionId);
 
+            foreach (var video in removedVideos)
+            {
+                if (video.LinkedLocalVideo != null)
+                    await RemoveLocalVideoClipAsync(video.LinkedLocalVideo);
+
+                video.LinkedLocalVideo = null;
+                video.IsLocallyAvailable = false;
+                video.LocalPath = null;
+            }
+
+            await RemoveLocalSessionIfEmptyAsync(sessionId);
+
             await MainThread.InvokeOnMainThreadAsync(() =>
             {
                 foreach (var video in removedVideos)
@@ -8634,6 +8812,81 @@ public class DashboardViewModel : BaseViewModel
         {
             System.Diagnostics.Debug.WriteLine($"[Remote] Error eliminando sesión remota {sessionId}: {ex.Message}");
             await Shell.Current.DisplayAlert("Error", $"No se pudo eliminar la sesión: {ex.Message}", "OK");
+        }
+    }
+
+    private async Task RemoveLocalVideoClipAsync(VideoClip localVideo)
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(localVideo.LocalClipPath) && File.Exists(localVideo.LocalClipPath))
+            {
+                try { File.Delete(localVideo.LocalClipPath); } catch { }
+            }
+
+            if (!string.IsNullOrEmpty(localVideo.LocalThumbnailPath) && File.Exists(localVideo.LocalThumbnailPath))
+            {
+                try { File.Delete(localVideo.LocalThumbnailPath); } catch { }
+            }
+
+            await _databaseService.DeleteVideoClipAsync(localVideo.Id);
+            _databaseService.InvalidateCache();
+
+            if (_allVideosCache != null)
+            {
+                var cached = _allVideosCache.FirstOrDefault(v => v.Id == localVideo.Id);
+                if (cached != null)
+                    _allVideosCache.Remove(cached);
+            }
+
+            if (_favoriteVideosCache != null)
+            {
+                var cached = _favoriteVideosCache.FirstOrDefault(v => v.Id == localVideo.Id);
+                if (cached != null)
+                    _favoriteVideosCache.Remove(cached);
+            }
+
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                var existing = SelectedSessionVideos.FirstOrDefault(v => v.Id == localVideo.Id);
+                if (existing != null)
+                    SelectedSessionVideos.Remove(existing);
+            });
+
+            OnPropertyChanged(nameof(VideoCountDisplayText));
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Remote] Error eliminando referencia local: {ex.Message}");
+        }
+    }
+
+    private async Task RemoveLocalSessionIfEmptyAsync(int sessionId)
+    {
+        try
+        {
+            var db = await _databaseService.GetConnectionAsync();
+            var remaining = await db.Table<VideoClip>().Where(v => v.SessionId == sessionId).CountAsync();
+            if (remaining > 0)
+                return;
+
+            await _databaseService.DeleteSessionCascadeAsync(sessionId, deleteSessionFiles: false);
+
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                var session = RecentSessions.FirstOrDefault(s => s.Id == sessionId);
+                if (session != null)
+                    RecentSessions.Remove(session);
+
+                if (SelectedSession?.Id == sessionId)
+                    SelectedSession = null;
+
+                SyncVisibleSessionRows();
+            });
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Remote] Error eliminando sesión local vacía: {ex.Message}");
         }
     }
 
@@ -9230,6 +9483,7 @@ public class DashboardViewModel : BaseViewModel
 
         int deleted = 0;
         int errors = 0;
+        var affectedSessionIds = new HashSet<int>();
 
         foreach (var video in selectedVideos)
         {
@@ -9255,13 +9509,11 @@ public class DashboardViewModel : BaseViewModel
                     // Si estaba en biblioteca personal, eliminar también
                     if (video.LinkedLocalVideo != null)
                     {
-                        await _databaseService.DeleteVideoClipAsync(video.LinkedLocalVideo.Id);
-                        
-                        // Eliminar archivos locales
-                        if (!string.IsNullOrEmpty(video.LocalPath) && File.Exists(video.LocalPath))
-                        {
-                            try { File.Delete(video.LocalPath); } catch { }
-                        }
+                        affectedSessionIds.Add(video.LinkedLocalVideo.SessionId);
+                        await RemoveLocalVideoClipAsync(video.LinkedLocalVideo);
+                        video.LinkedLocalVideo = null;
+                        video.IsLocallyAvailable = false;
+                        video.LocalPath = null;
                     }
 
                     deleted++;
@@ -9278,6 +9530,9 @@ public class DashboardViewModel : BaseViewModel
                 errors++;
             }
         }
+        foreach (var sessionId in affectedSessionIds)
+            await RemoveLocalSessionIfEmptyAsync(sessionId);
+
         // Refrescar la lista de videos remotos
         await LoadRemoteGalleryAsync();
 

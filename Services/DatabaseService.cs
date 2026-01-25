@@ -684,6 +684,15 @@ public class DatabaseService
         }
     }
 
+    /// <summary>
+    /// Elimina todos los inputs asociados a un VideoClip (tags y eventos).
+    /// </summary>
+    public async Task DeleteInputsByVideoAsync(int videoId)
+    {
+        var db = await GetConnectionAsync();
+        await db.ExecuteAsync("DELETE FROM \"input\" WHERE VideoID = ?;", videoId);
+    }
+
     // ==================== ATHLETES ====================
     public async Task<List<Athlete>> GetAllAthletesAsync()
     {
