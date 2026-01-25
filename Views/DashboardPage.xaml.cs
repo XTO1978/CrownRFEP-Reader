@@ -132,7 +132,7 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 
         try
         {
-            _viewModel.SmartFolders.CollectionChanged += _smartFoldersChangedHandler;
+            _viewModel.SmartFolders.SmartFolders.CollectionChanged += _smartFoldersChangedHandler;
         }
         catch { }
 
@@ -283,7 +283,7 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         try
         {
             if (_smartFoldersChangedHandler != null)
-                _viewModel.SmartFolders.CollectionChanged -= _smartFoldersChangedHandler;
+                _viewModel.SmartFolders.SmartFolders.CollectionChanged -= _smartFoldersChangedHandler;
         }
         catch { }
 
@@ -375,8 +375,8 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 
             _lastVideoGalleryComputedSpan = span;
 
-            if (vm.VideoGalleryColumnSpan != span)
-                vm.VideoGalleryColumnSpan = span;
+            if (vm.Videos.VideoGalleryColumnSpan != span)
+                vm.Videos.VideoGalleryColumnSpan = span;
         }
         catch { }
     }
@@ -407,7 +407,7 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         {
             if (BindingContext is DashboardViewModel vm)
             {
-                vm.SelectAllGalleryCommand.Execute(null);
+                vm.Layout.SelectAllGalleryCommand.Execute(null);
             }
         }
         catch (Exception ex)
@@ -422,7 +422,7 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         {
             if (BindingContext is DashboardViewModel vm)
             {
-                vm.ViewVideoLessonsCommand.Execute(null);
+                vm.Layout.ViewVideoLessonsCommand.Execute(null);
             }
         }
         catch (Exception ex)
@@ -437,7 +437,7 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         {
             if (BindingContext is DashboardViewModel vm)
             {
-                vm.SelectFavoriteSessionsCommand.Execute(null);
+                vm.Layout.SelectFavoriteSessionsCommand.Execute(null);
             }
         }
         catch (Exception ex)
@@ -452,7 +452,7 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         {
             if (BindingContext is DashboardViewModel vm)
             {
-                vm.SelectFavoriteVideosCommand.Execute(null);
+                vm.Layout.SelectFavoriteVideosCommand.Execute(null);
             }
         }
         catch (Exception ex)
@@ -467,7 +467,7 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         {
             if (BindingContext is DashboardViewModel vm)
             {
-                vm.ViewDiaryCommand.Execute(null);
+                vm.Layout.ViewDiaryCommand.Execute(null);
             }
         }
         catch (Exception ex)
@@ -482,7 +482,7 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         {
             if (BindingContext is DashboardViewModel vm)
             {
-                vm.ViewTrashCommand.Execute(null);
+                vm.Layout.ViewTrashCommand.Execute(null);
             }
         }
         catch (Exception ex)
@@ -497,7 +497,7 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         {
             if (BindingContext is DashboardViewModel vm)
             {
-                vm.ToggleSmartFoldersExpansionCommand.Execute(null);
+                vm.SmartFolders.ToggleSmartFoldersExpansionCommand.Execute(null);
             }
         }
         catch (Exception ex)
@@ -512,7 +512,7 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         {
             if (BindingContext is DashboardViewModel vm)
             {
-                vm.OpenSmartFolderSidebarPopupCommand.Execute(null);
+                vm.SmartFolders.OpenSmartFolderSidebarPopupCommand.Execute(null);
             }
         }
         catch (Exception ex)
@@ -564,8 +564,8 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 
             if (BindingContext is DashboardViewModel vm)
             {
-                if (vm.ConnectNasCommand?.CanExecute(null) ?? false)
-                    vm.ConnectNasCommand.Execute(null);
+                if (vm.Remote.ConnectNasCommand?.CanExecute(null) ?? false)
+                    vm.Remote.ConnectNasCommand.Execute(null);
             }
         }
         catch (Exception ex)
@@ -727,8 +727,8 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 
             if (sender is VisualElement anchor && anchor.BindingContext is SmartFolderDefinition folder)
             {
-                if (BindingContext is DashboardViewModel vm && vm.SelectSmartFolderCommand?.CanExecute(folder) == true)
-                    vm.SelectSmartFolderCommand.Execute(folder);
+                if (BindingContext is DashboardViewModel vm && vm.SmartFolders.SelectSmartFolderCommand?.CanExecute(folder) == true)
+                    vm.SmartFolders.SelectSmartFolderCommand.Execute(folder);
             }
         }
         catch { }
@@ -925,7 +925,7 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         }
     }
 
-    private async void OnSessionRowMenuFavoriteTapped(object? sender, TappedEventArgs e)
+    private void OnSessionRowMenuFavoriteTapped(object? sender, TappedEventArgs e)
     {
         try
         {
@@ -976,8 +976,8 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
             _contextMenuSmartFolder = folder;
 
             // El menú contextual debe seleccionar el item.
-            if (BindingContext is DashboardViewModel vm && vm.SelectSmartFolderCommand?.CanExecute(folder) == true)
-                vm.SelectSmartFolderCommand.Execute(folder);
+            if (BindingContext is DashboardViewModel vm && vm.SmartFolders.SelectSmartFolderCommand?.CanExecute(folder) == true)
+                vm.SmartFolders.SelectSmartFolderCommand.Execute(folder);
 
             HideUserLibraryContextMenu();
             HideSessionsContextMenu();
@@ -1127,8 +1127,8 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 
             if (BindingContext is DashboardViewModel vm)
             {
-                if (vm.RenameSmartFolderCommand?.CanExecute(_contextMenuSmartFolder) ?? false)
-                    vm.RenameSmartFolderCommand.Execute(_contextMenuSmartFolder);
+                if (vm.SmartFolders.RenameSmartFolderCommand?.CanExecute(_contextMenuSmartFolder) ?? false)
+                    vm.SmartFolders.RenameSmartFolderCommand.Execute(_contextMenuSmartFolder);
             }
         }
         catch (Exception ex)
@@ -1148,8 +1148,8 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 
             if (BindingContext is DashboardViewModel vm)
             {
-                if (vm.OpenIconColorPickerForSmartFolderCommand?.CanExecute(_contextMenuSmartFolder) ?? false)
-                    vm.OpenIconColorPickerForSmartFolderCommand.Execute(_contextMenuSmartFolder);
+                if (vm.SmartFolders.OpenIconColorPickerForSmartFolderCommand?.CanExecute(_contextMenuSmartFolder) ?? false)
+                    vm.SmartFolders.OpenIconColorPickerForSmartFolderCommand.Execute(_contextMenuSmartFolder);
             }
         }
         catch (Exception ex)
@@ -1169,8 +1169,8 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 
             if (BindingContext is DashboardViewModel vm)
             {
-                if (vm.DeleteSmartFolderCommand?.CanExecute(_contextMenuSmartFolder) ?? false)
-                    vm.DeleteSmartFolderCommand.Execute(_contextMenuSmartFolder);
+                if (vm.SmartFolders.DeleteSmartFolderCommand?.CanExecute(_contextMenuSmartFolder) ?? false)
+                    vm.SmartFolders.DeleteSmartFolderCommand.Execute(_contextMenuSmartFolder);
             }
         }
         catch (Exception ex)
@@ -1204,15 +1204,15 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 
             if (BindingContext is DashboardViewModel vm)
             {
-                if (vm.IsMultiSelectMode)
+                if (vm.BatchEdit.IsMultiSelectMode)
                 {
                     if (!video.IsSelected)
-                        vm.ToggleVideoSelectionCommand.Execute(video);
+                        vm.BatchEdit.ToggleVideoSelectionCommand.Execute(video);
                 }
                 else
                 {
                     if (!video.IsSelected)
-                        vm.SelectSingleVideo(video);
+                        vm.BatchEdit.SelectSingleVideo(video);
                 }
             }
 
@@ -1350,7 +1350,7 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         }
     }
 
-    private async void OnRemoteSessionMenuAddToLibraryTapped(object? sender, TappedEventArgs e)
+    private void OnRemoteSessionMenuAddToLibraryTapped(object? sender, TappedEventArgs e)
     {
         try
         {
@@ -1361,8 +1361,8 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 
             if (BindingContext is DashboardViewModel vm)
             {
-                if (vm.AddRemoteSessionToLibraryCommand?.CanExecute(_contextMenuRemoteSession.SessionId) ?? false)
-                    vm.AddRemoteSessionToLibraryCommand.Execute(_contextMenuRemoteSession.SessionId);
+                if (vm.Remote.AddRemoteSessionToLibraryCommand?.CanExecute(_contextMenuRemoteSession.SessionId) ?? false)
+                    vm.Remote.AddRemoteSessionToLibraryCommand.Execute(_contextMenuRemoteSession.SessionId);
             }
         }
         catch (Exception ex)
@@ -1396,7 +1396,7 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
             if (BindingContext is not DashboardViewModel vm)
                 return;
 
-            if (!vm.CanDeleteRemoteSessions)
+            if (!vm.Remote.CanDeleteRemoteSessions)
             {
                 await DisplayAlert("Permisos", "No tienes permisos para eliminar sesiones de la organización.", "OK");
                 return;
@@ -1411,8 +1411,8 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
             if (!confirm)
                 return;
 
-            if (vm.DeleteRemoteSessionFromCloudCommand?.CanExecute(_contextMenuRemoteSession.SessionId) ?? false)
-                vm.DeleteRemoteSessionFromCloudCommand.Execute(_contextMenuRemoteSession.SessionId);
+            if (vm.Remote.DeleteRemoteSessionFromCloudCommand?.CanExecute(_contextMenuRemoteSession.SessionId) ?? false)
+                vm.Remote.DeleteRemoteSessionFromCloudCommand.Execute(_contextMenuRemoteSession.SessionId);
         }
         catch (Exception ex)
         {
@@ -1432,22 +1432,22 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
                 return;
 
             // Contar cuántos videos remotos están en la biblioteca personal
-            var videosInLibrary = vm.RemoteVideos.Where(v => v.LinkedLocalVideo != null).ToList();
-            var totalRemoteVideos = vm.RemoteVideos.Count;
+            var videosInLibrary = vm.Remote.RemoteVideos.Where(v => v.LinkedLocalVideo != null).ToList();
+            var totalRemoteVideos = vm.Remote.RemoteVideos.Count;
             
             var infoText = videosInLibrary.Count > 0 
                 ? $"{videosInLibrary.Count} videos en biblioteca personal" 
                 : "Sin videos en biblioteca personal";
 
             var result = await DisplayActionSheet(
-                $"{vm.RemoteLibraryDisplayName}\n({infoText})",
+                $"{vm.Remote.RemoteLibraryDisplayName}\n({infoText})",
                 "Cancelar",
                 "Eliminar biblioteca de organización del sistema",
                 Array.Empty<string>());
 
             if (result == "Eliminar biblioteca de organización del sistema")
             {
-                vm.DeleteAllRemoteVideosFromLibraryCommand.Execute(null);
+                vm.Remote.DeleteAllRemoteVideosFromLibraryCommand.Execute(null);
             }
         }
         catch (Exception ex)
@@ -1509,10 +1509,10 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 
             if (BindingContext is DashboardViewModel vm2)
             {
-                if (vm2.IsMultiSelectMode)
+                if (vm2.BatchEdit.IsMultiSelectMode)
                 {
                     // En multiselección, alternar selección sin afectar a otros
-                    vm2.ToggleVideoSelectionCommand.Execute(video);
+                    vm2.BatchEdit.ToggleVideoSelectionCommand.Execute(video);
                     return;
                 }
 
@@ -1520,11 +1520,11 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
                 if (video.IsSelected)
                 {
                     video.IsSelected = false;
-                    vm2.UpdateVideoSelectionState(video);
+                    vm2.BatchEdit.UpdateVideoSelectionState(video);
                 }
                 else
                 {
-                    vm2.SelectSingleVideo(video);
+                    vm2.BatchEdit.SelectSingleVideo(video);
                 }
             }
         }
@@ -1672,11 +1672,11 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
             if (BindingContext is DashboardViewModel vm)
             {
                 // Seleccionar solo este video para edición (sin requerir modo multiselección)
-                vm.SelectSingleVideoForEdit(_contextMenuVideo);
+                vm.BatchEdit.SelectSingleVideoForEdit(_contextMenuVideo);
                 
                 // Ahora ejecutar el comando de editar
-                if (vm.EditVideoDetailsCommand?.CanExecute(null) ?? false)
-                    vm.EditVideoDetailsCommand.Execute(null);
+                if (vm.BatchEdit.EditVideoDetailsCommand?.CanExecute(null) ?? false)
+                    vm.BatchEdit.EditVideoDetailsCommand.Execute(null);
             }
         }
         catch (Exception ex)
@@ -1755,7 +1755,7 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
             if (BindingContext is DashboardViewModel vm)
             {
                 // Seleccionar solo este video para eliminación (sin requerir modo multiselección)
-                vm.SelectSingleVideoForEdit(_contextMenuVideo);
+                vm.BatchEdit.SelectSingleVideoForEdit(_contextMenuVideo);
                 
                 // Ahora ejecutar el comando de eliminar
                 if (vm.DeleteSelectedVideosCommand?.CanExecute(null) ?? false)
@@ -1779,8 +1779,8 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 
             if (BindingContext is DashboardViewModel vm)
             {
-                if (vm.PlayRemoteVideoCommand?.CanExecute(_contextMenuRemoteVideo) ?? false)
-                    vm.PlayRemoteVideoCommand.Execute(_contextMenuRemoteVideo);
+                if (vm.Remote.PlayRemoteVideoCommand?.CanExecute(_contextMenuRemoteVideo) ?? false)
+                    vm.Remote.PlayRemoteVideoCommand.Execute(_contextMenuRemoteVideo);
             }
         }
         catch (Exception ex)
@@ -1806,8 +1806,8 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 
             if (BindingContext is DashboardViewModel vm)
             {
-                if (vm.AddRemoteVideoToLibraryCommand?.CanExecute(_contextMenuRemoteVideo) ?? false)
-                    vm.AddRemoteVideoToLibraryCommand.Execute(_contextMenuRemoteVideo);
+                if (vm.Remote.AddRemoteVideoToLibraryCommand?.CanExecute(_contextMenuRemoteVideo) ?? false)
+                    vm.Remote.AddRemoteVideoToLibraryCommand.Execute(_contextMenuRemoteVideo);
             }
         }
         catch (Exception ex)
@@ -1881,13 +1881,13 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 
             if (BindingContext is DashboardViewModel vm)
             {
-                foreach (var item in vm.RemoteVideos)
+                foreach (var item in vm.Remote.RemoteVideos)
                     item.IsSelected = false;
 
                 _contextMenuRemoteVideo.IsSelected = true;
 
-                if (vm.DeleteSelectedRemoteFromCloudCommand?.CanExecute(null) ?? false)
-                    vm.DeleteSelectedRemoteFromCloudCommand.Execute(null);
+                if (vm.Remote.DeleteSelectedRemoteFromCloudCommand?.CanExecute(null) ?? false)
+                    vm.Remote.DeleteSelectedRemoteFromCloudCommand.Execute(null);
             }
         }
         catch (Exception ex)
@@ -1936,19 +1936,19 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
             // Considerar "listo" cuando vemos callbacks de posición (normalmente implica playback).
             if (sender == PreviewPlayer1Q)
             {
-                _viewModel.IsPreviewPlayer1Ready = true;
+                _viewModel.Videos.IsPreviewPlayer1Ready = true;
             }
             else if (sender == PreviewPlayer2Q)
             {
-                _viewModel.IsPreviewPlayer2Ready = true;
+                _viewModel.Videos.IsPreviewPlayer2Ready = true;
             }
             else if (sender == PreviewPlayer3Q)
             {
-                _viewModel.IsPreviewPlayer3Ready = true;
+                _viewModel.Videos.IsPreviewPlayer3Ready = true;
             }
             else if (sender == PreviewPlayer4Q)
             {
-                _viewModel.IsPreviewPlayer4Ready = true;
+                _viewModel.Videos.IsPreviewPlayer4Ready = true;
             }
         }
         catch { }
@@ -1996,10 +1996,10 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         _ = LogHeartbeatsAsync();
         
         // Limpiar los recuadros de preview al volver a la página
-        _viewModel.ClearPreviewVideos();
+        _viewModel.Videos.ClearPreviewVideos();
         
         // Refrescar estadísticas si hay cambios pendientes (al volver de SinglePlayerPage)
-        _ = _viewModel.RefreshPendingStatsAsync();
+        _ = _viewModel.Videos.RefreshPendingStatsAsync();
         
         _ = LoadDashboardAsync();
     }
@@ -2401,7 +2401,7 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
             try { HoverPreviewPlayer?.Stop(); } catch { }
 
             // Forzar que el binding deje de referenciar el vídeo
-            _viewModel.HoverVideo = null;
+            _viewModel.Videos.HoverVideo = null;
 
             // Limpia también los reproductores custom
             CleanupAllVideos();
@@ -2438,7 +2438,7 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
     {
         MainThread.BeginInvokeOnMainThread(() =>
         {
-            _viewModel.HoverVideo = e.Video;
+            _viewModel.Videos.HoverVideo = e.Video;
 
             try
             {
@@ -2452,7 +2452,7 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
     {
         MainThread.BeginInvokeOnMainThread(() =>
         {
-            _viewModel.HoverVideo = null;
+            _viewModel.Videos.HoverVideo = null;
         });
     }
 
@@ -2463,7 +2463,7 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
             try
             {
                 // Solo reposicionar si el preview está activo
-                if (_viewModel.HasHoverVideo)
+                if (_viewModel.Videos.HasHoverVideo)
                     PositionHoverPreview(e);
             }
             catch { }
@@ -2660,7 +2660,7 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
     {
         MainThread.BeginInvokeOnMainThread(() =>
         {
-            _viewModel.HoverVideo = e.Video;
+            _viewModel.Videos.HoverVideo = e.Video;
         });
     }
 
@@ -2668,7 +2668,7 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
     {
         MainThread.BeginInvokeOnMainThread(() =>
         {
-            _viewModel.HoverVideo = null;
+            _viewModel.Videos.HoverVideo = null;
         });
     }
 #endif
@@ -2715,7 +2715,7 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         if (e.Data.Properties.TryGetValue("VideoClip", out var data) && data is VideoClip video)
         {
             System.Diagnostics.Debug.WriteLine($"[Dashboard] OnDropScreen1: got video Id={video.Id}");
-            _ = _viewModel.SetParallelVideoSlotAsync(1, video);
+            _ = _viewModel.Videos.SetParallelVideoSlotAsync(1, video);
         }
         else
         {
@@ -2729,7 +2729,7 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         if (e.Data.Properties.TryGetValue("VideoClip", out var data) && data is VideoClip video)
         {
             System.Diagnostics.Debug.WriteLine($"[Dashboard] OnDropScreen2: got video Id={video.Id}");
-            _ = _viewModel.SetParallelVideoSlotAsync(2, video);
+            _ = _viewModel.Videos.SetParallelVideoSlotAsync(2, video);
         }
         else
         {
@@ -2743,7 +2743,7 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         if (e.Data.Properties.TryGetValue("VideoClip", out var data) && data is VideoClip video)
         {
             System.Diagnostics.Debug.WriteLine($"[Dashboard] OnDropScreen3: got video Id={video.Id}");
-            _ = _viewModel.SetParallelVideoSlotAsync(3, video);
+            _ = _viewModel.Videos.SetParallelVideoSlotAsync(3, video);
         }
         else
         {
@@ -2757,7 +2757,7 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         if (e.Data.Properties.TryGetValue("VideoClip", out var data) && data is VideoClip video)
         {
             System.Diagnostics.Debug.WriteLine($"[Dashboard] OnDropScreen4: got video Id={video.Id}");
-            _ = _viewModel.SetParallelVideoSlotAsync(4, video);
+            _ = _viewModel.Videos.SetParallelVideoSlotAsync(4, video);
         }
         else
         {
@@ -2834,19 +2834,19 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
     // Toggle Play/Pause para todos los videos activos
     public void TogglePlayPause()
     {
-        AppLog.Info("DashboardPage", $"TogglePlayPause | IsPreviewMode={_viewModel.IsPreviewMode} | HasVideo1={_viewModel.HasParallelVideo1}");
+        AppLog.Info("DashboardPage", $"TogglePlayPause | IsPreviewMode={_viewModel.Videos.IsPreviewMode} | HasVideo1={_viewModel.Videos.HasParallelVideo1}");
 
         // Importante: los mini players solo se vuelven visibles cuando IsPreviewMode=true
         // (ver MultiTriggers en XAML). Si el usuario pulsa espacio para reproducir,
         // activamos preview mode para evitar que se oculte la miniatura y se quede el fondo gris.
         var enabledPreviewModeNow = false;
-        if (!_viewModel.IsPreviewMode && (
-                _viewModel.HasParallelVideo1 ||
-                _viewModel.HasParallelVideo2 ||
-                _viewModel.HasParallelVideo3 ||
-                _viewModel.HasParallelVideo4))
+        if (!_viewModel.Videos.IsPreviewMode && (
+                _viewModel.Videos.HasParallelVideo1 ||
+                _viewModel.Videos.HasParallelVideo2 ||
+                _viewModel.Videos.HasParallelVideo3 ||
+                _viewModel.Videos.HasParallelVideo4))
         {
-            _viewModel.IsPreviewMode = true;
+            _viewModel.Videos.IsPreviewMode = true;
             enabledPreviewModeNow = true;
             AppLog.Info("DashboardPage", "TogglePlayPause | Enabled IsPreviewMode, will retry after delay");
         }
@@ -2868,10 +2868,10 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         }
 
         // Controlar los slots ocupados en 2x2
-        if (_viewModel.HasParallelVideo1) TogglePlayer(PreviewPlayer1Q);
-        if (_viewModel.HasParallelVideo2) TogglePlayer(PreviewPlayer2Q);
-        if (_viewModel.HasParallelVideo3) TogglePlayer(PreviewPlayer3Q);
-        if (_viewModel.HasParallelVideo4) TogglePlayer(PreviewPlayer4Q);
+        if (_viewModel.Videos.HasParallelVideo1) TogglePlayer(PreviewPlayer1Q);
+        if (_viewModel.Videos.HasParallelVideo2) TogglePlayer(PreviewPlayer2Q);
+        if (_viewModel.Videos.HasParallelVideo3) TogglePlayer(PreviewPlayer3Q);
+        if (_viewModel.Videos.HasParallelVideo4) TogglePlayer(PreviewPlayer4Q);
     }
 
     private void TogglePlayer(PrecisionVideoPlayer? player)
@@ -2919,7 +2919,7 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 
 			// IMPORTANTE: NO asignar HoverPreviewPlayer.Source = null, porque rompe el binding XAML.
 			// En su lugar, limpiar el valor en el ViewModel para que el binding propague null.
-			_viewModel.HoverVideo = null;
+            _viewModel.Videos.HoverVideo = null;
             
             // Para los preview players del dashboard, solo llamamos PrepareForCleanup()
             // que limpia el AVPlayer nativo pero NO rompe el binding.
@@ -2930,7 +2930,7 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
             PreparePlayerForCleanup(PreviewPlayer4Q);
             
             // Limpiar en el ViewModel - esto propagará null via binding a los controles
-            _viewModel.ClearPreviewVideos();
+            _viewModel.Videos.ClearPreviewVideos();
 
             AppLog.Info("DashboardPage", "CleanupAllVideos END");
         }

@@ -173,6 +173,11 @@ public static class MauiProgram
 		builder.Services.AddSingleton<UserProfileNotifier>();
 		builder.Services.AddSingleton<VideoExportNotifier>();
 		builder.Services.AddSingleton<VideoLessonNotifier>();
+		builder.Services.AddSingleton<IVideoClipUpdateNotifier, VideoClipUpdateNotifier>();
+		builder.Services.AddSingleton<LayoutStateViewModel>();
+		builder.Services.AddSingleton<BatchEditViewModel>();
+		builder.Services.AddSingleton<SmartFoldersViewModel>();
+		builder.Services.AddSingleton<RemoteLibraryViewModel>();
 		builder.Services.AddSingleton<ImportProgressService>();
 		builder.Services.AddSingleton<StatusBarService>();
 		builder.Services.AddSingleton<CrownFileService>();
@@ -245,6 +250,8 @@ public static class MauiProgram
 
 		// ViewModels
 		builder.Services.AddSingleton<DashboardViewModel>();
+		builder.Services.AddSingleton<DiaryWellnessViewModel>();
+		builder.Services.AddSingleton<VideosViewModel>();
 		builder.Services.AddSingleton<ImportViewModel>();
 		builder.Services.AddSingleton<SessionsViewModel>();
 		builder.Services.AddSingleton<TrashViewModel>();

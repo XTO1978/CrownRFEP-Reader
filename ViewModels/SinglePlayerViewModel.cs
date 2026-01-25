@@ -40,6 +40,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     private readonly StatisticsService _statisticsService;
     private readonly ITableExportService _tableExportService;
     private readonly ICloudBackendService _cloudBackendService;
+    private readonly IVideoClipUpdateNotifier _videoClipUpdateNotifier;
     private readonly SemaphoreSlim _videoPathInitLock = new(1, 1);
 
     private CancellationTokenSource? _lapSyncInitCts;
@@ -213,12 +214,13 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     private ObservableCollection<int> _evolutionTecnicaValues = new();
     private ObservableCollection<string> _evolutionLabels = new();
 
-    public SinglePlayerViewModel(DatabaseService databaseService, StatisticsService statisticsService, ITableExportService tableExportService, ICloudBackendService cloudBackendService)
+    public SinglePlayerViewModel(DatabaseService databaseService, StatisticsService statisticsService, ITableExportService tableExportService, ICloudBackendService cloudBackendService, IVideoClipUpdateNotifier videoClipUpdateNotifier)
     {
         _databaseService = databaseService;
         _statisticsService = statisticsService;
         _tableExportService = tableExportService;
         _cloudBackendService = cloudBackendService;
+        _videoClipUpdateNotifier = videoClipUpdateNotifier;
         
         // Comandos de reproducción
         PlayPauseCommand = new Command(TogglePlayPause);
@@ -2539,11 +2541,22 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
         // Cargar datos actualizados del video desde la base de datos
         await LoadVideoDataAsync(video);
-        
-        VideoClip = video;
-        
-        // Forzar actualización del VideoPath para asegurar que el binding se actualice
+
+        // Resolver path (local o streaming) y actualizar binding
+        var resolvedPath = await ResolveVideoPathAsync(video);
+        if (!string.IsNullOrWhiteSpace(resolvedPath))
+        {
+            _videoPath = resolvedPath;
+            video.LocalClipPath = resolvedPath;
+        }
+        else
+        {
+            _videoPath = video.LocalClipPath ?? video.ClipPath ?? "";
+        }
         OnPropertyChanged(nameof(VideoPath));
+
+        VideoClip = video;
+        VideoTitle = video.Atleta?.NombreCompleto ?? Path.GetFileNameWithoutExtension(_videoPath);
         
         if (video.SessionId > 0)
         {
@@ -2562,6 +2575,9 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
         // Auto-abrir Split Time si existen laps/timing guardados
         await AutoOpenSplitTimePanelIfHasTimingAsync();
+        
+        // Notificar al view para que recargue el video (al entrar desde Dashboard)
+        VideoChanged?.Invoke(this, video);
         IsLoadingTools = false;
     }
 
@@ -2717,7 +2733,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         {
             MainThread.BeginInvokeOnMainThread(() =>
             {
-                MessagingCenter.Send(this, "VideoClipUpdated", _videoClip.Id);
+                _videoClipUpdateNotifier.NotifyVideoClipUpdated(_videoClip.Id);
             });
         }
     }

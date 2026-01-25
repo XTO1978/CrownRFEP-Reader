@@ -283,7 +283,7 @@
             RightColumnWidth="{Binding RightPanelWidth, Mode=TwoWay}"
             WidthRequest="8">
             <controls:GridSplitter.IsVisible>
-                <Binding Path="IsVideoLessonsSelected" Converter="{toolkit:InvertedBoolConverter}" />
+                <Binding Path="Layout.IsVideoLessonsSelected" Converter="{toolkit:InvertedBoolConverter}" />
             </controls:GridSplitter.IsVisible>
         </controls:GridSplitter>
 
@@ -326,7 +326,7 @@
                         <VerticalStackLayout
                             x:Name="RemoteLibraryContainer"
                             HorizontalOptions="Fill"
-                            IsVisible="{Binding IsRemoteLibraryVisible}">
+                            IsVisible="{Binding Layout.IsRemoteLibraryVisible}">
 
                             <Border
                                 x:Name="RemoteLibraryHeaderBorder"
@@ -354,7 +354,7 @@
                                         VerticalOptions="Center"
                                         HorizontalOptions="Fill">
                                         <Grid.GestureRecognizers>
-                                            <TapGestureRecognizer Command="{Binding ToggleRemoteLibraryExpandedCommand}" />
+                                            <TapGestureRecognizer Command="{Binding Layout.ToggleRemoteLibraryExpandedCommand}" />
                                         </Grid.GestureRecognizers>
 
                                         <controls:SymbolIcon
@@ -380,7 +380,7 @@
                                             <Label
                                                 FontFamily="{StaticResource AppFontBody}"
                                                 FontSize="{StaticResource FontSizeSmall}"
-                                                Text="{Binding RemoteLibraryDisplayName}"
+                                                Text="{Binding Remote.RemoteLibraryDisplayName}"
                                                 TextColor="#FFDDDDDD"
                                                 VerticalOptions="Center" />
                                         </VerticalStackLayout>
@@ -393,7 +393,7 @@
                                         BackgroundColor="Transparent"
                                         StrokeThickness="0">
                                         <Border.GestureRecognizers>
-                                            <TapGestureRecognizer Command="{Binding ToggleRemoteLibraryExpandedCommand}" />
+                                            <TapGestureRecognizer Command="{Binding Layout.ToggleRemoteLibraryExpandedCommand}" />
                                         </Border.GestureRecognizers>
                                         <controls:SymbolIcon
                                             HeightRequest="{StaticResource IconSizeSmall}"
@@ -408,7 +408,7 @@
                             <VerticalStackLayout
                                 x:Name="RemoteLibraryItemsContainer"
                                 HorizontalOptions="Fill"
-                                IsVisible="{Binding IsRemoteLibraryExpanded}">
+                                IsVisible="{Binding Layout.IsRemoteLibraryExpanded}">
                                 <VerticalStackLayout.Spacing>
                                     <OnPlatform x:TypeArguments="x:Double">
                                         <On Platform="iOS" Value="6" />
@@ -431,13 +431,13 @@
                                     <Border.Triggers>
                                         <DataTrigger
                                             TargetType="Border"
-                                            Binding="{Binding IsRemoteAllGallerySelected}"
+                                            Binding="{Binding Layout.IsRemoteAllGallerySelected}"
                                             Value="True">
                                             <Setter Property="BackgroundColor" Value="#FF2A2A2A" />
                                         </DataTrigger>
                                     </Border.Triggers>
                                     <Border.GestureRecognizers>
-                                        <TapGestureRecognizer Command="{Binding RemoteSelectAllGalleryCommand}" />
+                                        <TapGestureRecognizer Command="{Binding Remote.RemoteSelectAllGalleryCommand}" />
                                     </Border.GestureRecognizers>
                                     <Grid ColumnDefinitions="Auto,*,Auto" Margin="18,0,0,0" VerticalOptions="Center" HorizontalOptions="Fill">
                                         <controls:SymbolIcon
@@ -460,7 +460,7 @@
                                             FontSize="{StaticResource FontSizeSmall}"
                                             HorizontalOptions="End"
                                             HorizontalTextAlignment="End"
-                                            Text="{Binding RemoteAllGalleryItemCount}"
+                                            Text="{Binding Remote.RemoteAllGalleryItemCount}"
                                             TextColor="#FF888888"
                                             VerticalOptions="Center" />
                                     </Grid>
@@ -481,13 +481,13 @@
                                     <Border.Triggers>
                                         <DataTrigger
                                             TargetType="Border"
-                                            Binding="{Binding IsRemoteVideoLessonsSelected}"
+                                            Binding="{Binding Layout.IsRemoteVideoLessonsSelected}"
                                             Value="True">
                                             <Setter Property="BackgroundColor" Value="#FF2A2A2A" />
                                         </DataTrigger>
                                     </Border.Triggers>
                                     <Border.GestureRecognizers>
-                                        <TapGestureRecognizer Command="{Binding RemoteViewVideoLessonsCommand}" />
+                                        <TapGestureRecognizer Command="{Binding Remote.RemoteViewVideoLessonsCommand}" />
                                     </Border.GestureRecognizers>
                                     <Grid ColumnDefinitions="Auto,*,Auto" Margin="18,0,0,0" VerticalOptions="Center" HorizontalOptions="Fill">
                                         <controls:SymbolIcon
@@ -510,7 +510,7 @@
                                             FontSize="{StaticResource FontSizeSmall}"
                                             HorizontalOptions="End"
                                             HorizontalTextAlignment="End"
-                                            Text="{Binding RemoteVideoLessonsCount}"
+                                            Text="{Binding Remote.RemoteVideoLessonsCount}"
                                             TextColor="#FF888888"
                                             VerticalOptions="Center" />
                                     </Grid>
@@ -531,13 +531,13 @@
                                     <Border.Triggers>
                                         <DataTrigger
                                             TargetType="Border"
-                                            Binding="{Binding IsRemoteTrashSelected}"
+                                            Binding="{Binding Layout.IsRemoteTrashSelected}"
                                             Value="True">
                                             <Setter Property="BackgroundColor" Value="#FF2A2A2A" />
                                         </DataTrigger>
                                     </Border.Triggers>
                                     <Border.GestureRecognizers>
-                                        <TapGestureRecognizer Command="{Binding RemoteViewTrashCommand}" />
+                                        <TapGestureRecognizer Command="{Binding Remote.RemoteViewTrashCommand}" />
                                     </Border.GestureRecognizers>
                                     <Grid ColumnDefinitions="Auto,*,Auto" Margin="18,0,0,0" VerticalOptions="Center" HorizontalOptions="Fill">
                                         <controls:SymbolIcon
@@ -560,7 +560,7 @@
                                             FontSize="{StaticResource FontSizeSmall}"
                                             HorizontalOptions="End"
                                             HorizontalTextAlignment="End"
-                                            Text="{Binding RemoteTrashItemCount}"
+                                            Text="{Binding Remote.RemoteTrashItemCount}"
                                             TextColor="#FF888888"
                                             VerticalOptions="Center" />
                                     </Grid>
@@ -585,7 +585,7 @@
                                             BackgroundColor="Transparent"
                                             StrokeThickness="0">
                                             <Border.GestureRecognizers>
-                                                <TapGestureRecognizer Command="{Binding ToggleRemoteSessionsListExpandedCommand}" />
+                                                <TapGestureRecognizer Command="{Binding Layout.ToggleRemoteSessionsListExpandedCommand}" />
                                             </Border.GestureRecognizers>
                                             <controls:SymbolIcon
                                                 HeightRequest="{StaticResource IconSizeSmall}"
@@ -593,10 +593,10 @@
                                                 TintColor="#FF888888"
                                                 VerticalOptions="Center">
                                                 <controls:SymbolIcon.Triggers>
-                                                    <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding IsRemoteSessionsListExpanded}" Value="True">
+                                                    <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding Layout.IsRemoteSessionsListExpanded}" Value="True">
                                                         <Setter Property="SymbolName" Value="chevron.down" />
                                                     </DataTrigger>
-                                                    <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding IsRemoteSessionsListExpanded}" Value="False">
+                                                    <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding Layout.IsRemoteSessionsListExpanded}" Value="False">
                                                         <Setter Property="SymbolName" Value="chevron.right" />
                                                     </DataTrigger>
                                                 </controls:SymbolIcon.Triggers>
@@ -646,8 +646,8 @@
                                 <VerticalStackLayout
                                     Spacing="{StaticResource SpacingXSmall}"
                                     HorizontalOptions="Fill"
-                                    IsVisible="{Binding IsRemoteSessionsListExpanded}"
-                                    BindableLayout.ItemsSource="{Binding RemoteSessions}">
+                                    IsVisible="{Binding Layout.IsRemoteSessionsListExpanded}"
+                                    BindableLayout.ItemsSource="{Binding Remote.RemoteSessions}">
                                     <VerticalStackLayout.Margin>
                                         <OnPlatform x:TypeArguments="Thickness">
                                             <On Platform="iOS" Value="0,0,0,2" />
@@ -667,7 +667,7 @@
                                                 </Border.Triggers>
                                                 <Border.GestureRecognizers>
                                                     <TapGestureRecognizer
-                                                        Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.SelectRemoteSessionCommand}"
+                                                        Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.Remote.SelectRemoteSessionCommand}"
                                                         CommandParameter="{Binding .}" />
                                                 </Border.GestureRecognizers>
                                                 <Grid ColumnDefinitions="Auto,*,Auto,Auto" VerticalOptions="Center" HorizontalOptions="Fill">
@@ -742,7 +742,7 @@
                                             BackgroundColor="Transparent"
                                             StrokeThickness="0">
                                             <Border.GestureRecognizers>
-                                                <TapGestureRecognizer Command="{Binding ToggleRemoteSmartFoldersExpandedCommand}" />
+                                                <TapGestureRecognizer Command="{Binding Layout.ToggleRemoteSmartFoldersExpandedCommand}" />
                                             </Border.GestureRecognizers>
                                             <controls:SymbolIcon
                                                 HeightRequest="{StaticResource IconSizeSmall}"
@@ -750,10 +750,10 @@
                                                 TintColor="#FF888888"
                                                 VerticalOptions="Center">
                                                 <controls:SymbolIcon.Triggers>
-                                                    <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding IsRemoteSmartFoldersExpanded}" Value="True">
+                                                    <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding Layout.IsRemoteSmartFoldersExpanded}" Value="True">
                                                         <Setter Property="SymbolName" Value="chevron.down" />
                                                     </DataTrigger>
-                                                    <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding IsRemoteSmartFoldersExpanded}" Value="False">
+                                                    <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding Layout.IsRemoteSmartFoldersExpanded}" Value="False">
                                                         <Setter Property="SymbolName" Value="chevron.right" />
                                                     </DataTrigger>
                                                 </controls:SymbolIcon.Triggers>
@@ -778,8 +778,8 @@
                                 <VerticalStackLayout
                                     Spacing="{StaticResource SpacingXSmall}"
                                     HorizontalOptions="Fill"
-                                    IsVisible="{Binding IsRemoteSmartFoldersExpanded}"
-                                    BindableLayout.ItemsSource="{Binding RemoteSmartFolders}">
+                                    IsVisible="{Binding Layout.IsRemoteSmartFoldersExpanded}"
+                                    BindableLayout.ItemsSource="{Binding Remote.RemoteSmartFolders}">
                                     <VerticalStackLayout.Margin>
                                         <OnPlatform x:TypeArguments="Thickness">
                                             <On Platform="iOS" Value="0,0,0,2" />
@@ -914,7 +914,7 @@
                         <VerticalStackLayout
                             x:Name="UserLibraryItemsContainer"
                             HorizontalOptions="Fill"
-                            IsVisible="{Binding IsUserLibraryExpanded}">
+                            IsVisible="{Binding Layout.IsUserLibraryExpanded}">
                             <VerticalStackLayout.Spacing>
                                 <OnPlatform x:TypeArguments="x:Double">
                                     <On Platform="iOS" Value="6" />
@@ -937,13 +937,13 @@
                             <Border.Triggers>
                                 <DataTrigger
                                     TargetType="Border"
-                                    Binding="{Binding IsAllGallerySelected}"
+                                    Binding="{Binding Layout.IsAllGallerySelected}"
                                     Value="True">
                                     <Setter Property="BackgroundColor" Value="#FF2A2A2A" />
                                 </DataTrigger>
                             </Border.Triggers>
                             <Border.GestureRecognizers>
-                                <TapGestureRecognizer Command="{Binding SelectAllGalleryCommand}" Tapped="OnAllGalleryTapped" />
+                                <TapGestureRecognizer Command="{Binding Layout.SelectAllGalleryCommand}" Tapped="OnAllGalleryTapped" />
                             </Border.GestureRecognizers>
                             <Grid ColumnDefinitions="Auto,*,Auto" Margin="18,0,0,0" VerticalOptions="Center" HorizontalOptions="Fill">
                                 <controls:SymbolIcon
@@ -966,7 +966,7 @@
                                     FontSize="{StaticResource FontSizeSmall}"
                                     HorizontalOptions="End"
                                     HorizontalTextAlignment="End"
-                                    Text="{Binding AllGalleryItemCount}"
+                                    Text="{Binding Videos.AllGalleryItemCount}"
                                     TextColor="#FF888888"
                                     VerticalOptions="Center" />
                             </Grid>
@@ -987,13 +987,13 @@
                             <Border.Triggers>
                                 <DataTrigger
                                     TargetType="Border"
-                                    Binding="{Binding IsVideoLessonsSelected}"
+                                    Binding="{Binding Layout.IsVideoLessonsSelected}"
                                     Value="True">
                                     <Setter Property="BackgroundColor" Value="#FF2A2A2A" />
                                 </DataTrigger>
                             </Border.Triggers>
                             <Border.GestureRecognizers>
-                                <TapGestureRecognizer Command="{Binding ViewVideoLessonsCommand}" Tapped="OnVideoLessonsTapped" />
+                                <TapGestureRecognizer Command="{Binding Layout.ViewVideoLessonsCommand}" Tapped="OnVideoLessonsTapped" />
                             </Border.GestureRecognizers>
                             <Grid ColumnDefinitions="Auto,*,Auto" Margin="18,0,0,0" VerticalOptions="Center" HorizontalOptions="Fill">
                                 <controls:SymbolIcon
@@ -1016,7 +1016,7 @@
                                     FontSize="{StaticResource FontSizeSmall}"
                                     HorizontalOptions="End"
                                     HorizontalTextAlignment="End"
-                                    Text="{Binding VideoLessonsCount}"
+                                    Text="{Binding Videos.VideoLessonsCount}"
                                     TextColor="#FF888888"
                                     VerticalOptions="Center" />
                             </Grid>
@@ -1042,7 +1042,7 @@
                                     BackgroundColor="Transparent"
                                     StrokeThickness="0">
                                     <Border.GestureRecognizers>
-                                        <TapGestureRecognizer Command="{Binding ToggleFavoritesExpandedCommand}" />
+                                        <TapGestureRecognizer Command="{Binding Layout.ToggleFavoritesExpandedCommand}" />
                                     </Border.GestureRecognizers>
                                     <controls:SymbolIcon
                                         HeightRequest="{StaticResource IconSizeSmall}"
@@ -1050,10 +1050,10 @@
                                         TintColor="#FF888888"
                                         VerticalOptions="Center">
                                         <controls:SymbolIcon.Triggers>
-                                            <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding IsFavoritesExpanded}" Value="True">
+                                            <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding Layout.IsFavoritesExpanded}" Value="True">
                                                 <Setter Property="SymbolName" Value="chevron.down" />
                                             </DataTrigger>
-                                            <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding IsFavoritesExpanded}" Value="False">
+                                            <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding Layout.IsFavoritesExpanded}" Value="False">
                                                 <Setter Property="SymbolName" Value="chevron.right" />
                                             </DataTrigger>
                                         </controls:SymbolIcon.Triggers>
@@ -1078,7 +1078,7 @@
                         <VerticalStackLayout
                             Spacing="{StaticResource SpacingXSmall}"
                             HorizontalOptions="Fill"
-                            IsVisible="{Binding IsFavoritesExpanded}">
+                            IsVisible="{Binding Layout.IsFavoritesExpanded}">
                             <VerticalStackLayout.Margin>
                                 <OnPlatform x:TypeArguments="Thickness">
                                     <On Platform="iOS" Value="0,0,0,2" />
@@ -1091,12 +1091,12 @@
                                     <behaviors:SidebarHoverBehavior />
                                 </Border.Behaviors>
                                 <Border.Triggers>
-                                    <DataTrigger TargetType="Border" Binding="{Binding IsFavoriteSessionsSelected}" Value="True">
+                                    <DataTrigger TargetType="Border" Binding="{Binding Layout.IsFavoriteSessionsSelected}" Value="True">
                                         <Setter Property="BackgroundColor" Value="#FF2A2A2A" />
                                     </DataTrigger>
                                 </Border.Triggers>
                                 <Border.GestureRecognizers>
-                                    <TapGestureRecognizer Command="{Binding SelectFavoriteSessionsCommand}" Tapped="OnFavoriteSessionsTapped" />
+                                    <TapGestureRecognizer Command="{Binding Layout.SelectFavoriteSessionsCommand}" Tapped="OnFavoriteSessionsTapped" />
                                 </Border.GestureRecognizers>
                                 <Grid ColumnDefinitions="Auto,*,Auto" VerticalOptions="Center" HorizontalOptions="Fill">
                                     <controls:SymbolIcon
@@ -1203,12 +1203,12 @@
                                     <behaviors:SidebarHoverBehavior />
                                 </Border.Behaviors>
                                 <Border.Triggers>
-                                    <DataTrigger TargetType="Border" Binding="{Binding IsFavoriteVideosSelected}" Value="True">
+                                    <DataTrigger TargetType="Border" Binding="{Binding Layout.IsFavoriteVideosSelected}" Value="True">
                                         <Setter Property="BackgroundColor" Value="#FF2A2A2A" />
                                     </DataTrigger>
                                 </Border.Triggers>
                                 <Border.GestureRecognizers>
-                                    <TapGestureRecognizer Command="{Binding SelectFavoriteVideosCommand}" Tapped="OnFavoriteVideosTapped" />
+                                    <TapGestureRecognizer Command="{Binding Layout.SelectFavoriteVideosCommand}" Tapped="OnFavoriteVideosTapped" />
                                 </Border.GestureRecognizers>
                                 <Grid ColumnDefinitions="Auto,*,Auto" VerticalOptions="Center" HorizontalOptions="Fill">
                                     <controls:SymbolIcon
@@ -1231,7 +1231,7 @@
                                         HorizontalOptions="End"
                                         HorizontalTextAlignment="End"
                                         TextColor="#FF888888"
-                                        Text="{Binding FavoriteVideosCount}"
+                                        Text="{Binding Videos.FavoriteVideosCount}"
                                         VerticalOptions="Center" />
                                 </Grid>
                             </Border>
@@ -1250,7 +1250,7 @@
                                 <behaviors:SidebarHoverBehavior />
                             </Border.Behaviors>
                             <Border.GestureRecognizers>
-                                <TapGestureRecognizer Command="{Binding ViewTrashCommand}" Tapped="OnTrashTapped" />
+                                <TapGestureRecognizer Command="{Binding Layout.ViewTrashCommand}" Tapped="OnTrashTapped" />
                             </Border.GestureRecognizers>
                             <Grid ColumnDefinitions="Auto,*,Auto" Margin="18,0,0,0" VerticalOptions="Center" HorizontalOptions="Fill">
                                 <controls:SymbolIcon
@@ -1300,7 +1300,7 @@
                                     BackgroundColor="Transparent"
                                     StrokeThickness="0">
                                     <Border.GestureRecognizers>
-                                        <TapGestureRecognizer Command="{Binding ToggleSmartFoldersExpansionCommand}" Tapped="OnSmartFoldersToggleTapped" />
+                                        <TapGestureRecognizer Command="{Binding SmartFolders.ToggleSmartFoldersExpansionCommand}" Tapped="OnSmartFoldersToggleTapped" />
                                     </Border.GestureRecognizers>
                                     <controls:SymbolIcon
                                         HeightRequest="{StaticResource IconSizeSmall}"
@@ -1308,10 +1308,10 @@
                                         TintColor="#FF888888"
                                         VerticalOptions="Center">
                                         <controls:SymbolIcon.Triggers>
-                                            <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding IsSmartFoldersExpanded}" Value="True">
+                                            <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding SmartFolders.IsSmartFoldersExpanded}" Value="True">
                                                 <Setter Property="SymbolName" Value="chevron.down" />
                                             </DataTrigger>
-                                            <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding IsSmartFoldersExpanded}" Value="False">
+                                            <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding SmartFolders.IsSmartFoldersExpanded}" Value="False">
                                                 <Setter Property="SymbolName" Value="chevron.right" />
                                             </DataTrigger>
                                         </controls:SymbolIcon.Triggers>
@@ -1348,7 +1348,7 @@
                                         </OnPlatform>
                                     </Border.Opacity>
                                     <Border.GestureRecognizers>
-                                        <TapGestureRecognizer Command="{Binding OpenSmartFolderSidebarPopupCommand}" Tapped="OnAddSmartFolderTapped" />
+                                        <TapGestureRecognizer Command="{Binding SmartFolders.OpenSmartFolderSidebarPopupCommand}" Tapped="OnAddSmartFolderTapped" />
                                     </Border.GestureRecognizers>
                                     <controls:SymbolIcon
                                         HeightRequest="{StaticResource IconSizeSmall}"
@@ -1362,8 +1362,8 @@
                         <VerticalStackLayout
                             Spacing="{StaticResource SpacingXSmall}"
                             HorizontalOptions="Fill"
-                            IsVisible="{Binding IsSmartFoldersExpanded}"
-                            BindableLayout.ItemsSource="{Binding SmartFolders}">
+                            IsVisible="{Binding SmartFolders.IsSmartFoldersExpanded}"
+                            BindableLayout.ItemsSource="{Binding SmartFolders.SmartFolders}">
                             <VerticalStackLayout.Margin>
                                 <OnPlatform x:TypeArguments="Thickness">
                                     <On Platform="iOS" Value="0,0,0,2" />
@@ -1464,13 +1464,13 @@
                             <Border.Triggers>
                                 <DataTrigger
                                     TargetType="Border"
-                                    Binding="{Binding IsDiaryViewSelected}"
+                                    Binding="{Binding Layout.IsDiaryViewSelected}"
                                     Value="True">
                                     <Setter Property="BackgroundColor" Value="#FF2A2A2A" />
                                 </DataTrigger>
                             </Border.Triggers>
                             <Border.GestureRecognizers>
-                                <TapGestureRecognizer Command="{Binding ViewDiaryCommand}" Tapped="OnDiaryTapped" />
+                                <TapGestureRecognizer Command="{Binding Layout.ViewDiaryCommand}" Tapped="OnDiaryTapped" />
                             </Border.GestureRecognizers>
                             <Grid ColumnDefinitions="Auto,*" Margin="18,0,0,0" VerticalOptions="Center" HorizontalOptions="Fill">
                                 <controls:SymbolIcon
@@ -1526,7 +1526,7 @@
                                         </OnPlatform>
                                     </Border.IsVisible>
                                     <Border.GestureRecognizers>
-                                        <TapGestureRecognizer Command="{Binding ToggleSessionsListExpandedCommand}" />
+                                        <TapGestureRecognizer Command="{Binding Layout.ToggleSessionsListExpandedCommand}" />
                                     </Border.GestureRecognizers>
                                     <controls:SymbolIcon
                                         HeightRequest="{StaticResource IconSizeSmall}"
@@ -1534,10 +1534,10 @@
                                         TintColor="#FF888888"
                                         VerticalOptions="Center">
                                         <controls:SymbolIcon.Triggers>
-                                            <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding IsSessionsListExpanded}" Value="True">
+                                            <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding Layout.IsSessionsListExpanded}" Value="True">
                                                 <Setter Property="SymbolName" Value="chevron.down" />
                                             </DataTrigger>
-                                            <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding IsSessionsListExpanded}" Value="False">
+                                            <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding Layout.IsSessionsListExpanded}" Value="False">
                                                 <Setter Property="SymbolName" Value="chevron.right" />
                                             </DataTrigger>
                                         </controls:SymbolIcon.Triggers>
@@ -1713,12 +1713,12 @@
                 VerticalOptions="Center">
                 <Label
                     FontSize="{StaticResource FontSizeBody}"
-                    Text="{Binding VideoCountDisplayText}"
+                    Text="{Binding Videos.VideoCountDisplayText}"
                     TextColor="#FFCCCCCC" />
                 <ActivityIndicator
                     HeightRequest="16"
-                    IsRunning="{Binding IsLoadingSelectedSessionVideos}"
-                    IsVisible="{Binding IsLoadingSelectedSessionVideos}"
+                    IsRunning="{Binding Videos.IsLoadingSelectedSessionVideos}"
+                    IsVisible="{Binding Videos.IsLoadingSelectedSessionVideos}"
                     WidthRequest="16"
                     Color="White" />
             </HorizontalStackLayout>
@@ -1726,8 +1726,8 @@
             <CollectionView
                 x:Name="VideoGallery"
                 Grid.Row="2"
-                ItemsSource="{Binding SelectedSessionVideos}"
-                IsVisible="{Binding ShowVideoGallery}"
+                ItemsSource="{Binding Videos.SelectedSessionVideos}"
+                IsVisible="{Binding Videos.ShowVideoGallery}"
                 RemainingItemsThreshold="{OnPlatform MacCatalyst=50, WinUI=10, iOS=10, Default=10}"
                 RemainingItemsThresholdReachedCommand="{Binding LoadMoreVideosCommand}"
                 SelectionMode="None" 
@@ -1739,7 +1739,7 @@
                     <GridItemsLayout
                         HorizontalItemSpacing="{StaticResource SpacingLarge}"
                         Orientation="Vertical"
-                        Span="{Binding VideoGalleryColumnSpan}"
+                        Span="{Binding Videos.VideoGalleryColumnSpan}"
                         VerticalItemSpacing="50" />
                 </CollectionView.ItemsLayout>
 
@@ -2046,17 +2046,17 @@
                     <VerticalStackLayout
                         Padding="20"
                         HorizontalOptions="Center"
-                        IsVisible="{Binding HasMoreVideos}">
+                        IsVisible="{Binding Videos.HasMoreVideos}">
                         <ActivityIndicator
                             HeightRequest="24"
-                            IsRunning="{Binding IsLoadingMore}"
-                            IsVisible="{Binding IsLoadingMore}"
+                            IsRunning="{Binding Videos.IsLoadingMore}"
+                            IsVisible="{Binding Videos.IsLoadingMore}"
                             WidthRequest="24"
                             Color="{StaticResource Primary}" />
                         <Label
                             FontSize="{StaticResource FontSizeSmall}"
                             HorizontalOptions="Center"
-                            IsVisible="{Binding HasMoreVideos}"
+                            IsVisible="{Binding Videos.HasMoreVideos}"
                             Text="Desplázate para cargar más..."
                             TextColor="Gray" />
                     </VerticalStackLayout>
@@ -2067,8 +2067,8 @@
             <CollectionView
                 x:Name="RemoteVideoGallery"
                 Grid.Row="2"
-                ItemsSource="{Binding RemoteGalleryItems}"
-                IsVisible="{Binding ShowRemoteGallery}"
+                ItemsSource="{Binding Remote.RemoteGalleryItems}"
+                IsVisible="{Binding Remote.ShowRemoteGallery}"
                 SelectionMode="None"
                 Margin="{StaticResource MarginTopSmall}"
                 ItemSizingStrategy="MeasureFirstItem">
@@ -2076,7 +2076,7 @@
                     <GridItemsLayout
                         HorizontalItemSpacing="{StaticResource SpacingLarge}"
                         Orientation="Vertical"
-                        Span="{Binding VideoGalleryColumnSpan}"
+                        Span="{Binding Videos.VideoGalleryColumnSpan}"
                         VerticalItemSpacing="50" />
                 </CollectionView.ItemsLayout>
 
@@ -2099,12 +2099,12 @@
                                 <Border.GestureRecognizers>
                                     <!--  Tap simple: seleccionar si está en modo multi-select  -->
                                     <TapGestureRecognizer
-                                        Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.ToggleRemoteVideoSelectionCommand}"
+                                        Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.Remote.ToggleRemoteVideoSelectionCommand}"
                                         CommandParameter="{Binding .}"
                                         NumberOfTapsRequired="1" />
                                     <!--  Doble clic: reproducir en streaming  -->
                                     <TapGestureRecognizer
-                                        Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.PlayRemoteVideoCommand}"
+                                        Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.Remote.PlayRemoteVideoCommand}"
                                         CommandParameter="{Binding .}"
                                         NumberOfTapsRequired="2" />
                                     <!--  Clic derecho: menú contextual  -->
@@ -2184,7 +2184,7 @@
                                             StrokeThickness="2"
                                             Stroke="White"
                                             BackgroundColor="#80000000"
-                                            IsVisible="{Binding Source={x:Reference ThisPage}, Path=BindingContext.IsRemoteMultiSelectMode}">
+                                            IsVisible="{Binding Source={x:Reference ThisPage}, Path=BindingContext.Remote.IsRemoteMultiSelectMode}">
                                             <Border.Triggers>
                                                 <DataTrigger TargetType="Border" Binding="{Binding IsSelected}" Value="True">
                                                     <Setter Property="BackgroundColor" Value="#FF0066" />
@@ -2306,8 +2306,8 @@
                     <ActivityIndicator
                         HeightRequest="32"
                         WidthRequest="32"
-                        IsRunning="{Binding IsLoadingRemoteVideos}"
-                        IsVisible="{Binding IsLoadingRemoteVideos}"
+                        IsRunning="{Binding Remote.IsLoadingRemoteVideos}"
+                        IsVisible="{Binding Remote.IsLoadingRemoteVideos}"
                         Color="#FF0066"
                         HorizontalOptions="Center"
                         Margin="0,20,0,0" />
@@ -2317,15 +2317,15 @@
             <CollectionView
                 x:Name="VideoLessonsGallery"
                 Grid.Row="2"
-                ItemsSource="{Binding VideoLessons}"
-                IsVisible="{Binding IsVideoLessonsSelected}"
+                ItemsSource="{Binding Videos.VideoLessons}"
+                IsVisible="{Binding Layout.IsVideoLessonsSelected}"
                 SelectionMode="None"
                 Margin="{StaticResource MarginTopSmall}">
                 <CollectionView.ItemsLayout>
                     <GridItemsLayout
                         HorizontalItemSpacing="{StaticResource SpacingXSmall}"
                         Orientation="Vertical"
-                        Span="{Binding VideoGalleryColumnSpan}"
+                        Span="{Binding Videos.VideoGalleryColumnSpan}"
                         VerticalItemSpacing="{StaticResource SpacingSmall}" />
                 </CollectionView.ItemsLayout>
 
@@ -2453,13 +2453,13 @@
             <controls:CalendarView
                 Grid.Row="2"
                 Margin="0,10,0,0"
-                IsVisible="{Binding IsDiaryViewSelected}"
-                SelectedDate="{Binding SelectedDiaryDate}"
-                DateSelectedCommand="{Binding SelectDiaryDateCommand}"
-                DiaryEntries="{Binding DiaryEntriesForMonth}"
-                Sessions="{Binding SessionsForMonth}"
-                WellnessData="{Binding WellnessDataForMonth}"
-                AverageWellnessScore="{Binding AverageWellnessScore}"
+                IsVisible="{Binding Layout.IsDiaryViewSelected}"
+                SelectedDate="{Binding Diary.SelectedDiaryDate}"
+                DateSelectedCommand="{Binding Diary.SelectDiaryDateCommand}"
+                DiaryEntries="{Binding Diary.DiaryEntriesForMonth}"
+                Sessions="{Binding Diary.SessionsForMonth}"
+                WellnessData="{Binding Diary.WellnessDataForMonth}"
+                AverageWellnessScore="{Binding Diary.AverageWellnessScore}"
                 HorizontalOptions="Fill"
                 VerticalOptions="Fill" />
         </Grid>
@@ -2479,8 +2479,8 @@
                 <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
                     <Grid.IsVisible>
                         <MultiBinding Converter="{StaticResource AllTrueConverter}">
-                            <Binding Path="IsDiaryViewSelected" Converter="{toolkit:InvertedBoolConverter}" />
-                            <Binding Path="IsQuickAnalysisIsolatedMode" Converter="{toolkit:InvertedBoolConverter}" />
+                            <Binding Path="Layout.IsDiaryViewSelected" Converter="{toolkit:InvertedBoolConverter}" />
+                            <Binding Path="Videos.IsQuickAnalysisIsolatedMode" Converter="{toolkit:InvertedBoolConverter}" />
                         </MultiBinding>
                     </Grid.IsVisible>
                     <Border
@@ -2588,12 +2588,12 @@
                         StrokeShape="RoundRectangle 6"
                         IsVisible="{Binding HasSpecificSessionSelected}">
                         <Border.Triggers>
-                            <DataTrigger TargetType="Border" Binding="{Binding IsDiaryTabSelected}" Value="True">
+                            <DataTrigger TargetType="Border" Binding="{Binding Layout.IsDiaryTabSelected}" Value="True">
                                 <Setter Property="BackgroundColor" Value="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BackgroundColor}" />
                             </DataTrigger>
                         </Border.Triggers>
                         <Border.GestureRecognizers>
-                            <TapGestureRecognizer Command="{Binding SelectDiaryTabCommand}" />
+                            <TapGestureRecognizer Command="{Binding Diary.SelectDiaryTabCommand}" />
                         </Border.GestureRecognizers>
                         <Grid>
                             <!-- iOS: Solo icono -->
@@ -2619,10 +2619,10 @@
                                     </OnPlatform>
                                 </Label.IsVisible>
                                 <Label.Triggers>
-                                    <DataTrigger TargetType="Label" Binding="{Binding IsDiaryTabSelected}" Value="True">
+                                    <DataTrigger TargetType="Label" Binding="{Binding Layout.IsDiaryTabSelected}" Value="True">
                                         <Setter Property="FontAttributes" Value="None" />
                                     </DataTrigger>
-                                    <DataTrigger TargetType="Label" Binding="{Binding IsDiaryTabSelected}" Value="False">
+                                    <DataTrigger TargetType="Label" Binding="{Binding Layout.IsDiaryTabSelected}" Value="False">
                                         <Setter Property="FontAttributes" Value="None" />
                                     </DataTrigger>
                                 </Label.Triggers>
@@ -2638,10 +2638,10 @@
                     <VerticalStackLayout.IsVisible>
                         <MultiBinding Converter="{StaticResource AllTrueConverter}">
                             <Binding Path="IsCrudTechTabSelected" />
-                            <Binding Path="IsDiaryViewSelected" Converter="{toolkit:InvertedBoolConverter}" />
+                            <Binding Path="Layout.IsDiaryViewSelected" Converter="{toolkit:InvertedBoolConverter}" />
                         </MultiBinding>
                     </VerticalStackLayout.IsVisible>
-                    <HorizontalStackLayout Spacing="12" VerticalOptions="Center" IsVisible="{Binding IsQuickAnalysisIsolatedMode, Converter={toolkit:InvertedBoolConverter}}">
+                    <HorizontalStackLayout Spacing="12" VerticalOptions="Center" IsVisible="{Binding Videos.IsQuickAnalysisIsolatedMode, Converter={toolkit:InvertedBoolConverter}}">
                         <controls:SymbolIcon
                             HeightRequest="{StaticResource IconSizeLarge}"
                             SymbolName="film.stack"
@@ -2659,9 +2659,9 @@
                         FontSize="{StaticResource FontSizeBody}"
                         Text="Selección de vídeos"
                         TextColor="#FFCCCCCC"
-                        IsVisible="{Binding IsQuickAnalysisIsolatedMode, Converter={toolkit:InvertedBoolConverter}}" />
+                        IsVisible="{Binding Videos.IsQuickAnalysisIsolatedMode, Converter={toolkit:InvertedBoolConverter}}" />
 
-                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8" IsVisible="{Binding IsQuickAnalysisIsolatedMode, Converter={toolkit:InvertedBoolConverter}}">
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8" IsVisible="{Binding Videos.IsQuickAnalysisIsolatedMode, Converter={toolkit:InvertedBoolConverter}}">
                         <!--  Toggle: Selección múltiple  -->
                         <Border
                             Padding="10,8"
@@ -2669,12 +2669,12 @@
                             Stroke="Transparent"
                             StrokeShape="RoundRectangle 6">
                             <Border.Triggers>
-                                <DataTrigger TargetType="Border" Binding="{Binding IsMultiSelectMode}" Value="True">
+                                <DataTrigger TargetType="Border" Binding="{Binding BatchEdit.IsMultiSelectMode}" Value="True">
                                     <Setter Property="BackgroundColor" Value="#FF0066" />
                                 </DataTrigger>
                             </Border.Triggers>
                             <Border.GestureRecognizers>
-                                <TapGestureRecognizer Command="{Binding ToggleMultiSelectModeCommand}" />
+                                <TapGestureRecognizer Command="{Binding BatchEdit.ToggleMultiSelectModeCommand}" />
                             </Border.GestureRecognizers>
                             <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
                                 <controls:SymbolIcon
@@ -2684,7 +2684,7 @@
                                     WidthRequest="{StaticResource IconSizeMedium}"
                                     VerticalOptions="Center">
                                     <controls:SymbolIcon.Triggers>
-                                        <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding IsMultiSelectMode}" Value="True">
+                                        <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding BatchEdit.IsMultiSelectMode}" Value="True">
                                             <Setter Property="SymbolName" Value="checkmark.circle.fill" />
                                         </DataTrigger>
                                     </controls:SymbolIcon.Triggers>
@@ -2701,12 +2701,12 @@
                             Stroke="Transparent"
                             StrokeShape="RoundRectangle 6">
                             <Border.Triggers>
-                                <DataTrigger TargetType="Border" Binding="{Binding IsSelectAllActive}" Value="True">
+                                <DataTrigger TargetType="Border" Binding="{Binding BatchEdit.IsSelectAllActive}" Value="True">
                                     <Setter Property="BackgroundColor" Value="#FF0066" />
                                 </DataTrigger>
                             </Border.Triggers>
                             <Border.GestureRecognizers>
-                                <TapGestureRecognizer Command="{Binding ToggleSelectAllCommand}" />
+                                <TapGestureRecognizer Command="{Binding BatchEdit.ToggleSelectAllCommand}" />
                             </Border.GestureRecognizers>
                             <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
                                 <controls:SymbolIcon
@@ -2716,7 +2716,7 @@
                                     WidthRequest="{StaticResource IconSizeMedium}"
                                     VerticalOptions="Center">
                                     <controls:SymbolIcon.Triggers>
-                                        <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding IsSelectAllActive}" Value="True">
+                                        <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding BatchEdit.IsSelectAllActive}" Value="True">
                                             <Setter Property="SymbolName" Value="checkmark.circle.fill" />
                                         </DataTrigger>
                                     </controls:SymbolIcon.Triggers>
@@ -2732,9 +2732,9 @@
                         FontSize="{StaticResource FontSizeBody}"
                         Text="Acciones en lote"
                         TextColor="#FFCCCCCC"
-                        IsVisible="{Binding IsQuickAnalysisIsolatedMode, Converter={toolkit:InvertedBoolConverter}}" />
+                        IsVisible="{Binding Videos.IsQuickAnalysisIsolatedMode, Converter={toolkit:InvertedBoolConverter}}" />
 
-                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="8" IsVisible="{Binding IsQuickAnalysisIsolatedMode, Converter={toolkit:InvertedBoolConverter}}">
+                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="8" IsVisible="{Binding Videos.IsQuickAnalysisIsolatedMode, Converter={toolkit:InvertedBoolConverter}}">
                         <!--  Botón: Reproducir como playlist  -->
                         <Border
                             Grid.Row="0"
@@ -2766,7 +2766,7 @@
                             Stroke="Transparent"
                             StrokeShape="RoundRectangle 6">
                             <Border.GestureRecognizers>
-                                <TapGestureRecognizer Command="{Binding EditVideoDetailsCommand}" />
+                                <TapGestureRecognizer Command="{Binding BatchEdit.EditVideoDetailsCommand}" />
                             </Border.GestureRecognizers>
                             <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
                                 <controls:SymbolIcon
@@ -2827,7 +2827,7 @@
                     <!--  ========== SECCIÓN: ACCIONES EN LOTE PARA VIDEOS REMOTOS ==========  -->
                     <VerticalStackLayout
                         Spacing="12"
-                        IsVisible="{Binding ShowRemoteGallery}">
+                        IsVisible="{Binding Remote.ShowRemoteGallery}">
                         
                         <!--  Toggles de selección remotos  -->
                         <Label
@@ -2843,12 +2843,12 @@
                                 Stroke="Transparent"
                                 StrokeShape="RoundRectangle 6">
                                 <Border.Triggers>
-                                    <DataTrigger TargetType="Border" Binding="{Binding IsRemoteMultiSelectMode}" Value="True">
+                                    <DataTrigger TargetType="Border" Binding="{Binding Remote.IsRemoteMultiSelectMode}" Value="True">
                                         <Setter Property="BackgroundColor" Value="#2196F3" />
                                     </DataTrigger>
                                 </Border.Triggers>
                                 <Border.GestureRecognizers>
-                                    <TapGestureRecognizer Command="{Binding ToggleRemoteMultiSelectModeCommand}" />
+                                    <TapGestureRecognizer Command="{Binding Remote.ToggleRemoteMultiSelectModeCommand}" />
                                 </Border.GestureRecognizers>
                                 <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
                                     <controls:SymbolIcon
@@ -2858,7 +2858,7 @@
                                         WidthRequest="{StaticResource IconSizeMedium}"
                                         VerticalOptions="Center">
                                         <controls:SymbolIcon.Triggers>
-                                            <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding IsRemoteMultiSelectMode}" Value="True">
+                                            <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding Remote.IsRemoteMultiSelectMode}" Value="True">
                                                 <Setter Property="SymbolName" Value="checkmark.circle.fill" />
                                             </DataTrigger>
                                         </controls:SymbolIcon.Triggers>
@@ -2875,12 +2875,12 @@
                                 Stroke="Transparent"
                                 StrokeShape="RoundRectangle 6">
                                 <Border.Triggers>
-                                    <DataTrigger TargetType="Border" Binding="{Binding IsRemoteSelectAllActive}" Value="True">
+                                    <DataTrigger TargetType="Border" Binding="{Binding Remote.IsRemoteSelectAllActive}" Value="True">
                                         <Setter Property="BackgroundColor" Value="#2196F3" />
                                     </DataTrigger>
                                 </Border.Triggers>
                                 <Border.GestureRecognizers>
-                                    <TapGestureRecognizer Command="{Binding ToggleRemoteSelectAllCommand}" />
+                                    <TapGestureRecognizer Command="{Binding Remote.ToggleRemoteSelectAllCommand}" />
                                 </Border.GestureRecognizers>
                                 <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
                                     <controls:SymbolIcon
@@ -2890,7 +2890,7 @@
                                         WidthRequest="{StaticResource IconSizeMedium}"
                                         VerticalOptions="Center">
                                         <controls:SymbolIcon.Triggers>
-                                            <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding IsRemoteSelectAllActive}" Value="True">
+                                            <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding Remote.IsRemoteSelectAllActive}" Value="True">
                                                 <Setter Property="SymbolName" Value="checkmark.circle.fill" />
                                             </DataTrigger>
                                         </controls:SymbolIcon.Triggers>
@@ -2905,9 +2905,9 @@
                             FontSize="{StaticResource FontSizeBody}"
                             HorizontalOptions="Center"
                             TextColor="#2196F3"
-                            IsVisible="{Binding IsRemoteMultiSelectMode}">
+                            IsVisible="{Binding Remote.IsRemoteMultiSelectMode}">
                             <Label.Text>
-                                <Binding Path="SelectedRemoteVideoCount" StringFormat="{}{0} vídeo(s) seleccionado(s)" />
+                                <Binding Path="Remote.SelectedRemoteVideoCount" StringFormat="{}{0} vídeo(s) seleccionado(s)" />
                             </Label.Text>
                         </Label>
 
@@ -2928,7 +2928,7 @@
                                 Stroke="Transparent"
                                 StrokeShape="RoundRectangle 6">
                                 <Border.GestureRecognizers>
-                                    <TapGestureRecognizer Command="{Binding DownloadSelectedRemoteVideosCommand}" />
+                                    <TapGestureRecognizer Command="{Binding Remote.DownloadSelectedRemoteVideosCommand}" />
                                 </Border.GestureRecognizers>
                                 <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
                                     <controls:SymbolIcon
@@ -2950,7 +2950,7 @@
                                 Stroke="Transparent"
                                 StrokeShape="RoundRectangle 6">
                                 <Border.GestureRecognizers>
-                                    <TapGestureRecognizer Command="{Binding AddSelectedRemoteToLibraryCommand}" />
+                                    <TapGestureRecognizer Command="{Binding Remote.AddSelectedRemoteToLibraryCommand}" />
                                 </Border.GestureRecognizers>
                                 <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
                                     <controls:SymbolIcon
@@ -2972,7 +2972,7 @@
                                 Stroke="Transparent"
                                 StrokeShape="RoundRectangle 6">
                                 <Border.GestureRecognizers>
-                                    <TapGestureRecognizer Command="{Binding DeleteSelectedRemoteFromLibraryCommand}" />
+                                    <TapGestureRecognizer Command="{Binding Remote.DeleteSelectedRemoteFromLibraryCommand}" />
                                 </Border.GestureRecognizers>
                                 <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
                                     <controls:SymbolIcon
@@ -2993,9 +2993,9 @@
                                 BackgroundColor="#FF404040"
                                 Stroke="Transparent"
                                 StrokeShape="RoundRectangle 6"
-                                IsVisible="{Binding CanWriteRemoteLibrary}">
+                                IsVisible="{Binding Remote.CanWriteRemoteLibrary}">
                                 <Border.GestureRecognizers>
-                                    <TapGestureRecognizer Command="{Binding DeleteSelectedRemoteFromCloudCommand}" />
+                                    <TapGestureRecognizer Command="{Binding Remote.DeleteSelectedRemoteFromCloudCommand}" />
                                 </Border.GestureRecognizers>
                                 <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
                                     <controls:SymbolIcon
@@ -3016,7 +3016,7 @@
                         HeightRequest="1"
                         BackgroundColor="#FF464646"
                         Stroke="Transparent"
-                        IsVisible="{Binding IsQuickAnalysisIsolatedMode, Converter={toolkit:InvertedBoolConverter}}">
+                        IsVisible="{Binding Videos.IsQuickAnalysisIsolatedMode, Converter={toolkit:InvertedBoolConverter}}">
                         <Border.Margin>
                             <OnPlatform x:TypeArguments="Thickness">
                                 <On Platform="WinUI" Value="0,4,0,0" />
@@ -3025,7 +3025,7 @@
                         </Border.Margin>
                     </Border>
 
-                    <HorizontalStackLayout Spacing="12" VerticalOptions="Center" IsVisible="{Binding IsQuickAnalysisIsolatedMode, Converter={toolkit:InvertedBoolConverter}}">
+                    <HorizontalStackLayout Spacing="12" VerticalOptions="Center" IsVisible="{Binding Videos.IsQuickAnalysisIsolatedMode, Converter={toolkit:InvertedBoolConverter}}">
                         <HorizontalStackLayout.Margin>
                             <OnPlatform x:TypeArguments="Thickness">
                                 <On Platform="WinUI" Value="0,8,0,0" />
@@ -3057,7 +3057,7 @@
                             FontSize="{StaticResource FontSizeBody}"
                             Text="Análisis rápido"
                             TextColor="#FFCCCCCC"
-                            IsVisible="{Binding IsQuickAnalysisIsolatedMode, Converter={toolkit:InvertedBoolConverter}}" />
+                            IsVisible="{Binding Videos.IsQuickAnalysisIsolatedMode, Converter={toolkit:InvertedBoolConverter}}" />
 
                         <HorizontalStackLayout Grid.Column="1" Spacing="8" VerticalOptions="Center">
                             <!-- Play/Pause discreto (iOS) para controlar ambos reproductores -->
@@ -3090,7 +3090,7 @@
                                 Stroke="Transparent"
                                 StrokeShape="RoundRectangle 6">
                                 <Border.Triggers>
-                                    <DataTrigger TargetType="Border" Binding="{Binding IsQuickAnalysisIsolatedMode}" Value="True">
+                                    <DataTrigger TargetType="Border" Binding="{Binding Videos.IsQuickAnalysisIsolatedMode}" Value="True">
                                         <Setter Property="BackgroundColor" Value="#FF0066" />
                                     </DataTrigger>
                                 </Border.Triggers>
@@ -3138,13 +3138,13 @@
                                         x:Name="PreviewPlayer1Q"
                                         Aspect="AspectFill"
                                         IsMuted="True"
-                                        Source="{Binding ParallelVideo1ClipPath}"
+                                        Source="{Binding Videos.ParallelVideo1ClipPath}"
                                         IsVisible="False">
                                         <appcontrols:PrecisionVideoPlayer.Triggers>
                                             <MultiTrigger TargetType="appcontrols:PrecisionVideoPlayer">
                                                 <MultiTrigger.Conditions>
-                                                    <BindingCondition Binding="{Binding HasParallelVideo1}" Value="True" />
-                                                    <BindingCondition Binding="{Binding IsPreviewMode}" Value="True" />
+                                                    <BindingCondition Binding="{Binding Videos.HasParallelVideo1}" Value="True" />
+                                                    <BindingCondition Binding="{Binding Videos.IsPreviewMode}" Value="True" />
                                                 </MultiTrigger.Conditions>
                                                 <Setter Property="IsVisible" Value="True" />
                                             </MultiTrigger>
@@ -3153,8 +3153,8 @@
                                     <!--  Miniatura del vídeo (cuando no está en preview)  -->
                                     <Image
                                         Aspect="AspectFill"
-                                        Source="{Binding ParallelVideo1ThumbnailPath}"
-                                        IsVisible="{Binding ShowParallelVideo1Thumbnail}" />
+                                        Source="{Binding Videos.ParallelVideo1ThumbnailPath}"
+                                        IsVisible="{Binding Videos.ShowParallelVideo1Thumbnail}" />
                                     <!--  Placeholder cuando no hay vídeo  -->
                                     <Label
                                         HorizontalOptions="Center"
@@ -3163,11 +3163,11 @@
                                         TextColor="#FF888888"
                                         FontSize="{StaticResource FontSizeHeader}"
                                         FontAttributes="None"
-                                        IsVisible="{Binding HasParallelVideo1, Converter={StaticResource InvertedBoolConverter}}" />
+                                        IsVisible="{Binding Videos.HasParallelVideo1, Converter={StaticResource InvertedBoolConverter}}" />
                                     <!--  Overlay para scrubbing  -->
                                     <BoxView
                                         BackgroundColor="Transparent"
-                                        IsVisible="{Binding HasParallelVideo1}">
+                                        IsVisible="{Binding Videos.HasParallelVideo1}">
                                         <BoxView.GestureRecognizers>
                                             <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen1" />
                                         </BoxView.GestureRecognizers>
@@ -3190,13 +3190,13 @@
                                         x:Name="PreviewPlayer2Q"
                                         Aspect="AspectFill"
                                         IsMuted="True"
-                                        Source="{Binding ParallelVideo2ClipPath}"
+                                        Source="{Binding Videos.ParallelVideo2ClipPath}"
                                         IsVisible="False">
                                         <appcontrols:PrecisionVideoPlayer.Triggers>
                                             <MultiTrigger TargetType="appcontrols:PrecisionVideoPlayer">
                                                 <MultiTrigger.Conditions>
-                                                    <BindingCondition Binding="{Binding HasParallelVideo2}" Value="True" />
-                                                    <BindingCondition Binding="{Binding IsPreviewMode}" Value="True" />
+                                                    <BindingCondition Binding="{Binding Videos.HasParallelVideo2}" Value="True" />
+                                                    <BindingCondition Binding="{Binding Videos.IsPreviewMode}" Value="True" />
                                                 </MultiTrigger.Conditions>
                                                 <Setter Property="IsVisible" Value="True" />
                                             </MultiTrigger>
@@ -3205,8 +3205,8 @@
                                     <!--  Miniatura del vídeo (cuando no está en preview)  -->
                                     <Image
                                         Aspect="AspectFill"
-                                        Source="{Binding ParallelVideo2ThumbnailPath}"
-                                        IsVisible="{Binding ShowParallelVideo2Thumbnail}" />
+                                        Source="{Binding Videos.ParallelVideo2ThumbnailPath}"
+                                        IsVisible="{Binding Videos.ShowParallelVideo2Thumbnail}" />
                                     <!--  Placeholder cuando no hay vídeo  -->
                                     <Label
                                         HorizontalOptions="Center"
@@ -3215,11 +3215,11 @@
                                         TextColor="#FF888888"
                                         FontSize="{StaticResource FontSizeHeader}"
                                         FontAttributes="None"
-                                        IsVisible="{Binding HasParallelVideo2, Converter={StaticResource InvertedBoolConverter}}" />
+                                        IsVisible="{Binding Videos.HasParallelVideo2, Converter={StaticResource InvertedBoolConverter}}" />
                                     <!--  Overlay para scrubbing  -->
                                     <BoxView
                                         BackgroundColor="Transparent"
-                                        IsVisible="{Binding HasParallelVideo2}">
+                                        IsVisible="{Binding Videos.HasParallelVideo2}">
                                         <BoxView.GestureRecognizers>
                                             <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen2" />
                                         </BoxView.GestureRecognizers>
@@ -3242,13 +3242,13 @@
                                         x:Name="PreviewPlayer3Q"
                                         Aspect="AspectFill"
                                         IsMuted="True"
-                                        Source="{Binding ParallelVideo3ClipPath}"
+                                        Source="{Binding Videos.ParallelVideo3ClipPath}"
                                         IsVisible="False">
                                         <appcontrols:PrecisionVideoPlayer.Triggers>
                                             <MultiTrigger TargetType="appcontrols:PrecisionVideoPlayer">
                                                 <MultiTrigger.Conditions>
-                                                    <BindingCondition Binding="{Binding HasParallelVideo3}" Value="True" />
-                                                    <BindingCondition Binding="{Binding IsPreviewMode}" Value="True" />
+                                                    <BindingCondition Binding="{Binding Videos.HasParallelVideo3}" Value="True" />
+                                                    <BindingCondition Binding="{Binding Videos.IsPreviewMode}" Value="True" />
                                                 </MultiTrigger.Conditions>
                                                 <Setter Property="IsVisible" Value="True" />
                                             </MultiTrigger>
@@ -3257,8 +3257,8 @@
                                     <!--  Miniatura del vídeo (cuando no está en preview)  -->
                                     <Image
                                         Aspect="AspectFill"
-                                        Source="{Binding ParallelVideo3ThumbnailPath}"
-                                        IsVisible="{Binding ShowParallelVideo3Thumbnail}" />
+                                        Source="{Binding Videos.ParallelVideo3ThumbnailPath}"
+                                        IsVisible="{Binding Videos.ShowParallelVideo3Thumbnail}" />
                                     <!--  Placeholder cuando no hay vídeo  -->
                                     <Label
                                         HorizontalOptions="Center"
@@ -3267,11 +3267,11 @@
                                         TextColor="#FF888888"
                                         FontSize="{StaticResource FontSizeHeader}"
                                         FontAttributes="None"
-                                        IsVisible="{Binding HasParallelVideo3, Converter={StaticResource InvertedBoolConverter}}" />
+                                        IsVisible="{Binding Videos.HasParallelVideo3, Converter={StaticResource InvertedBoolConverter}}" />
                                     <!--  Overlay para scrubbing  -->
                                     <BoxView
                                         BackgroundColor="Transparent"
-                                        IsVisible="{Binding HasParallelVideo3}">
+                                        IsVisible="{Binding Videos.HasParallelVideo3}">
                                         <BoxView.GestureRecognizers>
                                             <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen3" />
                                         </BoxView.GestureRecognizers>
@@ -3294,13 +3294,13 @@
                                         x:Name="PreviewPlayer4Q"
                                         Aspect="AspectFill"
                                         IsMuted="True"
-                                        Source="{Binding ParallelVideo4ClipPath}"
+                                        Source="{Binding Videos.ParallelVideo4ClipPath}"
                                         IsVisible="False">
                                         <appcontrols:PrecisionVideoPlayer.Triggers>
                                             <MultiTrigger TargetType="appcontrols:PrecisionVideoPlayer">
                                                 <MultiTrigger.Conditions>
-                                                    <BindingCondition Binding="{Binding HasParallelVideo4}" Value="True" />
-                                                    <BindingCondition Binding="{Binding IsPreviewMode}" Value="True" />
+                                                    <BindingCondition Binding="{Binding Videos.HasParallelVideo4}" Value="True" />
+                                                    <BindingCondition Binding="{Binding Videos.IsPreviewMode}" Value="True" />
                                                 </MultiTrigger.Conditions>
                                                 <Setter Property="IsVisible" Value="True" />
                                             </MultiTrigger>
@@ -3309,8 +3309,8 @@
                                     <!--  Miniatura del vídeo (cuando no está en preview)  -->
                                     <Image
                                         Aspect="AspectFill"
-                                        Source="{Binding ParallelVideo4ThumbnailPath}"
-                                        IsVisible="{Binding ShowParallelVideo4Thumbnail}" />
+                                        Source="{Binding Videos.ParallelVideo4ThumbnailPath}"
+                                        IsVisible="{Binding Videos.ShowParallelVideo4Thumbnail}" />
                                     <!--  Placeholder cuando no hay vídeo  -->
                                     <Label
                                         HorizontalOptions="Center"
@@ -3319,11 +3319,11 @@
                                         TextColor="#FF888888"
                                         FontSize="{StaticResource FontSizeHeader}"
                                         FontAttributes="None"
-                                        IsVisible="{Binding HasParallelVideo4, Converter={StaticResource InvertedBoolConverter}}" />
+                                        IsVisible="{Binding Videos.HasParallelVideo4, Converter={StaticResource InvertedBoolConverter}}" />
                                     <!--  Overlay para scrubbing  -->
                                     <BoxView
                                         BackgroundColor="Transparent"
-                                        IsVisible="{Binding HasParallelVideo4}">
+                                        IsVisible="{Binding Videos.HasParallelVideo4}">
                                         <BoxView.GestureRecognizers>
                                             <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen4" />
                                         </BoxView.GestureRecognizers>
@@ -3334,7 +3334,7 @@
                     </Grid>
 
                     <!--  Botones Reproducir y Limpiar  -->
-                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8" IsVisible="{Binding IsQuickAnalysisIsolatedMode, Converter={toolkit:InvertedBoolConverter}}">
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8" IsVisible="{Binding Videos.IsQuickAnalysisIsolatedMode, Converter={toolkit:InvertedBoolConverter}}">
                         <Border
                             Padding="10,8"
                             BackgroundColor="#FF404040"
@@ -3383,7 +3383,7 @@
                     <VerticalStackLayout.IsVisible>
                         <MultiBinding Converter="{StaticResource AllTrueConverter}">
                             <Binding Path="IsStatsTabSelected" />
-                            <Binding Path="IsDiaryViewSelected" Converter="{toolkit:InvertedBoolConverter}" />
+                            <Binding Path="Layout.IsDiaryViewSelected" Converter="{toolkit:InvertedBoolConverter}" />
                         </MultiBinding>
                     </VerticalStackLayout.IsVisible>
                     <!--  Filtros para Galería General  -->
@@ -3412,7 +3412,7 @@
                                     <Button
                                         Padding="8,4"
                                         BackgroundColor="Transparent"
-                                        Command="{Binding ClearFiltersCommand}"
+                                        Command="{Binding Videos.ClearFiltersCommand}"
                                         FontSize="{StaticResource FontSizeBody}"
                                         Text="Limpiar"
                                         TextColor="#FF0066"
@@ -3427,7 +3427,7 @@
                                     Stroke="Transparent"
                                     StrokeShape="RoundRectangle 4">
                                     <Border.GestureRecognizers>
-                                        <TapGestureRecognizer Command="{Binding TogglePlacesExpandedCommand}" />
+                                        <TapGestureRecognizer Command="{Binding Videos.TogglePlacesExpandedCommand}" />
                                     </Border.GestureRecognizers>
                                     <Grid ColumnDefinitions="*,Auto">
                                         <VerticalStackLayout Grid.Column="0">
@@ -3437,13 +3437,13 @@
                                                 TextColor="#FFCCCCCC" />
                                             <Label
                                                 FontSize="{StaticResource FontSizeSubtitle}"
-                                                Text="{Binding SelectedPlacesSummary}"
+                                                Text="{Binding Videos.SelectedPlacesSummary}"
                                                 TextColor="White" />
                                         </VerticalStackLayout>
                                         <Label
                                             Grid.Column="1"
                                             FontSize="{StaticResource FontSizeSubtitle}"
-                                            Text="{Binding IsPlacesExpanded, Converter={StaticResource BoolToExpandIconConverter}}"
+                                            Text="{Binding Videos.IsPlacesExpanded, Converter={StaticResource BoolToExpandIconConverter}}"
                                             TextColor="Gray"
                                             VerticalOptions="Center" />
                                     </Grid>
@@ -3457,7 +3457,7 @@
                                     Stroke="Transparent"
                                     StrokeShape="RoundRectangle 4">
                                     <Border.GestureRecognizers>
-                                        <TapGestureRecognizer Command="{Binding ToggleAthletesExpandedCommand}" />
+                                        <TapGestureRecognizer Command="{Binding Videos.ToggleAthletesExpandedCommand}" />
                                     </Border.GestureRecognizers>
                                     <Grid ColumnDefinitions="*,Auto">
                                         <VerticalStackLayout Grid.Column="0">
@@ -3467,13 +3467,13 @@
                                                 TextColor="#FFCCCCCC" />
                                             <Label
                                                 FontSize="{StaticResource FontSizeSubtitle}"
-                                                Text="{Binding SelectedAthletesSummary}"
+                                                Text="{Binding Videos.SelectedAthletesSummary}"
                                                 TextColor="White" />
                                         </VerticalStackLayout>
                                         <Label
                                             Grid.Column="1"
                                             FontSize="{StaticResource FontSizeSubtitle}"
-                                            Text="{Binding IsAthletesExpanded, Converter={StaticResource BoolToExpandIconConverter}}"
+                                            Text="{Binding Videos.IsAthletesExpanded, Converter={StaticResource BoolToExpandIconConverter}}"
                                             TextColor="Gray"
                                             VerticalOptions="Center" />
                                     </Grid>
@@ -3487,7 +3487,7 @@
                                     Stroke="Transparent"
                                     StrokeShape="RoundRectangle 4">
                                     <Border.GestureRecognizers>
-                                        <TapGestureRecognizer Command="{Binding ToggleSectionsExpandedCommand}" />
+                                        <TapGestureRecognizer Command="{Binding Videos.ToggleSectionsExpandedCommand}" />
                                     </Border.GestureRecognizers>
                                     <Grid ColumnDefinitions="*,Auto">
                                         <VerticalStackLayout Grid.Column="0">
@@ -3497,13 +3497,13 @@
                                                 TextColor="#FFCCCCCC" />
                                             <Label
                                                 FontSize="{StaticResource FontSizeSubtitle}"
-                                                Text="{Binding SelectedSectionsSummary}"
+                                                Text="{Binding Videos.SelectedSectionsSummary}"
                                                 TextColor="White" />
                                         </VerticalStackLayout>
                                         <Label
                                             Grid.Column="1"
                                             FontSize="{StaticResource FontSizeSubtitle}"
-                                            Text="{Binding IsSectionsExpanded, Converter={StaticResource BoolToExpandIconConverter}}"
+                                            Text="{Binding Videos.IsSectionsExpanded, Converter={StaticResource BoolToExpandIconConverter}}"
                                             TextColor="Gray"
                                             VerticalOptions="Center" />
                                     </Grid>
@@ -3517,7 +3517,7 @@
                                     Stroke="Transparent"
                                     StrokeShape="RoundRectangle 4">
                                     <Border.GestureRecognizers>
-                                        <TapGestureRecognizer Command="{Binding ToggleTagsExpandedCommand}" />
+                                        <TapGestureRecognizer Command="{Binding Videos.ToggleTagsExpandedCommand}" />
                                     </Border.GestureRecognizers>
                                     <Grid ColumnDefinitions="*,Auto">
                                         <VerticalStackLayout Grid.Column="0">
@@ -3529,13 +3529,13 @@
                                             <Label
                                                 FontFamily="{StaticResource AppFontBody}"
                                                 FontSize="{StaticResource FontSizeSubtitle}"
-                                                Text="{Binding SelectedTagsSummary}"
+                                                Text="{Binding Videos.SelectedTagsSummary}"
                                                 TextColor="White" />
                                         </VerticalStackLayout>
                                         <Label
                                             Grid.Column="1"
                                             FontSize="{StaticResource FontSizeSubtitle}"
-                                            Text="{Binding IsTagsExpanded, Converter={StaticResource BoolToExpandIconConverter}}"
+                                            Text="{Binding Videos.IsTagsExpanded, Converter={StaticResource BoolToExpandIconConverter}}"
                                             TextColor="Gray"
                                             VerticalOptions="Center" />
                                     </Grid>
@@ -3564,7 +3564,7 @@
                                                 </OnPlatform>
                                             </Border.BackgroundColor>
                                             <DatePicker
-                                                Date="{Binding SelectedFilterDateFrom}"
+                                                Date="{Binding Videos.SelectedFilterDateFrom}"
                                                 TextColor="White"
                                                 BackgroundColor="Transparent"
                                                 HorizontalOptions="Fill"
@@ -3595,7 +3595,7 @@
                                                 </OnPlatform>
                                             </Border.BackgroundColor>
                                             <DatePicker
-                                                Date="{Binding SelectedFilterDateTo}"
+                                                Date="{Binding Videos.SelectedFilterDateTo}"
                                                 TextColor="White"
                                                 BackgroundColor="Transparent"
                                                 HorizontalOptions="Fill"
@@ -3612,7 +3612,7 @@
                                 Padding="8"
                                 BackgroundColor="#FF404040"
                                 HorizontalOptions="Fill"
-                                IsVisible="{Binding IsPlacesExpanded}"
+                                IsVisible="{Binding Videos.IsPlacesExpanded}"
                                 Stroke="Transparent"
                                 StrokeShape="RoundRectangle 4"
                                 StrokeThickness="1"
@@ -3620,7 +3620,7 @@
                                 ZIndex="100" HeightRequest="280">
                                 <ScrollView HeightRequest="280">
                                     <FlexLayout
-                                        BindableLayout.ItemsSource="{Binding FilterPlaces}"
+                                        BindableLayout.ItemsSource="{Binding Videos.FilterPlaces}"
                                         Direction="Row"
                                         Wrap="Wrap"
                                         AlignItems="Start"
@@ -3635,7 +3635,7 @@
                                                     StrokeShape="RoundRectangle 4">
                                                     <Border.GestureRecognizers>
                                                         <TapGestureRecognizer
-                                                            Command="{Binding BindingContext.ToggleFilterItemCommand, Source={x:Reference ThisPage}}"
+                                                            Command="{Binding BindingContext.Videos.ToggleFilterItemCommand, Source={x:Reference ThisPage}}"
                                                             CommandParameter="{Binding .}" />
                                                     </Border.GestureRecognizers>
                                                     <Label
@@ -3657,7 +3657,7 @@
                                 Padding="8"
                                 BackgroundColor="#FF404040"
                                 HorizontalOptions="Fill"
-                                IsVisible="{Binding IsAthletesExpanded}"
+                                IsVisible="{Binding Videos.IsAthletesExpanded}"
                                 Stroke="Transparent"
                                 StrokeShape="RoundRectangle 4"
                                 StrokeThickness="1"
@@ -3665,7 +3665,7 @@
                                 ZIndex="100" HeightRequest="280">
                                 <ScrollView HeightRequest="280">
                                     <FlexLayout
-                                        BindableLayout.ItemsSource="{Binding FilterAthletes}"
+                                        BindableLayout.ItemsSource="{Binding Videos.FilterAthletes}"
                                         Direction="Row"
                                         Wrap="Wrap"
                                         AlignItems="Start"
@@ -3680,7 +3680,7 @@
                                                     StrokeShape="RoundRectangle 4">
                                                     <Border.GestureRecognizers>
                                                         <TapGestureRecognizer
-                                                            Command="{Binding BindingContext.ToggleFilterItemCommand, Source={x:Reference ThisPage}}"
+                                                            Command="{Binding BindingContext.Videos.ToggleFilterItemCommand, Source={x:Reference ThisPage}}"
                                                             CommandParameter="{Binding .}" />
                                                     </Border.GestureRecognizers>
                                                     <Label
@@ -3702,7 +3702,7 @@
                                 Padding="8"
                                 BackgroundColor="#FF404040"
                                 HorizontalOptions="Fill"
-                                IsVisible="{Binding IsSectionsExpanded}"
+                                IsVisible="{Binding Videos.IsSectionsExpanded}"
                                 Stroke="Transparent"
                                 StrokeShape="RoundRectangle 4"
                                 StrokeThickness="1"
@@ -3710,7 +3710,7 @@
                                 ZIndex="100" HeightRequest="280">
                                 <ScrollView HeightRequest="280">
                                     <FlexLayout
-                                        BindableLayout.ItemsSource="{Binding FilterSections}"
+                                        BindableLayout.ItemsSource="{Binding Videos.FilterSections}"
                                         Direction="Row"
                                         Wrap="Wrap"
                                         AlignItems="Start"
@@ -3725,7 +3725,7 @@
                                                     StrokeShape="RoundRectangle 4">
                                                     <Border.GestureRecognizers>
                                                         <TapGestureRecognizer
-                                                            Command="{Binding BindingContext.ToggleFilterItemCommand, Source={x:Reference ThisPage}}"
+                                                            Command="{Binding BindingContext.Videos.ToggleFilterItemCommand, Source={x:Reference ThisPage}}"
                                                             CommandParameter="{Binding .}" />
                                                     </Border.GestureRecognizers>
                                                     <Label
@@ -3747,7 +3747,7 @@
                                 Padding="8"
                                 BackgroundColor="#FF404040"
                                 HorizontalOptions="Fill"
-                                IsVisible="{Binding IsTagsExpanded}"
+                                IsVisible="{Binding Videos.IsTagsExpanded}"
                                 Stroke="Transparent"
                                 StrokeShape="RoundRectangle 4"
                                 StrokeThickness="1"
@@ -3755,7 +3755,7 @@
                                 ZIndex="100" HeightRequest="280">
                                 <ScrollView HeightRequest="280">
                                     <FlexLayout
-                                        BindableLayout.ItemsSource="{Binding FilterTagItems}"
+                                        BindableLayout.ItemsSource="{Binding Videos.FilterTagItems}"
                                         Direction="Row"
                                         Wrap="Wrap"
                                         AlignItems="Start"
@@ -3770,7 +3770,7 @@
                                                     StrokeShape="RoundRectangle 4">
                                                     <Border.GestureRecognizers>
                                                         <TapGestureRecognizer
-                                                            Command="{Binding BindingContext.ToggleFilterItemCommand, Source={x:Reference ThisPage}}"
+                                                            Command="{Binding BindingContext.Videos.ToggleFilterItemCommand, Source={x:Reference ThisPage}}"
                                                             CommandParameter="{Binding .}" />
                                                     </Border.GestureRecognizers>
                                                     <Label
@@ -3794,7 +3794,7 @@
                     <VerticalStackLayout.IsVisible>
                         <MultiBinding Converter="{StaticResource AllTrueConverter}">
                             <Binding Path="IsStatsTabSelected" />
-                            <Binding Path="IsDiaryViewSelected" Converter="{toolkit:InvertedBoolConverter}" />
+                            <Binding Path="Layout.IsDiaryViewSelected" Converter="{toolkit:InvertedBoolConverter}" />
                         </MultiBinding>
                     </VerticalStackLayout.IsVisible>
                 <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
@@ -3832,7 +3832,7 @@
                                 FontAttributes="None"
                                 FontSize="{StaticResource FontSizeHeader}"
                                 HorizontalOptions="Center"
-                                Text="{Binding TotalFilteredVideoCount}"
+                                Text="{Binding Videos.TotalFilteredVideoCount}"
                                 TextColor="#FF0066" />
                             <Label
                                 FontSize="{StaticResource FontSizeSmall}"
@@ -3853,7 +3853,7 @@
                                 FontAttributes="None"
                                 FontSize="{StaticResource FontSizeHeader}"
                                 HorizontalOptions="Center"
-                                Text="{Binding SelectedSessionTotalDurationFormatted}"
+                                Text="{Binding Videos.SelectedSessionTotalDurationFormatted}"
                                 TextColor="White" />
                             <Label
                                 FontSize="{StaticResource FontSizeSmall}"
@@ -3886,7 +3886,7 @@
                 </Grid>
 
                 <!--  ===== TABLA DE TIEMPOS POR SECCIÓN =====  -->
-                <VerticalStackLayout IsVisible="{Binding ShowSectionTimesTable}" Spacing="8" Margin="0,16,0,0">
+                <VerticalStackLayout IsVisible="{Binding Videos.ShowSectionTimesTable}" Spacing="8" Margin="0,16,0,0">
                     <!--  Cabecera con título, botón expandir y toggle  -->
                     <Grid ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="8">
                         <Label
@@ -3905,7 +3905,7 @@
                             StrokeThickness="0"
                             VerticalOptions="Center">
                             <Border.GestureRecognizers>
-                                <TapGestureRecognizer Command="{Binding OpenDetailedTimesPopupCommand}" />
+                                <TapGestureRecognizer Command="{Binding Videos.OpenDetailedTimesPopupCommand}" />
                             </Border.GestureRecognizers>
                             <HorizontalStackLayout Spacing="4">
                                 <controls:SymbolIcon
@@ -3927,12 +3927,12 @@
                             <!--  Botón Tiempos  -->
                             <Border
                                 Padding="16,6"
-                                BackgroundColor="{Binding ShowSectionTimesAbsolute, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF2A2A2A,#FF1A1A1A'}"
+                                BackgroundColor="{Binding Videos.ShowSectionTimesAbsolute, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF2A2A2A,#FF1A1A1A'}"
                                 StrokeShape="RoundRectangle 4"
                                 StrokeThickness="0"
                                 MinimumWidthRequest="80">
                                 <Border.GestureRecognizers>
-                                    <TapGestureRecognizer Command="{Binding ToggleSectionTimesViewCommand}" />
+                                    <TapGestureRecognizer Command="{Binding Videos.ToggleSectionTimesViewCommand}" />
                                 </Border.GestureRecognizers>
                                 <Label
                                     FontSize="{StaticResource FontSizeSmall}"
@@ -3944,12 +3944,12 @@
                             <Border
                                 Grid.Column="1"
                                 Padding="16,6"
-                                BackgroundColor="{Binding ShowSectionTimesDifferences, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF2A2A2A,#FF1A1A1A'}"
+                                BackgroundColor="{Binding Videos.ShowSectionTimesDifferences, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF2A2A2A,#FF1A1A1A'}"
                                 StrokeShape="RoundRectangle 4"
                                 StrokeThickness="0"
                                 MinimumWidthRequest="80">
                                 <Border.GestureRecognizers>
-                                    <TapGestureRecognizer Command="{Binding ToggleSectionTimesViewCommand}" />
+                                    <TapGestureRecognizer Command="{Binding Videos.ToggleSectionTimesViewCommand}" />
                                 </Border.GestureRecognizers>
                                 <Label
                                     FontSize="{StaticResource FontSizeSmall}"
@@ -3963,7 +3963,7 @@
                     <!--  Iteramos por cada sección  -->
                     <VerticalStackLayout Spacing="12">
                         <BindableLayout.ItemsSource>
-                            <Binding Path="SectionTimes" />
+                            <Binding Path="Videos.SectionTimes" />
                         </BindableLayout.ItemsSource>
                         <BindableLayout.ItemTemplate>
                             <DataTemplate x:DataType="services:SectionWithAthleteRows">
@@ -3981,7 +3981,7 @@
                                             TextColor="#FF0066" />
                                         
                                         <!--  ===== VISTA TIEMPOS ABSOLUTOS =====  -->
-                                        <VerticalStackLayout Spacing="4" IsVisible="{Binding Source={x:Reference ThisPage}, Path=BindingContext.ShowSectionTimesAbsolute}">
+                                        <VerticalStackLayout Spacing="4" IsVisible="{Binding Source={x:Reference ThisPage}, Path=BindingContext.Videos.ShowSectionTimesAbsolute}">
                                             <!--  Cabecera de tabla (absoluta)  -->
                                             <Grid ColumnDefinitions="2*,*,*,*,*" ColumnSpacing="4" Padding="4,2" BackgroundColor="#FF252525">
                                                 <Label Grid.Column="0" FontSize="{StaticResource FontSizeSmall}" FontAttributes="None" Text="ATLETA" TextColor="#FFCCCCCC" />
@@ -4011,7 +4011,7 @@
                                         </VerticalStackLayout>
                                         
                                         <!--  ===== VISTA DIFERENCIAS =====  -->
-                                        <VerticalStackLayout Spacing="4" IsVisible="{Binding Source={x:Reference ThisPage}, Path=BindingContext.ShowSectionTimesDifferences}">
+                                        <VerticalStackLayout Spacing="4" IsVisible="{Binding Source={x:Reference ThisPage}, Path=BindingContext.Videos.ShowSectionTimesDifferences}">
                                             <!--  Cabecera de tabla (diferencias)  -->
                                             <Grid ColumnDefinitions="2*,*,*,*" ColumnSpacing="4" Padding="4,2" BackgroundColor="#FF252525">
                                                 <Label Grid.Column="0" FontSize="{StaticResource FontSizeSmall}" FontAttributes="None" Text="ATLETA" TextColor="#FFCCCCCC" />
@@ -4059,14 +4059,14 @@
                                 TextColor="White" />
                             <Label
                                 FontSize="{StaticResource FontSizeSmall}"
-                                Text="{Binding LabeledVideosText, StringFormat='{0} vídeos con nombre asignado'}"
+                                Text="{Binding Videos.LabeledVideosText, StringFormat='{0} vídeos con nombre asignado'}"
                                 TextColor="#FFCCCCCC" />
                         </VerticalStackLayout>
                         <Label
                             Grid.Column="1"
                             FontAttributes="None"
                             FontSize="{StaticResource FontSizeTitle}"
-                            Text="{Binding LabeledVideosPercentage, StringFormat='{0:F0}%'}"
+                            Text="{Binding Videos.LabeledVideosPercentage, StringFormat='{0:F0}%'}"
                             TextColor="#FF0066"
                             VerticalOptions="Center" />
                     </Grid>
@@ -4087,7 +4087,7 @@
                             <Label
                                 FontAttributes="None"
                                 FontSize="{StaticResource FontSizeTitle}"
-                                Text="{Binding TotalEventTagsCount}"
+                                Text="{Binding Videos.TotalEventTagsCount}"
                                 TextColor="White"
                                 VerticalOptions="Center" />
                             <Label
@@ -4107,7 +4107,7 @@
                             <Label
                                 FontAttributes="None"
                                 FontSize="{StaticResource FontSizeTitle}"
-                                Text="{Binding TotalUniqueEventTagsCount}"
+                                Text="{Binding Videos.TotalUniqueEventTagsCount}"
                                 TextColor="White"
                                 VerticalOptions="Center" />
                             <Label
@@ -4129,10 +4129,10 @@
                     MinimumHeightRequest="120"
                     HorizontalOptions="Fill"
                     VerticalOptions="FillAndExpand"
-                    Labels="{Binding TopEventTagNames}"
+                    Labels="{Binding Videos.TopEventTagNames}"
                     ShowLegend="True"
                     TextColor="White"
-                    Values="{Binding TopEventTagValues}" />
+                    Values="{Binding Videos.TopEventTagValues}" />
 
                 <!--  ETIQUETAS  -->
                 <Label
@@ -4150,7 +4150,7 @@
                                 FontAttributes="None"
                                 FontSize="{StaticResource FontSizeSubtitle}"
                                 HorizontalOptions="Center"
-                                Text="{Binding TotalLabelTagsCount}"
+                                Text="{Binding Videos.TotalLabelTagsCount}"
                                 TextColor="White" />
                             <Label
                                 FontSize="{StaticResource FontSizeCaption}"
@@ -4170,7 +4170,7 @@
                                 FontAttributes="None"
                                 FontSize="{StaticResource FontSizeSubtitle}"
                                 HorizontalOptions="Center"
-                                Text="{Binding TotalUniqueLabelTagsCount}"
+                                Text="{Binding Videos.TotalUniqueLabelTagsCount}"
                                 TextColor="White" />
                             <Label
                                 FontSize="{StaticResource FontSizeCaption}"
@@ -4190,7 +4190,7 @@
                                 FontAttributes="None"
                                 FontSize="{StaticResource FontSizeSubtitle}"
                                 HorizontalOptions="Center"
-                                Text="{Binding AvgTagsPerSession, StringFormat='{0:F1}'}"
+                                Text="{Binding Videos.AvgTagsPerSession, StringFormat='{0:F1}'}"
                                 TextColor="White" />
                             <Label
                                 FontSize="{StaticResource FontSizeCaption}"
@@ -4211,10 +4211,10 @@
                     MinimumHeightRequest="120"
                     HorizontalOptions="Fill"
                     VerticalOptions="FillAndExpand"
-                    Labels="{Binding TopLabelTagNames}"
+                    Labels="{Binding Videos.TopLabelTagNames}"
                     ShowLegend="True"
                     TextColor="White"
-                    Values="{Binding TopLabelTagValues}" />
+                    Values="{Binding Videos.TopLabelTagValues}" />
 
                 </VerticalStackLayout>
 
@@ -4224,8 +4224,8 @@
                 <VerticalStackLayout Spacing="16">
                     <VerticalStackLayout.IsVisible>
                         <MultiBinding Converter="{StaticResource AllTrueConverter}">
-                            <Binding Path="IsDiaryTabSelected" />
-                            <Binding Path="IsDiaryViewSelected" Converter="{toolkit:InvertedBoolConverter}" />
+                            <Binding Path="Layout.IsDiaryTabSelected" />
+                            <Binding Path="Layout.IsDiaryViewSelected" Converter="{toolkit:InvertedBoolConverter}" />
                         </MultiBinding>
                     </VerticalStackLayout.IsVisible>
                     
@@ -4242,7 +4242,7 @@
                         BackgroundColor="#FF1E1E1E"
                         StrokeShape="RoundRectangle 12"
                         StrokeThickness="0"
-                        IsVisible="{Binding ShowDiaryResults}">
+                        IsVisible="{Binding Diary.ShowDiaryResults}">
                         <VerticalStackLayout Spacing="16">
                             <Label
                                 FontAttributes="None"
@@ -4263,7 +4263,7 @@
                                             FontAttributes="None"
                                             FontSize="{StaticResource FontSizeHeader}"
                                             HorizontalOptions="Center"
-                                            Text="{Binding DiaryValoracionFisica}"
+                                            Text="{Binding Diary.DiaryValoracionFisica}"
                                             TextColor="#FF8DD3C7" />
                                         <Label
                                             FontSize="{StaticResource FontSizeSmall}"
@@ -4285,7 +4285,7 @@
                                             FontAttributes="None"
                                             FontSize="{StaticResource FontSizeHeader}"
                                             HorizontalOptions="Center"
-                                            Text="{Binding DiaryValoracionMental}"
+                                            Text="{Binding Diary.DiaryValoracionMental}"
                                             TextColor="#FFFFED6F" />
                                         <Label
                                             FontSize="{StaticResource FontSizeSmall}"
@@ -4307,7 +4307,7 @@
                                             FontAttributes="None"
                                             FontSize="{StaticResource FontSizeHeader}"
                                             HorizontalOptions="Center"
-                                            Text="{Binding DiaryValoracionTecnica}"
+                                            Text="{Binding Diary.DiaryValoracionTecnica}"
                                             TextColor="#FFBEBADA" />
                                         <Label
                                             FontSize="{StaticResource FontSizeSmall}"
@@ -4319,14 +4319,14 @@
                             </Grid>
                             
                             <!--  Notas guardadas  -->
-                            <VerticalStackLayout Spacing="4" IsVisible="{Binding DiaryNotas, Converter={StaticResource NotNullOrEmptyBoolConverter}}">
+                            <VerticalStackLayout Spacing="4" IsVisible="{Binding Diary.DiaryNotas, Converter={StaticResource NotNullOrEmptyBoolConverter}}">
                                 <Label
                                     FontSize="{StaticResource FontSizeSmall}"
                                     Text="Notas"
                                     TextColor="#FF808080" />
                                 <Label
                                     FontSize="{StaticResource FontSizeBody}"
-                                    Text="{Binding DiaryNotas}"
+                                    Text="{Binding Diary.DiaryNotas}"
                                     TextColor="#FFCCCCCC" />
                             </VerticalStackLayout>
                             
@@ -4334,7 +4334,7 @@
                             <Button
                                 Padding="16,10"
                                 BackgroundColor="#FF404040"
-                                Command="{Binding EditDiaryCommand}"
+                                Command="{Binding Diary.EditDiaryCommand}"
                                 CornerRadius="4"
                                 HorizontalOptions="Start"
                                 Text="Editar valoración"
@@ -4349,7 +4349,7 @@
                         BackgroundColor="Transparent"
                         StrokeShape="RoundRectangle 12"
                         StrokeThickness="0"
-                        IsVisible="{Binding ShowDiaryForm}">
+                        IsVisible="{Binding Diary.ShowDiaryForm}">
                         <VerticalStackLayout Spacing="16">
                             <Label
                                 FontAttributes="None"
@@ -4371,13 +4371,13 @@
                                     MinimumTrackColor="#FF8DD3C7"
                                     MaximumTrackColor="#FF404040"
                                     ThumbColor="#FF8DD3C7"
-                                    Value="{Binding DiaryValoracionFisica}" />
+                                    Value="{Binding Diary.DiaryValoracionFisica}" />
                                 <Label
                                     Grid.Column="2"
                                     FontAttributes="None"
                                     FontSize="{StaticResource FontSizeSubtitle}"
                                     HorizontalOptions="Center"
-                                    Text="{Binding DiaryValoracionFisica}"
+                                    Text="{Binding Diary.DiaryValoracionFisica}"
                                     TextColor="#FF8DD3C7"
                                     VerticalOptions="Center" />
                             </Grid>
@@ -4396,13 +4396,13 @@
                                     MinimumTrackColor="#FFFFED6F"
                                     MaximumTrackColor="#FF404040"
                                     ThumbColor="#FFFFED6F"
-                                    Value="{Binding DiaryValoracionMental}" />
+                                    Value="{Binding Diary.DiaryValoracionMental}" />
                                 <Label
                                     Grid.Column="2"
                                     FontAttributes="None"
                                     FontSize="{StaticResource FontSizeSubtitle}"
                                     HorizontalOptions="Center"
-                                    Text="{Binding DiaryValoracionMental}"
+                                    Text="{Binding Diary.DiaryValoracionMental}"
                                     TextColor="#FFFFED6F"
                                     VerticalOptions="Center" />
                             </Grid>
@@ -4421,13 +4421,13 @@
                                     MinimumTrackColor="#FFBEBADA"
                                     MaximumTrackColor="#FF404040"
                                     ThumbColor="#FFBEBADA"
-                                    Value="{Binding DiaryValoracionTecnica}" />
+                                    Value="{Binding Diary.DiaryValoracionTecnica}" />
                                 <Label
                                     Grid.Column="2"
                                     FontAttributes="None"
                                     FontSize="{StaticResource FontSizeSubtitle}"
                                     HorizontalOptions="Center"
-                                    Text="{Binding DiaryValoracionTecnica}"
+                                    Text="{Binding Diary.DiaryValoracionTecnica}"
                                     TextColor="#FFBEBADA"
                                     VerticalOptions="Center" />
                             </Grid>
@@ -4454,7 +4454,7 @@
                                 <Label
                                     Grid.Column="1"
                                     FontSize="{StaticResource FontSizeSmall}"
-                                    Text="{Binding AvgValoracionCount, StringFormat='{0} sesiones'}"
+                                    Text="{Binding Diary.AvgValoracionCount, StringFormat='{0} sesiones'}"
                                     TextColor="#FF808080"
                                     VerticalOptions="Center" />
                             </Grid>
@@ -4471,7 +4471,7 @@
                                             FontAttributes="None"
                                             FontSize="{StaticResource FontSizeHeader}"
                                             HorizontalOptions="Center"
-                                            Text="{Binding AvgValoracionFisica, StringFormat='{0:F1}'}"
+                                            Text="{Binding Diary.AvgValoracionFisica, StringFormat='{0:F1}'}"
                                             TextColor="#FF8DD3C7" />
                                         <Label
                                             FontSize="{StaticResource FontSizeSmall}"
@@ -4493,7 +4493,7 @@
                                             FontAttributes="None"
                                             FontSize="{StaticResource FontSizeHeader}"
                                             HorizontalOptions="Center"
-                                            Text="{Binding AvgValoracionMental, StringFormat='{0:F1}'}"
+                                            Text="{Binding Diary.AvgValoracionMental, StringFormat='{0:F1}'}"
                                             TextColor="#FFFFED6F" />
                                         <Label
                                             FontSize="{StaticResource FontSizeSmall}"
@@ -4515,7 +4515,7 @@
                                             FontAttributes="None"
                                             FontSize="{StaticResource FontSizeHeader}"
                                             HorizontalOptions="Center"
-                                            Text="{Binding AvgValoracionTecnica, StringFormat='{0:F1}'}"
+                                            Text="{Binding Diary.AvgValoracionTecnica, StringFormat='{0:F1}'}"
                                             TextColor="#FFBEBADA" />
                                         <Label
                                             FontSize="{StaticResource FontSizeSmall}"
@@ -4548,44 +4548,44 @@
                                 <Grid Grid.Column="1" ColumnDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="4">
                                     <Border
                                         Padding="8,4"
-                                        BackgroundColor="{Binding SelectedEvolutionPeriod, Converter={StaticResource IntEqualityToColorConverter}, ConverterParameter='0:#FF3A3A3A:#FF1E1E1E'}"
+                                        BackgroundColor="{Binding Diary.SelectedEvolutionPeriod, Converter={StaticResource IntEqualityToColorConverter}, ConverterParameter='0:#FF3A3A3A:#FF1E1E1E'}"
                                         StrokeShape="RoundRectangle 4"
                                         StrokeThickness="0">
                                         <Border.GestureRecognizers>
-                                            <TapGestureRecognizer Command="{Binding SetEvolutionPeriodCommand}" CommandParameter="0" />
+                                            <TapGestureRecognizer Command="{Binding Diary.SetEvolutionPeriodCommand}" CommandParameter="0" />
                                         </Border.GestureRecognizers>
                                         <Label FontSize="{StaticResource FontSizeSmall}" Text="Semana" TextColor="White" />
                                     </Border>
                                     <Border
                                         Grid.Column="1"
                                         Padding="8,4"
-                                        BackgroundColor="{Binding SelectedEvolutionPeriod, Converter={StaticResource IntEqualityToColorConverter}, ConverterParameter='1:#FF3A3A3A:#FF1E1E1E'}"
+                                        BackgroundColor="{Binding Diary.SelectedEvolutionPeriod, Converter={StaticResource IntEqualityToColorConverter}, ConverterParameter='1:#FF3A3A3A:#FF1E1E1E'}"
                                         StrokeShape="RoundRectangle 4"
                                         StrokeThickness="0">
                                         <Border.GestureRecognizers>
-                                            <TapGestureRecognizer Command="{Binding SetEvolutionPeriodCommand}" CommandParameter="1" />
+                                            <TapGestureRecognizer Command="{Binding Diary.SetEvolutionPeriodCommand}" CommandParameter="1" />
                                         </Border.GestureRecognizers>
                                         <Label FontSize="{StaticResource FontSizeSmall}" Text="Mes" TextColor="White" />
                                     </Border>
                                     <Border
                                         Grid.Column="2"
                                         Padding="8,4"
-                                        BackgroundColor="{Binding SelectedEvolutionPeriod, Converter={StaticResource IntEqualityToColorConverter}, ConverterParameter='2:#FF3A3A3A:#FF1E1E1E'}"
+                                        BackgroundColor="{Binding Diary.SelectedEvolutionPeriod, Converter={StaticResource IntEqualityToColorConverter}, ConverterParameter='2:#FF3A3A3A:#FF1E1E1E'}"
                                         StrokeShape="RoundRectangle 4"
                                         StrokeThickness="0">
                                         <Border.GestureRecognizers>
-                                            <TapGestureRecognizer Command="{Binding SetEvolutionPeriodCommand}" CommandParameter="2" />
+                                            <TapGestureRecognizer Command="{Binding Diary.SetEvolutionPeriodCommand}" CommandParameter="2" />
                                         </Border.GestureRecognizers>
                                         <Label FontSize="{StaticResource FontSizeSmall}" Text="Año" TextColor="White" />
                                     </Border>
                                     <Border
                                         Grid.Column="3"
                                         Padding="8,4"
-                                        BackgroundColor="{Binding SelectedEvolutionPeriod, Converter={StaticResource IntEqualityToColorConverter}, ConverterParameter='3:#FF3A3A3A:#FF1E1E1E'}"
+                                        BackgroundColor="{Binding Diary.SelectedEvolutionPeriod, Converter={StaticResource IntEqualityToColorConverter}, ConverterParameter='3:#FF3A3A3A:#FF1E1E1E'}"
                                         StrokeShape="RoundRectangle 4"
                                         StrokeThickness="0">
                                         <Border.GestureRecognizers>
-                                            <TapGestureRecognizer Command="{Binding SetEvolutionPeriodCommand}" CommandParameter="3" />
+                                            <TapGestureRecognizer Command="{Binding Diary.SetEvolutionPeriodCommand}" CommandParameter="3" />
                                         </Border.GestureRecognizers>
                                         <Label FontSize="{StaticResource FontSizeSmall}" Text="Todo" TextColor="White" />
                                     </Border>
@@ -4610,7 +4610,7 @@
                             
                             <!--  Mensaje si no hay datos  -->
                             <Label
-                                IsVisible="{Binding ValoracionEvolution.Count, Converter={StaticResource IntToBoolConverter}, ConverterParameter=invert}"
+                                IsVisible="{Binding Diary.ValoracionEvolution.Count, Converter={StaticResource IntToBoolConverter}, ConverterParameter=invert}"
                                 FontSize="{StaticResource FontSizeBody}"
                                 HorizontalOptions="Center"
                                 Text="No hay datos de evolución para el periodo seleccionado"
@@ -4618,12 +4618,12 @@
                             
                             <!--  Gráfico de evolución de valoraciones  -->
                             <controls:MultiLineChart 
-                                IsVisible="{Binding ValoracionEvolution.Count, Converter={StaticResource IntToBoolConverter}}"
+                                IsVisible="{Binding Diary.ValoracionEvolution.Count, Converter={StaticResource IntToBoolConverter}}"
                                 HeightRequest="180"
-                                Values1="{Binding EvolutionFisicaValues}"
-                                Values2="{Binding EvolutionMentalValues}"
-                                Values3="{Binding EvolutionTecnicaValues}"
-                                Labels="{Binding EvolutionLabels}"
+                                Values1="{Binding Diary.EvolutionFisicaValues}"
+                                Values2="{Binding Diary.EvolutionMentalValues}"
+                                Values3="{Binding Diary.EvolutionTecnicaValues}"
+                                Labels="{Binding Diary.EvolutionLabels}"
                                 MinValue="1"
                                 MaxValue="5" />
                         </VerticalStackLayout>
@@ -4638,7 +4638,7 @@
                         BackgroundColor="#FF1E1E1E"
                         StrokeShape="RoundRectangle 12"
                         StrokeThickness="0"
-                        IsVisible="{Binding ShowDiaryForm}">
+                        IsVisible="{Binding Diary.ShowDiaryForm}">
                         <VerticalStackLayout Spacing="12">
                             <Label
                                 FontAttributes="None"
@@ -4652,7 +4652,7 @@
                                 MinimumHeightRequest="500"
                                 Placeholder="Escribe tus notas sobre la sesión...&#x0a;Cómo te has sentido, qué esperas de tu siguiente sesión, etc."
                                 PlaceholderColor="#FF606060"
-                                Text="{Binding DiaryNotas}"
+                                Text="{Binding Diary.DiaryNotas}"
                                 TextColor="White" />
                         </VerticalStackLayout>
                     </Border>
@@ -4661,17 +4661,17 @@
                     <Button
                         Padding="20,12"
                         BackgroundColor="#FF303030"
-                        Command="{Binding SaveDiaryCommand}"
+                        Command="{Binding Diary.SaveDiaryCommand}"
                         CornerRadius="4"
                         HorizontalOptions="Fill"
                         Text="Guardar Diario"
                         TextColor="White"
-                        IsVisible="{Binding ShowDiaryForm}" />
+                        IsVisible="{Binding Diary.ShowDiaryForm}" />
                     
                 </VerticalStackLayout>
 
                 <!--  ===== VISTA: DIARIO PERSONAL (CALENDARIO) =====  -->
-                <VerticalStackLayout IsVisible="{Binding IsDiaryViewSelected}" Spacing="16">
+                <VerticalStackLayout IsVisible="{Binding Layout.IsDiaryViewSelected}" Spacing="16">
                     
                     <!--  Título y botón agregar sesión  -->
                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
@@ -4716,7 +4716,7 @@
                     <!--  Fecha seleccionada  -->
                     <Label
                         FontSize="{StaticResource FontSizeBody}"
-                        Text="{Binding SelectedDiaryDate, StringFormat='{0:dddd, dd MMMM yyyy}'}"
+                        Text="{Binding Diary.SelectedDiaryDate, StringFormat='{0:dddd, dd MMMM yyyy}'}"
                         TextColor="#FFCCCCCC" />
 
                     <!--  Formulario nueva sesión  -->
@@ -4822,9 +4822,9 @@
 
                     <!--  Lista de sesiones del día seleccionado  -->
                     <VerticalStackLayout 
-                        BindableLayout.ItemsSource="{Binding SelectedDateSessionsWithDiary}"
+                        BindableLayout.ItemsSource="{Binding Diary.SelectedDateSessionsWithDiary}"
                         Spacing="16"
-                        IsVisible="{Binding HasSelectedDateSessions}">
+                        IsVisible="{Binding Diary.HasSelectedDateSessions}">
                         <BindableLayout.ItemTemplate>
                             <DataTemplate x:DataType="vm:SessionWithDiary">
                                 <Border
@@ -4897,7 +4897,7 @@
                                                 Padding="12,6"
                                                 HeightRequest="{StaticResource ElementHeightDefault}"
                                                 HorizontalOptions="Start"
-                                                Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.ViewSessionAsPlaylistCommand}"
+                                                Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.Diary.ViewSessionAsPlaylistCommand}"
                                                 CommandParameter="{Binding .}" />
                                         </VerticalStackLayout>
 
@@ -5099,7 +5099,7 @@
                                             FontAttributes="None"
                                             CornerRadius="8"
                                             HeightRequest="{StaticResource ElementHeightLarge}"
-                                            Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.SaveCalendarDiaryCommand}"
+                                            Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.Diary.SaveCalendarDiaryCommand}"
                                             CommandParameter="{Binding .}"
                                             IsVisible="{Binding HasValoraciones, Converter={toolkit:InvertedBoolConverter}}" />
 
@@ -5136,7 +5136,7 @@
                                 
                                 <Button
                                     Grid.Column="1"
-                                    Text="{Binding HasWellnessData, Converter={StaticResource BoolToTextConverter}, ConverterParameter='Editar|Añadir'}"
+                                    Text="{Binding Diary.HasWellnessData, Converter={StaticResource BoolToTextConverter}, ConverterParameter='Editar|Añadir'}"
                                     BackgroundColor="#FF404040"
                                     TextColor="#FFFF6B6B"
                                     FontSize="{StaticResource FontSizeSmall}"
@@ -5144,14 +5144,14 @@
                                     Padding="12,6"
                                     HeightRequest="{StaticResource ElementHeightDefault}"
                                     VerticalOptions="Center"
-                                    Command="{Binding StartEditWellnessCommand}"
-                                    IsVisible="{Binding IsEditingWellness, Converter={toolkit:InvertedBoolConverter}}" />
+                                    Command="{Binding Diary.StartEditWellnessCommand}"
+                                    IsVisible="{Binding Diary.IsEditingWellness, Converter={toolkit:InvertedBoolConverter}}" />
                             </Grid>
 
                             <!--  Formulario de edición  -->
                             <VerticalStackLayout 
                                 Spacing="12"
-                                IsVisible="{Binding IsEditingWellness}">
+                                IsVisible="{Binding Diary.IsEditingWellness}">
                                 
                                 <!--  Botón importar de Apple Salud (solo visible si HealthKit disponible)  -->
                                 <Border
@@ -5160,9 +5160,9 @@
                                     StrokeShape="RoundRectangle 8"
                                     Stroke="#FF4CD964"
                                     StrokeThickness="1"
-                                    IsVisible="{Binding IsHealthKitAvailable}">
+                                    IsVisible="{Binding Diary.IsHealthKitAvailable}">
                                     <Border.GestureRecognizers>
-                                        <TapGestureRecognizer Command="{Binding ImportHealthDataToWellnessCommand}" />
+                                        <TapGestureRecognizer Command="{Binding Diary.ImportHealthDataToWellnessCommand}" />
                                     </Border.GestureRecognizers>
                                     <HorizontalStackLayout Spacing="12" HorizontalOptions="Center">
                                         <controls:SymbolIcon
@@ -5191,13 +5191,13 @@
                                             <Slider
                                                 Minimum="0"
                                                 Maximum="12"
-                                                Value="{Binding WellnessSleepHours, Mode=TwoWay, TargetNullValue=7}"
+                                                Value="{Binding Diary.WellnessSleepHours, Mode=TwoWay, TargetNullValue=7}"
                                                 MinimumTrackColor="#FF5856D6"
                                                 MaximumTrackColor="#FF555555"
                                                 ThumbColor="#FF5856D6" />
                                             <Label
                                                 Grid.Column="1"
-                                                Text="{Binding WellnessSleepHours, StringFormat='{0:F1} h'}"
+                                                Text="{Binding Diary.WellnessSleepHours, StringFormat='{0:F1} h'}"
                                                 TextColor="White"
                                                 FontSize="{StaticResource FontSizeSubtitle}"
                                                 FontAttributes="None"
@@ -5219,13 +5219,13 @@
                                             <Slider
                                                 Minimum="1"
                                                 Maximum="10"
-                                                Value="{Binding WellnessRecoveryFeeling, Mode=TwoWay, TargetNullValue=5}"
+                                                Value="{Binding Diary.WellnessRecoveryFeeling, Mode=TwoWay, TargetNullValue=5}"
                                                 MinimumTrackColor="#FF4CD964"
                                                 MaximumTrackColor="#FF555555"
                                                 ThumbColor="#FF4CD964" />
                                             <Label
                                                 Grid.Column="1"
-                                                Text="{Binding WellnessRecoveryFeeling}"
+                                                Text="{Binding Diary.WellnessRecoveryFeeling}"
                                                 TextColor="White"
                                                 FontSize="{StaticResource FontSizeTitle}"
                                                 FontAttributes="None"
@@ -5247,13 +5247,13 @@
                                             <Slider
                                                 Minimum="1"
                                                 Maximum="10"
-                                                Value="{Binding WellnessMuscleFatigue, Mode=TwoWay, TargetNullValue=3}"
+                                                Value="{Binding Diary.WellnessMuscleFatigue, Mode=TwoWay, TargetNullValue=3}"
                                                 MinimumTrackColor="#FFFF9500"
                                                 MaximumTrackColor="#FF555555"
                                                 ThumbColor="#FFFF9500" />
                                             <Label
                                                 Grid.Column="1"
-                                                Text="{Binding WellnessMuscleFatigue}"
+                                                Text="{Binding Diary.WellnessMuscleFatigue}"
                                                 TextColor="White"
                                                 FontSize="{StaticResource FontSizeTitle}"
                                                 FontAttributes="None"
@@ -5278,11 +5278,11 @@
                                                 HeightRequest="50"
                                                 StrokeShape="RoundRectangle 4"
                                                 BackgroundColor="Transparent"
-                                                StrokeThickness="{Binding WellnessMoodRating, Converter={StaticResource EqualityToBorderWidthConverter}, ConverterParameter=1}"
+                                                StrokeThickness="{Binding Diary.WellnessMoodRating, Converter={StaticResource EqualityToBorderWidthConverter}, ConverterParameter=1}"
                                                 Stroke="#FFFF6B6B">
                                                 <Border.GestureRecognizers>
                                                     <TapGestureRecognizer 
-                                                        Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:DashboardViewModel}}, Path=SetMoodCommand}"
+                                                    Command="{Binding Diary.SetMoodCommand}"
                                                         CommandParameter="1" />
                                                 </Border.GestureRecognizers>
                                                 <controls:SymbolIcon
@@ -5299,11 +5299,11 @@
                                                 HeightRequest="50"
                                                 StrokeShape="RoundRectangle 4"
                                                 BackgroundColor="Transparent"
-                                                StrokeThickness="{Binding WellnessMoodRating, Converter={StaticResource EqualityToBorderWidthConverter}, ConverterParameter=2}"
+                                                StrokeThickness="{Binding Diary.WellnessMoodRating, Converter={StaticResource EqualityToBorderWidthConverter}, ConverterParameter=2}"
                                                 Stroke="#FFFF9500">
                                                 <Border.GestureRecognizers>
                                                     <TapGestureRecognizer 
-                                                        Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:DashboardViewModel}}, Path=SetMoodCommand}"
+                                                    Command="{Binding Diary.SetMoodCommand}"
                                                         CommandParameter="2" />
                                                 </Border.GestureRecognizers>
                                                 <controls:SymbolIcon
@@ -5320,11 +5320,11 @@
                                                 HeightRequest="50"
                                                 StrokeShape="RoundRectangle 4"
                                                 BackgroundColor="Transparent"
-                                                StrokeThickness="{Binding WellnessMoodRating, Converter={StaticResource EqualityToBorderWidthConverter}, ConverterParameter=3}"
+                                                StrokeThickness="{Binding Diary.WellnessMoodRating, Converter={StaticResource EqualityToBorderWidthConverter}, ConverterParameter=3}"
                                                 Stroke="#FFFFC107">
                                                 <Border.GestureRecognizers>
                                                     <TapGestureRecognizer 
-                                                        Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:DashboardViewModel}}, Path=SetMoodCommand}"
+                                                    Command="{Binding Diary.SetMoodCommand}"
                                                         CommandParameter="3" />
                                                 </Border.GestureRecognizers>
                                                 <controls:SymbolIcon
@@ -5341,11 +5341,11 @@
                                                 HeightRequest="50"
                                                 StrokeShape="RoundRectangle 4"
                                                 BackgroundColor="Transparent"
-                                                StrokeThickness="{Binding WellnessMoodRating, Converter={StaticResource EqualityToBorderWidthConverter}, ConverterParameter=4}"
+                                                StrokeThickness="{Binding Diary.WellnessMoodRating, Converter={StaticResource EqualityToBorderWidthConverter}, ConverterParameter=4}"
                                                 Stroke="#FF8BC34A">
                                                 <Border.GestureRecognizers>
                                                     <TapGestureRecognizer 
-                                                        Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:DashboardViewModel}}, Path=SetMoodCommand}"
+                                                    Command="{Binding Diary.SetMoodCommand}"
                                                         CommandParameter="4" />
                                                 </Border.GestureRecognizers>
                                                 <controls:SymbolIcon
@@ -5362,11 +5362,11 @@
                                                 HeightRequest="50"
                                                 StrokeShape="RoundRectangle 4"
                                                 BackgroundColor="Transparent"
-                                                StrokeThickness="{Binding WellnessMoodRating, Converter={StaticResource EqualityToBorderWidthConverter}, ConverterParameter=5}"
+                                                StrokeThickness="{Binding Diary.WellnessMoodRating, Converter={StaticResource EqualityToBorderWidthConverter}, ConverterParameter=5}"
                                                 Stroke="#FF4CD964">
                                                 <Border.GestureRecognizers>
                                                     <TapGestureRecognizer 
-                                                        Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:DashboardViewModel}}, Path=SetMoodCommand}"
+                                                    Command="{Binding Diary.SetMoodCommand}"
                                                         CommandParameter="5" />
                                                 </Border.GestureRecognizers>
                                                 <controls:SymbolIcon
@@ -5411,11 +5411,11 @@
                                                     Padding="0"
                                                     WidthRequest="20"
                                                     HeightRequest="20"
-                                                    Command="{Binding ShowPPMInfoCommand}" />
+                                                    Command="{Binding Diary.ShowPPMInfoCommand}" />
                                             </Grid>
                                             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                                                 <Entry
-                                                    Text="{Binding WellnessRestingHeartRate}"
+                                                    Text="{Binding Diary.WellnessRestingHeartRate}"
                                                     Placeholder="60"
                                                     PlaceholderColor="#FF555555"
                                                     TextColor="White"
@@ -5463,11 +5463,11 @@
                                                     Padding="0"
                                                     WidthRequest="20"
                                                     HeightRequest="20"
-                                                    Command="{Binding ShowHRVInfoCommand}" />
+                                                    Command="{Binding Diary.ShowHRVInfoCommand}" />
                                             </Grid>
                                             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                                                 <Entry
-                                                    Text="{Binding WellnessHRV}"
+                                                    Text="{Binding Diary.WellnessHRV}"
                                                     Placeholder="50"
                                                     PlaceholderColor="#FF555555"
                                                     TextColor="White"
@@ -5496,7 +5496,7 @@
                                     <VerticalStackLayout Spacing="8">
                                         <Label Text="Notas (opcional)" TextColor="#FF888888" FontSize="{StaticResource FontSizeSmall}" />
                                         <Editor
-                                            Text="{Binding WellnessNotes}"
+                                            Text="{Binding Diary.WellnessNotes}"
                                             Placeholder="¿Algo que destacar sobre tu estado hoy?"
                                             PlaceholderColor="#FF555555"
                                             TextColor="White"
@@ -5513,29 +5513,29 @@
                                         BackgroundColor="#FF3A3A3A"
                                         TextColor="#FF888888"
                                         CornerRadius="8"
-                                        Command="{Binding CancelEditWellnessCommand}" />
+                                        Command="{Binding Diary.CancelEditWellnessCommand}" />
                                     <Button
                                         Grid.Column="1"
                                         Text="Guardar"
                                         BackgroundColor="#FF4CD964"
                                         TextColor="White"
                                         CornerRadius="8"
-                                        Command="{Binding SaveWellnessCommand}" />
+                                        Command="{Binding Diary.SaveWellnessCommand}" />
                                 </Grid>
                             </VerticalStackLayout>
 
                             <!--  Vista de datos guardados (cuando no está editando)  -->
                             <VerticalStackLayout 
                                 Spacing="12"
-                                IsVisible="{Binding IsEditingWellness, Converter={toolkit:InvertedBoolConverter}}">
+                                IsVisible="{Binding Diary.IsEditingWellness, Converter={toolkit:InvertedBoolConverter}}">
                                 
                                 <!--  Indicador de bienestar si hay datos  -->
                                 <Border
                                     Padding="12"
-                                    BackgroundColor="{Binding SelectedDateWellness.WellnessColor}"
+                                    BackgroundColor="{Binding Diary.SelectedDateWellness.WellnessColor}"
                                     StrokeShape="RoundRectangle 8"
                                     StrokeThickness="0"
-                                    IsVisible="{Binding HasWellnessData}">
+                                    IsVisible="{Binding Diary.HasWellnessData}">
                                     <Grid ColumnDefinitions="*,Auto">
                                         <VerticalStackLayout>
                                             <Label
@@ -5546,14 +5546,14 @@
                                             <Label
                                                 FontAttributes="None"
                                                 FontSize="{StaticResource FontSizeTitle}"
-                                                Text="{Binding SelectedDateWellness.WellnessText}"
+                                                Text="{Binding Diary.SelectedDateWellness.WellnessText}"
                                                 TextColor="#FF121212" />
                                         </VerticalStackLayout>
                                         <Label
                                             Grid.Column="1"
                                             FontAttributes="None"
                                             FontSize="{StaticResource FontSizeDisplay}"
-                                            Text="{Binding SelectedDateWellness.WellnessScore}"
+                                            Text="{Binding Diary.SelectedDateWellness.WellnessScore}"
                                             TextColor="#FF121212"
                                             VerticalOptions="Center" />
                                     </Grid>
@@ -5561,7 +5561,7 @@
 
                                 <!--  Métricas si hay datos  -->
                                 <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8"
-                                      IsVisible="{Binding HasWellnessData}">
+                                      IsVisible="{Binding Diary.HasWellnessData}">
                                     <!--  Sueño  -->
                                     <Border
                                         Padding="10"
@@ -5578,7 +5578,7 @@
                                             <Label
                                                 FontAttributes="None"
                                                 FontSize="{StaticResource FontSizeSubtitle}"
-                                                Text="{Binding SelectedDateWellness.SleepFormatted}"
+                                                Text="{Binding Diary.SelectedDateWellness.SleepFormatted}"
                                                 TextColor="White"
                                                 HorizontalOptions="Center" />
                                             <Label
@@ -5606,7 +5606,7 @@
                                             <Label
                                                 FontAttributes="None"
                                                 FontSize="{StaticResource FontSizeSubtitle}"
-                                                Text="{Binding SelectedDateWellness.RecoveryFeeling, StringFormat='{0}/10'}"
+                                                Text="{Binding Diary.SelectedDateWellness.RecoveryFeeling, StringFormat='{0}/10'}"
                                                 TextColor="White"
                                                 HorizontalOptions="Center" />
                                             <Label
@@ -5628,8 +5628,8 @@
                                             <controls:SymbolIcon
                                                 HeightRequest="{StaticResource IconSizeLarge}"
                                                 WidthRequest="{StaticResource IconSizeLarge}"
-                                                SymbolName="{Binding SelectedDateWellness.MoodSymbol}"
-                                                TintColor="{Binding SelectedDateWellness.MoodColor}"
+                                                SymbolName="{Binding Diary.SelectedDateWellness.MoodSymbol}"
+                                                TintColor="{Binding Diary.SelectedDateWellness.MoodColor}"
                                                 HorizontalOptions="Center" />
                                             <Label
                                                 FontSize="{StaticResource FontSizeCaption}"
@@ -5642,14 +5642,14 @@
 
                                 <!--  PPM Basal y HRV (si están registrados)  -->
                                 <Grid ColumnDefinitions="*,*" ColumnSpacing="8"
-                                      IsVisible="{Binding HasWellnessData}">
+                                      IsVisible="{Binding Diary.HasWellnessData}">
                                     <!--  PPM Basal  -->
                                     <Border
                                         Padding="10"
                                         BackgroundColor="#FF404040"
                                         StrokeShape="RoundRectangle 8"
                                         StrokeThickness="0"
-                                        IsVisible="{Binding SelectedDateWellness.RestingHeartRate, Converter={StaticResource IsNotNullConverter}}">
+                                        IsVisible="{Binding Diary.SelectedDateWellness.RestingHeartRate, Converter={StaticResource IsNotNullConverter}}">
                                         <HorizontalStackLayout HorizontalOptions="Center" Spacing="8">
                                             <controls:SymbolIcon
                                                 HeightRequest="{StaticResource IconSizeDefault}"
@@ -5662,7 +5662,7 @@
                                                     <Label
                                                         FontAttributes="None"
                                                         FontSize="{StaticResource FontSizeSubtitle}"
-                                                        Text="{Binding SelectedDateWellness.RestingHeartRate}"
+                                                        Text="{Binding Diary.SelectedDateWellness.RestingHeartRate}"
                                                         TextColor="White"
                                                         VerticalOptions="Center" />
                                                     <Label
@@ -5686,7 +5686,7 @@
                                         BackgroundColor="#FF404040"
                                         StrokeShape="RoundRectangle 8"
                                         StrokeThickness="0"
-                                        IsVisible="{Binding SelectedDateWellness.HeartRateVariability, Converter={StaticResource IsNotNullConverter}}">
+                                        IsVisible="{Binding Diary.SelectedDateWellness.HeartRateVariability, Converter={StaticResource IsNotNullConverter}}">
                                         <HorizontalStackLayout HorizontalOptions="Center" Spacing="8">
                                             <controls:SymbolIcon
                                                 HeightRequest="{StaticResource IconSizeDefault}"
@@ -5699,7 +5699,7 @@
                                                     <Label
                                                         FontAttributes="None"
                                                         FontSize="{StaticResource FontSizeSubtitle}"
-                                                        Text="{Binding SelectedDateWellness.HeartRateVariability}"
+                                                        Text="{Binding Diary.SelectedDateWellness.HeartRateVariability}"
                                                         TextColor="White"
                                                         VerticalOptions="Center" />
                                                     <Label
@@ -5723,11 +5723,11 @@
                                     BackgroundColor="#FF404040"
                                     StrokeShape="RoundRectangle 8"
                                     StrokeThickness="0"
-                                    IsVisible="{Binding SelectedDateWellness.Notes, Converter={StaticResource NotNullOrEmptyBoolConverter}}">
+                                    IsVisible="{Binding Diary.SelectedDateWellness.Notes, Converter={StaticResource NotNullOrEmptyBoolConverter}}">
                                     <VerticalStackLayout Spacing="4">
                                         <Label Text="Notas" TextColor="#FF888888" FontSize="{StaticResource FontSizeSmall}" />
                                         <Label 
-                                            Text="{Binding SelectedDateWellness.Notes}" 
+                                            Text="{Binding Diary.SelectedDateWellness.Notes}" 
                                             TextColor="White" 
                                             FontSize="{StaticResource FontSizeBody}"
                                             LineBreakMode="WordWrap" />
@@ -5740,7 +5740,7 @@
                                     TextColor="#FF888888"
                                     FontSize="{StaticResource FontSizeBody}"
                                     HorizontalTextAlignment="Center"
-                                    IsVisible="{Binding HasWellnessData, Converter={toolkit:InvertedBoolConverter}}" />
+                                    IsVisible="{Binding Diary.HasWellnessData, Converter={toolkit:InvertedBoolConverter}}" />
                             </VerticalStackLayout>
                         </VerticalStackLayout>
                     </Border>
@@ -5798,7 +5798,7 @@
             BackgroundColor="#FF121212"
             InputTransparent="True"
             HorizontalOptions="Start"
-            IsVisible="{Binding HasHoverVideo}"
+            IsVisible="{Binding Videos.HasHoverVideo}"
             Stroke="#FF3A3A3A"
             StrokeShape="RoundRectangle 12"
             StrokeThickness="1"
@@ -5811,14 +5811,14 @@
                         x:Name="HoverPreviewPlayer"
                         Aspect="AspectFit"
                         IsMuted="True"
-                        Source="{Binding HoverVideo.LocalClipPath}" />
+                        Source="{Binding Videos.HoverVideo.LocalClipPath}" />
                 </controls:AspectRatioContainer>
                 <Label
                     Grid.Row="1"
                     Padding="12,8"
                     FontSize="{StaticResource FontSizeBody}"
                     LineBreakMode="TailTruncation"
-                    Text="{Binding HoverVideo.Atleta.NombreCompleto}"
+                    Text="{Binding Videos.HoverVideo.Atleta.NombreCompleto}"
                     TextColor="White" />
             </Grid>
         </Border>
@@ -5838,7 +5838,7 @@
             Grid.RowSpan="2"
             Grid.ColumnSpan="5"
             BackgroundColor="#CC000000"
-            IsVisible="{Binding ShowNewSessionSidebarPopup}">
+            IsVisible="{Binding Layout.ShowNewSessionSidebarPopup}">
             <Border
                 Padding="24"
                 BackgroundColor="#FF1E1E1E"
@@ -6001,7 +6001,7 @@
             Grid.RowSpan="2"
             Grid.ColumnSpan="5"
             BackgroundColor="#CC000000"
-            IsVisible="{Binding ShowSmartFolderSidebarPopup}">
+            IsVisible="{Binding Layout.ShowSmartFolderSidebarPopup}">
             <Border
                 Padding="24"
                 BackgroundColor="#FF1E1E1E"
@@ -6032,7 +6032,7 @@
                             Stroke="Transparent"
                             StrokeShape="RoundRectangle 4">
                             <Border.GestureRecognizers>
-                                <TapGestureRecognizer Command="{Binding CancelSmartFolderSidebarPopupCommand}" />
+                                <TapGestureRecognizer Command="{Binding SmartFolders.CancelSmartFolderSidebarPopupCommand}" />
                             </Border.GestureRecognizers>
                             <controls:SymbolIcon
                                 HeightRequest="{StaticResource IconSizeLarge}"
@@ -6051,7 +6051,7 @@
                         <Entry
                             Placeholder="Ej: Técnica - tags"
                             PlaceholderColor="#FF666666"
-                            Text="{Binding NewSmartFolderName}"
+                            Text="{Binding SmartFolders.NewSmartFolderName}"
                             TextColor="White"
                             BackgroundColor="#FF404040" />
                     </VerticalStackLayout>
@@ -6068,15 +6068,15 @@
                                 Padding="12,8"
                                 StrokeShape="RoundRectangle 6"
                                 StrokeThickness="0"
-                                BackgroundColor="{Binding IsSmartFolderMatchAll, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF0066|#FF2A2A2A}">
+                                BackgroundColor="{Binding SmartFolders.IsSmartFolderMatchAll, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF0066|#FF2A2A2A}">
                                 <Border.GestureRecognizers>
-                                    <TapGestureRecognizer Command="{Binding SetSmartFolderMatchModeCommand}" CommandParameter="All" />
+                                    <TapGestureRecognizer Command="{Binding SmartFolders.SetSmartFolderMatchModeCommand}" CommandParameter="All" />
                                 </Border.GestureRecognizers>
                                 <Label
                                     FontSize="{StaticResource FontSizeSmall}"
                                     Text="Y (AND)"
-                                    TextColor="{Binding IsSmartFolderMatchAll, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF121212|#FFB1B1B1}"
-                                    FontAttributes="{Binding IsSmartFolderMatchAll, Converter={StaticResource BoolToFontAttributesConverter}}"
+                                    TextColor="{Binding SmartFolders.IsSmartFolderMatchAll, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF121212|#FFB1B1B1}"
+                                    FontAttributes="{Binding SmartFolders.IsSmartFolderMatchAll, Converter={StaticResource BoolToFontAttributesConverter}}"
                                     HorizontalOptions="Center"
                                     VerticalOptions="Center" />
                             </Border>
@@ -6085,15 +6085,15 @@
                                 Padding="12,8"
                                 StrokeShape="RoundRectangle 6"
                                 StrokeThickness="0"
-                                BackgroundColor="{Binding IsSmartFolderMatchAny, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF0066|#FF2A2A2A}">
+                                BackgroundColor="{Binding SmartFolders.IsSmartFolderMatchAny, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF0066|#FF2A2A2A}">
                                 <Border.GestureRecognizers>
-                                    <TapGestureRecognizer Command="{Binding SetSmartFolderMatchModeCommand}" CommandParameter="Any" />
+                                    <TapGestureRecognizer Command="{Binding SmartFolders.SetSmartFolderMatchModeCommand}" CommandParameter="Any" />
                                 </Border.GestureRecognizers>
                                 <Label
                                     FontSize="{StaticResource FontSizeSmall}"
                                     Text="O (OR)"
-                                    TextColor="{Binding IsSmartFolderMatchAny, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF121212|#FFB1B1B1}"
-                                    FontAttributes="{Binding IsSmartFolderMatchAny, Converter={StaticResource BoolToFontAttributesConverter}}"
+                                    TextColor="{Binding SmartFolders.IsSmartFolderMatchAny, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF121212|#FFB1B1B1}"
+                                    FontAttributes="{Binding SmartFolders.IsSmartFolderMatchAny, Converter={StaticResource BoolToFontAttributesConverter}}"
                                     HorizontalOptions="Center"
                                     VerticalOptions="Center" />
                             </Border>
@@ -6103,7 +6103,7 @@
                     <!--  Lista de criterios  -->
                     <VerticalStackLayout Spacing="8">
                         <CollectionView
-                            ItemsSource="{Binding NewSmartFolderCriteria}"
+                            ItemsSource="{Binding SmartFolders.NewSmartFolderCriteria}"
                             SelectionMode="None">
                             <CollectionView.ItemTemplate>
                                 <DataTemplate x:DataType="models:SmartFolderCriterion">
@@ -6118,7 +6118,7 @@
                                             HeightRequest="44">
                                             <Border.GestureRecognizers>
                                                 <TapGestureRecognizer
-                                                    Command="{Binding BindingContext.SelectCriterionFieldCommand, Source={x:Reference ThisPage}}"
+                                                    Command="{Binding BindingContext.SmartFolders.SelectCriterionFieldCommand, Source={x:Reference ThisPage}}"
                                                     CommandParameter="{Binding .}" />
                                             </Border.GestureRecognizers>
                                             <Grid ColumnDefinitions="*,Auto">
@@ -6144,7 +6144,7 @@
                                             HeightRequest="44">
                                             <Border.GestureRecognizers>
                                                 <TapGestureRecognizer
-                                                    Command="{Binding BindingContext.SelectCriterionOperatorCommand, Source={x:Reference ThisPage}}"
+                                                    Command="{Binding BindingContext.SmartFolders.SelectCriterionOperatorCommand, Source={x:Reference ThisPage}}"
                                                     CommandParameter="{Binding .}" />
                                             </Border.GestureRecognizers>
                                             <Grid ColumnDefinitions="*,Auto">
@@ -6178,7 +6178,7 @@
                                             VerticalOptions="Center">
                                             <Border.GestureRecognizers>
                                                 <TapGestureRecognizer
-                                                    Command="{Binding BindingContext.RemoveSmartFolderCriterionCommand, Source={x:Reference ThisPage}}"
+                                                    Command="{Binding BindingContext.SmartFolders.RemoveSmartFolderCriterionCommand, Source={x:Reference ThisPage}}"
                                                     CommandParameter="{Binding .}" />
                                             </Border.GestureRecognizers>
                                             <controls:SymbolIcon
@@ -6208,12 +6208,12 @@
                             TextColor="#FFCCCCCC"
                             CornerRadius="8"
                             HeightRequest="{StaticResource ElementHeightLarge}"
-                            Command="{Binding AddSmartFolderCriterionCommand}" />
+                            Command="{Binding SmartFolders.AddSmartFolderCriterionCommand}" />
 
                         <Label
                             FontSize="{StaticResource FontSizeSmall}"
                             TextColor="#FF888888"
-                            Text="{Binding NewSmartFolderLiveMatchCount, StringFormat='Coinciden: {0}'}" />
+                            Text="{Binding SmartFolders.NewSmartFolderLiveMatchCount, StringFormat='Coinciden: {0}'}" />
                     </VerticalStackLayout>
 
                     <!--  Botones  -->
@@ -6225,7 +6225,7 @@
                             TextColor="#FFCCCCCC"
                             CornerRadius="8"
                             HeightRequest="{StaticResource ElementHeightLarge}"
-                            Command="{Binding CancelSmartFolderSidebarPopupCommand}" />
+                            Command="{Binding SmartFolders.CancelSmartFolderSidebarPopupCommand}" />
                         <Button
                             Grid.Column="1"
                             Text="Crear"
@@ -6234,7 +6234,7 @@
                             FontAttributes="None"
                             CornerRadius="8"
                             HeightRequest="{StaticResource ElementHeightLarge}"
-                            Command="{Binding CreateSmartFolderCommand}" />
+                            Command="{Binding SmartFolders.CreateSmartFolderCommand}" />
                     </Grid>
                 </VerticalStackLayout>
             </Border>
@@ -6246,7 +6246,7 @@
             Grid.RowSpan="2"
             Grid.ColumnSpan="5"
             BackgroundColor="#CC000000"
-            IsVisible="{Binding ShowIconColorPickerPopup}">
+            IsVisible="{Binding Layout.ShowIconColorPickerPopup}">
             <Grid.GestureRecognizers>
                 <TapGestureRecognizer Command="{Binding CloseIconColorPickerCommand}" />
             </Grid.GestureRecognizers>
@@ -6532,7 +6532,7 @@
             Grid.RowSpan="2"
             Grid.ColumnSpan="5"
             BackgroundColor="#CC000000"
-            IsVisible="{Binding ShowBatchEditPopup}">
+            IsVisible="{Binding BatchEdit.ShowBatchEditPopup}">
             <Border
                 Padding="24"
                 BackgroundColor="#FF1E1E1E"
@@ -6557,7 +6557,7 @@
                             Stroke="Transparent"
                             StrokeShape="RoundRectangle 4">
                             <Border.GestureRecognizers>
-                                <TapGestureRecognizer Command="{Binding CloseBatchEditPopupCommand}" />
+                                <TapGestureRecognizer Command="{Binding BatchEdit.CloseBatchEditPopupCommand}" />
                             </Border.GestureRecognizers>
                             <controls:SymbolIcon
                                 HeightRequest="{StaticResource IconSizeLarge}"
@@ -6569,14 +6569,14 @@
 
                     <Label
                         FontSize="{StaticResource FontSizeBody}"
-                        Text="{Binding SelectedVideoCount, StringFormat='Se modificarán {0} vídeos'}"
+                        Text="{Binding BatchEdit.SelectedVideoCount, StringFormat='Se modificarán {0} vídeos'}"
                         TextColor="#FFAAAAAA" />
 
                     <!--  Atleta  -->
                     <VerticalStackLayout Spacing="8">
                         <Grid ColumnDefinitions="Auto,*">
                             <CheckBox
-                                IsChecked="{Binding BatchEditAthleteEnabled}"
+                                IsChecked="{Binding BatchEdit.BatchEditAthleteEnabled}"
                                 Color="#FF0066"
                                 VerticalOptions="Center" />
                             <Label
@@ -6588,9 +6588,9 @@
                         </Grid>
                         <ScrollView 
                             HeightRequest="120" 
-                            IsEnabled="{Binding BatchEditAthleteEnabled}">
+                            IsEnabled="{Binding BatchEdit.BatchEditAthleteEnabled}">
                             <FlexLayout
-                                BindableLayout.ItemsSource="{Binding BatchEditAthletes}"
+                                BindableLayout.ItemsSource="{Binding BatchEdit.BatchEditAthletes}"
                                 Direction="Row"
                                 Wrap="Wrap">
                                 <BindableLayout.ItemTemplate>
@@ -6603,7 +6603,7 @@
                                             StrokeShape="RoundRectangle 4">
                                             <Border.GestureRecognizers>
                                                 <TapGestureRecognizer
-                                                    Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.SelectBatchAthleteCommand}"
+                                                    Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.BatchEdit.SelectBatchAthleteCommand}"
                                                     CommandParameter="{Binding .}" />
                                             </Border.GestureRecognizers>
                                             <Label
@@ -6621,18 +6621,18 @@
                             <Entry
                                 BackgroundColor="#FF404040"
                                 Placeholder="Apellido"
-                                Text="{Binding NewBatchAthleteSurname}"
+                                Text="{Binding BatchEdit.NewBatchAthleteSurname}"
                                 TextColor="White" />
                             <Entry
                                 Grid.Column="1"
                                 BackgroundColor="#FF404040"
                                 Placeholder="Nombre"
-                                Text="{Binding NewBatchAthleteName}"
+                                Text="{Binding BatchEdit.NewBatchAthleteName}"
                                 TextColor="White" />
                             <Button
                                 Grid.Column="2"
                                 BackgroundColor="#FF3A3A3A"
-                                Command="{Binding AddNewBatchAthleteCommand}"
+                                Command="{Binding BatchEdit.AddNewBatchAthleteCommand}"
                                 Text="Añadir"
                                 TextColor="White" />
                         </Grid>
@@ -6642,7 +6642,7 @@
                             Text="No hay atletas disponibles"
                             TextColor="#FF888888">
                             <Label.Triggers>
-                                <DataTrigger TargetType="Label" Binding="{Binding BatchEditAthletes.Count}" Value="0">
+                                <DataTrigger TargetType="Label" Binding="{Binding BatchEdit.BatchEditAthletes.Count}" Value="0">
                                     <Setter Property="IsVisible" Value="True" />
                                 </DataTrigger>
                             </Label.Triggers>
@@ -6658,7 +6658,7 @@
                     <VerticalStackLayout Spacing="8">
                         <Grid ColumnDefinitions="Auto,*">
                             <CheckBox
-                                IsChecked="{Binding BatchEditSectionEnabled}"
+                                IsChecked="{Binding BatchEdit.BatchEditSectionEnabled}"
                                 Color="#FF0066"
                                 VerticalOptions="Center" />
                             <Label
@@ -6668,11 +6668,11 @@
                                 TextColor="White"
                                 VerticalOptions="Center" />
                         </Grid>
-                        <HorizontalStackLayout IsEnabled="{Binding BatchEditSectionEnabled}" Spacing="12">
+                        <HorizontalStackLayout IsEnabled="{Binding BatchEdit.BatchEditSectionEnabled}" Spacing="12">
                             <Entry
                                 BackgroundColor="#FF404040"
                                 Keyboard="Numeric"
-                                Text="{Binding BatchEditSection}"
+                                Text="{Binding BatchEdit.BatchEditSection}"
                                 TextColor="White"
                                 WidthRequest="80" />
                             <Label
@@ -6696,17 +6696,17 @@
                                 BackgroundColor="#FF404040"
                                 HorizontalOptions="FillAndExpand"
                                 Placeholder="Nueva etiqueta"
-                                Text="{Binding NewBatchTagText}"
+                                Text="{Binding BatchEdit.NewBatchTagText}"
                                 TextColor="White" />
                             <Button
                                 BackgroundColor="#FF3A3A3A"
-                                Command="{Binding AddNewBatchTagCommand}"
+                                Command="{Binding BatchEdit.AddNewBatchTagCommand}"
                                 Text="Añadir"
                                 TextColor="White" />
                         </HorizontalStackLayout>
 
                         <FlexLayout
-                            BindableLayout.ItemsSource="{Binding BatchEditTags}"
+                            BindableLayout.ItemsSource="{Binding BatchEdit.BatchEditTags}"
                             Direction="Row"
                             Wrap="Wrap">
                             <BindableLayout.ItemTemplate>
@@ -6719,7 +6719,7 @@
                                         StrokeShape="RoundRectangle 4">
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer
-                                                Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.ToggleBatchTagCommand}"
+                                                Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.BatchEdit.ToggleBatchTagCommand}"
                                                 CommandParameter="{Binding .}" />
                                         </Border.GestureRecognizers>
                                         <Label
@@ -6735,7 +6735,7 @@
                             Text="No hay etiquetas disponibles"
                             TextColor="#FF888888">
                             <Label.Triggers>
-                                <DataTrigger TargetType="Label" Binding="{Binding BatchEditTags.Count}" Value="0">
+                                <DataTrigger TargetType="Label" Binding="{Binding BatchEdit.BatchEditTags.Count}" Value="0">
                                     <Setter Property="IsVisible" Value="True" />
                                 </DataTrigger>
                             </Label.Triggers>
@@ -6751,13 +6751,13 @@
                     <Grid ColumnDefinitions="*,*" ColumnSpacing="12" Margin="0,8,0,0">
                         <Button
                             BackgroundColor="#FF3A3A3A"
-                            Command="{Binding CloseBatchEditPopupCommand}"
+                            Command="{Binding BatchEdit.CloseBatchEditPopupCommand}"
                             Text="Cancelar"
                             TextColor="White" />
                         <Button
                             Grid.Column="1"
                             BackgroundColor="#FF4A9FD4"
-                            Command="{Binding ApplyBatchEditCommand}"
+                            Command="{Binding BatchEdit.ApplyBatchEditCommand}"
                             Text="Aplicar"
                             TextColor="White" />
                     </Grid>
@@ -6869,7 +6869,7 @@
             Grid.RowSpan="2"
             Grid.ColumnSpan="5"
             BackgroundColor="#CC000000"
-            IsVisible="{Binding ShowDetailedTimesPopup}">
+            IsVisible="{Binding Videos.ShowDetailedTimesPopup}">
             <Border
                 Margin="12"
                 Padding="12"
@@ -6906,13 +6906,13 @@
                                 StrokeShape="RoundRectangle 4"
                                 MinimumWidthRequest="180">
                                 <Border.GestureRecognizers>
-                                    <TapGestureRecognizer Command="{Binding ToggleAthleteDropdownCommand}" />
+                                    <TapGestureRecognizer Command="{Binding Videos.ToggleAthleteDropdownCommand}" />
                                 </Border.GestureRecognizers>
                                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                                     <Label
                                         Grid.Column="0"
                                         FontSize="{StaticResource FontSizeSubtitle}"
-                                        Text="{Binding SelectedDetailedTimesAthleteName}"
+                                        Text="{Binding Videos.SelectedDetailedTimesAthleteName}"
                                         TextColor="White"
                                         LineBreakMode="TailTruncation"
                                         VerticalOptions="Center" />
@@ -6932,9 +6932,9 @@
                                 BackgroundColor="Transparent"
                                 Stroke="Transparent"
                                 StrokeShape="RoundRectangle 4"
-                                IsVisible="{Binding HasSelectedDetailedTimesAthlete}">
+                                IsVisible="{Binding Videos.HasSelectedDetailedTimesAthlete}">
                                 <Border.GestureRecognizers>
-                                    <TapGestureRecognizer Command="{Binding ClearDetailedTimesAthleteCommand}" />
+                                    <TapGestureRecognizer Command="{Binding Videos.ClearDetailedTimesAthleteCommand}" />
                                 </Border.GestureRecognizers>
                                 <controls:SymbolIcon
                                     HeightRequest="{StaticResource IconSizeSmall}"
@@ -6954,7 +6954,7 @@
                             VerticalOptions="Center"
                             x:Name="ReportOptionsDropdownTrigger">
                             <Border.GestureRecognizers>
-                                <TapGestureRecognizer Command="{Binding ToggleReportOptionsPanelCommand}" />
+                                <TapGestureRecognizer Command="{Binding Videos.ToggleReportOptionsPanelCommand}" />
                             </Border.GestureRecognizers>
                             <HorizontalStackLayout Spacing="6">
                                 <controls:SymbolIcon
@@ -6985,9 +6985,9 @@
                             Stroke="#FF3A3A3A"
                             StrokeShape="RoundRectangle 4"
                             VerticalOptions="Center"
-                            Opacity="{Binding IsExportingDetailedTimes, Converter={StaticResource BoolToOpacityConverter}}">
+                            Opacity="{Binding Videos.IsExportingDetailedTimes, Converter={StaticResource BoolToOpacityConverter}}">
                             <Border.GestureRecognizers>
-                                <TapGestureRecognizer Command="{Binding ExportDetailedTimesHtmlCommand}" />
+                                <TapGestureRecognizer Command="{Binding Videos.ExportDetailedTimesHtmlCommand}" />
                             </Border.GestureRecognizers>
                             <HorizontalStackLayout Spacing="6">
                                 <controls:SymbolIcon
@@ -7010,9 +7010,9 @@
                             Stroke="#FF3A3A3A"
                             StrokeShape="RoundRectangle 4"
                             VerticalOptions="Center"
-                            Opacity="{Binding IsExportingDetailedTimes, Converter={StaticResource BoolToOpacityConverter}}">
+                            Opacity="{Binding Videos.IsExportingDetailedTimes, Converter={StaticResource BoolToOpacityConverter}}">
                             <Border.GestureRecognizers>
-                                <TapGestureRecognizer Command="{Binding ExportDetailedTimesPdfCommand}" />
+                                <TapGestureRecognizer Command="{Binding Videos.ExportDetailedTimesPdfCommand}" />
                             </Border.GestureRecognizers>
                             <HorizontalStackLayout Spacing="6">
                                 <controls:SymbolIcon
@@ -7037,7 +7037,7 @@
                             StrokeShape="RoundRectangle 4"
                             VerticalOptions="Start">
                             <Border.GestureRecognizers>
-                                <TapGestureRecognizer Command="{Binding CloseDetailedTimesPopupCommand}" />
+                                <TapGestureRecognizer Command="{Binding Videos.CloseDetailedTimesPopupCommand}" />
                             </Border.GestureRecognizers>
                             <controls:SymbolIcon
                                 HeightRequest="{StaticResource IconSizeLarge}"
@@ -7055,13 +7055,13 @@
                             StrokeThickness="0">
                             <WebView BackgroundColor="White">
                                 <WebView.Source>
-                                    <HtmlWebViewSource Html="{Binding DetailedTimesHtml}" />
+                                    <HtmlWebViewSource Html="{Binding Videos.DetailedTimesHtml}" />
                                 </WebView.Source>
                             </WebView>
                         </Border>
                         <ActivityIndicator
-                            IsRunning="{Binding IsLoadingDetailedTimes}"
-                            IsVisible="{Binding IsLoadingDetailedTimes}"
+                            IsRunning="{Binding Videos.IsLoadingDetailedTimes}"
+                            IsVisible="{Binding Videos.IsLoadingDetailedTimes}"
                             Color="#FF0066"
                             HeightRequest="48"
                             WidthRequest="48"
@@ -7086,7 +7086,7 @@
                         Padding="8"
                         BackgroundColor="#FF404040"
                         HorizontalOptions="End"
-                        IsVisible="{Binding IsAthleteDropdownExpanded}"
+                        IsVisible="{Binding Videos.IsAthleteDropdownExpanded}"
                         Stroke="#FF3A3A3A"
                         StrokeShape="RoundRectangle 4"
                         StrokeThickness="1"
@@ -7098,7 +7098,7 @@
                         x:Name="AthleteDropdownPanel">
                         <ScrollView MaximumHeightRequest="260">
                             <VerticalStackLayout
-                                BindableLayout.ItemsSource="{Binding DetailedTimesAthletes}"
+                                BindableLayout.ItemsSource="{Binding Videos.DetailedTimesAthletes}"
                                 Spacing="2">
                                 <BindableLayout.ItemTemplate>
                                     <DataTemplate x:DataType="models:AthletePickerItem">
@@ -7109,7 +7109,7 @@
                                             StrokeShape="RoundRectangle 4">
                                             <Border.GestureRecognizers>
                                                 <TapGestureRecognizer 
-                                                    Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.SelectDetailedTimesAthleteCommand}"
+                                                    Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.Videos.SelectDetailedTimesAthleteCommand}"
                                                     CommandParameter="{Binding .}" />
                                             </Border.GestureRecognizers>
                                             <Label
@@ -7131,7 +7131,7 @@
                         Padding="16"
                         BackgroundColor="#FF404040"
                         HorizontalOptions="End"
-                        IsVisible="{Binding ShowReportOptionsPanel}"
+                        IsVisible="{Binding Videos.ShowReportOptionsPanel}"
                         Stroke="#FF3A3A3A"
                         StrokeShape="RoundRectangle 8"
                         StrokeThickness="1"
@@ -7155,7 +7155,7 @@
                                     Stroke="Transparent"
                                     StrokeShape="RoundRectangle 4">
                                     <Border.GestureRecognizers>
-                                        <TapGestureRecognizer Command="{Binding ApplyQuickSummaryPresetCommand}" />
+                                        <TapGestureRecognizer Command="{Binding Videos.ApplyQuickSummaryPresetCommand}" />
                                     </Border.GestureRecognizers>
                                     <Label
                                         FontSize="{StaticResource FontSizeSmall}"
@@ -7168,7 +7168,7 @@
                                     Stroke="Transparent"
                                     StrokeShape="RoundRectangle 4">
                                     <Border.GestureRecognizers>
-                                        <TapGestureRecognizer Command="{Binding ApplyFullAnalysisPresetCommand}" />
+                                        <TapGestureRecognizer Command="{Binding Videos.ApplyFullAnalysisPresetCommand}" />
                                     </Border.GestureRecognizers>
                                     <Label
                                         FontSize="{StaticResource FontSizeSmall}"
@@ -7181,7 +7181,7 @@
                                     Stroke="Transparent"
                                     StrokeShape="RoundRectangle 4">
                                     <Border.GestureRecognizers>
-                                        <TapGestureRecognizer Command="{Binding ApplyAthleteReportPresetCommand}" />
+                                        <TapGestureRecognizer Command="{Binding Videos.ApplyAthleteReportPresetCommand}" />
                                     </Border.GestureRecognizers>
                                     <Label
                                         FontSize="{StaticResource FontSizeSmall}"
@@ -7195,47 +7195,47 @@
                             <!--  Checkboxes de secciones  -->
                             <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="10" ColumnSpacing="16">
                                 <HorizontalStackLayout Grid.Row="0" Grid.Column="0" Spacing="8">
-                                    <CheckBox IsChecked="{Binding ReportOptions.ShowSessionHeader}" Color="#FF0066" />
+                                    <CheckBox IsChecked="{Binding Videos.ReportOptions.ShowSessionHeader}" Color="#FF0066" />
                                     <Label Text="Cabecera de sesión" TextColor="White" FontSize="{StaticResource FontSizeSmall}" VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                                 <HorizontalStackLayout Grid.Row="0" Grid.Column="1" Spacing="8">
-                                    <CheckBox IsChecked="{Binding ReportOptions.ShowTrainingSummary}" Color="#FF0066" />
+                                    <CheckBox IsChecked="{Binding Videos.ReportOptions.ShowTrainingSummary}" Color="#FF0066" />
                                     <Label Text="Resumen entrenamiento" TextColor="White" FontSize="{StaticResource FontSizeSmall}" VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                                 
                                 <HorizontalStackLayout Grid.Row="1" Grid.Column="0" Spacing="8">
-                                    <CheckBox IsChecked="{Binding ReportOptions.ShowGroupConsistency}" Color="#FF0066" />
+                                    <CheckBox IsChecked="{Binding Videos.ReportOptions.ShowGroupConsistency}" Color="#FF0066" />
                                     <Label Text="Consistencia grupo" TextColor="White" FontSize="{StaticResource FontSizeSmall}" VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                                 <HorizontalStackLayout Grid.Row="1" Grid.Column="1" Spacing="8">
-                                    <CheckBox IsChecked="{Binding ReportOptions.ShowMinMaxCharts}" Color="#FF0066" />
+                                    <CheckBox IsChecked="{Binding Videos.ReportOptions.ShowMinMaxCharts}" Color="#FF0066" />
                                     <Label Text="Gráficos Min-Max" TextColor="White" FontSize="{StaticResource FontSizeSmall}" VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                                 
                                 <HorizontalStackLayout Grid.Row="2" Grid.Column="0" Spacing="8">
-                                    <CheckBox IsChecked="{Binding ReportOptions.ShowTimeTables}" Color="#FF0066" />
+                                    <CheckBox IsChecked="{Binding Videos.ReportOptions.ShowTimeTables}" Color="#FF0066" />
                                     <Label Text="Tablas de tiempos" TextColor="White" FontSize="{StaticResource FontSizeSmall}" VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                                 <HorizontalStackLayout Grid.Row="2" Grid.Column="1" Spacing="8">
-                                    <CheckBox IsChecked="{Binding ReportOptions.ShowIndividualConsistency}" Color="#FF0066" />
+                                    <CheckBox IsChecked="{Binding Videos.ReportOptions.ShowIndividualConsistency}" Color="#FF0066" />
                                     <Label Text="Consistencia individual" TextColor="White" FontSize="{StaticResource FontSizeSmall}" VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                                 
                                 <HorizontalStackLayout Grid.Row="3" Grid.Column="0" Spacing="8">
-                                    <CheckBox IsChecked="{Binding ReportOptions.ShowLapAnalysis}" Color="#FF0066" />
+                                    <CheckBox IsChecked="{Binding Videos.ReportOptions.ShowLapAnalysis}" Color="#FF0066" />
                                     <Label Text="Análisis de parciales" TextColor="White" FontSize="{StaticResource FontSizeSmall}" VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                                 <HorizontalStackLayout Grid.Row="3" Grid.Column="1" Spacing="8">
-                                    <CheckBox IsChecked="{Binding ReportOptions.ShowRanking}" Color="#FF0066" />
+                                    <CheckBox IsChecked="{Binding Videos.ReportOptions.ShowRanking}" Color="#FF0066" />
                                     <Label Text="Ranking" TextColor="White" FontSize="{StaticResource FontSizeSmall}" VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                                 
                                 <HorizontalStackLayout Grid.Row="4" Grid.Column="0" Spacing="8">
-                                    <CheckBox IsChecked="{Binding ReportOptions.ShowPenalties}" Color="#FF0066" />
+                                    <CheckBox IsChecked="{Binding Videos.ReportOptions.ShowPenalties}" Color="#FF0066" />
                                     <Label Text="Penalizaciones" TextColor="White" FontSize="{StaticResource FontSizeSmall}" VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                                 <HorizontalStackLayout Grid.Row="4" Grid.Column="1" Spacing="8">
-                                    <CheckBox IsChecked="{Binding ReportOptions.ShowAthleteProfile}" Color="#FF0066" />
+                                    <CheckBox IsChecked="{Binding Videos.ReportOptions.ShowAthleteProfile}" Color="#FF0066" />
                                     <Label Text="Perfil del atleta" TextColor="White" FontSize="{StaticResource FontSizeSmall}" VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                             </Grid>
@@ -7245,7 +7245,7 @@
                             <!--  Botón aplicar  -->
                             <Button
                                 BackgroundColor="#FF0066"
-                                Command="{Binding ToggleReportOptionsPanelCommand}"
+                                Command="{Binding Videos.ToggleReportOptionsPanelCommand}"
                                 Text="Aplicar"
                                 TextColor="#FF1E1E1E"
                                 HeightRequest="36"
@@ -7300,7 +7300,7 @@
                     <!--  Crear nueva biblioteca  -->
                     <Border Style="{StaticResource ContextMenuItemBorder}">
                         <Border.IsVisible>
-                            <Binding Path="CanWriteRemoteLibrary" />
+                            <Binding Path="Remote.CanWriteRemoteLibrary" />
                         </Border.IsVisible>
                         <Border.Behaviors>
                             <behaviors:SidebarHoverBehavior />
@@ -7324,7 +7324,7 @@
                     <!--  Importar otra biblioteca  -->
                     <Border Style="{StaticResource ContextMenuItemBorder}">
                         <Border.IsVisible>
-                            <Binding Path="CanWriteRemoteLibrary" />
+                            <Binding Path="Remote.CanWriteRemoteLibrary" />
                         </Border.IsVisible>
                         <Border.Behaviors>
                             <behaviors:SidebarHoverBehavior />
@@ -8009,7 +8009,7 @@
             Grid.Column="0"
             Grid.ColumnSpan="5"
             BackgroundColor="#CC000000"
-            IsVisible="{Binding IsLoginRequired}">
+            IsVisible="{Binding Remote.IsLoginRequired}">
             <Grid
                 HorizontalOptions="Center"
                 VerticalOptions="Center"
@@ -8036,37 +8036,37 @@
                         <Entry
                             Placeholder="Email"
                             Keyboard="Email"
-                            Text="{Binding CloudLoginEmail}"
+                            Text="{Binding Remote.CloudLoginEmail}"
                             TextColor="White"
                             PlaceholderColor="#FF777777"
                             ClearButtonVisibility="WhileEditing" />
                         <Entry
                             Placeholder="Contraseña"
                             IsPassword="True"
-                            Text="{Binding CloudLoginPassword}"
+                            Text="{Binding Remote.CloudLoginPassword}"
                             TextColor="White"
                             PlaceholderColor="#FF777777" />
 
                         <Button
                             Text="Iniciar sesión"
-                            Command="{Binding CloudLoginCommand}"
+                            Command="{Binding Remote.CloudLoginCommand}"
                             BackgroundColor="#FF3B82F6"
                             TextColor="White"
                             CornerRadius="12"
                             HeightRequest="44"
-                            IsEnabled="{Binding IsCloudLoginBusy, Converter={toolkit:InvertedBoolConverter}}" />
+                            IsEnabled="{Binding Remote.IsCloudLoginBusy, Converter={toolkit:InvertedBoolConverter}}" />
 
                         <ActivityIndicator
-                            IsRunning="{Binding IsCloudLoginBusy}"
-                            IsVisible="{Binding IsCloudLoginBusy}"
+                            IsRunning="{Binding Remote.IsCloudLoginBusy}"
+                            IsVisible="{Binding Remote.IsCloudLoginBusy}"
                             Color="#FF3B82F6" />
 
                         <Label
-                            Text="{Binding CloudLoginStatusMessage}"
+                            Text="{Binding Remote.CloudLoginStatusMessage}"
                             FontFamily="{StaticResource AppFontBody}"
                             FontSize="{StaticResource FontSizeSmall}"
                             TextColor="#FFFFB703"
-                            IsVisible="{Binding CloudLoginStatusMessage, Converter={StaticResource NotNullOrEmptyBoolConverter}}" />
+                            IsVisible="{Binding Remote.CloudLoginStatusMessage, Converter={StaticResource NotNullOrEmptyBoolConverter}}" />
                     </VerticalStackLayout>
                 </Border>
             </Grid>

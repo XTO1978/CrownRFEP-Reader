@@ -14,6 +14,7 @@ public class SessionDetailViewModel : BaseViewModel
 {
     private readonly DatabaseService _databaseService;
     private readonly StatisticsService _statisticsService;
+    private readonly IVideoClipUpdateNotifier _videoClipUpdateNotifier;
 
     private int _sessionId;
     private Session? _session;
@@ -84,10 +85,11 @@ public class SessionDetailViewModel : BaseViewModel
     /// </summary>
     public bool CanRecordVideo => DeviceInfo.Platform == DevicePlatform.iOS;
 
-    public SessionDetailViewModel(DatabaseService databaseService, StatisticsService statisticsService)
+    public SessionDetailViewModel(DatabaseService databaseService, StatisticsService statisticsService, IVideoClipUpdateNotifier videoClipUpdateNotifier)
     {
         _databaseService = databaseService;
         _statisticsService = statisticsService;
+        _videoClipUpdateNotifier = videoClipUpdateNotifier;
 
         RefreshCommand = new AsyncRelayCommand(LoadSessionAsync);
         PlayVideoCommand = new AsyncRelayCommand<VideoClip>(PlayVideoAsync);
@@ -97,13 +99,21 @@ public class SessionDetailViewModel : BaseViewModel
         RecordVideoCommand = new AsyncRelayCommand(RecordVideoAsync);
 
         // Refrescar galería/filtros si un VideoClip cambia (p.ej. asignación de atleta desde SinglePlayer)
-        MessagingCenter.Subscribe<SinglePlayerViewModel, int>(this, "VideoClipUpdated", (sender, videoId) =>
+        _videoClipUpdateNotifier.VideoClipUpdated += HandleVideoClipUpdated;
+    }
+
+    private async void HandleVideoClipUpdated(object? sender, int videoClipId)
+    {
+        if (SessionId == 0) return;
+
+        var wasInList = AllVideos.Any(v => v.Id == videoClipId);
+        var updated = await _databaseService.GetVideoClipByIdAsync(videoClipId);
+        var shouldReload = wasInList || (updated != null && updated.SessionId == SessionId);
+        if (!shouldReload) return;
+
+        MainThread.BeginInvokeOnMainThread(async () =>
         {
-            if (SessionId == 0) return;
-            MainThread.BeginInvokeOnMainThread(async () =>
-            {
-                await LoadSessionAsync();
-            });
+            await LoadSessionAsync();
         });
     }
 

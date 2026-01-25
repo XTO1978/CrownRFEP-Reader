@@ -1,10 +1,15 @@
+using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
+using System.IO;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Input;
 using CrownRFEP_Reader.Models;
 using CrownRFEP_Reader.Services;
@@ -21,9 +26,9 @@ namespace CrownRFEP_Reader.ViewModels;
 public class SessionTypeOption : INotifyPropertyChanged
 {
     private bool _isSelected;
-    
+
     public string Name { get; set; } = "";
-    
+
     public bool IsSelected
     {
         get => _isSelected;
@@ -36,7 +41,7 @@ public class SessionTypeOption : INotifyPropertyChanged
             }
         }
     }
-    
+
     public event PropertyChangedEventHandler? PropertyChanged;
     protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
@@ -76,7 +81,7 @@ public class SessionWithDiary : INotifyPropertyChanged
     private ObservableCollection<VideoClip> _videos = new();
 
     public Session Session { get; set; } = null!;
-    
+
     /// <summary>Vídeos de la sesión (máximo 6 para la mini galería)</summary>
     public ObservableCollection<VideoClip> Videos
     {
@@ -91,12 +96,12 @@ public class SessionWithDiary : INotifyPropertyChanged
             OnPropertyChanged(nameof(HasExtraVideos));
         }
     }
-    
+
     public bool HasVideos => Videos.Count > 0;
     public int VideoCount { get; set; }
     public int ExtraVideosCount => Math.Max(0, VideoCount - 6);
     public bool HasExtraVideos => ExtraVideosCount > 0;
-    
+
     public SessionDiary? Diary
     {
         get => _diary;
@@ -118,7 +123,7 @@ public class SessionWithDiary : INotifyPropertyChanged
     }
 
     public bool HasDiary => Diary != null;
-    public bool HasValoraciones => Diary != null && 
+    public bool HasValoraciones => Diary != null &&
         (Diary.ValoracionFisica > 0 || Diary.ValoracionMental > 0 || Diary.ValoracionTecnica > 0);
     public bool HasNotas => Diary != null && !string.IsNullOrWhiteSpace(Diary.Notas);
 
@@ -158,9 +163,9 @@ public class SessionWithDiary : INotifyPropertyChanged
 public class IconPickerItem : INotifyPropertyChanged
 {
     private bool _isSelected;
-    
+
     public string Name { get; set; } = "";
-    
+
     public bool IsSelected
     {
         get => _isSelected;
@@ -186,58 +191,23 @@ public class DashboardViewModel : BaseViewModel
 {
     private readonly DatabaseService _databaseService;
     private readonly ITrashService _trashService;
-        private int _trashItemCount;
-        private int _videoLessonsCount;
+    private int _trashItemCount;
     private readonly CrownFileService _crownFileService;
     private readonly StatisticsService _statisticsService;
     private readonly ThumbnailService _thumbnailService;
-    private readonly IHealthKitService _healthKitService;
     private readonly ITableExportService _tableExportService;
     private readonly ImportProgressService? _importProgressService;
 
+    public LayoutStateViewModel Layout { get; }
+    public BatchEditViewModel BatchEdit { get; }
+    public SmartFoldersViewModel SmartFolders { get; }
+    public RemoteLibraryViewModel Remote { get; }
+    public DiaryWellnessViewModel Diary { get; }
+    public VideosViewModel Videos { get; }
+
     private DashboardStats? _stats;
     private Session? _selectedSession;
-    private bool _isAllGallerySelected;
-    private bool _isVideoLessonsSelected;
-    private bool _isDiaryViewSelected;
-    private bool _isUserLibraryExpanded = true;
-    private bool _isRemoteLibraryVisible = true; // Siempre visible, conectamos al equipo automáticamente
-    private bool _isRemoteLibraryExpanded = true;
-    private bool _isRemoteAllGallerySelected;
-    private bool _isRemoteVideoLessonsSelected;
-    private bool _isRemoteTrashSelected;
-    private bool _isRemoteSmartFoldersExpanded = true;
-    private bool _isRemoteSessionsListExpanded = true;
-    private string _remoteLibraryDisplayName = "Organización";
-    private string _remoteAllGalleryItemCount = "—";
-    private string _remoteVideoLessonsCount = "—";
-    private string _remoteTrashItemCount = "—";
-    private ObservableCollection<SmartFolderDefinition> _remoteSmartFolders = new();
-    private ObservableCollection<RemoteSessionListItem> _remoteSessions = new();
-    private int _selectedRemoteSessionId;
-    private bool _isSessionsListExpanded = true;
-    private bool _isFavoritesExpanded = true;
-    private bool _isFavoriteSessionsSelected;
-    private bool _isFavoriteVideosSelected;
     private int _favoriteSessionsCount;
-    private int _favoriteVideosCount;
-    private bool _isLoadingSelectedSessionVideos;
-
-    // Videos remotos (de Wasabi)
-    private ObservableCollection<RemoteVideoItem> _remoteVideos = new();
-    private bool _isLoadingRemoteVideos;
-    private List<CloudFileInfo>? _remoteFilesCache;
-    private List<VideoClip>? _favoriteVideosCache;
-    private readonly HttpClient _remoteMetadataHttpClient = new();
-    private bool _isLoginRequired;
-    private bool _isCloudLoginBusy;
-    private string _cloudLoginEmail = "";
-    private string _cloudLoginPassword = "";
-    private string _cloudLoginStatusMessage = "";
-    
-    // Selección múltiple de videos remotos
-    private bool _isRemoteMultiSelectMode;
-    private bool _isRemoteSelectAllActive;
 
     private GridLength _mainPanelWidth = new(2.5, GridUnitType.Star);
     private GridLength _rightPanelWidth = new(1.2, GridUnitType.Star);
@@ -253,13 +223,6 @@ public class DashboardViewModel : BaseViewModel
 
     private readonly Dictionary<string, bool> _sessionGroupExpandedState = new();
 
-    // Vista Diario (calendario)
-    private DateTime _selectedDiaryDate = DateTime.Today;
-    private List<SessionDiary> _diaryEntriesForMonth = new();
-    private List<Session> _sessionsForMonth = new();
-    private List<DailyWellness> _wellnessDataForMonth = new();
-    private SessionDiary? _selectedDateDiary;
-    private ObservableCollection<SessionWithDiary> _selectedDateSessionsWithDiary = new();
     private int _importProgressValue;
     private bool _isImporting;
 
@@ -268,131 +231,14 @@ public class DashboardViewModel : BaseViewModel
     private string _newSessionName = "";
     private string _newSessionType = "Gimnasio";
     private string _newSessionLugar = "";
-    private bool _showNewSessionSidebarPopup;
-
-    // Carpetas inteligentes (galería)
-    private const string SmartFoldersPreferencesKey = "SmartFolders";
     private readonly ICloudBackendService _cloudBackendService;
-    private readonly SyncService? _syncService;
     private readonly StorageMigrationService? _migrationService;
-    private bool _showSmartFolderSidebarPopup;
-    private string _newSmartFolderName = "";
-    private string _newSmartFolderMatchMode = "All"; // All=AND, Any=OR
-    private int _newSmartFolderLiveMatchCount;
-    private SmartFolderDefinition? _activeSmartFolder;
-    private List<VideoClip>? _smartFolderFilteredVideosCache;
-
-    // Evita que al limpiar filtros se disparen ApplyFiltersAsync múltiples veces.
-    private bool _suppressFilterSelectionChanged;
-    // Versión para descartar cálculos de filtros fuera de orden (race conditions).
-    private int _filtersVersion;
 
     // Popup de personalización de icono/color
-    private bool _showIconColorPickerPopup;
     private SmartFolderDefinition? _iconColorPickerTargetSmartFolder;
     private SessionRow? _iconColorPickerTargetSession;
-
-    // HealthKit / Datos de Salud (solo iOS) y Bienestar manual
-    private DailyHealthData? _selectedDateHealthData;
-    private bool _isHealthKitAuthorized;
-    private bool _isLoadingHealthData;
-    
-    // Bienestar diario (entrada manual)
-    private DailyWellness? _selectedDateWellness;
-    private bool _isEditingWellness;
-    private double? _wellnessSleepHours;
-    private int? _wellnessSleepQuality;
-    private int? _wellnessRecoveryFeeling;
-    private int? _wellnessMuscleFatigue;
-    private int? _wellnessMoodRating;
-    private int? _wellnessRestingHeartRate;
-    private int? _wellnessHRV;
-    private string? _wellnessNotes;
-
-    // Pestañas columna derecha
-    private bool _isStatsTabSelected;
-    private bool _isCrudTechTabSelected = true;
-    private bool _isDiaryTabSelected;
-    private bool _isQuickAnalysisIsolatedMode;
-
-    private int _videoGalleryColumnSpan = DeviceInfo.Current.Platform == DevicePlatform.iOS ? 3 : 4;
-
-    // Diario de sesión
-    private SessionDiary? _currentSessionDiary;
-    private bool _isEditingDiary;
-    private int _diaryValoracionFisica = 3;
-    private int _diaryValoracionMental = 3;
-    private int _diaryValoracionTecnica = 3;
-    private string _diaryNotas = "";
-    private double _avgValoracionFisica;
-    private double _avgValoracionMental;
-    private double _avgValoracionTecnica;
-    private int _avgValoracionCount;
-    private int _selectedEvolutionPeriod = 1; // 0=Semana, 1=Mes, 2=Año, 3=Todo
-    private ObservableCollection<SessionDiary> _valoracionEvolution = new();
-    
-    // Datos para el gráfico de líneas múltiples
-    private ObservableCollection<int> _evolutionFisicaValues = new();
-    private ObservableCollection<int> _evolutionMentalValues = new();
-    private ObservableCollection<int> _evolutionTecnicaValues = new();
-    private ObservableCollection<string> _evolutionLabels = new();
-
-    // Selección múltiple de videos
-    private bool _isMultiSelectMode;
-    private bool _isSelectAllActive;
-    private readonly HashSet<int> _selectedVideoIds = new();
-
-    // Modo de análisis: único, paralelo o cuádruple (paralelo por defecto)
-    private bool _isSingleVideoMode = false;
-    private bool _isQuadVideoMode = false;
-    
-    // Orientación análisis paralelo (horizontal por defecto)
-    private bool _isHorizontalOrientation = true;
-
-    // Vídeos para análisis paralelo/cuádruple
-    private VideoClip? _parallelVideo1;
-    private VideoClip? _parallelVideo2;
-    private VideoClip? _parallelVideo3;
-    private VideoClip? _parallelVideo4;
-    private bool _isPreviewMode;
-
-    // Preview readiness: usamos esto para mantener la miniatura visible
-    // hasta que el PrecisionVideoPlayer haya abierto el medio.
-    private bool _isPreviewPlayer1Ready;
-    private bool _isPreviewPlayer2Ready;
-    private bool _isPreviewPlayer3Ready;
-    private bool _isPreviewPlayer4Ready;
-
-    // Flag para indicar si hay actualizaciones de estadísticas pendientes
-    private bool _hasStatsUpdatePending;
-    private readonly HashSet<int> _modifiedVideoIds = new();
-
-    // Lazy loading
-    private const int PageSize = 40;
-    private int _currentPage;
-    private bool _hasMoreVideos;
-    private bool _isLoadingMore;
-    private List<VideoClip>? _allVideosCache; // Cache para paginación
-    private List<VideoClip>? _filteredVideosCache; // Cache de videos filtrados
-    private List<Input>? _allInputsCache; // Cache de inputs para filtrado por tag
-    private List<Tag>? _allTagsCache; // Cache de tags
-
-    // Filtros para Galería General (fechas mantienen selección simple)
-    private DateTime? _selectedFilterDateFrom;
-    private DateTime? _selectedFilterDateTo;
-
-    // Edición en lote
-    private bool _showBatchEditPopup;
-    private ObservableCollection<Athlete> _batchEditAthletes = new();
-    private ObservableCollection<Tag> _batchEditTags = new();
-    private Athlete? _selectedBatchAthlete;
-    private int _batchEditSection;
-    private bool _batchEditSectionEnabled;
-    private bool _batchEditAthleteEnabled;
-    private string? _newBatchAthleteSurname;
-    private string? _newBatchAthleteName;
-    private string? _newBatchTagText;
-    private readonly HashSet<int> _batchEditSelectedTagIds = new();
+    private string _selectedPickerIcon = "oar.2.crossed";
+    private string _selectedPickerColor = "#FF6DDDFF";
 
     // Edición de sesión individual
     private bool _showSessionEditPopup;
@@ -406,128 +252,14 @@ public class DashboardViewModel : BaseViewModel
     private int _syncProgress;
     private string _syncStatusText = "Sincronización cloud";
     private int _pendingSyncCount;
-
-    private CancellationTokenSource? _selectedSessionVideosCts;
-
-    private sealed record GalleryStatsSnapshot(
-        List<SectionStats> SectionStats,
-        List<double> SectionDurationMinutes,
-        List<string> SectionLabels,
-        List<SessionAthleteTimeRow> AthleteTimes);
-
-    private static async Task ReplaceCollectionInBatchesAsync<T>(
-        ObservableCollection<T> target,
-        IEnumerable<T> items,
-        CancellationToken ct,
-        int batchSize = 20)
-    {
-        target.Clear();
-
-        var i = 0;
-        foreach (var item in items)
-        {
-            if (ct.IsCancellationRequested)
-                return;
-
-            target.Add(item);
-            i++;
-
-            if (i % batchSize == 0)
-                await Task.Yield();
-        }
-    }
-
-    private static GalleryStatsSnapshot BuildGalleryStatsSnapshot(List<VideoClip> clips)
-    {
-        var sectionStats = clips
-            .GroupBy(v => v.Section)
-            .OrderBy(g => g.Key)
-            .Select(g => new SectionStats
-            {
-                Section = g.Key,
-                VideoCount = g.Count(),
-                TotalDuration = g.Sum(v => v.ClipDuration)
-            })
-            .ToList();
-        var sectionMinutes = sectionStats
-            .Select(s => Math.Round(s.TotalDuration / 60.0, 1))
-            .ToList();
-        var sectionLabels = sectionStats.Select(s => s.Section.ToString()).ToList();
-
-        var byAthlete = clips
-            .Where(v => v.AtletaId != 0)
-            .GroupBy(v => v.AtletaId)
-            .Select(g => new SessionAthleteTimeRow(
-                g.FirstOrDefault()?.Atleta?.NombreCompleto ?? $"Atleta {g.Key}",
-                g.Count(),
-                g.Sum(v => v.ClipDuration),
-                g.Any() ? g.Average(v => v.ClipDuration) : 0))
-            .OrderByDescending(x => x.TotalSeconds)
-            .ToList();
-
-        return new GalleryStatsSnapshot(sectionStats, sectionMinutes, sectionLabels, byAthlete);
-    }
-
-    private async Task ApplyGalleryStatsSnapshotAsync(GalleryStatsSnapshot snapshot, CancellationToken ct)
-    {
-        await MainThread.InvokeOnMainThreadAsync(async () =>
-        {
-            if (ct.IsCancellationRequested)
-                return;
-
-            SelectedSessionSectionStats.Clear();
-            SelectedSessionAthleteTimes.Clear();
-            SelectedSessionSectionDurationMinutes.Clear();
-            SelectedSessionSectionLabels.Clear();
-            SelectedSessionTagVideoCounts.Clear();
-            SelectedSessionTagLabels.Clear();
-
-            var i = 0;
-            foreach (var s in snapshot.SectionStats)
-            {
-                if (ct.IsCancellationRequested)
-                    return;
-
-                SelectedSessionSectionStats.Add(s);
-                i++;
-                if (i % 20 == 0)
-                    await Task.Yield();
-            }
-
-            foreach (var m in snapshot.SectionDurationMinutes)
-                SelectedSessionSectionDurationMinutes.Add(m);
-            foreach (var l in snapshot.SectionLabels)
-                SelectedSessionSectionLabels.Add(l);
-
-            i = 0;
-            foreach (var row in snapshot.AthleteTimes)
-            {
-                if (ct.IsCancellationRequested)
-                    return;
-
-                SelectedSessionAthleteTimes.Add(row);
-                i++;
-                if (i % 20 == 0)
-                    await Task.Yield();
-            }
-        });
-    }
+    private bool _isSessionsExpanded = true;
+    private bool _showNewSessionSidebarPopup;
 
     public DashboardStats? Stats
     {
         get => _stats;
-        set
-        {
-            if (SetProperty(ref _stats, value))
-            {
-                OnPropertyChanged(nameof(AllGalleryItemCount));
-            }
-        }
+        set => SetProperty(ref _stats, value);
     }
-
-    // Contador para el item fijo "Galería General" en el sidebar.
-    // Usa cache cuando está disponible; si no, cae a Stats para evitar mostrar 0.
-    public int AllGalleryItemCount => _allVideosCache?.Count ?? Stats?.TotalVideos ?? 0;
 
     public Session? SelectedSession
     {
@@ -543,7 +275,7 @@ public class DashboardViewModel : BaseViewModel
                     IsDiaryViewSelected = false;
                     IsFavoriteVideosSelected = false;
                     // Desactivar secciones remotas
-                    DeselectRemoteSections();
+                    Remote.ClearRemoteSections();
                 }
                 else
                 {
@@ -558,12 +290,13 @@ public class DashboardViewModel : BaseViewModel
                 OnPropertyChanged(nameof(SelectedSessionTitle));
                 OnPropertyChanged(nameof(HasSpecificSessionSelected));
                 OnPropertyChanged(nameof(CanShowRecordButton));
-                _ = LoadSelectedSessionVideosAsync(value);
-                
+                _ = Videos.LoadSelectedSessionVideosAsync(value);
+                Videos.NotifySelectionChanged();
+
                 // Recargar datos de la pestaña activa
-                if (IsDiaryTabSelected)
+                if (Layout.IsDiaryTabSelected)
                 {
-                    _ = LoadSessionDiaryAsync();
+                    _ = Diary.LoadSessionDiaryAsync(value);
                 }
             }
         }
@@ -571,167 +304,99 @@ public class DashboardViewModel : BaseViewModel
 
     public bool IsAllGallerySelected
     {
-        get => _isAllGallerySelected;
+        get => Layout.IsAllGallerySelected;
         set
         {
-            if (SetProperty(ref _isAllGallerySelected, value))
+            if (Layout.IsAllGallerySelected == value)
+                return;
+
+            Layout.IsAllGallerySelected = value;
+
+            if (value)
             {
-                if (value)
-                {
-                    IsVideoLessonsSelected = false;
-                    IsDiaryViewSelected = false;
-                    IsFavoriteSessionsSelected = false;
-                    IsFavoriteVideosSelected = false;
-                    ClearSectionTimes();
-                    // Desactivar secciones remotas
-                    DeselectRemoteSections();
-                }
-                OnPropertyChanged(nameof(SelectedSessionTitle));
-                OnPropertyChanged(nameof(VideoCountDisplayText));
-                OnPropertyChanged(nameof(ShowSectionTimesTable));
-                OnPropertyChanged(nameof(HasSpecificSessionSelected));
+                IsVideoLessonsSelected = false;
+                IsDiaryViewSelected = false;
+                IsFavoriteSessionsSelected = false;
+                IsFavoriteVideosSelected = false;
+                Videos.ClearSectionTimes();
+                // Desactivar secciones remotas
+                Remote.ClearRemoteSections();
             }
+
+            OnPropertyChanged(nameof(SelectedSessionTitle));
+            OnPropertyChanged(nameof(ShowSectionTimesTable));
+            OnPropertyChanged(nameof(HasSpecificSessionSelected));
         }
     }
 
     public bool IsVideoLessonsSelected
     {
-        get => _isVideoLessonsSelected;
+        get => Layout.IsVideoLessonsSelected;
         set
         {
-            if (SetProperty(ref _isVideoLessonsSelected, value))
+            if (Layout.IsVideoLessonsSelected == value)
+                return;
+
+            Layout.IsVideoLessonsSelected = value;
+
+            if (value)
             {
-                if (value)
-                {
-                    IsAllGallerySelected = false;
-                    IsDiaryViewSelected = false;
-                    IsFavoriteSessionsSelected = false;
-                    IsFavoriteVideosSelected = false;
-                    ClearSectionTimes();
-                    // Desactivar secciones remotas
-                    DeselectRemoteSections();
-                }
-                UpdateRightPanelLayout();
-                OnPropertyChanged(nameof(SelectedSessionTitle));
-                OnPropertyChanged(nameof(VideoCountDisplayText));
-                OnPropertyChanged(nameof(ShowSectionTimesTable));
-                OnPropertyChanged(nameof(HasSpecificSessionSelected));
-                OnPropertyChanged(nameof(ShowVideoGallery));
+                IsAllGallerySelected = false;
+                IsDiaryViewSelected = false;
+                IsFavoriteSessionsSelected = false;
+                IsFavoriteVideosSelected = false;
+                Videos.ClearSectionTimes();
+                // Desactivar secciones remotas
+                Remote.ClearRemoteSections();
             }
+
+            UpdateRightPanelLayout();
+            OnPropertyChanged(nameof(SelectedSessionTitle));
+            OnPropertyChanged(nameof(ShowSectionTimesTable));
+            OnPropertyChanged(nameof(HasSpecificSessionSelected));
+            OnPropertyChanged(nameof(ShowVideoGallery));
         }
     }
 
     public bool IsDiaryViewSelected
     {
-        get => _isDiaryViewSelected;
+        get => Layout.IsDiaryViewSelected;
         set
         {
-            if (SetProperty(ref _isDiaryViewSelected, value))
+            if (Layout.IsDiaryViewSelected == value)
+                return;
+
+            Layout.IsDiaryViewSelected = value;
+
+            if (value)
             {
-                if (value)
-                {
-                    IsAllGallerySelected = false;
-                    IsVideoLessonsSelected = false;
-                    IsFavoriteSessionsSelected = false;
-                    IsFavoriteVideosSelected = false;
-                    SelectedSession = null;
-                    ClearSectionTimes();
-                    // Desactivar secciones remotas
-                    DeselectRemoteSections();
-                    _ = LoadDiaryViewDataAsync();
-                }
-                UpdateRightPanelLayout();
-                OnPropertyChanged(nameof(SelectedSessionTitle));
-                OnPropertyChanged(nameof(VideoCountDisplayText));
-                OnPropertyChanged(nameof(ShowSectionTimesTable));
-                OnPropertyChanged(nameof(HasSpecificSessionSelected));
-                OnPropertyChanged(nameof(ShowVideoGallery));
+                IsAllGallerySelected = false;
+                IsVideoLessonsSelected = false;
+                IsFavoriteSessionsSelected = false;
+                IsFavoriteVideosSelected = false;
+                SelectedSession = null;
+                Videos.ClearSectionTimes();
+                // Desactivar secciones remotas
+                Remote.ClearRemoteSections();
+                _ = Diary.LoadDiaryViewDataAsync();
             }
+
+            UpdateRightPanelLayout();
+            OnPropertyChanged(nameof(SelectedSessionTitle));
+            OnPropertyChanged(nameof(ShowSectionTimesTable));
+            OnPropertyChanged(nameof(HasSpecificSessionSelected));
+            OnPropertyChanged(nameof(ShowVideoGallery));
         }
     }
 
-    public DateTime SelectedDiaryDate
-    {
-        get => _selectedDiaryDate;
-        set
-        {
-            if (SetProperty(ref _selectedDiaryDate, value))
-            {
-                _ = LoadDiaryForDateAsync(value);
-                _ = LoadWellnessDataForDateAsync(value);
-            }
-        }
-    }
+    public bool ShowVideoGallery => Videos.ShowVideoGallery;
 
-    public List<SessionDiary> DiaryEntriesForMonth
-    {
-        get => _diaryEntriesForMonth;
-        set => SetProperty(ref _diaryEntriesForMonth, value);
-    }
+    public bool ShowSectionTimesTable => Videos.ShowSectionTimesTable;
 
-    public List<Session> SessionsForMonth
-    {
-        get => _sessionsForMonth;
-        set => SetProperty(ref _sessionsForMonth, value);
-    }
+    public bool HasSpecificSessionSelected => SelectedSession != null;
 
-    public List<DailyWellness> WellnessDataForMonth
-    {
-        get => _wellnessDataForMonth;
-        set
-        {
-            if (SetProperty(ref _wellnessDataForMonth, value))
-            {
-                OnPropertyChanged(nameof(AverageWellnessScore));
-            }
-        }
-    }
+    public bool CanShowRecordButton => SelectedSession != null;
 
-    /// <summary>
-    /// Media del WellnessScore de todos los datos del mes
-    /// </summary>
-    public int? AverageWellnessScore
-    {
-        get
-        {
-            if (_wellnessDataForMonth == null || _wellnessDataForMonth.Count == 0)
-                return null;
-            
-            var scoresWithData = _wellnessDataForMonth
-                .Where(w => w.HasData && w.WellnessScore > 0)
-                .Select(w => w.WellnessScore)
-                .ToList();
-            
-            if (scoresWithData.Count == 0)
-                return null;
-            
-            return (int)Math.Round(scoresWithData.Average());
-        }
-    }
-
-    public SessionDiary? SelectedDateDiary
-    {
-        get => _selectedDateDiary;
-        set
-        {
-            if (SetProperty(ref _selectedDateDiary, value))
-            {
-                OnPropertyChanged(nameof(HasSelectedDateDiary));
-            }
-        }
-    }
-
-    public bool HasSelectedDateDiary => SelectedDateDiary != null;
-
-    public ObservableCollection<SessionWithDiary> SelectedDateSessionsWithDiary
-    {
-        get => _selectedDateSessionsWithDiary;
-        set => SetProperty(ref _selectedDateSessionsWithDiary, value);
-    }
-
-    public bool HasSelectedDateSessions => SelectedDateSessionsWithDiary.Count > 0;
-
-    // Propiedades para nueva sesión manual
     public bool IsAddingNewSession
     {
         get => _isAddingNewSession;
@@ -753,14 +418,11 @@ public class DashboardViewModel : BaseViewModel
     public string NewSessionLugar
     {
         get => _newSessionLugar;
-        set
-        {
-            if (SetProperty(ref _newSessionLugar, value))
-            {
-                UpdatePlaceSelectionStates(value);
-            }
-        }
+        set => SetProperty(ref _newSessionLugar, value);
     }
+
+    public ObservableCollection<SessionTypeOption> SessionTypeOptions { get; } = new();
+    public ObservableCollection<PlaceOption> SessionPlaceOptions { get; } = new();
 
     public bool ShowNewSessionSidebarPopup
     {
@@ -768,274 +430,96 @@ public class DashboardViewModel : BaseViewModel
         set => SetProperty(ref _showNewSessionSidebarPopup, value);
     }
 
-    public bool ShowSmartFolderSidebarPopup
-    {
-        get => _showSmartFolderSidebarPopup;
-        set => SetProperty(ref _showSmartFolderSidebarPopup, value);
-    }
-
-    public bool ShowIconColorPickerPopup
-    {
-        get => _showIconColorPickerPopup;
-        set => SetProperty(ref _showIconColorPickerPopup, value);
-    }
-
-    public SmartFolderDefinition? IconColorPickerTargetSmartFolder
-    {
-        get => _iconColorPickerTargetSmartFolder;
-        set => SetProperty(ref _iconColorPickerTargetSmartFolder, value);
-    }
-
-    public SessionRow? IconColorPickerTargetSession
-    {
-        get => _iconColorPickerTargetSession;
-        set => SetProperty(ref _iconColorPickerTargetSession, value);
-    }
-
-    public bool IsPickerForSmartFolder => IconColorPickerTargetSmartFolder != null;
-    public bool IsPickerForSession => IconColorPickerTargetSession != null;
-
-    public string IconColorPickerTitle => IsPickerForSmartFolder 
-        ? IconColorPickerTargetSmartFolder?.Name ?? "Carpeta" 
-        : IconColorPickerTargetSession?.Session?.DisplayName ?? "Sesión";
-
-    // Icono y color actualmente seleccionado del elemento target
-    public string SelectedPickerIcon => IsPickerForSmartFolder 
-        ? IconColorPickerTargetSmartFolder?.Icon ?? "folder"
-        : IconColorPickerTargetSession?.Session?.Icon ?? "oar.2.crossed";
-
-    public string SelectedPickerColor => IsPickerForSmartFolder 
-        ? IconColorPickerTargetSmartFolder?.IconColor ?? "#FF888888"
-        : IconColorPickerTargetSession?.Session?.IconColor ?? "#FF6DDDFF";
-
-    // Iconos disponibles para el picker
-    public ObservableCollection<IconPickerItem> AvailableIcons { get; } = new()
-    {
-        new() { Name = "folder" }, new() { Name = "folder.fill" }, new() { Name = "star" }, new() { Name = "star.fill" },
-        new() { Name = "heart" }, new() { Name = "heart.fill" }, new() { Name = "flag" }, new() { Name = "flag.fill" },
-        new() { Name = "bookmark" }, new() { Name = "bookmark.fill" }, new() { Name = "tag" }, new() { Name = "tag.fill" },
-        new() { Name = "bolt" }, new() { Name = "bolt.fill" }, new() { Name = "flame" }, new() { Name = "flame.fill" },
-        new() { Name = "trophy" }, new() { Name = "trophy.fill" }, new() { Name = "figure.run" }, new() { Name = "oar.2.crossed" },
-        new() { Name = "sportscourt" }, new() { Name = "bicycle" }, new() { Name = "figure.walk" }, new() { Name = "camera" },
-        new() { Name = "video" }, new() { Name = "photo" }, new() { Name = "doc" }, new() { Name = "calendar" },
-        new() { Name = "clock" }, new() { Name = "bell" }, new() { Name = "mappin" }, new() { Name = "location" },
-        new() { Name = "house" }, new() { Name = "building.2" }, new() { Name = "car" }, new() { Name = "airplane" }
-    };
-
-    // Colores disponibles para el picker
-    public List<string> AvailableColors { get; } = new()
-    {
-        "#FFFFFFFF", // Blanco
-        "#FF888888", // Gris
-        "#FFFF453A", // Rojo
-        "#FFFF9F0A", // Naranja
-        "#FFFFD60A", // Amarillo
-        "#FF30D158", // Verde
-        "#FF64D2FF", // Cyan
-        "#FF0A84FF", // Azul
-        "#FFBF5AF2", // Morado
-        "#FFFF375F", // Rosa
-        "#FF6DDDFF"  // Cyan claro (default sesión)
-    };
-
-    private bool _isSmartFoldersExpanded = true;
-    public bool IsSmartFoldersExpanded
-    {
-        get => _isSmartFoldersExpanded;
-        set => SetProperty(ref _isSmartFoldersExpanded, value);
-    }
-
-    private bool _isSessionsExpanded = true;
     public bool IsSessionsExpanded
     {
         get => _isSessionsExpanded;
         set => SetProperty(ref _isSessionsExpanded, value);
     }
 
-    public ObservableCollection<SmartFolderDefinition> SmartFolders { get; } = new();
-    public ObservableCollection<SmartFolderCriterion> NewSmartFolderCriteria { get; } = new();
-
-    public ObservableCollection<string> SmartFolderFieldOptions { get; } = new()
+    public bool IsSyncing
     {
-        "Lugar",
-        "Deportista",
-        "Sección",
-        "Tag",
-        "Fecha",
+        get => _isSyncing;
+        set => SetProperty(ref _isSyncing, value);
+    }
+
+    public int SyncProgress
+    {
+        get => _syncProgress;
+        set => SetProperty(ref _syncProgress, value);
+    }
+
+    public string SyncStatusText
+    {
+        get => _syncStatusText;
+        set => SetProperty(ref _syncStatusText, value);
+    }
+
+    public int PendingSyncCount
+    {
+        get => _pendingSyncCount;
+        set => SetProperty(ref _pendingSyncCount, value);
+    }
+
+    public SmartFolderDefinition? IconColorPickerTargetSmartFolder
+    {
+        get => _iconColorPickerTargetSmartFolder;
+        private set => SetProperty(ref _iconColorPickerTargetSmartFolder, value);
+    }
+
+    public SessionRow? IconColorPickerTargetSession
+    {
+        get => _iconColorPickerTargetSession;
+        private set => SetProperty(ref _iconColorPickerTargetSession, value);
+    }
+
+    public bool IsPickerForSmartFolder => IconColorPickerTargetSmartFolder != null;
+    public bool IsPickerForSession => IconColorPickerTargetSession != null;
+
+    public string IconColorPickerTitle
+        => IsPickerForSmartFolder
+            ? $"Carpeta: {IconColorPickerTargetSmartFolder?.Name ?? "Carpeta"}"
+            : $"Sesión: {IconColorPickerTargetSession?.Session?.DisplayName ?? "Sesión"}";
+
+    public ObservableCollection<IconPickerItem> AvailableIcons { get; } = new()
+    {
+        new IconPickerItem { Name = "oar.2.crossed" },
+        new IconPickerItem { Name = "star" },
+        new IconPickerItem { Name = "star.fill" },
+        new IconPickerItem { Name = "heart" },
+        new IconPickerItem { Name = "heart.fill" },
+        new IconPickerItem { Name = "bolt.fill" },
+        new IconPickerItem { Name = "waveform.path.ecg" },
+        new IconPickerItem { Name = "sun.max.fill" },
+        new IconPickerItem { Name = "cloud.sun.fill" },
+        new IconPickerItem { Name = "cloud.fill" },
+        new IconPickerItem { Name = "cloud.heavyrain.fill" },
+        new IconPickerItem { Name = "moon.fill" },
+        new IconPickerItem { Name = "sparkles" },
+        new IconPickerItem { Name = "eye" },
+        new IconPickerItem { Name = "eye.fill" },
+        new IconPickerItem { Name = "eye.slash" },
+        new IconPickerItem { Name = "plus" },
+        new IconPickerItem { Name = "plus.circle" },
+        new IconPickerItem { Name = "minus" },
+        new IconPickerItem { Name = "line.3.horizontal" },
+        new IconPickerItem { Name = "line.3.horizontal.circle" },
+        new IconPickerItem { Name = "line.3.horizontal.decrease" },
+        new IconPickerItem { Name = "chart.pie" },
+        new IconPickerItem { Name = "face.smiling" },
+        new IconPickerItem { Name = "face.smiling.fill" }
     };
 
-    public string NewSmartFolderName
+    public string SelectedPickerIcon
     {
-        get => _newSmartFolderName;
-        set => SetProperty(ref _newSmartFolderName, value);
+        get => _selectedPickerIcon;
+        private set => SetProperty(ref _selectedPickerIcon, value);
     }
 
-    public string NewSmartFolderMatchMode
+    public string SelectedPickerColor
     {
-        get => _newSmartFolderMatchMode;
-        set
-        {
-            if (SetProperty(ref _newSmartFolderMatchMode, value))
-            {
-                OnPropertyChanged(nameof(IsSmartFolderMatchAll));
-                OnPropertyChanged(nameof(IsSmartFolderMatchAny));
-                RecomputeNewSmartFolderLiveMatchCount();
-            }
-        }
+        get => _selectedPickerColor;
+        private set => SetProperty(ref _selectedPickerColor, value);
     }
-
-    public bool IsSmartFolderMatchAll
-    {
-        get => NewSmartFolderMatchMode == "All";
-        set
-        {
-            if (value)
-                NewSmartFolderMatchMode = "All";
-        }
-    }
-
-    public bool IsSmartFolderMatchAny
-    {
-        get => NewSmartFolderMatchMode == "Any";
-        set
-        {
-            if (value)
-                NewSmartFolderMatchMode = "Any";
-        }
-    }
-
-    public int NewSmartFolderLiveMatchCount
-    {
-        get => _newSmartFolderLiveMatchCount;
-        private set => SetProperty(ref _newSmartFolderLiveMatchCount, value);
-    }
-
-    /// <summary>
-    /// Indica si el botón Grabar debe mostrarse (solo iOS y con sesión seleccionada)
-    /// </summary>
-    public bool CanShowRecordButton => SelectedSession != null && DeviceInfo.Platform == DevicePlatform.iOS;
-
-    public ObservableCollection<SessionTypeOption> SessionTypeOptions { get; } = new();
-    public ObservableCollection<PlaceOption> SessionPlaceOptions { get; } = new();
-
-    // Propiedades HealthKit
-    public DailyHealthData? SelectedDateHealthData
-    {
-        get => _selectedDateHealthData;
-        set
-        {
-            if (SetProperty(ref _selectedDateHealthData, value))
-            {
-                OnPropertyChanged(nameof(HasHealthData));
-            }
-        }
-    }
-
-    public bool HasHealthData => SelectedDateHealthData?.HasData == true;
-    public bool IsHealthKitAvailable => _healthKitService.IsAvailable;
-
-    public bool IsHealthKitAuthorized
-    {
-        get => _isHealthKitAuthorized;
-        set => SetProperty(ref _isHealthKitAuthorized, value);
-    }
-
-    public bool IsLoadingHealthData
-    {
-        get => _isLoadingHealthData;
-        set => SetProperty(ref _isLoadingHealthData, value);
-    }
-
-    // Propiedades Bienestar Diario (entrada manual)
-    public DailyWellness? SelectedDateWellness
-    {
-        get => _selectedDateWellness;
-        set
-        {
-            if (SetProperty(ref _selectedDateWellness, value))
-            {
-                OnPropertyChanged(nameof(HasWellnessData));
-                // Sincronizar campos de edición
-                if (value != null)
-                {
-                    WellnessSleepHours = value.SleepHours;
-                    WellnessSleepQuality = value.SleepQuality;
-                    WellnessRecoveryFeeling = value.RecoveryFeeling;
-                    WellnessMuscleFatigue = value.MuscleFatigue;
-                    WellnessMoodRating = value.MoodRating;
-                    WellnessRestingHeartRate = value.RestingHeartRate;
-                    WellnessHRV = value.HeartRateVariability;
-                    WellnessNotes = value.Notes;
-                }
-                else
-                {
-                    ClearWellnessFields();
-                }
-            }
-        }
-    }
-
-    public bool HasWellnessData => SelectedDateWellness?.HasData == true;
-
-    public bool IsEditingWellness
-    {
-        get => _isEditingWellness;
-        set => SetProperty(ref _isEditingWellness, value);
-    }
-
-    public double? WellnessSleepHours
-    {
-        get => _wellnessSleepHours;
-        set => SetProperty(ref _wellnessSleepHours, value);
-    }
-
-    public int? WellnessSleepQuality
-    {
-        get => _wellnessSleepQuality;
-        set => SetProperty(ref _wellnessSleepQuality, value);
-    }
-
-    public int? WellnessRecoveryFeeling
-    {
-        get => _wellnessRecoveryFeeling;
-        set => SetProperty(ref _wellnessRecoveryFeeling, value);
-    }
-
-    public int? WellnessMuscleFatigue
-    {
-        get => _wellnessMuscleFatigue;
-        set => SetProperty(ref _wellnessMuscleFatigue, value);
-    }
-
-    public int? WellnessMoodRating
-    {
-        get => _wellnessMoodRating;
-        set => SetProperty(ref _wellnessMoodRating, value);
-    }
-
-    public int? WellnessRestingHeartRate
-    {
-        get => _wellnessRestingHeartRate;
-        set => SetProperty(ref _wellnessRestingHeartRate, value);
-    }
-
-    public int? WellnessHRV
-    {
-        get => _wellnessHRV;
-        set => SetProperty(ref _wellnessHRV, value);
-    }
-
-    public string? WellnessNotes
-    {
-        get => _wellnessNotes;
-        set => SetProperty(ref _wellnessNotes, value);
-    }
-
-    // Opciones para selectores de bienestar
-    public List<int> SleepQualityOptions { get; } = new() { 1, 2, 3, 4, 5 };
-    public List<int> RecoveryFeelingOptions { get; } = new() { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
-    public List<int> MuscleFatigueOptions { get; } = new() { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
-    public List<int> MoodRatingOptions { get; } = new() { 1, 2, 3, 4, 5 };
 
     public GridLength RightPanelWidth
     {
@@ -1070,7 +554,7 @@ public class DashboardViewModel : BaseViewModel
             RightSplitterWidth = new GridLength(8);
             RightPanelWidth = new GridLength(1.2, GridUnitType.Star);
         }
-        else if (_isQuickAnalysisIsolatedMode)
+        else if (Layout.IsQuickAnalysisIsolatedMode)
         {
             // Modo aislado:
             // - El sidebar izquierdo se mantiene fijo.
@@ -1090,35 +574,40 @@ public class DashboardViewModel : BaseViewModel
 
     public bool IsSessionsListExpanded
     {
-        get => _isSessionsListExpanded;
+        get => Layout.IsSessionsListExpanded;
         set
         {
-            if (SetProperty(ref _isSessionsListExpanded, value))
-            {
-                // La visibilidad se controla llenando/vaciando la colección
-                SyncVisibleSessionRows();
-            }
+            if (Layout.IsSessionsListExpanded == value)
+                return;
+
+            Layout.IsSessionsListExpanded = value;
+            // La visibilidad se controla llenando/vaciando la colección
+            SyncVisibleSessionRows();
         }
     }
 
     public bool IsFavoritesExpanded
     {
-        get => _isFavoritesExpanded;
-        set => SetProperty(ref _isFavoritesExpanded, value);
+        get => Layout.IsFavoritesExpanded;
+        set => Layout.IsFavoritesExpanded = value;
     }
 
     public bool IsFavoriteSessionsSelected
     {
-        get => _isFavoriteSessionsSelected;
+        get => Layout.IsFavoriteSessionsSelected;
         set
         {
-            if (SetProperty(ref _isFavoriteSessionsSelected, value) && value)
+            if (Layout.IsFavoriteSessionsSelected == value)
+                return;
+
+            Layout.IsFavoriteSessionsSelected = value;
+            if (value)
             {
                 IsFavoriteVideosSelected = false;
                 IsAllGallerySelected = false;
                 IsVideoLessonsSelected = false;
                 IsDiaryViewSelected = false;
-                DeselectRemoteSections();
+                Remote.ClearRemoteSections();
                 SyncVisibleSessionRows();
                 OnPropertyChanged(nameof(SelectedSessionTitle));
                 OnPropertyChanged(nameof(ShowVideoGallery));
@@ -1128,17 +617,21 @@ public class DashboardViewModel : BaseViewModel
 
     public bool IsFavoriteVideosSelected
     {
-        get => _isFavoriteVideosSelected;
+        get => Layout.IsFavoriteVideosSelected;
         set
         {
-            if (SetProperty(ref _isFavoriteVideosSelected, value) && value)
+            if (Layout.IsFavoriteVideosSelected == value)
+                return;
+
+            Layout.IsFavoriteVideosSelected = value;
+            if (value)
             {
                 IsFavoriteSessionsSelected = false;
                 IsAllGallerySelected = false;
                 IsVideoLessonsSelected = false;
                 IsDiaryViewSelected = false;
                 SelectedSession = null;
-                DeselectRemoteSections();
+                Remote.ClearRemoteSections();
                 OnPropertyChanged(nameof(SelectedSessionTitle));
                 OnPropertyChanged(nameof(ShowVideoGallery));
             }
@@ -1151,197 +644,25 @@ public class DashboardViewModel : BaseViewModel
         private set => SetProperty(ref _favoriteSessionsCount, value);
     }
 
-    public int FavoriteVideosCount
-    {
-        get => _favoriteVideosCount;
-        private set => SetProperty(ref _favoriteVideosCount, value);
-    }
-
     public bool IsUserLibraryExpanded
     {
-        get => _isUserLibraryExpanded;
+        get => Layout.IsUserLibraryExpanded;
         set
         {
-            if (SetProperty(ref _isUserLibraryExpanded, value))
-            {
-                // La visibilidad se controla llenando/vaciando la colección
-                SyncVisibleSessionRows();
-                SyncVisibleRecentSessions();
-            }
+            if (Layout.IsUserLibraryExpanded == value)
+                return;
+
+            Layout.IsUserLibraryExpanded = value;
+            // La visibilidad se controla llenando/vaciando la colección
+            SyncVisibleSessionRows();
+            SyncVisibleRecentSessions();
         }
     }
 
-    public bool IsRemoteLibraryVisible
-    {
-        get => _isRemoteLibraryVisible;
-        set => SetProperty(ref _isRemoteLibraryVisible, value);
-    }
-
-    public bool IsRemoteLibraryExpanded
-    {
-        get => _isRemoteLibraryExpanded;
-        set => SetProperty(ref _isRemoteLibraryExpanded, value);
-    }
-
-    public string RemoteLibraryDisplayName
-    {
-        get => _remoteLibraryDisplayName;
-        set => SetProperty(ref _remoteLibraryDisplayName, value);
-    }
-
-    public string RemoteAllGalleryItemCount
-    {
-        get => _remoteAllGalleryItemCount;
-        set => SetProperty(ref _remoteAllGalleryItemCount, value);
-    }
-
-    public string RemoteVideoLessonsCount
-    {
-        get => _remoteVideoLessonsCount;
-        set => SetProperty(ref _remoteVideoLessonsCount, value);
-    }
-
-    public string RemoteTrashItemCount
-    {
-        get => _remoteTrashItemCount;
-        set => SetProperty(ref _remoteTrashItemCount, value);
-    }
-
-    public bool CanDeleteRemoteSessions => IsOrgWriteRole(_cloudBackendService.CurrentUserRole);
-
-    public bool CanWriteRemoteLibrary => IsOrgWriteRole(_cloudBackendService.CurrentUserRole);
-
-    private static bool IsOrgWriteRole(string? role)
-        => string.Equals(role, "admin_org", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(role, "org_admin", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(role, "coach", StringComparison.OrdinalIgnoreCase);
-
-    public bool IsRemoteAllGallerySelected
-    {
-        get => _isRemoteAllGallerySelected;
-        set => SetProperty(ref _isRemoteAllGallerySelected, value);
-    }
-
-    public bool IsRemoteVideoLessonsSelected
-    {
-        get => _isRemoteVideoLessonsSelected;
-        set => SetProperty(ref _isRemoteVideoLessonsSelected, value);
-    }
-
-    public bool IsRemoteTrashSelected
-    {
-        get => _isRemoteTrashSelected;
-        set => SetProperty(ref _isRemoteTrashSelected, value);
-    }
-
-    public bool IsRemoteSmartFoldersExpanded
-    {
-        get => _isRemoteSmartFoldersExpanded;
-        set => SetProperty(ref _isRemoteSmartFoldersExpanded, value);
-    }
-
-    /// <summary>
-    /// Colección de videos remotos del equipo (Wasabi)
-    /// </summary>
-    public ObservableCollection<RemoteVideoItem> RemoteVideos
-    {
-        get => _remoteVideos;
-        set => SetProperty(ref _remoteVideos, value);
-    }
-
-    /// <summary>
-    /// Indica si se están cargando videos remotos
-    /// </summary>
-    public bool IsLoadingRemoteVideos
-    {
-        get => _isLoadingRemoteVideos;
-        set => SetProperty(ref _isLoadingRemoteVideos, value);
-    }
-
-    /// <summary>
-    /// Modo de selección múltiple para videos remotos
-    /// </summary>
-    public bool IsRemoteMultiSelectMode
-    {
-        get => _isRemoteMultiSelectMode;
-        set
-        {
-            if (SetProperty(ref _isRemoteMultiSelectMode, value))
-            {
-                if (!value)
-                {
-                    // Limpiar selección al desactivar
-                    ClearRemoteVideoSelection();
-                }
-                OnPropertyChanged(nameof(SelectedRemoteVideoCount));
-            }
-        }
-    }
-
-    /// <summary>
-    /// Indica si está activo "Seleccionar todos" para videos remotos
-    /// </summary>
-    public bool IsRemoteSelectAllActive
-    {
-        get => _isRemoteSelectAllActive;
-        set => SetProperty(ref _isRemoteSelectAllActive, value);
-    }
-
-    /// <summary>
-    /// Número de videos remotos seleccionados
-    /// </summary>
-    public int SelectedRemoteVideoCount => RemoteVideos.Count(v => v.IsSelected);
-
-    /// <summary>
-    /// Indica si hay alguna sección remota seleccionada
-    /// </summary>
-    public bool IsAnyRemoteSectionSelected => IsRemoteAllGallerySelected || IsRemoteVideoLessonsSelected || IsRemoteTrashSelected || IsRemoteSessionSelected;
-
-    public ObservableCollection<SmartFolderDefinition> RemoteSmartFolders
-    {
-        get => _remoteSmartFolders;
-        set => SetProperty(ref _remoteSmartFolders, value);
-    }
-
-    public ObservableCollection<RemoteSessionListItem> RemoteSessions
-    {
-        get => _remoteSessions;
-        set => SetProperty(ref _remoteSessions, value);
-    }
-
-    public bool IsRemoteSessionsListExpanded
-    {
-        get => _isRemoteSessionsListExpanded;
-        set => SetProperty(ref _isRemoteSessionsListExpanded, value);
-    }
-
-    public int SelectedRemoteSessionId
-    {
-        get => _selectedRemoteSessionId;
-        set
-        {
-            if (SetProperty(ref _selectedRemoteSessionId, value))
-            {
-                UpdateRemoteSessionSelectionStates(value);
-                OnPropertyChanged(nameof(IsRemoteSessionSelected));
-                OnPropertyChanged(nameof(RemoteGalleryItems));
-                OnPropertyChanged(nameof(ShowRemoteGallery));
-                OnPropertyChanged(nameof(IsAnyRemoteSectionSelected));
-                OnPropertyChanged(nameof(SelectedSessionTitle));
-            }
-        }
-    }
-
-    public bool IsRemoteSessionSelected => SelectedRemoteSessionId > 0;
-
-    public IEnumerable<RemoteVideoItem> RemoteGalleryItems => SelectedRemoteSessionId > 0
-        ? RemoteVideos.Where(v => v.SessionId == SelectedRemoteSessionId)
-        : RemoteVideos;
-
-    public string SelectedSessionTitle => IsRemoteAllGallerySelected
-        ? $"Galería {RemoteLibraryDisplayName}"
-        : (IsRemoteSessionSelected
-            ? (RemoteSessions.FirstOrDefault(s => s.SessionId == SelectedRemoteSessionId)?.Title ?? $"Sesión {SelectedRemoteSessionId}")
+    public string SelectedSessionTitle => Layout.IsRemoteAllGallerySelected
+        ? $"Galería {Remote.RemoteLibraryDisplayName}"
+        : (Remote.IsRemoteSessionSelected
+            ? (Remote.RemoteSessions.FirstOrDefault(s => s.SessionId == Remote.SelectedRemoteSessionId)?.Title ?? $"Sesión {Remote.SelectedRemoteSessionId}")
             : (IsDiaryViewSelected
                 ? "Diario Personal"
                 : (IsFavoriteVideosSelected
@@ -1353,12 +674,6 @@ public class DashboardViewModel : BaseViewModel
                             : (IsAllGallerySelected
                                 ? "Galería General"
                                 : (SelectedSession?.DisplayName ?? "Selecciona una sesión")))))));
-
-    public bool IsLoadingSelectedSessionVideos
-    {
-        get => _isLoadingSelectedSessionVideos;
-        private set => SetProperty(ref _isLoadingSelectedSessionVideos, value);
-    }
 
     public string ImportProgressText
     {
@@ -1428,978 +743,47 @@ public class DashboardViewModel : BaseViewModel
     /// </summary>
     public double BackgroundImportProgressNormalized => BackgroundImportProgress / 100.0;
 
-    // ===== PROPIEDADES DE SINCRONIZACIÓN CLOUD =====
-
-    /// <summary>
-    /// Indica si se está ejecutando una sincronización
-    /// </summary>
-    public bool IsSyncing
-    {
-        get => _isSyncing;
-        set => SetProperty(ref _isSyncing, value);
-    }
-
-    /// <summary>
-    /// Porcentaje de progreso de la sincronización (0-100)
-    /// </summary>
-    public int SyncProgress
-    {
-        get => _syncProgress;
-        set => SetProperty(ref _syncProgress, value);
-    }
-
-    /// <summary>
-    /// Texto descriptivo del estado de sincronización
-    /// </summary>
-    public string SyncStatusText
-    {
-        get => _syncStatusText;
-        set => SetProperty(ref _syncStatusText, value);
-    }
-
-    /// <summary>
-    /// Cantidad de videos pendientes de sincronizar
-    /// </summary>
-    public int PendingSyncCount
-    {
-        get => _pendingSyncCount;
-        set => SetProperty(ref _pendingSyncCount, value);
-    }
-
-    /// <summary>
-    /// Indica si hay videos pendientes de subir al servidor
-    /// </summary>
-    public bool HasPendingSync => PendingSyncCount > 0;
-
-    /// <summary>
-    /// Indica si el usuario está autenticado en el servidor cloud
-    /// </summary>
-    public bool IsCloudAuthenticated => _cloudBackendService?.IsAuthenticated ?? false;
-
-    public bool IsLoginRequired
-    {
-        get => _isLoginRequired;
-        set => SetProperty(ref _isLoginRequired, value);
-    }
-
-    public bool IsCloudLoginBusy
-    {
-        get => _isCloudLoginBusy;
-        set => SetProperty(ref _isCloudLoginBusy, value);
-    }
-
-    public string CloudLoginEmail
-    {
-        get => _cloudLoginEmail;
-        set => SetProperty(ref _cloudLoginEmail, value);
-    }
-
-    public string CloudLoginPassword
-    {
-        get => _cloudLoginPassword;
-        set => SetProperty(ref _cloudLoginPassword, value);
-    }
-
-    public string CloudLoginStatusMessage
-    {
-        get => _cloudLoginStatusMessage;
-        set => SetProperty(ref _cloudLoginStatusMessage, value);
-    }
-
     public bool IsStatsTabSelected
     {
-        get => _isStatsTabSelected;
+        get => Layout.IsStatsTabSelected;
         set
         {
-            if (SetProperty(ref _isStatsTabSelected, value))
+            if (Layout.IsStatsTabSelected == value)
+                return;
+
+            Layout.IsStatsTabSelected = value;
+            if (value)
             {
-                if (value)
-                {
-                    IsCrudTechTabSelected = false;
-                    IsDiaryTabSelected = false;
-                }
+                IsCrudTechTabSelected = false;
+                Layout.IsDiaryTabSelected = false;
             }
         }
     }
 
     public bool IsCrudTechTabSelected
     {
-        get => _isCrudTechTabSelected;
+        get => Layout.IsCrudTechTabSelected;
         set
         {
-            if (SetProperty(ref _isCrudTechTabSelected, value))
-            {
-                if (value)
-                {
-                    IsStatsTabSelected = false;
-                    IsDiaryTabSelected = false;
-                }
-            }
-        }
-    }
-
-    public bool IsDiaryTabSelected
-    {
-        get => _isDiaryTabSelected;
-        set
-        {
-            if (SetProperty(ref _isDiaryTabSelected, value))
-            {
-                if (value)
-                {
-                    IsStatsTabSelected = false;
-                    IsCrudTechTabSelected = false;
-                    _ = LoadSessionDiaryAsync();
-                }
-            }
-        }
-    }
-
-    // Propiedades del Diario de Sesión
-    public int DiaryValoracionFisica
-    {
-        get => _diaryValoracionFisica;
-        set => SetProperty(ref _diaryValoracionFisica, Math.Clamp(value, 1, 5));
-    }
-
-    public int DiaryValoracionMental
-    {
-        get => _diaryValoracionMental;
-        set => SetProperty(ref _diaryValoracionMental, Math.Clamp(value, 1, 5));
-    }
-
-    public int DiaryValoracionTecnica
-    {
-        get => _diaryValoracionTecnica;
-        set => SetProperty(ref _diaryValoracionTecnica, Math.Clamp(value, 1, 5));
-    }
-
-    public string DiaryNotas
-    {
-        get => _diaryNotas;
-        set => SetProperty(ref _diaryNotas, value ?? "");
-    }
-
-    public double AvgValoracionFisica
-    {
-        get => _avgValoracionFisica;
-        set => SetProperty(ref _avgValoracionFisica, value);
-    }
-
-    public double AvgValoracionMental
-    {
-        get => _avgValoracionMental;
-        set => SetProperty(ref _avgValoracionMental, value);
-    }
-
-    public double AvgValoracionTecnica
-    {
-        get => _avgValoracionTecnica;
-        set => SetProperty(ref _avgValoracionTecnica, value);
-    }
-
-    public int AvgValoracionCount
-    {
-        get => _avgValoracionCount;
-        set => SetProperty(ref _avgValoracionCount, value);
-    }
-
-    public int SelectedEvolutionPeriod
-    {
-        get => _selectedEvolutionPeriod;
-        set
-        {
-            if (SetProperty(ref _selectedEvolutionPeriod, value))
-            {
-                _ = LoadValoracionEvolutionAsync();
-            }
-        }
-    }
-
-    public ObservableCollection<SessionDiary> ValoracionEvolution
-    {
-        get => _valoracionEvolution;
-        set => SetProperty(ref _valoracionEvolution, value);
-    }
-
-    public ObservableCollection<int> EvolutionFisicaValues
-    {
-        get => _evolutionFisicaValues;
-        set => SetProperty(ref _evolutionFisicaValues, value);
-    }
-
-    public ObservableCollection<int> EvolutionMentalValues
-    {
-        get => _evolutionMentalValues;
-        set => SetProperty(ref _evolutionMentalValues, value);
-    }
-
-    public ObservableCollection<int> EvolutionTecnicaValues
-    {
-        get => _evolutionTecnicaValues;
-        set => SetProperty(ref _evolutionTecnicaValues, value);
-    }
-
-    public ObservableCollection<string> EvolutionLabels
-    {
-        get => _evolutionLabels;
-        set => SetProperty(ref _evolutionLabels, value);
-    }
-
-    public bool HasDiaryData => _currentSessionDiary != null;
-
-    /// <summary>Indica si el usuario está editando el diario (muestra formulario vs vista de resultados)</summary>
-    public bool IsEditingDiary
-    {
-        get => _isEditingDiary;
-        set => SetProperty(ref _isEditingDiary, value);
-    }
-
-    /// <summary>Indica si debe mostrarse la vista de resultados del diario (datos guardados y no editando)</summary>
-    public bool ShowDiaryResults => HasDiaryData && !IsEditingDiary;
-
-    /// <summary>Indica si debe mostrarse el formulario del diario (sin datos o editando)</summary>
-    public bool ShowDiaryForm => !HasDiaryData || IsEditingDiary;
-
-    /// <summary>Indica si debe mostrarse la galería de vídeos locales (no en Videolecciones, Diario ni secciones remotas)</summary>
-    public bool ShowVideoGallery => !IsVideoLessonsSelected && !IsDiaryViewSelected && !IsAnyRemoteSectionSelected;
-
-    /// <summary>Indica si debe mostrarse la galería de vídeos remotos</summary>
-    public bool ShowRemoteGallery => IsRemoteAllGallerySelected || IsRemoteSessionSelected;
-
-    public bool IsMultiSelectMode
-    {
-        get => _isMultiSelectMode;
-        set
-        {
-            if (SetProperty(ref _isMultiSelectMode, value))
-            {
-                if (!value)
-                {
-                    // Al desactivar, limpiar selección
-                    ClearVideoSelection();
-                }
-                OnPropertyChanged(nameof(SelectedVideoCount));
-            }
-        }
-    }
-
-    public bool IsSelectAllActive
-    {
-        get => _isSelectAllActive;
-        set
-        {
-            if (SetProperty(ref _isSelectAllActive, value))
-            {
-                if (value)
-                {
-                    SelectAllFilteredVideos();
-                }
-                else
-                {
-                    ClearVideoSelection();
-                }
-            }
-        }
-    }
-
-    public int SelectedVideoCount => _selectedVideoIds.Count;
-
-    public bool IsHorizontalOrientation
-    {
-        get => _isHorizontalOrientation;
-        set
-        {
-            if (SetProperty(ref _isHorizontalOrientation, value))
-            {
-                OnPropertyChanged(nameof(IsVerticalOrientation));
-                if (_isQuickAnalysisIsolatedMode)
-                {
-                    UpdateRightPanelLayout();
-                }
-            }
-        }
-    }
-
-    public bool IsVerticalOrientation
-    {
-        get => !_isHorizontalOrientation;
-        set
-        {
-            if (value != !_isHorizontalOrientation)
-            {
-                IsHorizontalOrientation = !value;
-            }
-        }
-    }
-
-    // Modo único (un solo video) vs paralelo (dos videos) vs cuádruple (cuatro videos)
-    public bool IsSingleVideoMode
-    {
-        get => _isSingleVideoMode;
-        set
-        {
-            if (SetProperty(ref _isSingleVideoMode, value))
-            {
-                if (value)
-                {
-                    _isQuadVideoMode = false;
-                    OnPropertyChanged(nameof(IsQuadVideoMode));
-                }
-                OnPropertyChanged(nameof(IsParallelVideoMode));
-                // Limpiar slots extra si cambiamos a modo único
-                if (value)
-                {
-                    ParallelVideo2 = null;
-                    ParallelVideo3 = null;
-                    ParallelVideo4 = null;
-                }
-
-                if (_isQuickAnalysisIsolatedMode)
-                {
-                    UpdateRightPanelLayout();
-                }
-            }
-        }
-    }
-
-    public bool IsParallelVideoMode
-    {
-        get => !_isSingleVideoMode && !_isQuadVideoMode;
-        set
-        {
-            if (value && (!IsParallelVideoMode))
-            {
-                _isSingleVideoMode = false;
-                _isQuadVideoMode = false;
-                OnPropertyChanged(nameof(IsSingleVideoMode));
-                OnPropertyChanged(nameof(IsQuadVideoMode));
-                OnPropertyChanged(nameof(IsParallelVideoMode));
-                // Limpiar slots 3 y 4 si pasamos a paralelo
-                ParallelVideo3 = null;
-                ParallelVideo4 = null;
-
-                if (_isQuickAnalysisIsolatedMode)
-                {
-                    UpdateRightPanelLayout();
-                }
-            }
-        }
-    }
-
-    public bool IsQuadVideoMode
-    {
-        get => _isQuadVideoMode;
-        set
-        {
-            if (SetProperty(ref _isQuadVideoMode, value))
-            {
-                if (value)
-                {
-                    _isSingleVideoMode = false;
-                    OnPropertyChanged(nameof(IsSingleVideoMode));
-                }
-                OnPropertyChanged(nameof(IsParallelVideoMode));
-
-                if (_isQuickAnalysisIsolatedMode)
-                {
-                    UpdateRightPanelLayout();
-                }
-            }
-        }
-    }
-
-    public bool IsQuickAnalysisIsolatedMode
-    {
-        get => _isQuickAnalysisIsolatedMode;
-        set
-        {
-            if (SetProperty(ref _isQuickAnalysisIsolatedMode, value))
-            {
-                if (value)
-                {
-                    // Valor por defecto al activar: 50/50 del espacio restante.
-                    // A partir de aquí, el usuario puede ajustarlo con el splitter.
-                    MainPanelWidth = new GridLength(1, GridUnitType.Star);
-                    RightPanelWidth = new GridLength(1, GridUnitType.Star);
-                }
-                UpdateRightPanelLayout();
-            }
-        }
-    }
-
-    public int VideoGalleryColumnSpan
-    {
-        get => _videoGalleryColumnSpan;
-        set
-        {
-            var clamped = Math.Clamp(value, 1, 4);
-            SetProperty(ref _videoGalleryColumnSpan, clamped);
-        }
-    }
-
-    public bool IsVideoSelected(int videoId) => _selectedVideoIds.Contains(videoId);
-
-    public VideoClip? ParallelVideo1
-    {
-        get => _parallelVideo1;
-        set
-        {
-            if (SetProperty(ref _parallelVideo1, value))
-            {
-                IsPreviewPlayer1Ready = false;
-                OnPropertyChanged(nameof(HasParallelVideo1));
-                OnPropertyChanged(nameof(ParallelVideo1ClipPath));
-                OnPropertyChanged(nameof(ParallelVideo1ThumbnailPath));
-                OnPropertyChanged(nameof(ShowParallelVideo1Thumbnail));
-                // Forzar refresh del modo preview con delay para que el UI se actualice
-                if (value != null)
-                {
-                    _ = RefreshPreviewModeAsync();
-                }
-            }
-        }
-    }
-
-    public VideoClip? ParallelVideo2
-    {
-        get => _parallelVideo2;
-        set
-        {
-            if (SetProperty(ref _parallelVideo2, value))
-            {
-                IsPreviewPlayer2Ready = false;
-                OnPropertyChanged(nameof(HasParallelVideo2));
-                OnPropertyChanged(nameof(ParallelVideo2ClipPath));
-                OnPropertyChanged(nameof(ParallelVideo2ThumbnailPath));
-                OnPropertyChanged(nameof(ShowParallelVideo2Thumbnail));
-                // Forzar refresh del modo preview con delay para que el UI se actualice
-                if (value != null)
-                {
-                    _ = RefreshPreviewModeAsync();
-                }
-            }
-        }
-    }
-
-    public bool HasParallelVideo1 => _parallelVideo1 != null;
-    public bool HasParallelVideo2 => _parallelVideo2 != null;
-    public bool HasParallelVideo3 => _parallelVideo3 != null;
-    public bool HasParallelVideo4 => _parallelVideo4 != null;
-
-    public string? ParallelVideo1ClipPath => _parallelVideo1?.LocalClipPath ?? _parallelVideo1?.ClipPath;
-    public string? ParallelVideo1ThumbnailPath => _parallelVideo1?.LocalThumbnailPath ?? _parallelVideo1?.ThumbnailPath;
-    public string? ParallelVideo2ClipPath => _parallelVideo2?.LocalClipPath ?? _parallelVideo2?.ClipPath;
-    public string? ParallelVideo2ThumbnailPath => _parallelVideo2?.LocalThumbnailPath ?? _parallelVideo2?.ThumbnailPath;
-    public string? ParallelVideo3ClipPath => _parallelVideo3?.LocalClipPath ?? _parallelVideo3?.ClipPath;
-    public string? ParallelVideo3ThumbnailPath => _parallelVideo3?.LocalThumbnailPath ?? _parallelVideo3?.ThumbnailPath;
-    public string? ParallelVideo4ClipPath => _parallelVideo4?.LocalClipPath ?? _parallelVideo4?.ClipPath;
-    public string? ParallelVideo4ThumbnailPath => _parallelVideo4?.LocalThumbnailPath ?? _parallelVideo4?.ThumbnailPath;
-
-    public VideoClip? ParallelVideo3
-    {
-        get => _parallelVideo3;
-        set
-        {
-            if (SetProperty(ref _parallelVideo3, value))
-            {
-                IsPreviewPlayer3Ready = false;
-                OnPropertyChanged(nameof(HasParallelVideo3));
-                OnPropertyChanged(nameof(ParallelVideo3ClipPath));
-                OnPropertyChanged(nameof(ParallelVideo3ThumbnailPath));
-                OnPropertyChanged(nameof(ShowParallelVideo3Thumbnail));
-                // Forzar refresh del modo preview con delay para que el UI se actualice
-                if (value != null)
-                {
-                    _ = RefreshPreviewModeAsync();
-                }
-            }
-        }
-    }
-
-    public VideoClip? ParallelVideo4
-    {
-        get => _parallelVideo4;
-        set
-        {
-            System.Diagnostics.Debug.WriteLine($"[Dashboard] ParallelVideo4 SETTER: value={(value != null ? $"Id={value.Id}, ClipPath={value.ClipPath}, LocalClipPath={value.LocalClipPath}" : "null")}");
-            if (SetProperty(ref _parallelVideo4, value))
-            {
-                IsPreviewPlayer4Ready = false;
-                OnPropertyChanged(nameof(HasParallelVideo4));
-                OnPropertyChanged(nameof(ParallelVideo4ClipPath));
-                OnPropertyChanged(nameof(ParallelVideo4ThumbnailPath));
-                OnPropertyChanged(nameof(ShowParallelVideo4Thumbnail));
-                System.Diagnostics.Debug.WriteLine($"[Dashboard] ParallelVideo4 AFTER SET: HasParallelVideo4={HasParallelVideo4}, ClipPath={ParallelVideo4ClipPath}, ThumbnailPath={ParallelVideo4ThumbnailPath}");
-                // Forzar refresh del modo preview con delay para que el UI se actualice
-                if (value != null)
-                {
-                    _ = RefreshPreviewModeAsync();
-                }
-            }
-        }
-    }
-
-    public async Task SetParallelVideoSlotAsync(int slot, VideoClip video)
-    {
-        if (video == null) return;
-
-        System.Diagnostics.Debug.WriteLine($"[Dashboard] SetParallelVideoSlotAsync: slot={slot}, video.Id={video.Id}, ClipPath={video.ClipPath}, LocalClipPath={video.LocalClipPath}");
-
-        // Crear una copia del video para evitar conflictos de referencia entre sesiones
-        var videoCopy = new VideoClip
-        {
-            Id = video.Id,
-            SessionId = video.SessionId,
-            AtletaId = video.AtletaId,
-            Section = video.Section,
-            CreationDate = video.CreationDate,
-            ClipPath = video.ClipPath,
-            LocalClipPath = video.LocalClipPath,
-            ThumbnailPath = video.ThumbnailPath,
-            LocalThumbnailPath = video.LocalThumbnailPath,
-            ComparisonName = video.ComparisonName,
-            ClipDuration = video.ClipDuration,
-            ClipSize = video.ClipSize,
-            IsDeleted = video.IsDeleted,
-            DeletedAtUtc = video.DeletedAtUtc,
-            Atleta = video.Atleta,
-            Session = video.Session,
-            Tags = video.Tags,
-            EventTags = video.EventTags
-        };
-
-        // Resolver path local si es posible
-        await ResolveVideoPathsAsync(videoCopy);
-        System.Diagnostics.Debug.WriteLine($"[Dashboard] ResolvedPath for slot {slot}: Video={videoCopy.LocalClipPath}, Thumbnail={videoCopy.LocalThumbnailPath}");
-
-        // Asignar al slot correspondiente en hilo UI
-        await MainThread.InvokeOnMainThreadAsync(() =>
-        {
-            System.Diagnostics.Debug.WriteLine($"[Dashboard] Assigning video to slot {slot} on UI thread");
-            switch (slot)
-            {
-                case 1: ParallelVideo1 = videoCopy; break;
-                case 2: ParallelVideo2 = videoCopy; break;
-                case 3: ParallelVideo3 = videoCopy; break;
-                case 4: ParallelVideo4 = videoCopy; break;
-            }
-            System.Diagnostics.Debug.WriteLine($"[Dashboard] After assignment - HasParallelVideo4={HasParallelVideo4}, ParallelVideo4ClipPath={ParallelVideo4ClipPath}");
-        });
-    }
-
-    private async Task ResolveVideoPathsAsync(VideoClip video)
-    {
-        try
-        {
-            // Obtener la sesión del video
-            var session = await _databaseService.GetSessionByIdAsync(video.SessionId);
-            if (session == null || string.IsNullOrWhiteSpace(session.PathSesion))
+            if (Layout.IsCrudTechTabSelected == value)
                 return;
 
-            // Resolver video path
-            var videoPath = video.LocalClipPath;
-            if (string.IsNullOrWhiteSpace(videoPath) || !File.Exists(videoPath))
+            Layout.IsCrudTechTabSelected = value;
+            if (value)
             {
-                var normalized = (video.ClipPath ?? "").Replace('\\', '/');
-                var fileName = Path.GetFileName(normalized);
-                if (string.IsNullOrWhiteSpace(fileName))
-                    fileName = $"CROWN{video.Id}.mp4";
-
-                var candidate = Path.Combine(session.PathSesion, "videos", fileName);
-                if (File.Exists(candidate))
-                    video.LocalClipPath = candidate;
-                else if (!string.IsNullOrWhiteSpace(video.ClipPath))
-                    video.LocalClipPath = video.ClipPath;
-            }
-
-            // Resolver thumbnail path
-            var thumbnailPath = video.LocalThumbnailPath;
-            if (string.IsNullOrWhiteSpace(thumbnailPath) || !File.Exists(thumbnailPath))
-            {
-                var normalized = (video.ThumbnailPath ?? "").Replace('\\', '/');
-                var fileName = Path.GetFileName(normalized);
-                if (string.IsNullOrWhiteSpace(fileName))
-                    fileName = $"CROWN{video.Id}.jpg";
-
-                var candidate = Path.Combine(session.PathSesion, "thumbnails", fileName);
-                if (File.Exists(candidate))
-                    video.LocalThumbnailPath = candidate;
-                else if (!string.IsNullOrWhiteSpace(video.ThumbnailPath))
-                    video.LocalThumbnailPath = video.ThumbnailPath;
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[Dashboard] Error resolving video paths: {ex.Message}");
-        }
-    }
-
-    private async Task<string?> ResolveVideoPathAsync(VideoClip video)
-    {
-        var videoPath = video.LocalClipPath;
-
-        // Fallback: construir ruta local desde la carpeta de la sesión
-        if (string.IsNullOrWhiteSpace(videoPath) || !File.Exists(videoPath))
-        {
-            try
-            {
-                var session = SelectedSession ?? await _databaseService.GetSessionByIdAsync(video.SessionId);
-                if (!string.IsNullOrWhiteSpace(session?.PathSesion))
-                {
-                    var normalized = (video.ClipPath ?? "").Replace('\\', '/');
-                    var fileName = Path.GetFileName(normalized);
-                    if (string.IsNullOrWhiteSpace(fileName))
-                        fileName = $"CROWN{video.Id}.mp4";
-
-                    var candidate = Path.Combine(session.PathSesion, "videos", fileName);
-                    if (File.Exists(candidate))
-                        videoPath = candidate;
-                }
-            }
-            catch
-            {
-                // Ignorar: si falla, se usará el ClipPath si existe
-            }
-        }
-
-        // Último recurso: usar ClipPath si fuera una ruta real
-        if (string.IsNullOrWhiteSpace(videoPath))
-            videoPath = video.ClipPath;
-
-        return videoPath;
-    }
-
-    private async Task RefreshPreviewModeAsync()
-    {
-        IsPreviewMode = false;
-        await Task.Delay(50); // Pequeño delay para que el binding se procese
-        IsPreviewMode = true;
-    }
-
-    /// <summary>
-    /// Limpia los videos de preview (recuadros de arrastrar)
-    /// </summary>
-    public void ClearPreviewVideos()
-    {
-        ParallelVideo1 = null;
-        ParallelVideo2 = null;
-        ParallelVideo3 = null;
-        ParallelVideo4 = null;
-        IsPreviewMode = false;
-
-        IsPreviewPlayer1Ready = false;
-        IsPreviewPlayer2Ready = false;
-        IsPreviewPlayer3Ready = false;
-        IsPreviewPlayer4Ready = false;
-    }
-
-    public bool IsPreviewMode
-    {
-        get => _isPreviewMode;
-        set
-        {
-            if (SetProperty(ref _isPreviewMode, value))
-            {
-                OnPropertyChanged(nameof(ShowParallelVideo1Thumbnail));
-                OnPropertyChanged(nameof(ShowParallelVideo2Thumbnail));
-                OnPropertyChanged(nameof(ShowParallelVideo3Thumbnail));
-                OnPropertyChanged(nameof(ShowParallelVideo4Thumbnail));
+                IsStatsTabSelected = false;
+                Layout.IsDiaryTabSelected = false;
             }
         }
     }
 
-    public bool IsPreviewPlayer1Ready
-    {
-        get => _isPreviewPlayer1Ready;
-        set
-        {
-            if (SetProperty(ref _isPreviewPlayer1Ready, value))
-            {
-                OnPropertyChanged(nameof(ShowParallelVideo1Thumbnail));
-            }
-        }
-    }
 
-    public bool IsPreviewPlayer2Ready
-    {
-        get => _isPreviewPlayer2Ready;
-        set
-        {
-            if (SetProperty(ref _isPreviewPlayer2Ready, value))
-            {
-                OnPropertyChanged(nameof(ShowParallelVideo2Thumbnail));
-            }
-        }
-    }
-
-    public bool IsPreviewPlayer3Ready
-    {
-        get => _isPreviewPlayer3Ready;
-        set
-        {
-            if (SetProperty(ref _isPreviewPlayer3Ready, value))
-            {
-                OnPropertyChanged(nameof(ShowParallelVideo3Thumbnail));
-            }
-        }
-    }
-
-    public bool IsPreviewPlayer4Ready
-    {
-        get => _isPreviewPlayer4Ready;
-        set
-        {
-            if (SetProperty(ref _isPreviewPlayer4Ready, value))
-            {
-                OnPropertyChanged(nameof(ShowParallelVideo4Thumbnail));
-            }
-        }
-    }
-
-    public bool ShowParallelVideo1Thumbnail => HasParallelVideo1 && (!IsPreviewMode || !IsPreviewPlayer1Ready);
-    public bool ShowParallelVideo2Thumbnail => HasParallelVideo2 && (!IsPreviewMode || !IsPreviewPlayer2Ready);
-    public bool ShowParallelVideo3Thumbnail => HasParallelVideo3 && (!IsPreviewMode || !IsPreviewPlayer3Ready);
-    public bool ShowParallelVideo4Thumbnail => HasParallelVideo4 && (!IsPreviewMode || !IsPreviewPlayer4Ready);
-
-    // Video en hover para preview
-    private VideoClip? _hoverVideo;
-    public VideoClip? HoverVideo
-    {
-        get => _hoverVideo;
-        set
-        {
-            if (SetProperty(ref _hoverVideo, value))
-            {
-                OnPropertyChanged(nameof(HasHoverVideo));
-            }
-        }
-    }
-    public bool HasHoverVideo => _hoverVideo != null;
-
-    private void ToggleVideoSelection(VideoClip? video)
-    {
-        if (video == null || !IsMultiSelectMode) return;
-
-        video.IsSelected = !video.IsSelected;
-
-        if (video.IsSelected)
-            _selectedVideoIds.Add(video.Id);
-        else
-            _selectedVideoIds.Remove(video.Id);
-
-        OnPropertyChanged(nameof(SelectedVideoCount));
-    }
-    private void SelectAllFilteredVideos()
-    {
-        var source = _filteredVideosCache ?? _allVideosCache;
-        if (source == null) return;
-
-        foreach (var v in source)
-        {
-            v.IsSelected = true;
-            _selectedVideoIds.Add(v.Id);
-        }
-
-        OnPropertyChanged(nameof(SelectedVideoCount));
-    }
-
-    private void ClearVideoSelection()
-    {
-        // Limpiar IsSelected en todos los videos visibles y cacheados
-        foreach (var v in SelectedSessionVideos)
-            v.IsSelected = false;
-
-        var source = _filteredVideosCache ?? _allVideosCache;
-        if (source != null)
-        {
-            foreach (var v in source)
-                v.IsSelected = false;
-        }
-
-        _selectedVideoIds.Clear();
-        _isSelectAllActive = false;
-        OnPropertyChanged(nameof(IsSelectAllActive));
-        OnPropertyChanged(nameof(SelectedVideoCount));
-    }
-
-    /// <summary>
-    /// Selecciona un video específico para edición individual (sin requerir modo multiselección).
-    /// Limpia cualquier selección previa y añade solo este video.
-    /// </summary>
-    public void SelectSingleVideoForEdit(VideoClip video)
-    {
-        if (video == null) return;
-
-        // Limpiar selección previa
-        ClearVideoSelection();
-
-        // Añadir este video a la selección
-        video.IsSelected = true;
-        _selectedVideoIds.Add(video.Id);
-        OnPropertyChanged(nameof(SelectedVideoCount));
-    }
-
-    /// <summary>
-    /// Actualiza el estado interno de selección basado en el estado IsSelected del video.
-    /// Usado para selección por clic simple en desktop.
-    /// Esta selección es independiente del modo multiselección (botón "Seleccionar").
-    /// </summary>
-    public void UpdateVideoSelectionState(VideoClip video)
-    {
-        if (video == null) return;
-
-        if (video.IsSelected)
-            _selectedVideoIds.Add(video.Id);
-        else
-            _selectedVideoIds.Remove(video.Id);
-
-        OnPropertyChanged(nameof(SelectedVideoCount));
-    }
-
-    /// <summary>
-    /// Selecciona un único video, deseleccionando cualquier otro previamente seleccionado.
-    /// Usado para selección por clic simple en desktop.
-    /// Esta selección es independiente del modo multiselección (botón "Seleccionar").
-    /// </summary>
-    public void SelectSingleVideo(VideoClip video)
-    {
-        if (video == null) return;
-
-        // Deseleccionar todos los videos previamente seleccionados
-        foreach (var v in SelectedSessionVideos)
-            v.IsSelected = false;
-
-        var source = _filteredVideosCache ?? _allVideosCache;
-        if (source != null)
-        {
-            foreach (var v in source)
-                v.IsSelected = false;
-        }
-
-        _selectedVideoIds.Clear();
-
-        // Seleccionar el video actual
-        video.IsSelected = true;
-        _selectedVideoIds.Add(video.Id);
-
-        OnPropertyChanged(nameof(SelectedVideoCount));
-    }
-
-    public bool HasMoreVideos
-    {
-        get => _hasMoreVideos;
-        private set => SetProperty(ref _hasMoreVideos, value);
-    }
-
-    public bool IsLoadingMore
-    {
-        get => _isLoadingMore;
-        private set => SetProperty(ref _isLoadingMore, value);
-    }
-
-    // Listas de opciones para filtros (selección múltiple)
-    public ObservableCollection<PlaceFilterItem> FilterPlaces { get; } = new();
-    public ObservableCollection<AthleteFilterItem> FilterAthletes { get; } = new();
-    public ObservableCollection<SectionFilterItem> FilterSections { get; } = new();
-    public ObservableCollection<TagFilterItem> FilterTagItems { get; } = new();
-
-    // Control de expansión de filtros (acordeón)
-    private string? _expandedFilter;
-    public bool IsPlacesExpanded
-    {
-        get => _expandedFilter == "Places";
-        set { if (value) ExpandFilter("Places"); else if (_expandedFilter == "Places") _expandedFilter = null; OnPropertyChanged(); }
-    }
-    public bool IsAthletesExpanded
-    {
-        get => _expandedFilter == "Athletes";
-        set { if (value) ExpandFilter("Athletes"); else if (_expandedFilter == "Athletes") _expandedFilter = null; OnPropertyChanged(); }
-    }
-    public bool IsSectionsExpanded
-    {
-        get => _expandedFilter == "Sections";
-        set { if (value) ExpandFilter("Sections"); else if (_expandedFilter == "Sections") _expandedFilter = null; OnPropertyChanged(); }
-    }
-    public bool IsTagsExpanded
-    {
-        get => _expandedFilter == "Tags";
-        set { if (value) ExpandFilter("Tags"); else if (_expandedFilter == "Tags") _expandedFilter = null; OnPropertyChanged(); }
-    }
-
-    private void ExpandFilter(string filterName)
-    {
-        _expandedFilter = filterName;
-        OnPropertyChanged(nameof(IsPlacesExpanded));
-        OnPropertyChanged(nameof(IsAthletesExpanded));
-        OnPropertyChanged(nameof(IsSectionsExpanded));
-        OnPropertyChanged(nameof(IsTagsExpanded));
-    }
-
-    // Resumen de selección múltiple
-    public string SelectedPlacesSummary => GetSelectedPlacesSummary();
-    public string SelectedAthletesSummary => GetSelectedAthletesSummary();
-    public string SelectedSectionsSummary => GetSelectedSectionsSummary();
-    public string SelectedTagsSummary => GetSelectedTagsSummary();
-
-    private string GetSelectedPlacesSummary()
-    {
-        var selected = FilterPlaces.Where(p => p.IsSelected).ToList();
-        if (selected.Count == 0) return "Todos los lugares";
-        if (selected.Count == 1) return selected[0].DisplayName;
-        return $"{selected.Count} lugares";
-    }
-
-    private string GetSelectedAthletesSummary()
-    {
-        var selected = FilterAthletes.Where(a => a.IsSelected).ToList();
-        if (selected.Count == 0) return "Todos los deportistas";
-        if (selected.Count == 1) return selected[0].DisplayName;
-        return $"{selected.Count} deportistas";
-    }
-
-    private string GetSelectedSectionsSummary()
-    {
-        var selected = FilterSections.Where(s => s.IsSelected).ToList();
-        if (selected.Count == 0) return "Todas las secciones";
-        if (selected.Count == 1) return selected[0].DisplayName;
-        return $"{selected.Count} secciones";
-    }
-
-    private string GetSelectedTagsSummary()
-    {
-        var selected = FilterTagItems.Where(t => t.IsSelected).ToList();
-        if (selected.Count == 0) return "Todos los tags";
-        if (selected.Count == 1) return selected[0].DisplayName;
-        return $"{selected.Count} tags";
-    }
-
-    public DateTime? SelectedFilterDateFrom
-    {
-        get => _selectedFilterDateFrom;
-        set
-        {
-            if (SetProperty(ref _selectedFilterDateFrom, value))
-                _ = ApplyFiltersAsync();
-        }
-    }
-
-    public DateTime? SelectedFilterDateTo
-    {
-        get => _selectedFilterDateTo;
-        set
-        {
-            if (SetProperty(ref _selectedFilterDateTo, value))
-                _ = ApplyFiltersAsync();
-        }
-    }
+    public bool IsVideoSelected(int videoId) => BatchEdit.IsVideoSelected(videoId);
 
     public ObservableCollection<Session> RecentSessions { get; } = new();
     public ObservableCollection<Session> VisibleRecentSessions { get; } = new();
     public ObservableCollection<Session> FavoriteSessions { get; } = new();
     public ObservableCollection<SessionsListRow> SessionRows { get; } = new();
-    public ObservableCollection<VideoClip> SelectedSessionVideos { get; } = new();
-    public ObservableCollection<VideoLesson> VideoLessons { get; } = new();
 
     private SessionsListRow? _selectedSessionListItem;
     public SessionsListRow? SelectedSessionListItem
@@ -2431,8 +815,7 @@ public class DashboardViewModel : BaseViewModel
                     SelectedSession = newRow.Session;
                     
                     // Limpiar carpeta inteligente activa al seleccionar una sesión
-                    _activeSmartFolder = null;
-                    _smartFolderFilteredVideosCache = null;
+                    SmartFolders.ClearActiveSmartFolder();
                 }
             }
         }
@@ -2489,6 +872,98 @@ public class DashboardViewModel : BaseViewModel
                 }
                 SessionRows.Add(row);
             }
+        }
+    }
+
+    private void ReplaceRecentSession(Session session)
+    {
+        var existing = RecentSessions.FirstOrDefault(s => s.Id == session.Id);
+        if (existing == null)
+            return;
+
+        var index = RecentSessions.IndexOf(existing);
+        if (index >= 0)
+            RecentSessions[index] = session;
+    }
+
+    private void RemoveRecentSession(int sessionId)
+    {
+        var existing = RecentSessions.FirstOrDefault(s => s.Id == sessionId);
+        if (existing != null)
+            RecentSessions.Remove(existing);
+    }
+
+    private async Task EnsureSessionVisibleAsync(Session session)
+    {
+        await MainThread.InvokeOnMainThreadAsync(() =>
+        {
+            if (RecentSessions.Any(s => s.Id == session.Id))
+                return;
+
+            var insertIndex = 0;
+            while (insertIndex < RecentSessions.Count && RecentSessions[insertIndex].Fecha > session.Fecha)
+                insertIndex++;
+
+            RecentSessions.Insert(insertIndex, session);
+
+            if (!IsSessionsListExpanded)
+                IsSessionsListExpanded = true;
+
+            SyncVisibleSessionRows();
+        });
+    }
+
+    private async Task RemoveLocalVideoClipAsync(VideoClip localVideo)
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(localVideo.LocalClipPath) && File.Exists(localVideo.LocalClipPath))
+            {
+                try { File.Delete(localVideo.LocalClipPath); } catch { }
+            }
+
+            if (!string.IsNullOrEmpty(localVideo.LocalThumbnailPath) && File.Exists(localVideo.LocalThumbnailPath))
+            {
+                try { File.Delete(localVideo.LocalThumbnailPath); } catch { }
+            }
+
+            await _databaseService.DeleteVideoClipAsync(localVideo.Id);
+            _databaseService.InvalidateCache();
+
+            await MainThread.InvokeOnMainThreadAsync(() => Videos.RemoveVideoFromCaches(localVideo));
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Remote] Error eliminando referencia local: {ex.Message}");
+        }
+    }
+
+    private async Task RemoveLocalSessionIfEmptyAsync(int sessionId)
+    {
+        try
+        {
+            var db = await _databaseService.GetConnectionAsync();
+            var remaining = await db.Table<VideoClip>().Where(v => v.SessionId == sessionId).CountAsync();
+            if (remaining > 0)
+                return;
+
+            await _databaseService.DeleteSessionCascadeAsync(sessionId, deleteSessionFiles: false);
+
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                var session = RecentSessions.FirstOrDefault(s => s.Id == sessionId);
+                if (session != null)
+                    RecentSessions.Remove(session);
+
+                if (SelectedSession?.Id == sessionId)
+                    SelectedSession = null;
+
+                SyncVisibleSessionRows();
+            });
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Remote] Error eliminando sesión local vacía: {ex.Message}");
         }
     }
 
@@ -2689,267 +1164,6 @@ public class DashboardViewModel : BaseViewModel
         : 0;
 
     /// <summary>Top tags de eventos más usados</summary>
-    public ObservableCollection<TagUsageRow> TopEventTags { get; } = new();
-
-    /// <summary>Valores para gráfico circular de eventos</summary>
-    public ObservableCollection<double> TopEventTagValues { get; } = new();
-
-    /// <summary>Nombres para gráfico circular de eventos</summary>
-    public ObservableCollection<string> TopEventTagNames { get; } = new();
-
-    /// <summary>Top etiquetas más usadas</summary>
-    public ObservableCollection<TagUsageRow> TopLabelTags { get; } = new();
-
-    /// <summary>Valores para gráfico circular de etiquetas</summary>
-    public ObservableCollection<double> TopLabelTagValues { get; } = new();
-
-    /// <summary>Nombres para gráfico circular de etiquetas</summary>
-    public ObservableCollection<string> TopLabelTagNames { get; } = new();
-
-    // ==================== TABLA DE TIEMPOS POR SECCIÓN ====================
-    
-    /// <summary>Secciones con tiempos de atletas</summary>
-    public ObservableCollection<SectionWithAthleteRows> SectionTimes { get; } = new();
-    
-    private bool _hasSectionTimes;
-    /// <summary>Indica si hay tiempos por sección para mostrar</summary>
-    public bool HasSectionTimes
-    {
-        get => _hasSectionTimes;
-        set => SetProperty(ref _hasSectionTimes, value);
-    }
-
-    /// <summary>Indica si se debe mostrar la tabla de tiempos (solo para sesiones específicas, no Galería General ni Videolecciones)</summary>
-    public bool ShowSectionTimesTable => !IsAllGallerySelected && !IsVideoLessonsSelected && SelectedSession != null && HasSectionTimes;
-
-    /// <summary>Indica si hay una sesión específica seleccionada (no Galería General ni Videolecciones)</summary>
-    public bool HasSpecificSessionSelected => !IsAllGallerySelected && !IsVideoLessonsSelected && SelectedSession != null;
-
-    private bool _showSectionTimesDifferences;
-    /// <summary>Indica si se muestran las diferencias respecto al usuario de referencia</summary>
-    public bool ShowSectionTimesDifferences
-    {
-        get => _showSectionTimesDifferences;
-        set
-        {
-            if (SetProperty(ref _showSectionTimesDifferences, value))
-            {
-                OnPropertyChanged(nameof(ShowSectionTimesAbsolute));
-                // Recalcular diferencias cuando se activa el modo
-                if (value && ReferenceAthleteId.HasValue)
-                {
-                    UpdateSectionTimeDifferences();
-                }
-            }
-        }
-    }
-
-    /// <summary>Indica si se muestran los tiempos absolutos (inverso de diferencias)</summary>
-    public bool ShowSectionTimesAbsolute => !ShowSectionTimesDifferences;
-
-    /// <summary>Comando para alternar entre vista de tiempos y diferencias</summary>
-    public ICommand ToggleSectionTimesViewCommand { get; }
-
-    // ==================== POPUP TABLA DETALLADA DE TIEMPOS ====================
-    
-    private bool _showDetailedTimesPopup;
-    /// <summary>Indica si se muestra el popup de tiempos detallados</summary>
-    public bool ShowDetailedTimesPopup
-    {
-        get => _showDetailedTimesPopup;
-        set => SetProperty(ref _showDetailedTimesPopup, value);
-    }
-
-    private string _detailedTimesHtml = string.Empty;
-    public string DetailedTimesHtml
-    {
-        get => _detailedTimesHtml;
-        set => SetProperty(ref _detailedTimesHtml, value);
-    }
-    
-    /// <summary>Secciones con tiempos detallados (incluye Laps)</summary>
-    public ObservableCollection<SectionWithDetailedAthleteRows> DetailedSectionTimes { get; } = new();
-    
-    // ---- Opciones de visibilidad del informe ----
-    private ReportOptions _reportOptions = ReportOptions.FullAnalysis();
-    /// <summary>Opciones de visibilidad para el informe de sesión</summary>
-    public ReportOptions ReportOptions
-    {
-        get => _reportOptions;
-        set
-        {
-            if (SetProperty(ref _reportOptions, value))
-            {
-                RegenerateDetailedTimesHtml();
-            }
-        }
-    }
-    
-    private bool _showReportOptionsPanel;
-    /// <summary>Indica si se muestra el panel de opciones del informe</summary>
-    public bool ShowReportOptionsPanel
-    {
-        get => _showReportOptionsPanel;
-        set => SetProperty(ref _showReportOptionsPanel, value);
-    }
-    
-    /// <summary>Comando para alternar el panel de opciones</summary>
-    public ICommand ToggleReportOptionsPanelCommand => new RelayCommand(() => ShowReportOptionsPanel = !ShowReportOptionsPanel);
-    
-    /// <summary>Comando para aplicar preset de análisis completo</summary>
-    public ICommand ApplyFullAnalysisPresetCommand => new RelayCommand(() =>
-    {
-        ReportOptions = ReportOptions.FullAnalysis();
-        OnPropertyChanged(nameof(ReportOptions));
-        RegenerateDetailedTimesHtml();
-    });
-    
-    /// <summary>Comando para aplicar preset de resumen rápido</summary>
-    public ICommand ApplyQuickSummaryPresetCommand => new RelayCommand(() =>
-    {
-        ReportOptions = ReportOptions.QuickSummary();
-        OnPropertyChanged(nameof(ReportOptions));
-        RegenerateDetailedTimesHtml();
-    });
-    
-    /// <summary>Comando para aplicar preset de informe de atleta</summary>
-    public ICommand ApplyAthleteReportPresetCommand => new RelayCommand(() =>
-    {
-        ReportOptions = ReportOptions.AthleteReport();
-        OnPropertyChanged(nameof(ReportOptions));
-        RegenerateDetailedTimesHtml();
-    });
-    
-    /// <summary>Actualiza el informe cuando cambia una opción</summary>
-    public ICommand UpdateReportOptionCommand => new RelayCommand<string>(optionName =>
-    {
-        // Las propiedades ya se actualizan por binding, solo regeneramos
-        RegenerateDetailedTimesHtml();
-    });
-
-    // ---- Selector de atleta de referencia para gráficos ----
-    /// <summary>Lista de atletas disponibles para selección en el popup</summary>
-    public ObservableCollection<AthletePickerItem> DetailedTimesAthletes { get; } = new();
-
-    private AthletePickerItem? _selectedDetailedTimesAthlete;
-    /// <summary>Atleta seleccionado para marcar en los gráficos del popup</summary>
-    public AthletePickerItem? SelectedDetailedTimesAthlete
-    {
-        get => _selectedDetailedTimesAthlete;
-        set
-        {
-            if (SetProperty(ref _selectedDetailedTimesAthlete, value))
-            {
-                OnPropertyChanged(nameof(HasSelectedDetailedTimesAthlete));
-                OnPropertyChanged(nameof(SelectedDetailedTimesAthleteName));
-                RegenerateDetailedTimesHtml();
-            }
-        }
-    }
-
-    /// <summary>Indica si hay un atleta seleccionado para el gráfico</summary>
-    public bool HasSelectedDetailedTimesAthlete => SelectedDetailedTimesAthlete != null;
-
-    /// <summary>Nombre del atleta seleccionado (para mostrar en el botón)</summary>
-    public string SelectedDetailedTimesAthleteName => SelectedDetailedTimesAthlete?.DisplayName ?? "Selecciona atleta";
-
-    private bool _isAthleteDropdownExpanded;
-    /// <summary>Indica si el dropdown de atletas está expandido</summary>
-    public bool IsAthleteDropdownExpanded
-    {
-        get => _isAthleteDropdownExpanded;
-        set => SetProperty(ref _isAthleteDropdownExpanded, value);
-    }
-
-    /// <summary>Comando para alternar el dropdown de atletas</summary>
-    public ICommand ToggleAthleteDropdownCommand { get; }
-
-    /// <summary>Comando para seleccionar un atleta del dropdown</summary>
-    public ICommand SelectDetailedTimesAthleteCommand { get; }
-
-    /// <summary>Comando para limpiar la selección de atleta en el popup</summary>
-    public ICommand ClearDetailedTimesAthleteCommand { get; }
-
-    /// <summary>Regenera el HTML con el atleta seleccionado actual</summary>
-    private void RegenerateDetailedTimesHtml()
-    {
-        if (SelectedSession == null || DetailedSectionTimes.Count == 0)
-            return;
-
-        var refId = SelectedDetailedTimesAthlete?.Id;
-        var refVideoId = SelectedDetailedTimesAthlete?.VideoId;
-        var refName = SelectedDetailedTimesAthlete?.DisplayName;
-        
-        // Generar datos del informe completo
-        var reportData = SessionReportService.GenerateReportData(
-            SelectedSession, 
-            DetailedSectionTimes.ToList(), 
-            refId, 
-            refVideoId);
-        
-        // Generar HTML con las opciones seleccionadas
-        DetailedTimesHtml = _tableExportService.BuildSessionReportHtml(
-            reportData, 
-            ReportOptions, 
-            refId, 
-            refVideoId,
-            refName);
-    }
-    
-    private bool _isLoadingDetailedTimes;
-    /// <summary>Indica si se están cargando los tiempos detallados</summary>
-    public bool IsLoadingDetailedTimes
-    {
-        get => _isLoadingDetailedTimes;
-        set => SetProperty(ref _isLoadingDetailedTimes, value);
-    }
-
-    private bool _isExportingDetailedTimes;
-    public bool IsExportingDetailedTimes
-    {
-        get => _isExportingDetailedTimes;
-        set => SetProperty(ref _isExportingDetailedTimes, value);
-    }
-    
-    /// <summary>Indica si hay tiempos detallados con parciales</summary>
-    public bool HasDetailedTimesWithLaps => DetailedSectionTimes.Any(s => s.HasAnyLaps);
-    
-    /// <summary>Comando para abrir el popup de tiempos detallados</summary>
-    public ICommand OpenDetailedTimesPopupCommand { get; }
-    
-    /// <summary>Comando para cerrar el popup de tiempos detallados</summary>
-    public ICommand CloseDetailedTimesPopupCommand { get; }
-    
-    /// <summary>Indica si se muestran los tiempos acumulados (Splits) en lugar de parciales (Laps)</summary>
-    private bool _showCumulativeTimes;
-    public bool ShowCumulativeTimes
-    {
-        get => _showCumulativeTimes;
-        set
-        {
-            if (SetProperty(ref _showCumulativeTimes, value))
-            {
-                OnPropertyChanged(nameof(ShowLapTimes));
-                OnPropertyChanged(nameof(LapTimeModeText));
-            }
-        }
-    }
-    
-    /// <summary>Indica si se muestran los tiempos parciales (Laps)</summary>
-    public bool ShowLapTimes => !ShowCumulativeTimes;
-    
-    /// <summary>Texto del modo actual de visualización de parciales</summary>
-    public string LapTimeModeText => ShowCumulativeTimes ? "Acum." : "Parcial";
-    
-    /// <summary>Comando para alternar entre Laps y Splits</summary>
-    public ICommand ToggleLapTimesModeCommand { get; }
-
-    /// <summary>Comando para seleccionar explícitamente Lap/Acum.</summary>
-    public ICommand SetLapTimesModeCommand { get; }
-
-    public ICommand ExportDetailedTimesHtmlCommand { get; }
-    public ICommand ExportDetailedTimesPdfCommand { get; }
-
     // ==================== ESTADÍSTICAS USUARIO ====================
     private UserAthleteStats? _userAthleteStats;
     private int? _referenceAthleteId;
@@ -3124,271 +1338,13 @@ public class DashboardViewModel : BaseViewModel
         }
     }
 
-    private async Task LoadAbsoluteTagStatsAsync(int? sessionId)
+    private void ClearLocalSelectionForRemote()
     {
-        try
-        {
-            var stats = await _statisticsService.GetAbsoluteTagStatsAsync(sessionId);
-
-            TotalEventTagsCount = stats.TotalEventTags;
-            TotalUniqueEventTagsCount = stats.UniqueEventTags;
-            TotalLabelTagsCount = stats.TotalLabelTags;
-            TotalUniqueLabelTagsCount = stats.UniqueLabelTags;
-            LabeledVideosCount = stats.LabeledVideos;
-            TotalVideosForLabeling = stats.TotalVideos;
-            AvgTagsPerSession = stats.AvgTagsPerSession;
-
-            TopEventTags.Clear();
-            TopEventTagValues.Clear();
-            TopEventTagNames.Clear();
-            foreach (var tag in stats.TopEventTags)
-            {
-                TopEventTags.Add(tag);
-                TopEventTagValues.Add(tag.UsageCount);
-                TopEventTagNames.Add(tag.TagName);
-            }
-
-            TopLabelTags.Clear();
-            TopLabelTagValues.Clear();
-            TopLabelTagNames.Clear();
-            foreach (var tag in stats.TopLabelTags)
-            {
-                TopLabelTags.Add(tag);
-                TopLabelTagValues.Add(tag.UsageCount);
-                TopLabelTagNames.Add(tag.TagName);
-            }
-
-            OnPropertyChanged(nameof(LabeledVideosText));
-            OnPropertyChanged(nameof(LabeledVideosPercentage));
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Error cargando estadísticas absolutas: {ex.Message}");
-        }
-    }
-
-    private async Task LoadAthleteSectionTimesAsync(int sessionId)
-    {
-        try
-        {
-            var sections = await _statisticsService.GetAthleteSectionTimesAsync(sessionId);
-
-            SectionTimes.Clear();
-            foreach (var section in sections)
-            {
-                SectionTimes.Add(section);
-            }
-
-            HasSectionTimes = SectionTimes.Count > 0;
-            OnPropertyChanged(nameof(ShowSectionTimesTable));
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Error cargando tiempos por sección: {ex.Message}");
-            HasSectionTimes = false;
-            OnPropertyChanged(nameof(ShowSectionTimesTable));
-        }
-    }
-
-    private void ClearSectionTimes()
-    {
-        SectionTimes.Clear();
-        HasSectionTimes = false;
-        OnPropertyChanged(nameof(ShowSectionTimesTable));
-    }
-
-    /// <summary>
-    /// Desactiva todas las secciones remotas y actualiza la UI
-    /// </summary>
-    private void DeselectRemoteSections()
-    {
-        if (IsRemoteAllGallerySelected || IsRemoteVideoLessonsSelected || IsRemoteTrashSelected || IsRemoteSessionSelected)
-        {
-            IsRemoteAllGallerySelected = false;
-            IsRemoteVideoLessonsSelected = false;
-            IsRemoteTrashSelected = false;
-            ClearRemoteSessionSelection();
-            OnPropertyChanged(nameof(ShowRemoteGallery));
-            OnPropertyChanged(nameof(IsAnyRemoteSectionSelected));
-            OnPropertyChanged(nameof(ShowVideoGallery));
-        }
-    }
-
-    /// <summary>
-    /// Abre el popup con la tabla de tiempos detallados (incluye parciales)
-    /// </summary>
-    private async Task OpenDetailedTimesPopupAsync()
-    {
-        if (SelectedSession == null) return;
-        
-        IsLoadingDetailedTimes = true;
-        ShowDetailedTimesPopup = true;
-        IsAthleteDropdownExpanded = false;
-        
-        try
-        {
-            var detailedTimes = await _statisticsService.GetDetailedAthleteSectionTimesAsync(SelectedSession.Id);
-            
-            DetailedSectionTimes.Clear();
-            foreach (var section in detailedTimes)
-            {
-                DetailedSectionTimes.Add(section);
-            }
-            
-            OnPropertyChanged(nameof(HasDetailedTimesWithLaps));
-
-            // Cargar lista de atletas para el selector (atletas únicos de la sesión)
-            DetailedTimesAthletes.Clear();
-            
-            // Obtener atletas únicos de todas las secciones
-            var uniqueAthletes = detailedTimes
-                .SelectMany(s => s.Athletes)
-                .GroupBy(a => a.AthleteId)
-                .Select(g => new {
-                    AthleteId = g.Key,
-                    AthleteName = g.First().AthleteName,
-                    TotalRuns = g.Count()
-                })
-                .OrderBy(a => a.AthleteName)
-                .ToList();
-
-            // Añadir cada atleta único al selector
-            foreach (var athlete in uniqueAthletes)
-            {
-                var suffix = athlete.TotalRuns > 1 ? $" ({athlete.TotalRuns} mangas)" : "";
-                DetailedTimesAthletes.Add(new AthletePickerItem(
-                    athlete.AthleteId, 
-                    athlete.AthleteName + suffix, 
-                    videoId: null, // Sin video específico, usamos el atleta
-                    attemptNumber: 0, 
-                    hasMultipleAttempts: athlete.TotalRuns > 1));
-            }
-
-            // Preseleccionar el atleta de referencia global si existe en la lista
-            if (ReferenceAthleteId.HasValue)
-            {
-                // Buscar la opción "Mejor" o la única entrada del atleta
-                SelectedDetailedTimesAthlete = DetailedTimesAthletes
-                    .FirstOrDefault(a => a.Id == ReferenceAthleteId.Value && a.AttemptNumber == 0)
-                    ?? DetailedTimesAthletes.FirstOrDefault(a => a.Id == ReferenceAthleteId.Value);
-            }
-            else
-            {
-                SelectedDetailedTimesAthlete = null;
-            }
-
-            // Generar HTML inicial
-            RegenerateDetailedTimesHtml();
-        }
-        catch (Exception ex)
-        {
-            AppLog.Error("DashboardViewModel", $"Error cargando tiempos detallados: {ex.Message}", ex);
-        }
-        finally
-        {
-            IsLoadingDetailedTimes = false;
-        }
-    }
-
-    /// <summary>
-    /// Actualiza las diferencias de tiempos respecto al atleta de referencia
-    /// </summary>
-    private void UpdateSectionTimeDifferences()
-    {
-        if (!ReferenceAthleteId.HasValue) return;
-        
-        var refAthleteId = ReferenceAthleteId.Value;
-        
-        foreach (var section in SectionTimes)
-        {
-            // Buscar el tiempo del atleta de referencia en esta sección
-            var refAthleteRow = section.Athletes.FirstOrDefault(a => a.AthleteId == refAthleteId);
-            long refTotalMs = refAthleteRow?.TotalMs ?? 0;
-            
-            foreach (var athlete in section.Athletes)
-            {
-                athlete.SetReferenceDifference(refTotalMs, athlete.AthleteId == refAthleteId);
-            }
-        }
-        
-        // Forzar actualización de la UI
-        OnPropertyChanged(nameof(SectionTimes));
-    }
-
-    /// <summary>
-    /// Refresca las estadísticas si hay actualizaciones pendientes (llamar desde OnAppearing)
-    /// </summary>
-    public async Task RefreshPendingStatsAsync()
-    {
-        if (!_hasStatsUpdatePending)
-            return;
-
-        _hasStatsUpdatePending = false;
-        _modifiedVideoIds.Clear();
-
-        try
-        {
-            // Actualizar contadores de SmartFolders ya que los videos pueden haber cambiado
-            UpdateSmartFolderVideoCounts();
-            
-            // Refrescar estadísticas según el contexto actual
-            if (SelectedSession != null)
-            {
-                await LoadAbsoluteTagStatsAsync(SelectedSession.Id);
-                await LoadAthleteSectionTimesAsync(SelectedSession.Id);
-            }
-            else if (IsAllGallerySelected)
-            {
-                await LoadAbsoluteTagStatsAsync(null);
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Error refrescando estadísticas pendientes: {ex.Message}");
-        }
-    }
-
-    // ==================== FIN ESTADÍSTICAS RELATIVAS ====================
-
-    // Estadísticas: usar el cache filtrado para mostrar totales reales (no solo paginados)
-    public int TotalFilteredVideoCount => IsVideoLessonsSelected
-        ? VideoLessons.Count
-        : ((_filteredVideosCache ?? _allVideosCache)?.Count ?? SelectedSessionVideos.Count);
-
-    public int TotalAvailableVideoCount => IsVideoLessonsSelected
-        ? VideoLessons.Count
-        : (_allVideosCache?.Count ?? SelectedSessionVideos.Count);
-
-    public double TotalFilteredDurationSeconds => IsVideoLessonsSelected
-        ? 0
-        : ((_filteredVideosCache ?? _allVideosCache)?.Sum(v => v.ClipDuration) ?? SelectedSessionVideos.Sum(v => v.ClipDuration));
-    
-    public string VideoCountDisplayText
-    {
-        get
-        {
-            if (IsVideoLessonsSelected)
-            {
-                var shownLessons = VideoLessons.Count;
-                return $"{shownLessons} videolecciones";
-            }
-
-            var shown = SelectedSessionVideos.Count;
-            var total = TotalFilteredVideoCount;
-            return shown == total
-                ? $"{shown} vídeos"
-                : $"{shown} de {total} vídeos";
-        }
-    }
-    
-    public double SelectedSessionTotalDurationSeconds => TotalFilteredDurationSeconds;
-    public string SelectedSessionTotalDurationFormatted
-    {
-        get
-        {
-            var ts = TimeSpan.FromSeconds(TotalFilteredDurationSeconds);
-            return ts.TotalHours >= 1 ? $"{(int)ts.TotalHours}h {ts.Minutes}m" : $"{ts.Minutes}m {ts.Seconds}s";
-        }
+        IsAllGallerySelected = false;
+        IsVideoLessonsSelected = false;
+        IsDiaryViewSelected = false;
+        SelectedSession = null;
+        OnPropertyChanged(nameof(SelectedSessionTitle));
     }
 
     public ICommand ImportCommand { get; }
@@ -3400,23 +1356,12 @@ public class DashboardViewModel : BaseViewModel
     public ICommand ViewAthletesCommand { get; }
     public ICommand PlaySelectedVideoCommand { get; }
     public ICommand DeleteSelectedSessionCommand { get; }
-    public ICommand SelectAllGalleryCommand { get; }
-    public ICommand ViewVideoLessonsCommand { get; }
-    public ICommand ViewTrashCommand { get; }
-    public ICommand ViewDiaryCommand { get; }
-    public ICommand ToggleFavoritesExpandedCommand { get; }
-    public ICommand SelectFavoriteSessionsCommand { get; }
-    public ICommand SelectFavoriteVideosCommand { get; }
     public ICommand ToggleSessionFavoriteCommand { get; }
     public ICommand ToggleVideoFavoriteCommand { get; }
     public ICommand SelectFavoriteSessionCommand { get; }
-    public ICommand SelectDiaryDateCommand { get; }
     public ICommand LoadMoreVideosCommand { get; }
     public ICommand ClearFiltersCommand { get; }
     public ICommand ToggleFilterItemCommand { get; }
-    public ICommand ToggleUserLibraryExpandedCommand { get; }
-    public ICommand ToggleRemoteLibraryExpandedCommand { get; }
-    public ICommand ToggleSessionsListExpandedCommand { get; }
     public ICommand ToggleSessionGroupExpandedCommand { get; }
     public ICommand SelectSessionRowCommand { get; }
     public ICommand TogglePlacesExpandedCommand { get; }
@@ -3425,19 +1370,6 @@ public class DashboardViewModel : BaseViewModel
     public ICommand ToggleTagsExpandedCommand { get; }
     public ICommand SelectStatsTabCommand { get; }
     public ICommand SelectCrudTechTabCommand { get; }
-    public ICommand SelectDiaryTabCommand { get; }
-    public ICommand SaveDiaryCommand { get; }
-    public ICommand EditDiaryCommand { get; }
-    public ICommand SaveCalendarDiaryCommand { get; }
-    public ICommand ViewSessionAsPlaylistCommand { get; }
-    public ICommand ConnectHealthKitCommand { get; }
-    public ICommand ImportHealthDataToWellnessCommand { get; }
-    public ICommand SaveWellnessCommand { get; }
-    public ICommand StartEditWellnessCommand { get; }
-    public ICommand CancelEditWellnessCommand { get; }
-    public ICommand SetMoodCommand { get; }
-    public ICommand ShowPPMInfoCommand { get; }
-    public ICommand ShowHRVInfoCommand { get; }
     public ICommand ToggleAddNewSessionCommand { get; }
     public ICommand CreateNewSessionCommand { get; }
     public ICommand CancelNewSessionCommand { get; }
@@ -3446,36 +1378,11 @@ public class DashboardViewModel : BaseViewModel
     public ICommand OpenNewSessionSidebarPopupCommand { get; }
     public ICommand CancelNewSessionSidebarPopupCommand { get; }
     public ICommand CreateSessionAndRecordCommand { get; }
-    public ICommand OpenSmartFolderSidebarPopupCommand { get; }
-    public ICommand CancelSmartFolderSidebarPopupCommand { get; }
-    public ICommand AddSmartFolderCriterionCommand { get; }
-    public ICommand RemoveSmartFolderCriterionCommand { get; }
-    public ICommand CreateSmartFolderCommand { get; }
-    public ICommand SetSmartFolderMatchModeCommand { get; }
-    public ICommand SelectSmartFolderCommand { get; }
-    public ICommand SelectCriterionFieldCommand { get; }
-    public ICommand SelectCriterionOperatorCommand { get; }
-    public ICommand ShowSmartFolderContextMenuCommand { get; }
 
-    public ICommand ConnectNasCommand { get; }
-    public ICommand RemoteSelectAllGalleryCommand { get; }
-    public ICommand RemoteViewVideoLessonsCommand { get; }
-    public ICommand RemoteViewTrashCommand { get; }
-    public ICommand ToggleRemoteSessionsListExpandedCommand { get; }
-    public ICommand SelectRemoteSessionCommand { get; }
-    public ICommand ToggleRemoteSmartFoldersExpandedCommand { get; }
-    public ICommand RenameSmartFolderCommand { get; }
-    public ICommand DeleteSmartFolderCommand { get; }
-    public ICommand ChangeSmartFolderIconCommand { get; }
-    public ICommand ChangeSmartFolderColorCommand { get; }
-    public ICommand SetSmartFolderIconCommand { get; }
-    public ICommand SetSmartFolderColorCommand { get; }
-    public ICommand OpenIconColorPickerForSmartFolderCommand { get; }
     public ICommand OpenIconColorPickerForSessionCommand { get; }
     public ICommand CloseIconColorPickerCommand { get; }
     public ICommand SelectPickerIconCommand { get; }
     public ICommand SelectPickerColorCommand { get; }
-    public ICommand ToggleSmartFoldersExpansionCommand { get; }
     public ICommand ToggleSessionsExpansionCommand { get; }
     public ICommand RenameSessionCommand { get; }
     public ICommand DeleteSessionCommand { get; }
@@ -3484,17 +1391,11 @@ public class DashboardViewModel : BaseViewModel
     public ICommand SelectPlaceOptionCommand { get; }
     public ICommand RecordForSelectedSessionCommand { get; }
     public ICommand ExportSelectedSessionCommand { get; }
-    public ICommand SetEvolutionPeriodCommand { get; }
-    public ICommand ToggleMultiSelectModeCommand { get; }
-    public ICommand ToggleSelectAllCommand { get; }
-    public ICommand ToggleVideoSelectionCommand { get; }
-    public ICommand ClearVideoSelectionCommand { get; }
     public ICommand VideoTapCommand { get; }
     public ICommand VideoLessonTapCommand { get; }
     public ICommand ShareVideoLessonCommand { get; }
     public ICommand DeleteVideoLessonCommand { get; }
     public ICommand PlayAsPlaylistCommand { get; }
-    public ICommand EditVideoDetailsCommand { get; }
     public ICommand ShareSelectedVideosCommand { get; }
     public ICommand DeleteSelectedVideosCommand { get; }
     public ICommand PlayParallelAnalysisCommand { get; }
@@ -3503,103 +1404,17 @@ public class DashboardViewModel : BaseViewModel
     public ICommand DropOnScreen1Command { get; }
     public ICommand DropOnScreen2Command { get; }
     public ICommand ToggleQuickAnalysisIsolatedModeCommand { get; }
+    public ICommand ToggleSectionTimesViewCommand { get; }
+    public ICommand OpenDetailedTimesPopupCommand { get; }
+    public ICommand CloseDetailedTimesPopupCommand { get; }
+    public ICommand ClearDetailedTimesAthleteCommand { get; }
+    public ICommand ToggleAthleteDropdownCommand { get; }
+    public ICommand SelectDetailedTimesAthleteCommand { get; }
+    public ICommand ToggleLapTimesModeCommand { get; }
+    public ICommand SetLapTimesModeCommand { get; }
+    public ICommand ExportDetailedTimesHtmlCommand { get; }
+    public ICommand ExportDetailedTimesPdfCommand { get; }
     
-    // Comandos de edición en lote
-    public ICommand CloseBatchEditPopupCommand { get; }
-    public ICommand ApplyBatchEditCommand { get; }
-    
-    // Comandos de sincronización cloud
-    public ICommand CloudLoginCommand { get; }
-    public ICommand SyncAllCommand { get; }
-    public ICommand SyncSessionCommand { get; }
-    public ICommand UploadVideoCommand { get; }
-    public ICommand DownloadVideoCommand { get; }
-    public ICommand CheckPendingSyncCommand { get; }
-    
-    // Comandos para galería remota
-    public ICommand AddRemoteVideoToLibraryCommand { get; }
-    public ICommand AddRemoteSessionToLibraryCommand { get; }
-    public ICommand DeleteRemoteVideoFromLibraryCommand { get; }
-    public ICommand DeleteAllRemoteVideosFromLibraryCommand { get; }
-    public ICommand DownloadRemoteVideoCommand { get; }
-    public ICommand PlayRemoteVideoCommand { get; }
-    public ICommand DeleteRemoteSessionFromCloudCommand { get; }
-    
-    // Comandos para acciones en lote de videos remotos
-    public ICommand ToggleRemoteMultiSelectModeCommand { get; }
-    public ICommand ToggleRemoteSelectAllCommand { get; }
-    public ICommand ToggleRemoteVideoSelectionCommand { get; }
-    public ICommand DownloadSelectedRemoteVideosCommand { get; }
-    public ICommand AddSelectedRemoteToLibraryCommand { get; }
-    public ICommand DeleteSelectedRemoteFromCloudCommand { get; }
-    public ICommand DeleteSelectedRemoteFromLibraryCommand { get; }
-    
-    public ICommand ToggleBatchTagCommand { get; }
-    public ICommand SelectBatchAthleteCommand { get; }
-    public ICommand AddNewBatchAthleteCommand { get; }
-    public ICommand AddNewBatchTagCommand { get; }
-
-    // Propiedades de edición en lote
-    public bool ShowBatchEditPopup
-    {
-        get => _showBatchEditPopup;
-        set => SetProperty(ref _showBatchEditPopup, value);
-    }
-
-    public ObservableCollection<Athlete> BatchEditAthletes
-    {
-        get => _batchEditAthletes;
-        set => SetProperty(ref _batchEditAthletes, value);
-    }
-
-    public ObservableCollection<Tag> BatchEditTags
-    {
-        get => _batchEditTags;
-        set => SetProperty(ref _batchEditTags, value);
-    }
-
-    public Athlete? SelectedBatchAthlete
-    {
-        get => _selectedBatchAthlete;
-        set => SetProperty(ref _selectedBatchAthlete, value);
-    }
-
-    public int BatchEditSection
-    {
-        get => _batchEditSection;
-        set => SetProperty(ref _batchEditSection, value);
-    }
-
-    public bool BatchEditSectionEnabled
-    {
-        get => _batchEditSectionEnabled;
-        set => SetProperty(ref _batchEditSectionEnabled, value);
-    }
-
-    public bool BatchEditAthleteEnabled
-    {
-        get => _batchEditAthleteEnabled;
-        set => SetProperty(ref _batchEditAthleteEnabled, value);
-    }
-
-    public string? NewBatchAthleteSurname
-    {
-        get => _newBatchAthleteSurname;
-        set => SetProperty(ref _newBatchAthleteSurname, value);
-    }
-
-    public string? NewBatchAthleteName
-    {
-        get => _newBatchAthleteName;
-        set => SetProperty(ref _newBatchAthleteName, value);
-    }
-
-    public string? NewBatchTagText
-    {
-        get => _newBatchTagText;
-        set => SetProperty(ref _newBatchTagText, value);
-    }
-
     // Propiedades de edición de sesión individual
     public bool ShowSessionEditPopup
     {
@@ -3637,9 +1452,13 @@ public class DashboardViewModel : BaseViewModel
         StatisticsService statisticsService,
         ThumbnailService thumbnailService,
         ITableExportService tableExportService,
-        IHealthKitService healthKitService,
+            VideosViewModel videos,
+        LayoutStateViewModel layout,
+        BatchEditViewModel batchEdit,
+        SmartFoldersViewModel smartFolders,
+        RemoteLibraryViewModel remote,
+        DiaryWellnessViewModel diary,
         ICloudBackendService cloudBackendService,
-        SyncService? syncService = null,
         StorageMigrationService? migrationService = null,
         VideoExportNotifier? videoExportNotifier = null,
         ImportProgressService? importProgressService = null)
@@ -3650,11 +1469,15 @@ public class DashboardViewModel : BaseViewModel
         _statisticsService = statisticsService;
         _thumbnailService = thumbnailService;
         _tableExportService = tableExportService;
-        _healthKitService = healthKitService;
         _cloudBackendService = cloudBackendService;
-        _syncService = syncService;
         _migrationService = migrationService;
         _importProgressService = importProgressService;
+        Layout = layout;
+        BatchEdit = batchEdit;
+        SmartFolders = smartFolders;
+        Remote = remote;
+        Diary = diary;
+    Videos = videos;
 
         // Suscribirse a eventos de exportación de video
         if (videoExportNotifier != null)
@@ -3679,6 +1502,112 @@ public class DashboardViewModel : BaseViewModel
 
         Title = "Dashboard";
 
+        Layout.Configure(
+            Videos.SelectAllGalleryAsync,
+            Videos.ViewVideoLessonsAsync,
+            ViewTrashAsync,
+            () => IsDiaryViewSelected = true,
+            () => IsFavoritesExpanded = !IsFavoritesExpanded,
+            SelectFavoriteSessionsAsync,
+            Videos.SelectFavoriteVideosAsync,
+            () => IsUserLibraryExpanded = !IsUserLibraryExpanded,
+            () => Layout.IsRemoteLibraryExpanded = !Layout.IsRemoteLibraryExpanded,
+            () => IsSessionsListExpanded = !IsSessionsListExpanded,
+            () => Layout.IsRemoteSessionsListExpanded = !Layout.IsRemoteSessionsListExpanded,
+            () => Layout.IsRemoteSmartFoldersExpanded = !Layout.IsRemoteSmartFoldersExpanded);
+
+        BatchEdit.Configure(
+            () => Videos.SelectedSessionVideos.ToList(),
+            () => Videos.FilteredVideosCache?.ToList(),
+            () => Videos.AllVideosCache?.ToList(),
+            () => SelectedSession,
+            () => IsAllGallerySelected,
+            async () =>
+            {
+                if (SelectedSession != null)
+                    await Videos.LoadSelectedSessionVideosAsync(SelectedSession);
+            },
+            async () =>
+            {
+                if (IsAllGallerySelected)
+                    await Videos.LoadAllVideosAsync();
+            });
+
+        SmartFolders.Configure(
+            () => Videos.AllVideosCache,
+            () => Videos.LoadAllVideosAsync(),
+            () => Videos.ClearFilters(true),
+            () => SelectedSession = null,
+            () => IsAllGallerySelected = true,
+            Videos.ApplySmartFolderFilteredResultsAsync,
+            () => Videos.IncrementFiltersVersion(),
+            () => Videos.ReadFiltersVersion(),
+            visible => Layout.ShowSmartFolderSidebarPopup = visible,
+            OpenIconColorPickerForSmartFolder);
+
+        Remote.Configure(
+            () => Layout.IsRemoteLibraryVisible,
+            visible => Layout.IsRemoteLibraryVisible = visible,
+            expanded => Layout.IsRemoteLibraryExpanded = expanded,
+            () => Layout.IsRemoteAllGallerySelected,
+            selected => Layout.IsRemoteAllGallerySelected = selected,
+            () => Layout.IsRemoteVideoLessonsSelected,
+            selected => Layout.IsRemoteVideoLessonsSelected = selected,
+            () => Layout.IsRemoteTrashSelected,
+            selected => Layout.IsRemoteTrashSelected = selected,
+            () => Layout.IsAllGallerySelected,
+            () => Layout.IsVideoLessonsSelected,
+            () => Layout.IsDiaryViewSelected,
+            () => Layout.IsFavoriteVideosSelected,
+            () => Layout.IsFavoriteSessionsSelected,
+            () => SelectedSession,
+            session => SelectedSession = session,
+            Videos.ClearLocalSelectionForRemote,
+            () => Videos.NotifySelectionChanged(),
+            () => OnPropertyChanged(nameof(SelectedSessionTitle)),
+            () => Videos.LoadAllVideosAsync(),
+            session => Videos.LoadSelectedSessionVideosAsync(session),
+            () => Videos.AllVideosCache,
+            video => Videos.InsertVideoIntoAllCache(video),
+            video => Videos.RefreshVideoClipInGalleryAsync(video.Id),
+            EnsureSessionVisibleAsync,
+            () => RecentSessions,
+            ReplaceRecentSession,
+            RemoveRecentSession,
+            SyncVisibleSessionRows,
+            RemoveLocalVideoClipAsync,
+            RemoveLocalSessionIfEmptyAsync,
+            EnsurePlaceExistsAsync,
+            video => Videos.PlaySelectedVideoAsync(video),
+            () => Videos.NotifySelectedSessionVideosChanged());
+
+        Diary.Configure(
+            () => SelectedSession,
+            () =>
+            {
+                Layout.IsDiaryTabSelected = true;
+                Layout.IsStatsTabSelected = false;
+                Layout.IsCrudTechTabSelected = false;
+            });
+
+        Videos.Configure(
+            () => SelectedSession,
+            session => SelectedSession = session,
+            () => RecentSessions.ToList(),
+            () => Stats,
+            stats => Stats = stats,
+            () => IsAllGallerySelected,
+            value => IsAllGallerySelected = value,
+            () => IsVideoLessonsSelected,
+            value => IsVideoLessonsSelected = value,
+            () => IsFavoriteVideosSelected,
+            value => IsFavoriteVideosSelected = value,
+            () => IsDiaryViewSelected,
+            value => IsDiaryViewSelected = value,
+            () => ReferenceAthleteId,
+            RefreshTrashItemCountAsync,
+            count => FavoriteSessionsCount = count);
+
         ImportCommand = new AsyncRelayCommand(ShowImportOptionsAsync);
         ImportCrownFileCommand = new AsyncRelayCommand(ImportCrownFileAsync);
         CreateSessionFromVideosCommand = new AsyncRelayCommand(OpenImportPageForVideosAsync);
@@ -3686,96 +1615,36 @@ public class DashboardViewModel : BaseViewModel
         ViewSessionCommand = new AsyncRelayCommand<Session>(ViewSessionAsync);
         ViewAllSessionsCommand = new AsyncRelayCommand(ViewAllSessionsAsync);
         ViewAthletesCommand = new AsyncRelayCommand(ViewAthletesAsync);
-        PlaySelectedVideoCommand = new AsyncRelayCommand<VideoClip>(PlaySelectedVideoAsync);
+        PlaySelectedVideoCommand = new AsyncRelayCommand<VideoClip>(Videos.PlaySelectedVideoAsync);
         DeleteSelectedSessionCommand = new AsyncRelayCommand(DeleteSelectedSessionAsync);
-        SelectAllGalleryCommand = new AsyncRelayCommand(SelectAllGalleryAsync);
-        ViewVideoLessonsCommand = new AsyncRelayCommand(ViewVideoLessonsAsync);
-        ViewTrashCommand = new AsyncRelayCommand(ViewTrashAsync);
-        ViewDiaryCommand = new RelayCommand(() => IsDiaryViewSelected = true);
-        ToggleFavoritesExpandedCommand = new RelayCommand(() => IsFavoritesExpanded = !IsFavoritesExpanded);
-        SelectFavoriteSessionsCommand = new AsyncRelayCommand(SelectFavoriteSessionsAsync);
-        SelectFavoriteVideosCommand = new AsyncRelayCommand(SelectFavoriteVideosAsync);
         ToggleSessionFavoriteCommand = new AsyncRelayCommand<SessionRow>(ToggleSessionFavoriteAsync);
-        ToggleVideoFavoriteCommand = new AsyncRelayCommand<VideoClip>(ToggleVideoFavoriteAsync);
+        ToggleVideoFavoriteCommand = new AsyncRelayCommand<VideoClip>(Videos.ToggleVideoFavoriteAsync);
         SelectFavoriteSessionCommand = new RelayCommand<Session>(SelectFavoriteSession);
-        SelectDiaryDateCommand = new RelayCommand<DateTime>(date => SelectedDiaryDate = date);
-        LoadMoreVideosCommand = new AsyncRelayCommand(LoadMoreVideosAsync);
-        ClearFiltersCommand = new RelayCommand(() => ClearFilters());
-        ToggleFilterItemCommand = new RelayCommand<object?>(ToggleFilterItem);
-        ToggleUserLibraryExpandedCommand = new RelayCommand(() => IsUserLibraryExpanded = !IsUserLibraryExpanded);
-        ToggleRemoteLibraryExpandedCommand = new RelayCommand(() => IsRemoteLibraryExpanded = !IsRemoteLibraryExpanded);
-        ToggleSessionsListExpandedCommand = new RelayCommand(() => IsSessionsListExpanded = !IsSessionsListExpanded);
+        LoadMoreVideosCommand = new AsyncRelayCommand(Videos.LoadMoreVideosAsync);
+        ClearFiltersCommand = new RelayCommand(() => Videos.ClearFilters());
+        ToggleFilterItemCommand = new RelayCommand<object?>(Videos.ToggleFilterItem);
         ToggleSessionGroupExpandedCommand = new RelayCommand<string>(ToggleSessionGroupExpanded);
         SelectSessionRowCommand = new RelayCommand<SessionRow>(row => { if (row != null) SelectedSessionListItem = row; });
-        TogglePlacesExpandedCommand = new RelayCommand(() => IsPlacesExpanded = !IsPlacesExpanded);
-        ToggleAthletesExpandedCommand = new RelayCommand(() => IsAthletesExpanded = !IsAthletesExpanded);
-        ToggleSectionsExpandedCommand = new RelayCommand(() => IsSectionsExpanded = !IsSectionsExpanded);
-        ToggleTagsExpandedCommand = new RelayCommand(() => IsTagsExpanded = !IsTagsExpanded);
+        TogglePlacesExpandedCommand = new RelayCommand(() => Videos.IsPlacesExpanded = !Videos.IsPlacesExpanded);
+        ToggleAthletesExpandedCommand = new RelayCommand(() => Videos.IsAthletesExpanded = !Videos.IsAthletesExpanded);
+        ToggleSectionsExpandedCommand = new RelayCommand(() => Videos.IsSectionsExpanded = !Videos.IsSectionsExpanded);
+        ToggleTagsExpandedCommand = new RelayCommand(() => Videos.IsTagsExpanded = !Videos.IsTagsExpanded);
 
-        OpenSmartFolderSidebarPopupCommand = new RelayCommand(OpenSmartFolderSidebarPopup);
-        CancelSmartFolderSidebarPopupCommand = new RelayCommand(CloseSmartFolderSidebarPopup);
-        AddSmartFolderCriterionCommand = new RelayCommand(AddSmartFolderCriterion);
-        RemoveSmartFolderCriterionCommand = new RelayCommand<SmartFolderCriterion>(RemoveSmartFolderCriterion);
-        CreateSmartFolderCommand = new RelayCommand(CreateSmartFolder);
-        SelectCriterionFieldCommand = new AsyncRelayCommand<SmartFolderCriterion>(SelectCriterionFieldAsync);
-        SelectCriterionOperatorCommand = new AsyncRelayCommand<SmartFolderCriterion>(SelectCriterionOperatorAsync);
-        SetSmartFolderMatchModeCommand = new RelayCommand<string>(mode =>
-        {
-            if (string.Equals(mode, "Any", StringComparison.OrdinalIgnoreCase))
-                NewSmartFolderMatchMode = "Any";
-            else
-                NewSmartFolderMatchMode = "All";
-        });
-        SelectSmartFolderCommand = new AsyncRelayCommand<SmartFolderDefinition>(SelectSmartFolderAsync);
-        ShowSmartFolderContextMenuCommand = new AsyncRelayCommand<SmartFolderDefinition>(ShowSmartFolderContextMenuAsync);
-
-        ConnectNasCommand = new AsyncRelayCommand(ConnectSynologyNasAsync);
-        RemoteSelectAllGalleryCommand = new AsyncRelayCommand(() => HandleRemoteSectionSelectedAsync("Galería General"));
-        RemoteViewVideoLessonsCommand = new AsyncRelayCommand(() => HandleRemoteSectionSelectedAsync("Videolecciones"));
-        RemoteViewTrashCommand = new AsyncRelayCommand(() => HandleRemoteSectionSelectedAsync("Papelera"));
-        ToggleRemoteSessionsListExpandedCommand = new RelayCommand(() => IsRemoteSessionsListExpanded = !IsRemoteSessionsListExpanded);
-        SelectRemoteSessionCommand = new AsyncRelayCommand<RemoteSessionListItem>(SelectRemoteSessionAsync);
-        ToggleRemoteSmartFoldersExpandedCommand = new RelayCommand(() => IsRemoteSmartFoldersExpanded = !IsRemoteSmartFoldersExpanded);
-        RenameSmartFolderCommand = new AsyncRelayCommand<SmartFolderDefinition>(RenameSmartFolderAsync);
-        DeleteSmartFolderCommand = new AsyncRelayCommand<SmartFolderDefinition>(DeleteSmartFolderAsync);
-        ChangeSmartFolderIconCommand = new AsyncRelayCommand<SmartFolderDefinition>(ChangeSmartFolderIconAsync);
-        ChangeSmartFolderColorCommand = new AsyncRelayCommand<SmartFolderDefinition>(ChangeSmartFolderColorAsync);
-        SetSmartFolderIconCommand = new RelayCommand<object?>(SetSmartFolderIcon);
-        SetSmartFolderColorCommand = new RelayCommand<object?>(SetSmartFolderColor);
         RenameSessionCommand = new AsyncRelayCommand<SessionRow>(RenameSessionAsync);
         DeleteSessionCommand = new AsyncRelayCommand<SessionRow>(DeleteSessionAsync);
         SetSessionIconCommand = new RelayCommand<object?>(SetSessionIcon);
         SetSessionColorCommand = new RelayCommand<object?>(SetSessionColor);
 
         // Icon/Color Picker Popup commands
-        OpenIconColorPickerForSmartFolderCommand = new RelayCommand<SmartFolderDefinition>(OpenIconColorPickerForSmartFolder);
         OpenIconColorPickerForSessionCommand = new RelayCommand<SessionRow>(OpenIconColorPickerForSession);
         CloseIconColorPickerCommand = new RelayCommand(CloseIconColorPicker);
         SelectPickerIconCommand = new RelayCommand<string>(SelectPickerIcon);
         SelectPickerColorCommand = new RelayCommand<string>(SelectPickerColor);
-        ToggleSmartFoldersExpansionCommand = new RelayCommand(ToggleSmartFoldersExpansion);
         ToggleSessionsExpansionCommand = new RelayCommand(ToggleSessionsExpansion);
         SelectPlaceOptionCommand = new RelayCommand<PlaceOption>(SelectPlaceOption);
 
         SelectStatsTabCommand = new RelayCommand(() => IsStatsTabSelected = true);
         SelectCrudTechTabCommand = new RelayCommand(() => IsCrudTechTabSelected = true);
-        SelectDiaryTabCommand = new RelayCommand(() => IsDiaryTabSelected = true);
-        SaveDiaryCommand = new AsyncRelayCommand(SaveDiaryAsync);
-        EditDiaryCommand = new RelayCommand(() => IsEditingDiary = true);
-        SaveCalendarDiaryCommand = new AsyncRelayCommand<SessionWithDiary>(SaveCalendarDiaryAsync);
-        ViewSessionAsPlaylistCommand = new AsyncRelayCommand<SessionWithDiary>(ViewSessionAsPlaylistAsync);
-        ConnectHealthKitCommand = new AsyncRelayCommand(ConnectHealthKitAsync);
-        ImportHealthDataToWellnessCommand = new AsyncRelayCommand(ImportHealthDataToWellnessAsync);
-        SaveWellnessCommand = new AsyncRelayCommand(SaveWellnessAsync);
-        StartEditWellnessCommand = new RelayCommand(() => IsEditingWellness = true);
-        CancelEditWellnessCommand = new RelayCommand(CancelEditWellness);
-        SetMoodCommand = new RelayCommand<string>(mood => 
-        {
-            if (int.TryParse(mood, out int moodValue))
-                WellnessMoodRating = moodValue;
-        });
-        ShowPPMInfoCommand = new AsyncRelayCommand(ShowPPMInfoAsync);
-        ShowHRVInfoCommand = new AsyncRelayCommand(ShowHRVInfoAsync);
         ToggleAddNewSessionCommand = new RelayCommand(() => 
         {
             IsAddingNewSession = !IsAddingNewSession;
@@ -3806,7 +1675,7 @@ public class DashboardViewModel : BaseViewModel
         CancelNewSessionSidebarPopupCommand = new RelayCommand(() => ShowNewSessionSidebarPopup = false);
         CreateSessionAndRecordCommand = new AsyncRelayCommand(CreateSessionAndRecordAsync);
 
-        LoadSmartFoldersFromPreferences();
+        SmartFolders.LoadSmartFoldersFromPreferences();
         LoadSessionCustomizationsFromPreferences();
         LoadNasConnectionFromPreferences();
 
@@ -3821,133 +1690,57 @@ public class DashboardViewModel : BaseViewModel
                 NewSessionType = option.Name;
             }
         });
-        SetEvolutionPeriodCommand = new RelayCommand<string>(period => 
-        {
-            if (int.TryParse(period, out var p))
-                SelectedEvolutionPeriod = p;
-        });
 
-        ToggleMultiSelectModeCommand = new RelayCommand(() =>
-        {
-            IsMultiSelectMode = !IsMultiSelectMode;
-            if (IsMultiSelectMode) IsSelectAllActive = false;
-        });
-        ToggleSelectAllCommand = new RelayCommand(() =>
-        {
-            IsSelectAllActive = !IsSelectAllActive;
-            if (IsSelectAllActive) IsMultiSelectMode = false;
-        });
-        ToggleVideoSelectionCommand = new RelayCommand<VideoClip>(ToggleVideoSelection);
-        ClearVideoSelectionCommand = new RelayCommand(ClearVideoSelection);
-        VideoTapCommand = new AsyncRelayCommand<VideoClip>(OnVideoTappedAsync);
-        VideoLessonTapCommand = new AsyncRelayCommand<VideoLesson>(OnVideoLessonTappedAsync);
-        ShareVideoLessonCommand = new AsyncRelayCommand<VideoLesson>(ShareVideoLessonAsync);
-        DeleteVideoLessonCommand = new AsyncRelayCommand<VideoLesson>(DeleteVideoLessonAsync);
-        PlayAsPlaylistCommand = new AsyncRelayCommand(PlayAsPlaylistAsync);
-        EditVideoDetailsCommand = new AsyncRelayCommand(EditVideoDetailsAsync);
-        ShareSelectedVideosCommand = new AsyncRelayCommand(ShareSelectedVideosAsync);
-        DeleteSelectedVideosCommand = new AsyncRelayCommand(DeleteSelectedVideosAsync);
-        PlayParallelAnalysisCommand = new AsyncRelayCommand(PlayParallelAnalysisAsync);
-        PreviewParallelAnalysisCommand = new AsyncRelayCommand(PreviewParallelAnalysisAsync);
-        ClearParallelAnalysisCommand = new RelayCommand(ClearParallelAnalysis);
-        DropOnScreen1Command = new RelayCommand<VideoClip>(video => ParallelVideo1 = video);
-        DropOnScreen2Command = new RelayCommand<VideoClip>(video => ParallelVideo2 = video);
-        ToggleQuickAnalysisIsolatedModeCommand = new RelayCommand(() => IsQuickAnalysisIsolatedMode = !IsQuickAnalysisIsolatedMode);
+        VideoTapCommand = new AsyncRelayCommand<VideoClip>(Videos.OnVideoTappedAsync);
+        VideoLessonTapCommand = new AsyncRelayCommand<VideoLesson>(Videos.OnVideoLessonTappedAsync);
+        ShareVideoLessonCommand = new AsyncRelayCommand<VideoLesson>(Videos.ShareVideoLessonAsync);
+        DeleteVideoLessonCommand = new AsyncRelayCommand<VideoLesson>(Videos.DeleteVideoLessonAsync);
+        PlayAsPlaylistCommand = new AsyncRelayCommand(Videos.PlayAsPlaylistAsync);
+        ShareSelectedVideosCommand = new AsyncRelayCommand(Videos.ShareSelectedVideosAsync);
+        DeleteSelectedVideosCommand = new AsyncRelayCommand(Videos.DeleteSelectedVideosAsync);
+        PlayParallelAnalysisCommand = new AsyncRelayCommand(Videos.PlayParallelAnalysisAsync);
+        PreviewParallelAnalysisCommand = new AsyncRelayCommand(Videos.PreviewParallelAnalysisAsync);
+        ClearParallelAnalysisCommand = new RelayCommand(Videos.ClearParallelAnalysis);
+        DropOnScreen1Command = new RelayCommand<VideoClip>(video => Videos.ParallelVideo1 = video);
+        DropOnScreen2Command = new RelayCommand<VideoClip>(video => Videos.ParallelVideo2 = video);
+        ToggleQuickAnalysisIsolatedModeCommand = new RelayCommand(() => Videos.IsQuickAnalysisIsolatedMode = !Videos.IsQuickAnalysisIsolatedMode);
         
-        // Comandos de edición en lote
-        CloseBatchEditPopupCommand = new RelayCommand(() => ShowBatchEditPopup = false);
-        ApplyBatchEditCommand = new AsyncRelayCommand(ApplyBatchEditAsync);
-        ToggleBatchTagCommand = new RelayCommand<Tag>(ToggleBatchTag);
-        SelectBatchAthleteCommand = new RelayCommand<Athlete>(SelectBatchAthlete);
-        AddNewBatchAthleteCommand = new AsyncRelayCommand(AddNewBatchAthleteAsync);
-        AddNewBatchTagCommand = new AsyncRelayCommand(AddNewBatchTagAsync);
-
-        // Comandos de sincronización cloud
-        CloudLoginCommand = new AsyncRelayCommand(CloudLoginAsync);
-        SyncAllCommand = new AsyncRelayCommand(SyncAllVideosAsync);
-        SyncSessionCommand = new AsyncRelayCommand<Session>(SyncSessionAsync);
-        UploadVideoCommand = new AsyncRelayCommand<VideoClip>(UploadVideoAsync);
-        DownloadVideoCommand = new AsyncRelayCommand<VideoClip>(DownloadVideoAsync);
-        CheckPendingSyncCommand = new AsyncRelayCommand(CheckPendingSyncAsync);
-
-        // Comandos para galería remota
-        AddRemoteVideoToLibraryCommand = new AsyncRelayCommand<RemoteVideoItem>(AddRemoteVideoToLibraryAsync);
-        AddRemoteSessionToLibraryCommand = new AsyncRelayCommand<int>(AddRemoteSessionToLibraryAsync);
-        DeleteRemoteVideoFromLibraryCommand = new AsyncRelayCommand<RemoteVideoItem>(DeleteRemoteVideoFromLibraryAsync);
-        DeleteAllRemoteVideosFromLibraryCommand = new AsyncRelayCommand(DeleteAllRemoteVideosFromLibraryAsync);
-        DownloadRemoteVideoCommand = new AsyncRelayCommand<RemoteVideoItem>(DownloadRemoteVideoAsync);
-        PlayRemoteVideoCommand = new AsyncRelayCommand<RemoteVideoItem>(PlayRemoteVideoAsync);
-        DeleteRemoteSessionFromCloudCommand = new AsyncRelayCommand<int>(DeleteRemoteSessionFromCloudAsync);
-        
-        // Comandos para acciones en lote de videos remotos
-        ToggleRemoteMultiSelectModeCommand = new RelayCommand(ToggleRemoteMultiSelectMode);
-        ToggleRemoteSelectAllCommand = new RelayCommand(ToggleRemoteSelectAll);
-        ToggleRemoteVideoSelectionCommand = new RelayCommand<RemoteVideoItem>(ToggleRemoteVideoSelection);
-        DownloadSelectedRemoteVideosCommand = new AsyncRelayCommand(DownloadSelectedRemoteVideosAsync);
-        AddSelectedRemoteToLibraryCommand = new AsyncRelayCommand(AddSelectedRemoteToLibraryAsync);
-        DeleteSelectedRemoteFromCloudCommand = new AsyncRelayCommand(DeleteSelectedRemoteFromCloudAsync);
-        DeleteSelectedRemoteFromLibraryCommand = new AsyncRelayCommand(DeleteSelectedRemoteFromLibraryAsync);
-
         // Comandos de edición de sesión individual
         OpenSessionEditPopupCommand = new RelayCommand<SessionRow>(OpenSessionEditPopup);
         CloseSessionEditPopupCommand = new RelayCommand(() => ShowSessionEditPopup = false);
         ApplySessionEditCommand = new AsyncRelayCommand(ApplySessionEditAsync);
         
         // Comando para alternar vista de tiempos
-        ToggleSectionTimesViewCommand = new RelayCommand(() => ShowSectionTimesDifferences = !ShowSectionTimesDifferences);
+        ToggleSectionTimesViewCommand = new RelayCommand(() => Videos.ShowSectionTimesDifferences = !Videos.ShowSectionTimesDifferences);
         
         // Comandos para popup de tiempos detallados
-        OpenDetailedTimesPopupCommand = new AsyncRelayCommand(OpenDetailedTimesPopupAsync);
-        CloseDetailedTimesPopupCommand = new RelayCommand(() => ShowDetailedTimesPopup = false);
+        OpenDetailedTimesPopupCommand = new AsyncRelayCommand(Videos.OpenDetailedTimesPopupAsync);
+        CloseDetailedTimesPopupCommand = new RelayCommand(() => Videos.ShowDetailedTimesPopup = false);
         ClearDetailedTimesAthleteCommand = new RelayCommand(() =>
         {
-            SelectedDetailedTimesAthlete = null;
-            IsAthleteDropdownExpanded = false;
+            Videos.SelectedDetailedTimesAthlete = null;
+            Videos.IsAthleteDropdownExpanded = false;
         });
-        ToggleAthleteDropdownCommand = new RelayCommand(() => IsAthleteDropdownExpanded = !IsAthleteDropdownExpanded);
+        ToggleAthleteDropdownCommand = new RelayCommand(() => Videos.IsAthleteDropdownExpanded = !Videos.IsAthleteDropdownExpanded);
         SelectDetailedTimesAthleteCommand = new RelayCommand<AthletePickerItem>(athlete =>
         {
-            SelectedDetailedTimesAthlete = athlete;
-            IsAthleteDropdownExpanded = false;
+            Videos.SelectedDetailedTimesAthlete = athlete;
+            Videos.IsAthleteDropdownExpanded = false;
         });
-        ToggleLapTimesModeCommand = new RelayCommand(() => ShowCumulativeTimes = !ShowCumulativeTimes);
+        ToggleLapTimesModeCommand = new RelayCommand(() => Videos.ShowCumulativeTimes = !Videos.ShowCumulativeTimes);
         SetLapTimesModeCommand = new RelayCommand<string>(mode =>
         {
-            // mode: "lap" | "acum"
-            ShowCumulativeTimes = string.Equals(mode, "acum", StringComparison.OrdinalIgnoreCase);
+            Videos.ShowCumulativeTimes = string.Equals(mode, "acum", StringComparison.OrdinalIgnoreCase);
         });
 
-        ExportDetailedTimesHtmlCommand = new AsyncRelayCommand(ExportDetailedTimesHtmlAsync);
-        ExportDetailedTimesPdfCommand = new AsyncRelayCommand(ExportDetailedTimesPdfAsync);
-        
-        // Notificar cambios en VideoCountDisplayText cuando cambie la colección
-        SelectedSessionVideos.CollectionChanged += (s, e) => OnPropertyChanged(nameof(VideoCountDisplayText));
-        VideoLessons.CollectionChanged += (s, e) =>
-        {
-            VideoLessonsCount = VideoLessons.Count;
-            OnPropertyChanged(nameof(VideoCountDisplayText));
-        };
-        
-        // Suscribirse a mensajes de actualización de video individual
-        MessagingCenter.Subscribe<SinglePlayerViewModel, int>(this, "VideoClipUpdated", async (sender, videoId) =>
-        {
-            await RefreshVideoClipInGalleryAsync(videoId);
-            // Marcar que hay estadísticas pendientes de actualizar
-            _modifiedVideoIds.Add(videoId);
-            _hasStatsUpdatePending = true;
-        });
+        ExportDetailedTimesHtmlCommand = new AsyncRelayCommand(Videos.ExportDetailedTimesHtmlAsync);
+        ExportDetailedTimesPdfCommand = new AsyncRelayCommand(Videos.ExportDetailedTimesPdfAsync);
     }
 
     public int TrashItemCount
     {
         get => _trashItemCount;
         private set => SetProperty(ref _trashItemCount, value);
-    }
-
-    public int VideoLessonsCount
-    {
-        get => _videoLessonsCount;
-        private set => SetProperty(ref _videoLessonsCount, value);
     }
 
     private async Task RefreshTrashItemCountAsync()
@@ -3964,97 +1757,6 @@ public class DashboardViewModel : BaseViewModel
         }
     }
 
-    private async Task ExportDetailedTimesHtmlAsync()
-    {
-        await ExportDetailedTimesAsync("html");
-    }
-
-    private async Task ExportDetailedTimesPdfAsync()
-    {
-        await ExportDetailedTimesAsync("pdf");
-    }
-
-    private async Task ExportDetailedTimesAsync(string format)
-    {
-        System.Diagnostics.Debug.WriteLine($"[ExportDetailedTimes] Iniciando exportación: format={format}");
-
-        if (SelectedSession == null)
-        {
-            System.Diagnostics.Debug.WriteLine("[ExportDetailedTimes] Error: No hay sesión seleccionada");
-            await Shell.Current.DisplayAlert("Error", "No hay ninguna sesión seleccionada", "OK");
-            return;
-        }
-
-        if (IsLoadingDetailedTimes)
-        {
-            System.Diagnostics.Debug.WriteLine("[ExportDetailedTimes] Abortado: IsLoadingDetailedTimes=true");
-            return;
-        }
-
-        if (IsExportingDetailedTimes)
-        {
-            System.Diagnostics.Debug.WriteLine("[ExportDetailedTimes] Abortado: ya hay una exportación en curso");
-            return;
-        }
-
-        try
-        {
-            IsExportingDetailedTimes = true;
-            System.Diagnostics.Debug.WriteLine("[ExportDetailedTimes] IsExportingDetailedTimes = true");
-
-            var sections = DetailedSectionTimes.ToList();
-            if (sections.Count == 0)
-            {
-                // Si el popup está abierto pero aún no se ha cargado, cargamos datos.
-                System.Diagnostics.Debug.WriteLine("[ExportDetailedTimes] No hay secciones cargadas, cargando...");
-                var detailedTimes = await _statisticsService.GetDetailedAthleteSectionTimesAsync(SelectedSession.Id);
-                sections = detailedTimes;
-            }
-
-            System.Diagnostics.Debug.WriteLine($"[ExportDetailedTimes] Secciones: {sections.Count}");
-
-            if (sections.Count == 0)
-            {
-                await Shell.Current.DisplayAlert("Exportación", "No hay datos de tiempos para exportar", "OK");
-                return;
-            }
-
-            string filePath;
-            // Usar el atleta seleccionado en el popup (si hay)
-            var refId = SelectedDetailedTimesAthlete?.Id;
-            var refVideoId = SelectedDetailedTimesAthlete?.VideoId;
-            var refName = SelectedDetailedTimesAthlete?.DisplayName;
-
-            System.Diagnostics.Debug.WriteLine($"[ExportDetailedTimes] Exportando {format}...");
-
-            if (string.Equals(format, "pdf", StringComparison.OrdinalIgnoreCase))
-                filePath = await _tableExportService.ExportDetailedSectionTimesToPdfAsync(SelectedSession, sections, refId, refVideoId, refName);
-            else
-                filePath = await _tableExportService.ExportDetailedSectionTimesToHtmlAsync(SelectedSession, sections, refId, refVideoId, refName);
-
-            System.Diagnostics.Debug.WriteLine($"[ExportDetailedTimes] Archivo generado: {filePath}");
-
-            await Share.Default.RequestAsync(new ShareFileRequest
-            {
-                Title = $"Exportar {SelectedSession.DisplayName}",
-                File = new ShareFile(filePath)
-            });
-
-            System.Diagnostics.Debug.WriteLine("[ExportDetailedTimes] Share completado");
-        }
-        catch (Exception ex)
-        {
-            AppLog.Error("DashboardViewModel", $"Error exportando tabla ({format}): {ex.Message}", ex);
-            System.Diagnostics.Debug.WriteLine($"[ExportDetailedTimes] Error: {ex}");
-            await Shell.Current.DisplayAlert("Error", $"No se pudo exportar la tabla a {format.ToUpperInvariant()}: {ex.Message}", "OK");
-        }
-        finally
-        {
-            System.Diagnostics.Debug.WriteLine("[ExportDetailedTimes] Finalizando (IsExportingDetailedTimes = false)");
-            IsExportingDetailedTimes = false;
-        }
-    }
-
     /// <summary>
     /// Manejador para cuando se exporta un video comparativo
     /// </summary>
@@ -4067,21 +1769,21 @@ public class DashboardViewModel : BaseViewModel
             // Si estamos viendo la galería general, recargar
             if (IsAllGallerySelected)
             {
-                await LoadAllVideosAsync();
+                await Videos.LoadAllVideosAsync();
             }
             // Si estamos viendo la sesión donde se exportó el video, recargar esa sesión
             else if (SelectedSession?.Id == e.SessionId)
             {
-                await LoadSelectedSessionVideosAsync(SelectedSession);
+                await Videos.LoadSelectedSessionVideosAsync(SelectedSession);
             }
             // Si no estamos viendo esa sesión, agregar el video al cache para que aparezca cuando se seleccione
-            else if (_allVideosCache != null)
+            else if (Videos.AllVideosCache != null)
             {
                 // Cargar el nuevo clip de la base de datos
                 var newClip = await _databaseService.GetVideoClipByIdAsync(e.VideoClipId);
                 if (newClip != null)
                 {
-                    _allVideosCache.Insert(0, newClip);
+                    Videos.InsertVideoIntoAllCache(newClip);
                 }
             }
         }
@@ -4190,278 +1892,6 @@ public class DashboardViewModel : BaseViewModel
         await Shell.Current.GoToAsync($"{nameof(SinglePlayerPage)}?videoPath={Uri.EscapeDataString(lesson.FilePath)}");
     }
 
-    private async Task ShareVideoLessonAsync(VideoLesson? lesson)
-    {
-        if (lesson == null)
-            return;
-
-        if (string.IsNullOrWhiteSpace(lesson.FilePath) || !File.Exists(lesson.FilePath))
-        {
-            await Shell.Current.DisplayAlert("Archivo no encontrado", "No se encontró el vídeo de esta videolección.", "OK");
-            return;
-        }
-
-        await Share.Default.RequestAsync(new ShareFileRequest
-        {
-            Title = lesson.DisplayTitle ?? "Videolección",
-            File = new ShareFile(lesson.FilePath)
-        });
-    }
-
-    private async Task DeleteVideoLessonAsync(VideoLesson? lesson)
-    {
-        if (lesson == null)
-            return;
-
-        var confirm = await Shell.Current.DisplayAlert(
-            "Eliminar videolección",
-            $"¿Estás seguro de que quieres eliminar \"{lesson.DisplayTitle}\"?",
-            "Eliminar",
-            "Cancelar");
-
-        if (!confirm)
-            return;
-
-        try
-        {
-            // Eliminar archivo de vídeo
-            if (!string.IsNullOrWhiteSpace(lesson.FilePath) && File.Exists(lesson.FilePath))
-                File.Delete(lesson.FilePath);
-
-            // Eliminar thumbnail
-            var thumbPath = Path.Combine(FileSystem.AppDataDirectory, "videoLessonThumbs", $"lesson_{lesson.Id}.jpg");
-            if (File.Exists(thumbPath))
-                File.Delete(thumbPath);
-
-            // Eliminar de la base de datos
-            await _databaseService.DeleteVideoLessonAsync(lesson);
-
-            // Actualizar la colección en UI
-            await MainThread.InvokeOnMainThreadAsync(() => VideoLessons.Remove(lesson));
-        }
-        catch (Exception ex)
-        {
-            await Shell.Current.DisplayAlert("Error", $"No se pudo eliminar la videolección: {ex.Message}", "OK");
-        }
-    }
-
-    private async Task LoadVideoLessonsAsync(CancellationToken ct)
-    {
-        await MainThread.InvokeOnMainThreadAsync(() => VideoLessons.Clear());
-
-        var lessons = await _databaseService.GetAllVideoLessonsAsync();
-        if (ct.IsCancellationRequested)
-            return;
-
-        // Resolver nombres de sesión (mejor esfuerzo)
-        var sessionNameCache = new Dictionary<int, string?>();
-
-        var thumbnailsDir = Path.Combine(FileSystem.AppDataDirectory, "videoLessonThumbs");
-        Directory.CreateDirectory(thumbnailsDir);
-
-        var thumbTasks = new List<Task>();
-        using var thumbSemaphore = new SemaphoreSlim(2);
-
-        for (var idx = 0; idx < lessons.Count; idx++)
-        {
-            var lesson = lessons[idx];
-            if (ct.IsCancellationRequested)
-                return;
-
-            if (!sessionNameCache.TryGetValue(lesson.SessionId, out var sessionName))
-            {
-                var session = lesson.SessionId > 0 ? await _databaseService.GetSessionByIdAsync(lesson.SessionId) : null;
-                sessionName = session?.DisplayName;
-                sessionNameCache[lesson.SessionId] = sessionName;
-            }
-            lesson.SessionDisplayName = sessionName;
-
-            var thumbPath = Path.Combine(thumbnailsDir, $"lesson_{lesson.Id}.jpg");
-            lesson.LocalThumbnailPath = File.Exists(thumbPath) ? thumbPath : null;
-
-            await MainThread.InvokeOnMainThreadAsync(() => VideoLessons.Add(lesson));
-
-            if (!File.Exists(thumbPath))
-            {
-                thumbTasks.Add(Task.Run(async () =>
-                {
-                    await thumbSemaphore.WaitAsync(ct);
-                    try
-                    {
-                        if (!File.Exists(thumbPath))
-                            await _thumbnailService.GenerateThumbnailAsync(lesson.FilePath, thumbPath);
-                    }
-                    catch
-                    {
-                        // Ignorar: placeholder
-                    }
-                    finally
-                    {
-                        thumbSemaphore.Release();
-                    }
-
-                    if (ct.IsCancellationRequested)
-                        return;
-
-                    if (File.Exists(thumbPath))
-                    {
-                        lesson.LocalThumbnailPath = thumbPath;
-                        await MainThread.InvokeOnMainThreadAsync(() =>
-                        {
-                            var currentIndex = VideoLessons.IndexOf(lesson);
-                            if (currentIndex >= 0)
-                                VideoLessons[currentIndex] = lesson;
-                        });
-                    }
-                }, ct));
-            }
-
-            if (idx % 10 == 0)
-                await Task.Yield();
-        }
-
-        try
-        {
-            await Task.WhenAll(thumbTasks);
-        }
-        catch
-        {
-            // cancelación
-        }
-
-        VideoLessonsCount = VideoLessons.Count;
-    }
-
-    /// <summary>
-    /// Actualiza un video específico en la galería sin recargar toda la colección
-    /// </summary>
-    private async Task RefreshVideoClipInGalleryAsync(int videoId)
-    {
-        try
-        {
-            // Buscar el video en la colección actual
-            var existingVideo = SelectedSessionVideos.FirstOrDefault(v => v.Id == videoId);
-            if (existingVideo == null) return;
-
-            var index = SelectedSessionVideos.IndexOf(existingVideo);
-            if (index < 0) return;
-
-            // Obtener el video actualizado de la base de datos
-            var updatedVideo = await _databaseService.GetVideoClipByIdAsync(videoId);
-            if (updatedVideo == null) return;
-
-            // Cargar datos relacionados
-            if (updatedVideo.AtletaId > 0)
-            {
-                updatedVideo.Atleta = await _databaseService.GetAthleteByIdAsync(updatedVideo.AtletaId);
-            }
-            if (updatedVideo.SessionId > 0)
-            {
-                updatedVideo.Session = await _databaseService.GetSessionByIdAsync(updatedVideo.SessionId);
-            }
-
-            // Hidratar tags y eventos
-            await _databaseService.HydrateTagsForClips(new List<VideoClip> { updatedVideo });
-
-            // Mantener el estado de selección si aplica
-            updatedVideo.IsSelected = existingVideo.IsSelected;
-
-            // Actualizar también en los caches si existe
-            if (_allVideosCache != null)
-            {
-                var cacheIndex = _allVideosCache.FindIndex(v => v.Id == videoId);
-                if (cacheIndex >= 0)
-                    _allVideosCache[cacheIndex] = updatedVideo;
-            }
-            if (_filteredVideosCache != null)
-            {
-                var filteredIndex = _filteredVideosCache.FindIndex(v => v.Id == videoId);
-                if (filteredIndex >= 0)
-                    _filteredVideosCache[filteredIndex] = updatedVideo;
-            }
-
-            // Reemplazar en la colección (esto dispara la actualización del UI)
-            await MainThread.InvokeOnMainThreadAsync(() =>
-            {
-                SelectedSessionVideos[index] = updatedVideo;
-            });
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Error al actualizar video en galería: {ex.Message}");
-        }
-    }
-
-    private async Task PlayAsPlaylistAsync()
-    {
-        // Obtener videos seleccionados
-        var source = _filteredVideosCache ?? _allVideosCache ?? SelectedSessionVideos.ToList();
-        var selectedVideos = source.Where(v => _selectedVideoIds.Contains(v.Id)).OrderBy(v => v.CreationDate).ToList();
-        
-        if (selectedVideos.Count == 0)
-        {
-            await Shell.Current.DisplayAlert("Playlist", "No hay vídeos seleccionados.", "OK");
-            return;
-        }
-        
-        // Navegar a SinglePlayerPage con la playlist
-        var singlePage = App.Current?.Handler?.MauiContext?.Services.GetService<Views.SinglePlayerPage>();
-        if (singlePage?.BindingContext is SinglePlayerViewModel singleVm)
-        {
-            await singleVm.InitializeWithPlaylistAsync(selectedVideos, 0);
-            await Shell.Current.Navigation.PushAsync(singlePage);
-        }
-        else
-        {
-            // Fallback: reproducir el primer video seleccionado
-            var firstVideo = selectedVideos.First();
-            await Shell.Current.GoToAsync($"{nameof(SinglePlayerPage)}?videoPath={Uri.EscapeDataString(firstVideo.ClipPath ?? "")}");
-        }
-    }
-
-    private async Task EditVideoDetailsAsync()
-    {
-        // Verificar que hay videos seleccionados
-        if (_selectedVideoIds.Count == 0)
-        {
-            await Shell.Current.DisplayAlert("Editar", "No hay vídeos seleccionados.", "OK");
-            return;
-        }
-        
-        // Cargar atletas disponibles y resetear selección
-        var athletes = await _databaseService.GetAllAthletesAsync();
-        BatchEditAthletes.Clear();
-        foreach (var a in athletes.OrderBy(a => a.NombreCompleto))
-        {
-            a.IsSelected = false;
-            BatchEditAthletes.Add(a);
-        }
-        
-        // Cargar tags disponibles (no eventos) y resetear selección
-        var tags = await _databaseService.GetAllTagsAsync();
-        BatchEditTags.Clear();
-        foreach (var t in tags.OrderBy(t => t.NombreTag))
-        {
-            t.IsSelectedBool = false;
-            BatchEditTags.Add(t);
-        }
-        
-        // Resetear selecciones
-        SelectedBatchAthlete = null;
-        BatchEditSection = 1;
-        BatchEditSectionEnabled = false;
-        BatchEditAthleteEnabled = false;
-        _batchEditSelectedTagIds.Clear();
-
-        // Resetear entradas de creación
-        NewBatchAthleteSurname = string.Empty;
-        NewBatchAthleteName = string.Empty;
-        NewBatchTagText = string.Empty;
-        
-        // Mostrar popup
-        ShowBatchEditPopup = true;
-    }
-
     private static string NormalizeSpaces(string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
@@ -4473,348 +1903,7 @@ public class DashboardViewModel : BaseViewModel
         return string.Join(' ', parts);
     }
 
-    private async Task AddNewBatchAthleteAsync()
-    {
-        try
-        {
-            var apellido = NormalizeSpaces(NewBatchAthleteSurname);
-            var nombre = NormalizeSpaces(NewBatchAthleteName);
-
-            if (string.IsNullOrWhiteSpace(apellido) && string.IsNullOrWhiteSpace(nombre))
-            {
-                await Shell.Current.DisplayAlert(
-                    "Atleta",
-                    "Introduce el apellido y/o el nombre del atleta.",
-                    "OK");
-                return;
-            }
-
-            // Si existe, reutilizarlo
-            var existing = await _databaseService.FindAthleteByNameAsync(nombre, apellido);
-            Athlete athlete;
-            if (existing != null)
-            {
-                athlete = existing;
-            }
-            else
-            {
-                athlete = new Athlete
-                {
-                    Nombre = nombre,
-                    Apellido = apellido,
-                    CategoriaId = 0,
-                    Category = 0
-                };
-
-                await _databaseService.InsertAthleteAsync(athlete);
-                _databaseService.InvalidateCache();
-            }
-
-            // Asegurar que está en la lista (y seleccionar la instancia que usa la UI)
-            var inList = BatchEditAthletes.FirstOrDefault(a => a.Id == athlete.Id);
-            if (inList == null)
-            {
-                athlete.IsSelected = false;
-                BatchEditAthletes.Add(athlete);
-                inList = athlete;
-            }
-
-            // Seleccionarlo
-            SelectBatchAthlete(inList);
-            BatchEditAthleteEnabled = true;
-
-            NewBatchAthleteSurname = string.Empty;
-            NewBatchAthleteName = string.Empty;
-        }
-        catch (Exception ex)
-        {
-            await Shell.Current.DisplayAlert("Error", $"No se pudo añadir el atleta: {ex.Message}", "OK");
-        }
-    }
-
-    private async Task AddNewBatchTagAsync()
-    {
-        try
-        {
-            var name = NormalizeSpaces(NewBatchTagText);
-            if (string.IsNullOrWhiteSpace(name))
-            {
-                await Shell.Current.DisplayAlert("Etiqueta", "Introduce un nombre de etiqueta.", "OK");
-                return;
-            }
-
-            // Si existe, reutilizarla
-            var existing = await _databaseService.FindTagByNameAsync(name);
-            Tag tag;
-            if (existing != null)
-            {
-                tag = existing;
-            }
-            else
-            {
-                tag = new Tag { NombreTag = name, IsSelected = 0 };
-                await _databaseService.InsertTagAsync(tag);
-                _databaseService.InvalidateCache();
-            }
-
-            // Asegurar que está en la lista
-            if (!BatchEditTags.Any(t => t.Id == tag.Id))
-            {
-                tag.IsSelectedBool = false;
-                BatchEditTags.Add(tag);
-            }
-
-            // Marcarla como seleccionada para el lote
-            _batchEditSelectedTagIds.Add(tag.Id);
-            tag.IsSelectedBool = true;
-
-            NewBatchTagText = string.Empty;
-        }
-        catch (Exception ex)
-        {
-            await Shell.Current.DisplayAlert("Error", $"No se pudo añadir la etiqueta: {ex.Message}", "OK");
-        }
-    }
-    private void ToggleBatchTag(Tag? tag)
-    {
-        if (tag == null) return;
-        
-        if (_batchEditSelectedTagIds.Contains(tag.Id))
-        {
-            _batchEditSelectedTagIds.Remove(tag.Id);
-            tag.IsSelectedBool = false;
-        }
-        else
-        {
-            _batchEditSelectedTagIds.Add(tag.Id);
-            tag.IsSelectedBool = true;
-        }
-    }
-
-    private void SelectBatchAthlete(Athlete? athlete)
-    {
-        if (athlete == null) return;
-        
-        // Deseleccionar el atleta anterior
-        if (SelectedBatchAthlete != null)
-            SelectedBatchAthlete.IsSelected = false;
-        
-        // Seleccionar el nuevo atleta
-        athlete.IsSelected = true;
-        SelectedBatchAthlete = athlete;
-        
-        // Habilitar automáticamente la opción de atleta
-        BatchEditAthleteEnabled = true;
-    }
-
-    public bool IsTagSelectedForBatchEdit(int tagId) => _batchEditSelectedTagIds.Contains(tagId);
-    private async Task ApplyBatchEditAsync()
-    {
-        var source = _filteredVideosCache ?? _allVideosCache ?? SelectedSessionVideos.ToList();
-        var selectedVideos = source.Where(v => _selectedVideoIds.Contains(v.Id)).ToList();
-        
-        if (selectedVideos.Count == 0)
-        {
-            ShowBatchEditPopup = false;
-            return;
-        }
-        
-        try
-        {
-            foreach (var video in selectedVideos)
-            {
-                bool updated = false;
-                
-                // Actualizar atleta si está habilitado
-                if (BatchEditAthleteEnabled && SelectedBatchAthlete != null)
-                {
-                    video.AtletaId = SelectedBatchAthlete.Id;
-                    video.Atleta = SelectedBatchAthlete;
-                    updated = true;
-                }
-                
-                // Actualizar sección si está habilitado
-                if (BatchEditSectionEnabled && BatchEditSection > 0)
-                {
-                    video.Section = BatchEditSection;
-                    updated = true;
-                }
-                
-                // Guardar cambios en el video
-                if (updated)
-                {
-                    await _databaseService.SaveVideoClipAsync(video);
-                }
-                
-                // Agregar tags seleccionados
-                foreach (var tagId in _batchEditSelectedTagIds)
-                {
-                    await _databaseService.AddTagToVideoAsync(video.Id, tagId, video.SessionId, video.AtletaId);
-                }
-            }
-            
-            // Cerrar popup
-            ShowBatchEditPopup = false;
-            
-            // Mostrar confirmación
-            var msg = $"Se actualizaron {selectedVideos.Count} vídeos.";
-            if (_batchEditSelectedTagIds.Count > 0)
-                msg += $"\nSe añadieron {_batchEditSelectedTagIds.Count} etiquetas.";
-            
-            await Shell.Current.DisplayAlert("Edición completada", msg, "OK");
-            
-            // Refrescar galería para mostrar cambios
-            if (SelectedSession != null)
-                await LoadSelectedSessionVideosAsync(SelectedSession);
-            else if (IsAllGallerySelected)
-                await LoadAllVideosAsync();
-        }
-        catch (Exception ex)
-        {
-            await Shell.Current.DisplayAlert("Error", $"No se pudo aplicar los cambios: {ex.Message}", "OK");
-        }
-    }
-
-    private async Task DeleteSelectedVideosAsync()
-    {
-        // Obtener videos seleccionados
-        var source = _filteredVideosCache ?? _allVideosCache ?? SelectedSessionVideos.ToList();
-        var selectedVideos = source.Where(v => _selectedVideoIds.Contains(v.Id)).ToList();
-        
-        if (selectedVideos.Count == 0)
-        {
-            await Shell.Current.DisplayAlert("Eliminar", "No hay vídeos seleccionados.", "OK");
-            return;
-        }
-        
-        // Confirmar eliminación
-        var confirm = await Shell.Current.DisplayAlert(
-            "Eliminar vídeos",
-            $"¿Mover {selectedVideos.Count} vídeo(s) a la papelera?\n\nPodrás restaurarlos desde la Papelera durante 30 días.",
-            "Mover a papelera",
-            "Cancelar");
-        
-        if (!confirm)
-            return;
-        
-        try
-        {
-            foreach (var video in selectedVideos)
-            {
-                await _trashService.MoveVideoToTrashAsync(video.Id);
-            }
-            
-            // Limpiar selección
-            _selectedVideoIds.Clear();
-            OnPropertyChanged(nameof(SelectedVideoCount));
-
-            await RefreshTrashItemCountAsync();
-            
-            // Refrescar galería
-            if (SelectedSession != null)
-                await LoadSelectedSessionVideosAsync(SelectedSession);
-            else if (IsAllGallerySelected)
-                await LoadAllVideosAsync();
-        }
-        catch (Exception ex)
-        {
-            await Shell.Current.DisplayAlert("Error", $"No se pudieron eliminar los vídeos: {ex.Message}", "OK");
-        }
-    }
-
-    private async Task ShareSelectedVideosAsync()
-    {
-        // Obtener videos seleccionados
-        var source = _filteredVideosCache ?? _allVideosCache ?? SelectedSessionVideos.ToList();
-        var selectedVideos = source.Where(v => _selectedVideoIds.Contains(v.Id)).ToList();
-        
-        if (selectedVideos.Count == 0)
-        {
-            await Shell.Current.DisplayAlert("Compartir", "No hay vídeos seleccionados.", "OK");
-            return;
-        }
-        
-        // Verificar que los archivos existen (usar LocalClipPath si existe, sino ClipPath)
-        var existingFiles = selectedVideos
-            .Select(v => !string.IsNullOrWhiteSpace(v.LocalClipPath) && File.Exists(v.LocalClipPath) 
-                ? v.LocalClipPath 
-                : v.ClipPath)
-            .Where(path => !string.IsNullOrWhiteSpace(path) && File.Exists(path))
-            .Select(path => new ShareFile(path!))
-            .ToList();
-        
-        if (existingFiles.Count == 0)
-        {
-            await Shell.Current.DisplayAlert("Compartir", "No se encontraron los archivos de vídeo.", "OK");
-            return;
-        }
-        
-        // Compartir archivos
-        await Share.Default.RequestAsync(new ShareMultipleFilesRequest
-        {
-            Title = $"Compartir {existingFiles.Count} vídeo(s)",
-            Files = existingFiles
-        });
-    }
-    private async Task PlayParallelAnalysisAsync()
-    {
-        // Verificar que hay al menos un vídeo
-        if (!HasParallelVideo1 && !HasParallelVideo2 && !HasParallelVideo3 && !HasParallelVideo4)
-        {
-            await Shell.Current.DisplayAlert("Análisis", 
-                "Arrastra al menos un vídeo a las áreas de análisis.", "OK");
-            return;
-        }
-
-        // Desactivar el modo preview antes de abrir el reproductor
-        IsPreviewMode = false;
-
-        // Usar SinglePlayerPage con modo comparación para todos los modos
-        var singlePage = App.Current?.Handler?.MauiContext?.Services.GetService<Views.SinglePlayerPage>();
-        if (singlePage?.BindingContext is SinglePlayerViewModel singleVm)
-        {
-            // Recopilar videos por slot (1-4)
-            var slotVideos = new List<(int slot, VideoClip clip)>();
-            if (ParallelVideo1 != null) slotVideos.Add((1, ParallelVideo1));
-            if (ParallelVideo2 != null) slotVideos.Add((2, ParallelVideo2));
-            if (ParallelVideo3 != null) slotVideos.Add((3, ParallelVideo3));
-            if (ParallelVideo4 != null) slotVideos.Add((4, ParallelVideo4));
-
-            if (slotVideos.Count == 0) return;
-
-            // El video principal es el del primer slot ocupado
-            var mainSlot = slotVideos[0];
-            VideoClip mainVideo = mainSlot.clip;
-
-            var occupiedSlots = slotVideos.Select(v => v.slot).ToHashSet();
-            var layout = DetermineLayoutFromOccupiedSlots(occupiedSlots);
-
-            // Recopilar videos de comparación excluyendo por SLOT (no por referencia de objeto)
-            // Esto permite que el mismo video esté en múltiples slots
-            var comparisonVideos = slotVideos
-                .Where(v => v.slot != mainSlot.slot)
-                .OrderBy(v => v.slot)
-                .Select(v => (VideoClip?)v.clip)
-                .ToList();
-
-            System.Diagnostics.Debug.WriteLine($"[Dashboard] PlayParallelAnalysisAsync: mainVideo.Id={mainVideo.Id}, mainSlot={mainSlot.slot}, layout={layout}");
-            System.Diagnostics.Debug.WriteLine($"[Dashboard] slotVideos count={slotVideos.Count}, comparisonVideos count={comparisonVideos.Count}");
-            for (int i = 0; i < comparisonVideos.Count; i++)
-            {
-                var cv = comparisonVideos[i];
-                System.Diagnostics.Debug.WriteLine($"[Dashboard] comparisonVideos[{i}]: Id={cv?.Id}, ClipPath={cv?.ClipPath}");
-            }
-
-            await singleVm.InitializeWithComparisonAsync(
-                mainVideo,
-                comparisonVideos.ElementAtOrDefault(0),
-                comparisonVideos.ElementAtOrDefault(1),
-                comparisonVideos.ElementAtOrDefault(2),
-                layout);
-
-            await Shell.Current.Navigation.PushAsync(singlePage);
-        }
-    }
+    
 
     private static ComparisonLayout DetermineLayoutFromOccupiedSlots(IReadOnlyCollection<int> occupiedSlots)
     {
@@ -4839,268 +1928,15 @@ public class DashboardViewModel : BaseViewModel
         return ComparisonLayout.Vertical1x2;
     }
 
-    private async Task PreviewParallelAnalysisAsync()
+    private void ToggleSessionsExpansion()
     {
-        // Toggle del modo preview
-        IsPreviewMode = !IsPreviewMode;
-        await Task.CompletedTask;
-    }
-
-    private void ClearParallelAnalysis()
-    {
-        IsPreviewMode = false;
-        ParallelVideo1 = null;
-        ParallelVideo2 = null;
-        ParallelVideo3 = null;
-        ParallelVideo4 = null;
-    }
-
-    private async Task OnVideoTappedAsync(VideoClip? video)
-    {
-        AppLog.Info("DashboardVM", $"⏱️ OnVideoTappedAsync ENTRADA - video={video?.Id}, IsMultiSelectMode={IsMultiSelectMode}");
-        
-        if (video == null) return;
-
-        if (IsMultiSelectMode)
-        {
-            ToggleVideoSelection(video);
-        }
-        else
-        {
-            await PlaySelectedVideoAsync(video);
-        }
-    }
-
-    private void ClearFilters(bool skipApplyFilters = false)
-    {
-        _suppressFilterSelectionChanged = true;
-        try
-        {
-            // Limpiar selección múltiple
-            foreach (var place in FilterPlaces) place.IsSelected = false;
-            foreach (var athlete in FilterAthletes) athlete.IsSelected = false;
-            foreach (var section in FilterSections) section.IsSelected = false;
-            foreach (var tag in FilterTagItems) tag.IsSelected = false;
-        }
-        finally
-        {
-            _suppressFilterSelectionChanged = false;
-        }
-        
-        // Limpiar filtros simples
-        _selectedFilterDateFrom = null;
-        _selectedFilterDateTo = null;
-        
-        OnPropertyChanged(nameof(SelectedFilterDateFrom));
-        OnPropertyChanged(nameof(SelectedFilterDateTo));
-        OnPropertyChanged(nameof(SelectedPlacesSummary));
-        OnPropertyChanged(nameof(SelectedAthletesSummary));
-        OnPropertyChanged(nameof(SelectedSectionsSummary));
-        OnPropertyChanged(nameof(SelectedTagsSummary));
-        
-        if (!skipApplyFilters)
-        {
-            _ = ApplyFiltersAsync();
-        }
-    }
-
-    private void ToggleFilterItem(object? item)
-    {
-        try
-        {
-            if (item == null)
-                return;
-
-            // FilterItem<T> es genérico; usamos reflexión para alternar IsSelected.
-            var prop = item.GetType().GetProperty("IsSelected");
-            if (prop == null || prop.PropertyType != typeof(bool) || !prop.CanWrite)
-                return;
-
-            var current = (bool)(prop.GetValue(item) ?? false);
-            prop.SetValue(item, !current);
-        }
-        catch
-        {
-            // Ignorar: un item no compatible no debería romper la UI.
-        }
-    }
-
-    private async Task ApplyFiltersAsync()
-    {
-        if ((!IsAllGallerySelected && !IsFavoriteVideosSelected) || _allVideosCache == null)
-            return;
-
-        var version = Interlocked.Increment(ref _filtersVersion);
-
-        // Si hay una carpeta inteligente activa, usar sus videos filtrados como base
-        var baseVideos = IsFavoriteVideosSelected
-            ? (_favoriteVideosCache ?? _allVideosCache.Where(v => v.IsFavorite == 1).ToList())
-            : (_activeSmartFolder != null && _smartFolderFilteredVideosCache != null
-                ? _smartFolderFilteredVideosCache
-                : _allVideosCache);
-        var allVideos = baseVideos;
-        var sessionsSnapshot = RecentSessions.ToList();
-        var inputsSnapshot = _allInputsCache;
-
-        // Capturar selección en UI thread
-        var selectedPlaces = FilterPlaces.Where(p => p.IsSelected).Select(p => p.Value).ToList();
-        var selectedAthletes = FilterAthletes.Where(a => a.IsSelected).Select(a => a.Value.Id).ToList();
-        var selectedSections = FilterSections.Where(s => s.IsSelected).Select(s => s.Value).ToList();
-        var selectedTags = FilterTagItems.Where(t => t.IsSelected).Select(t => t.Value.Id).ToList();
-
-        await Task.Yield();
-
-        var (filteredList, statsSnapshot) = await Task.Run(() =>
-        {
-            IEnumerable<VideoClip> query = allVideos;
-
-            if (selectedPlaces.Any())
-            {
-                var sessionsInPlaces = sessionsSnapshot
-                    .Where(s =>
-                    {
-                        var lugar = s.Lugar;
-                        return lugar != null && selectedPlaces.Contains(lugar);
-                    })
-                    .Select(s => s.Id)
-                    .ToHashSet();
-                query = query.Where(v => sessionsInPlaces.Contains(v.SessionId));
-            }
-
-            if (SelectedFilterDateFrom.HasValue)
-                query = query.Where(v => v.CreationDateTime >= SelectedFilterDateFrom.Value);
-
-            if (SelectedFilterDateTo.HasValue)
-                query = query.Where(v => v.CreationDateTime <= SelectedFilterDateTo.Value.AddDays(1));
-
-            if (selectedAthletes.Any())
-                query = query.Where(v => selectedAthletes.Contains(v.AtletaId));
-
-            if (selectedSections.Any())
-                query = query.Where(v => selectedSections.Contains(v.Section));
-
-            if (selectedTags.Any() && inputsSnapshot != null)
-            {
-                var videoIdsWithTags = inputsSnapshot
-                    .Where(i => selectedTags.Contains(i.InputTypeId))
-                    .Select(i => i.VideoId)
-                    .ToHashSet();
-                query = query.Where(v => videoIdsWithTags.Contains(v.Id));
-            }
-
-            var list = query.ToList();
-            var snapshot = BuildGalleryStatsSnapshot(list);
-            return (list, snapshot);
-        });
-
-        // Si durante el cálculo se disparó otra ejecución más reciente, descartamos esta.
-        if (version != Volatile.Read(ref _filtersVersion))
-            return;
-
-        _filteredVideosCache = filteredList;
-        
-        // Recargar videos paginados con el filtro aplicado
-        _currentPage = 0;
-        
-        var filteredCache = _filteredVideosCache ?? new List<VideoClip>();
-        var firstBatch = filteredCache.Take(PageSize).ToList();
-        await MainThread.InvokeOnMainThreadAsync(async () =>
-        {
-            await ReplaceCollectionInBatchesAsync(SelectedSessionVideos, firstBatch, CancellationToken.None);
-        });
-        _currentPage = 1;
-        HasMoreVideos = _filteredVideosCache.Count > PageSize;
-
-        // Actualizar estadísticas sin bloquear el UI
-        await ApplyGalleryStatsSnapshotAsync(statsSnapshot, CancellationToken.None);
-
-        OnPropertyChanged(nameof(TotalFilteredVideoCount));
-        OnPropertyChanged(nameof(TotalFilteredDurationSeconds));
-        OnPropertyChanged(nameof(SelectedSessionTotalDurationSeconds));
-        OnPropertyChanged(nameof(SelectedSessionTotalDurationFormatted));
-
-        await Task.CompletedTask;
-    }
-
-    private void UpdateStatisticsFromFilteredVideos()
-    {
-        var clips = _filteredVideosCache ?? _allVideosCache ?? new List<VideoClip>();
-
-        // Limpiar estadísticas anteriores
-        SelectedSessionSectionStats.Clear();
-        SelectedSessionAthleteTimes.Clear();
-        SelectedSessionSectionDurationMinutes.Clear();
-        SelectedSessionSectionLabels.Clear();
-        SelectedSessionTagVideoCounts.Clear();
-        SelectedSessionTagLabels.Clear();
-
-        // Estadísticas por sección
-        var sectionGroups = clips
-            .GroupBy(v => v.Section)
-            .OrderBy(g => g.Key)
-            .ToList();
-
-        foreach (var group in sectionGroups)
-        {
-            var stats = new SectionStats
-            {
-                Section = group.Key,
-                VideoCount = group.Count(),
-                TotalDuration = group.Sum(v => v.ClipDuration)
-            };
-            SelectedSessionSectionStats.Add(stats);
-            SelectedSessionSectionDurationMinutes.Add(Math.Round(stats.TotalDuration / 60.0, 1));
-            SelectedSessionSectionLabels.Add(stats.Section.ToString());
-        }
-
-        // Tabla de tiempos por atleta
-        var byAthlete = clips
-            .Where(v => v.AtletaId != 0)
-            .GroupBy(v => v.AtletaId)
-            .Select(g => new
-            {
-                AthleteName = g.FirstOrDefault()?.Atleta?.NombreCompleto ?? $"Atleta {g.Key}",
-                VideoCount = g.Count(),
-                TotalSeconds = g.Sum(v => v.ClipDuration),
-                AvgSeconds = g.Any() ? g.Average(v => v.ClipDuration) : 0
-            })
-            .OrderByDescending(x => x.TotalSeconds)
-            .ToList();
-
-        foreach (var row in byAthlete)
-        {
-            SelectedSessionAthleteTimes.Add(new SessionAthleteTimeRow(
-                row.AthleteName,
-                row.VideoCount,
-                row.TotalSeconds,
-                row.AvgSeconds));
-        }
-    }
-
-    private async Task SelectAllGalleryAsync()
-    {
-        System.Diagnostics.Debug.WriteLine($"[SelectAllGalleryAsync] Called");
-        // Deseleccionar sesión actual usando el setter para que se deseleccione el row
-        SelectedSession = null;
-        
-        // Limpiar carpeta inteligente activa
-        _activeSmartFolder = null;
-        _smartFolderFilteredVideosCache = null;
-        
-        // SIEMPRE desactivar secciones remotas (incluso si IsAllGallerySelected ya era true)
-        DeselectRemoteSections();
-        
-        IsAllGallerySelected = true;
-        System.Diagnostics.Debug.WriteLine($"[SelectAllGalleryAsync] IsAllGallerySelected = true, calling LoadAllVideosAsync...");
-        await LoadAllVideosAsync();
-        System.Diagnostics.Debug.WriteLine($"[SelectAllGalleryAsync] Done");
+        IsSessionsExpanded = !IsSessionsExpanded;
     }
 
     private async Task SelectFavoriteSessionsAsync()
     {
         SelectedSession = null;
-        _activeSmartFolder = null;
-        _smartFolderFilteredVideosCache = null;
+        SmartFolders.ClearActiveSmartFolder();
 
         IsFavoriteSessionsSelected = true;
 
@@ -5110,106 +1946,7 @@ public class DashboardViewModel : BaseViewModel
         SyncFavoriteSessionsFromRecent();
         SyncVisibleSessionRows();
         OnPropertyChanged(nameof(SelectedSessionTitle));
-        await RefreshFavoritesCountsAsync();
-    }
-
-    private async Task SelectFavoriteVideosAsync()
-    {
-        SelectedSession = null;
-        _activeSmartFolder = null;
-        _smartFolderFilteredVideosCache = null;
-
-        IsFavoriteVideosSelected = true;
-
-        await EnsureAllVideosCacheAsync();
-        await RefreshFavoriteVideosViewAsync();
-        await RefreshFavoritesCountsAsync();
-    }
-
-    private async Task EnsureAllVideosCacheAsync()
-    {
-        if (_allVideosCache != null)
-            return;
-
-        _allVideosCache = await _databaseService.GetAllVideoClipsAsync();
-
-        var sessionIds = _allVideosCache?.Select(c => c.SessionId).Distinct().ToList() ?? new List<int>();
-        var sessionsDict = new Dictionary<int, Session>();
-        foreach (var sessionId in sessionIds)
-        {
-            var session = await _databaseService.GetSessionByIdAsync(sessionId);
-            if (session != null)
-                sessionsDict[sessionId] = session;
-        }
-
-        if (_allVideosCache != null)
-        {
-            foreach (var clip in _allVideosCache)
-            {
-                if (sessionsDict.TryGetValue(clip.SessionId, out var session))
-                    clip.Session = session;
-            }
-        }
-    }
-
-    private async Task RefreshFavoriteVideosViewAsync()
-    {
-        _selectedSessionVideosCts?.Cancel();
-        _selectedSessionVideosCts?.Dispose();
-        _selectedSessionVideosCts = new CancellationTokenSource();
-        var ct = _selectedSessionVideosCts.Token;
-
-        SelectedSessionVideos.Clear();
-        SelectedSessionSectionStats.Clear();
-        SelectedSessionAthleteTimes.Clear();
-        SelectedSessionSectionDurationMinutes.Clear();
-        SelectedSessionSectionLabels.Clear();
-        SelectedSessionTagVideoCounts.Clear();
-        SelectedSessionTagLabels.Clear();
-        SelectedSessionPenaltyCounts.Clear();
-        SelectedSessionPenaltyLabels.Clear();
-        SelectedSessionInputs.Clear();
-        SelectedSessionValoraciones.Clear();
-
-        _currentPage = 0;
-        _favoriteVideosCache = _allVideosCache?.Where(v => v.IsFavorite == 1).ToList() ?? new List<VideoClip>();
-        _filteredVideosCache = _favoriteVideosCache;
-
-        var firstBatch = _favoriteVideosCache.Take(PageSize).ToList();
-        await MainThread.InvokeOnMainThreadAsync(async () =>
-        {
-            await ReplaceCollectionInBatchesAsync(SelectedSessionVideos, firstBatch, ct);
-        });
-        _currentPage = 1;
-        HasMoreVideos = _favoriteVideosCache.Count > PageSize;
-
-        var snapshot = await Task.Run(() => BuildGalleryStatsSnapshot(_favoriteVideosCache), ct);
-        if (!ct.IsCancellationRequested)
-            await ApplyGalleryStatsSnapshotAsync(snapshot, ct);
-
-        OnPropertyChanged(nameof(TotalFilteredVideoCount));
-        OnPropertyChanged(nameof(TotalAvailableVideoCount));
-        OnPropertyChanged(nameof(VideoCountDisplayText));
-        OnPropertyChanged(nameof(TotalFilteredDurationSeconds));
-        OnPropertyChanged(nameof(SelectedSessionTotalDurationSeconds));
-        OnPropertyChanged(nameof(SelectedSessionTotalDurationFormatted));
-    }
-
-    private async Task RefreshFavoritesCountsAsync()
-    {
-        try
-        {
-            var db = await _databaseService.GetConnectionAsync();
-            FavoriteSessionsCount = await db.ExecuteScalarAsync<int>(
-                "SELECT COUNT(*) FROM sesion WHERE is_deleted = 0 AND is_favorite = 1;");
-            FavoriteVideosCount = await db.ExecuteScalarAsync<int>(
-                "SELECT COUNT(*) FROM videoClip v INNER JOIN sesion s ON s.id = v.SessionID " +
-                "WHERE v.is_deleted = 0 AND s.is_deleted = 0 AND v.is_favorite = 1;");
-        }
-        catch
-        {
-            // Ignorar errores de conteo
-        }
+        await Videos.RefreshFavoritesCountsAsync();
     }
 
     private void SyncFavoriteSessionsFromRecent()
@@ -5249,343 +1986,11 @@ public class DashboardViewModel : BaseViewModel
 
             SyncFavoriteSessionsFromRecent();
             SyncVisibleSessionRows();
-            await RefreshFavoritesCountsAsync();
+            await Videos.RefreshFavoritesCountsAsync();
         }
         catch (Exception ex)
         {
             AppLog.Error("DashboardVM", "ToggleSessionFavoriteAsync error", ex);
-        }
-    }
-
-    private async Task ToggleVideoFavoriteAsync(VideoClip? video)
-    {
-        if (video == null)
-            return;
-
-        try
-        {
-            video.IsFavorite = video.IsFavorite == 1 ? 0 : 1;
-            await _databaseService.SaveVideoClipAsync(video);
-
-            if (_allVideosCache != null)
-            {
-                var cached = _allVideosCache.FirstOrDefault(v => v.Id == video.Id);
-                if (cached != null)
-                    cached.IsFavorite = video.IsFavorite;
-            }
-
-            if (IsFavoriteVideosSelected)
-            {
-                await RefreshFavoriteVideosViewAsync();
-            }
-
-            await RefreshFavoritesCountsAsync();
-        }
-        catch (Exception ex)
-        {
-            AppLog.Error("DashboardVM", "ToggleVideoFavoriteAsync error", ex);
-        }
-    }
-
-    private async Task LoadAllVideosAsync()
-    {
-        AppLog.Info("DashboardVM", "LoadAllVideosAsync START");
-        _selectedSessionVideosCts?.Cancel();
-        _selectedSessionVideosCts?.Dispose();
-        _selectedSessionVideosCts = new CancellationTokenSource();
-        var ct = _selectedSessionVideosCts.Token;
-
-        SelectedSessionVideos.Clear();
-        SelectedSessionSectionStats.Clear();
-        SelectedSessionAthleteTimes.Clear();
-        SelectedSessionSectionDurationMinutes.Clear();
-        SelectedSessionSectionLabels.Clear();
-        SelectedSessionTagVideoCounts.Clear();
-        SelectedSessionTagLabels.Clear();
-        SelectedSessionPenaltyCounts.Clear();
-        SelectedSessionPenaltyLabels.Clear();
-        SelectedSessionInputs.Clear();
-        SelectedSessionValoraciones.Clear();
-
-        _currentPage = 0;
-        _allVideosCache = null;
-        _filteredVideosCache = null;
-        HasMoreVideos = false;
-
-        OnPropertyChanged(nameof(AllGalleryItemCount));
-        
-        // Limpiar filtros al cargar
-        ClearFilters();
-
-        OnPropertyChanged(nameof(SelectedSessionTotalDurationSeconds));
-        OnPropertyChanged(nameof(SelectedSessionTotalDurationFormatted));
-
-        try
-        {
-            IsLoadingSelectedSessionVideos = true;
-            await Task.Yield();
-            
-            // Cargar todos los videos en caché
-            AppLog.Info("DashboardVM", "LoadAllVideosAsync Loading videos from DB...");
-            _allVideosCache = await _databaseService.GetAllVideoClipsAsync();
-            AppLog.Info("DashboardVM", $"LoadAllVideosAsync Videos loaded: {_allVideosCache?.Count ?? 0}");
-            if (ct.IsCancellationRequested) return;
-
-            OnPropertyChanged(nameof(AllGalleryItemCount));
-
-            // Crear diccionario de sesiones para asignar a cada clip
-            var sessionIds = _allVideosCache?.Select(c => c.SessionId).Distinct().ToList() ?? new List<int>();
-            var sessionsDict = new Dictionary<int, Session>();
-            foreach (var sessionId in sessionIds)
-            {
-                var session = await _databaseService.GetSessionByIdAsync(sessionId);
-                if (session != null)
-                    sessionsDict[sessionId] = session;
-            }
-            
-            // Asignar la sesión a cada clip para que DisplayLine1/2 funcionen
-            if (_allVideosCache != null)
-            {
-                foreach (var clip in _allVideosCache)
-                {
-                    if (sessionsDict.TryGetValue(clip.SessionId, out var session))
-                        clip.Session = session;
-                }
-            }
-
-            // Cargar primer lote
-            _filteredVideosCache = _allVideosCache;
-            var filteredCache = _filteredVideosCache ?? new List<VideoClip>();
-            var firstBatch = filteredCache.Take(PageSize).ToList();
-            AppLog.Info("DashboardVM", $"LoadAllVideosAsync First batch: {firstBatch.Count}");
-            await MainThread.InvokeOnMainThreadAsync(async () =>
-            {
-                await ReplaceCollectionInBatchesAsync(SelectedSessionVideos, firstBatch, ct);
-            });
-            AppLog.Info("DashboardVM", $"LoadAllVideosAsync SelectedSessionVideos.Count: {SelectedSessionVideos.Count}");
-            _currentPage = 1;
-            HasMoreVideos = _filteredVideosCache.Count > PageSize;
-
-            // Cargar opciones de filtro en paralelo (no bloquea la primera carga de galería)
-            var filterTask = LoadFilterOptionsAsync();
-
-            // Stats: cálculo fuera del hilo UI
-            AppLog.Info("DashboardVM", "LoadAllVideosAsync BuildGalleryStatsSnapshot...");
-            var snapshot = await Task.Run(() => BuildGalleryStatsSnapshot(filteredCache), ct);
-            if (!ct.IsCancellationRequested)
-                await ApplyGalleryStatsSnapshotAsync(snapshot, ct);
-            AppLog.Info("DashboardVM", "LoadAllVideosAsync ApplyGalleryStatsSnapshot done");
-
-            // Cargar estadísticas absolutas de tags (galería general = null)
-            await LoadAbsoluteTagStatsAsync(null);
-            AppLog.Info("DashboardVM", "LoadAllVideosAsync LoadAbsoluteTagStatsAsync done");
-
-            await filterTask;
-            AppLog.Info("DashboardVM", "LoadAllVideosAsync LoadFilterOptionsAsync done");
-
-            OnPropertyChanged(nameof(TotalFilteredVideoCount));
-            OnPropertyChanged(nameof(TotalAvailableVideoCount));
-            OnPropertyChanged(nameof(VideoCountDisplayText));
-            OnPropertyChanged(nameof(TotalFilteredDurationSeconds));
-            OnPropertyChanged(nameof(SelectedSessionTotalDurationSeconds));
-            OnPropertyChanged(nameof(SelectedSessionTotalDurationFormatted));
-
-            // Actualizar contadores de SmartFolders
-            UpdateSmartFolderVideoCounts();
-            AppLog.Info("DashboardVM", "LoadAllVideosAsync END");
-        }
-        catch (Exception ex)
-        {
-            AppLog.Error("DashboardVM", "Error loading all videos", ex);
-        }
-        finally
-        {
-            IsLoadingSelectedSessionVideos = false;
-        }
-    }
-
-    private async Task LoadFilterOptionsAsync()
-    {
-        AppLog.Info("DashboardVM", $"LoadFilterOptionsAsync START | RecentSessions={RecentSessions.Count} | Videos={_allVideosCache?.Count ?? 0}");
-
-        await Task.Yield();
-
-        var sessionsSnapshot = RecentSessions.ToList();
-        var allVideosSnapshot = _allVideosCache?.ToList();
-        
-        // Cargar lugares únicos de las sesiones
-        FilterPlaces.Clear();
-        var places = await Task.Run(() => sessionsSnapshot
-            .Where(s => !string.IsNullOrEmpty(s.Lugar))
-            .Select(s => s.Lugar!)
-            .Distinct()
-            .OrderBy(p => p)
-            .ToList());
-        AppLog.Info("DashboardVM", $"LoadFilterOptionsAsync Places: {places.Count}");
-        await MainThread.InvokeOnMainThreadAsync(async () =>
-        {
-            var i = 0;
-            foreach (var place in places)
-            {
-                var item = new PlaceFilterItem(place);
-                item.SelectionChanged += OnFilterSelectionChanged;
-                FilterPlaces.Add(item);
-
-                i++;
-                if (i % 30 == 0)
-                    await Task.Yield();
-            }
-        });
-        AppLog.Info("DashboardVM", $"LoadFilterOptionsAsync FilterPlaces: {FilterPlaces.Count}");
-
-        // Cargar atletas
-        FilterAthletes.Clear();
-        var athletes = await _databaseService.GetAllAthletesAsync();
-        AppLog.Info("DashboardVM", $"LoadFilterOptionsAsync Athletes: {athletes.Count}");
-        await MainThread.InvokeOnMainThreadAsync(async () =>
-        {
-            var i = 0;
-            foreach (var athlete in athletes.OrderBy(a => a.NombreCompleto))
-            {
-                var item = new AthleteFilterItem(athlete);
-                item.SelectionChanged += OnFilterSelectionChanged;
-                FilterAthletes.Add(item);
-
-                i++;
-                if (i % 30 == 0)
-                    await Task.Yield();
-            }
-        });
-        AppLog.Info("DashboardVM", $"LoadFilterOptionsAsync FilterAthletes: {FilterAthletes.Count}");
-
-        // Cargar secciones únicas de los videos
-        FilterSections.Clear();
-        if (allVideosSnapshot != null)
-        {
-            var sections = await Task.Run(() => allVideosSnapshot
-                .Select(v => v.Section)
-                .Distinct()
-                .OrderBy(s => s)
-                .ToList());
-            AppLog.Info("DashboardVM", $"LoadFilterOptionsAsync Sections: {sections.Count}");
-            await MainThread.InvokeOnMainThreadAsync(async () =>
-            {
-                var i = 0;
-                foreach (var section in sections)
-                {
-                    var item = new SectionFilterItem(section);
-                    item.SelectionChanged += OnFilterSelectionChanged;
-                    FilterSections.Add(item);
-
-                    i++;
-                    if (i % 30 == 0)
-                        await Task.Yield();
-                }
-            });
-        }
-        AppLog.Info("DashboardVM", $"LoadFilterOptionsAsync FilterSections: {FilterSections.Count}");
-
-        OnPropertyChanged(nameof(SelectedPlacesSummary));
-        OnPropertyChanged(nameof(SelectedAthletesSummary));
-        OnPropertyChanged(nameof(SelectedSectionsSummary));
-
-        // Cargar inputs y tags para filtrado
-        _allInputsCache = await _databaseService.GetAllInputsAsync();
-        _allTagsCache = await _databaseService.GetAllTagsAsync();
-
-        // Cargar tags únicos (solo los que tienen inputs asociados a videos)
-        FilterTagItems.Clear();
-        if (_allInputsCache != null && _allTagsCache != null)
-        {
-            var usedTagIds = _allInputsCache
-                .Select(i => i.InputTypeId)
-                .Distinct()
-                .ToHashSet();
-
-            var tags = _allTagsCache
-                .Where(t => usedTagIds.Contains(t.Id) && !string.IsNullOrEmpty(t.NombreTag))
-                .OrderBy(t => t.NombreTag);
-            
-            await MainThread.InvokeOnMainThreadAsync(async () =>
-            {
-                var i = 0;
-                foreach (var tag in tags)
-                {
-                    var item = new TagFilterItem(tag);
-                    item.SelectionChanged += OnFilterSelectionChanged;
-                    FilterTagItems.Add(item);
-
-                    i++;
-                    if (i % 30 == 0)
-                        await Task.Yield();
-                }
-            });
-        }
-        AppLog.Info("DashboardVM", $"LoadFilterOptionsAsync FilterTagItems: {FilterTagItems.Count}");
-        AppLog.Info("DashboardVM", "LoadFilterOptionsAsync END");
-        OnPropertyChanged(nameof(SelectedTagsSummary));
-    }
-
-    private void OnFilterSelectionChanged(object? sender, EventArgs e)
-    {
-        if (_suppressFilterSelectionChanged)
-            return;
-
-        OnPropertyChanged(nameof(SelectedPlacesSummary));
-        OnPropertyChanged(nameof(SelectedAthletesSummary));
-        OnPropertyChanged(nameof(SelectedSectionsSummary));
-        OnPropertyChanged(nameof(SelectedTagsSummary));
-        _ = ApplyFiltersAsync();
-    }
-
-    private async Task LoadMoreVideosAsync()
-    {
-        var videosSource = _filteredVideosCache ?? _allVideosCache;
-        AppLog.Info("DashboardVM", $"LoadMoreVideosAsync START | IsLoadingMore={IsLoadingMore} | HasMoreVideos={HasMoreVideos} | videosSource={videosSource?.Count ?? 0} | currentPage={_currentPage} | displayedCount={SelectedSessionVideos.Count}");
-        
-        if (IsLoadingMore || !HasMoreVideos || videosSource == null)
-        {
-            AppLog.Info("DashboardVM", $"LoadMoreVideosAsync SKIPPED - conditions not met");
-            return;
-        }
-
-        try
-        {
-            IsLoadingMore = true;
-            
-            // Simular un pequeño delay para UI
-            await Task.Delay(100);
-
-            var skip = _currentPage * PageSize;
-            var nextBatch = videosSource.Skip(skip).Take(PageSize).ToList();
-            AppLog.Info("DashboardVM", $"LoadMoreVideosAsync Loading batch: skip={skip}, batchSize={nextBatch.Count}");
-
-            var ct = _selectedSessionVideosCts?.Token ?? CancellationToken.None;
-            await MainThread.InvokeOnMainThreadAsync(async () =>
-            {
-                var i = 0;
-                foreach (var clip in nextBatch)
-                {
-                    if (ct.IsCancellationRequested)
-                    {
-                        AppLog.Info("DashboardVM", "LoadMoreVideosAsync CANCELLED during batch add");
-                        return;
-                    }
-
-                    SelectedSessionVideos.Add(clip);
-                    i++;
-                    if (i % 20 == 0)
-                        await Task.Yield();
-                }
-            });
-
-            _currentPage++;
-            HasMoreVideos = videosSource.Count > (_currentPage * PageSize);
-            AppLog.Info("DashboardVM", $"LoadMoreVideosAsync END | newPage={_currentPage} | HasMoreVideos={HasMoreVideos} | displayedCount={SelectedSessionVideos.Count}");
-        }
-        finally
-        {
-            IsLoadingMore = false;
         }
     }
 
@@ -5638,13 +2043,14 @@ public class DashboardViewModel : BaseViewModel
         {
             AppLog.Info("DashboardVM", "LoadDataAsync START");
             IsBusy = true;
-            Stats = await _statisticsService.GetDashboardStatsAsync();
-            AppLog.Info("DashboardVM", $"LoadDataAsync Stats loaded | RecentSessions={Stats?.RecentSessions?.Count ?? 0}");
+            var stats = await _statisticsService.GetDashboardStatsAsync();
+            Stats = stats;
+            AppLog.Info("DashboardVM", $"LoadDataAsync Stats loaded | RecentSessions={stats?.RecentSessions?.Count ?? 0}");
 
-            await RefreshVideoLessonsCountAsync();
+            await Videos.RefreshVideoLessonsCountAsync();
 
             RecentSessions.Clear();
-            foreach (var session in Stats.RecentSessions)
+            foreach (var session in stats?.RecentSessions ?? new List<Session>())
             {
                 RecentSessions.Add(session);
             }
@@ -5665,24 +2071,21 @@ public class DashboardViewModel : BaseViewModel
             // Recargar videolecciones si están seleccionadas (al volver de SinglePlayerPage)
             if (IsVideoLessonsSelected)
             {
-                _selectedSessionVideosCts?.Cancel();
-                _selectedSessionVideosCts?.Dispose();
-                _selectedSessionVideosCts = new CancellationTokenSource();
-                await LoadVideoLessonsAsync(_selectedSessionVideosCts.Token);
+                await Videos.ViewVideoLessonsAsync();
             }
             // Por defecto, mostrar Galería General al iniciar (solo si no hay ninguna vista activa)
             else if (SelectedSession == null && !IsAllGallerySelected && !IsDiaryViewSelected)
             {
                 AppLog.Info("DashboardVM", "LoadDataAsync SelectAllGalleryAsync...");
-                await SelectAllGalleryAsync();
+                await Videos.SelectAllGalleryAsync();
                 AppLog.Info("DashboardVM", "LoadDataAsync SelectAllGalleryAsync done");
             }
 
             await RefreshTrashItemCountAsync();
-            await RefreshFavoritesCountsAsync();
+            await Videos.RefreshFavoritesCountsAsync();
             
             // Verificar videos pendientes de sincronización
-            await CheckPendingSyncAsync();
+            await Remote.RefreshPendingSyncAsync();
 
             await LoadSessionFormOptionsAsync();
             
@@ -5695,18 +2098,6 @@ public class DashboardViewModel : BaseViewModel
         finally
         {
             IsBusy = false;
-        }
-    }
-
-    private async Task RefreshVideoLessonsCountAsync()
-    {
-        try
-        {
-            VideoLessonsCount = await _databaseService.GetVideoLessonsCountAsync();
-        }
-        catch
-        {
-            VideoLessonsCount = VideoLessons.Count;
         }
     }
 
@@ -5822,195 +2213,30 @@ public class DashboardViewModel : BaseViewModel
         }
     }
 
-    private async Task LoadSelectedSessionVideosAsync(Session? session)
+    private static bool IsStreamingUrl(string? path)
     {
-        _selectedSessionVideosCts?.Cancel();
-        _selectedSessionVideosCts?.Dispose();
-        _selectedSessionVideosCts = new CancellationTokenSource();
-        var ct = _selectedSessionVideosCts.Token;
+        return !string.IsNullOrWhiteSpace(path) &&
+               (path.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                path.StartsWith("https://", StringComparison.OrdinalIgnoreCase));
+    }
 
-        SelectedSessionVideos.Clear();
-        SelectedSessionSectionStats.Clear();
-        SelectedSessionAthleteTimes.Clear();
-        SelectedSessionSectionDurationMinutes.Clear();
-        SelectedSessionSectionLabels.Clear();
-        SelectedSessionTagVideoCounts.Clear();
-        SelectedSessionTagLabels.Clear();
-        SelectedSessionPenaltyCounts.Clear();
-        SelectedSessionPenaltyLabels.Clear();
-        SelectedSessionInputs.Clear();
-        SelectedSessionValoraciones.Clear();
+    private static string? NormalizeRemotePath(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return null;
 
-        _currentPage = 0;
-        _allVideosCache = null;
-        _filteredVideosCache = null;
-        HasMoreVideos = false;
+        return path.StartsWith("CrownRFEP/", StringComparison.OrdinalIgnoreCase)
+            ? path.Substring("CrownRFEP/".Length)
+            : path;
+    }
 
-        OnPropertyChanged(nameof(SelectedSessionTotalDurationSeconds));
-        OnPropertyChanged(nameof(SelectedSessionTotalDurationFormatted));
-        if (session == null) return;
+    private async Task<string?> GetStreamingUrlAsync(string? relativePath)
+    {
+        if (string.IsNullOrWhiteSpace(relativePath))
+            return null;
 
-        try
-        {
-            IsLoadingSelectedSessionVideos = true;
-            var clips = await _databaseService.GetVideoClipsBySessionAsync(session.Id);
-            if (ct.IsCancellationRequested) return;
-
-            // Asignar la sesión actual a cada clip para que DisplayLine1/2 funcionen
-            foreach (var clip in clips)
-            {
-                clip.Session = session;
-            }
-
-            // Guardar en caché para paginación
-            _allVideosCache = clips;
-            
-            // Cargar primer lote
-            var firstBatch = clips.Take(PageSize).ToList();
-            await MainThread.InvokeOnMainThreadAsync(async () =>
-            {
-                await ReplaceCollectionInBatchesAsync(SelectedSessionVideos, firstBatch, ct);
-            });
-            _currentPage = 1;
-            HasMoreVideos = clips.Count > PageSize;
-
-            // Estadísticas por sección (tabla + gráfico)
-            var sectionStats = await _statisticsService.GetVideosBySectionAsync(session.Id);
-            if (ct.IsCancellationRequested) return;
-
-            await MainThread.InvokeOnMainThreadAsync(async () =>
-            {
-                var i = 0;
-                foreach (var s in sectionStats)
-                {
-                    SelectedSessionSectionStats.Add(s);
-
-                    // Para gráfico: minutos, y etiqueta corta
-                    SelectedSessionSectionDurationMinutes.Add(Math.Round(s.TotalDuration / 60.0, 1));
-                    SelectedSessionSectionLabels.Add(s.Section.ToString());
-
-                    i++;
-                    if (i % 20 == 0)
-                        await Task.Yield();
-                }
-            });
-
-            // Tabla de tiempos por atleta
-            var byAthlete = clips
-                .Where(v => v.AtletaId != 0)
-                .GroupBy(v => v.AtletaId)
-                .Select(g => new
-                {
-                    AthleteName = g.FirstOrDefault()?.Atleta?.NombreCompleto ?? $"Atleta {g.Key}",
-                    VideoCount = g.Count(),
-                    TotalSeconds = g.Sum(v => v.ClipDuration),
-                    AvgSeconds = g.Any() ? g.Average(v => v.ClipDuration) : 0
-                })
-                .OrderByDescending(x => x.TotalSeconds)
-                .ToList();
-
-            await MainThread.InvokeOnMainThreadAsync(async () =>
-            {
-                var i = 0;
-                foreach (var row in byAthlete)
-                {
-                    SelectedSessionAthleteTimes.Add(new SessionAthleteTimeRow(
-                        row.AthleteName,
-                        row.VideoCount,
-                        row.TotalSeconds,
-                        row.AvgSeconds));
-
-                    i++;
-                    if (i % 30 == 0)
-                        await Task.Yield();
-                }
-            });
-
-            // Etiquetas (tags) y penalizaciones: usando Inputs de la sesión.
-            // Asunción: InputTypeId representa el TagId.
-            var inputs = await _databaseService.GetInputsBySessionAsync(session.Id);
-            if (ct.IsCancellationRequested) return;
-
-            await MainThread.InvokeOnMainThreadAsync(async () =>
-            {
-                var i = 0;
-                foreach (var input in inputs.OrderBy(i => i.InputDateTime))
-                {
-                    SelectedSessionInputs.Add(input);
-                    i++;
-                    if (i % 50 == 0)
-                        await Task.Yield();
-                }
-            });
-
-            var tagStats = inputs
-                .GroupBy(i => i.InputTypeId)
-                .Select(g => new
-                {
-                    TagId = g.Key,
-                    Assignments = g.Count(),
-                    VideoCount = g.Select(x => x.VideoId).Distinct().Count()
-                })
-                .OrderByDescending(x => x.VideoCount)
-                .ThenBy(x => x.TagId)
-                .Take(12)
-                .ToList();
-
-            await MainThread.InvokeOnMainThreadAsync(() =>
-            {
-                foreach (var t in tagStats)
-                {
-                    SelectedSessionTagLabels.Add(t.TagId.ToString());
-                    SelectedSessionTagVideoCounts.Add(t.VideoCount);
-                }
-            });
-
-            // Penalizaciones (tags 2 y 50): por número de asignaciones
-            var penalty2 = inputs.Count(i => i.InputTypeId == 2);
-            var penalty50 = inputs.Count(i => i.InputTypeId == 50);
-            SelectedSessionPenaltyLabels.Add("2");
-            SelectedSessionPenaltyLabels.Add("50");
-            SelectedSessionPenaltyCounts.Add(penalty2);
-            SelectedSessionPenaltyCounts.Add(penalty50);
-
-            // Cargar estadísticas absolutas de tags
-            await LoadAbsoluteTagStatsAsync(session.Id);
-            
-            // Cargar tiempos por sección (Split Times)
-            await LoadAthleteSectionTimesAsync(session.Id);
-
-            // Valoraciones (tabla valoracion)
-            var valoraciones = await _databaseService.GetValoracionesBySessionAsync(session.Id);
-            if (ct.IsCancellationRequested) return;
-
-            await MainThread.InvokeOnMainThreadAsync(async () =>
-            {
-                var i = 0;
-                foreach (var v in valoraciones.OrderBy(v => v.InputDateTime))
-                {
-                    SelectedSessionValoraciones.Add(v);
-                    i++;
-                    if (i % 50 == 0)
-                        await Task.Yield();
-                }
-            });
-
-            OnPropertyChanged(nameof(TotalFilteredVideoCount));
-            OnPropertyChanged(nameof(TotalAvailableVideoCount));
-            OnPropertyChanged(nameof(VideoCountDisplayText));
-            OnPropertyChanged(nameof(SelectedSessionTotalDurationSeconds));
-            OnPropertyChanged(nameof(SelectedSessionTotalDurationFormatted));
-        }
-        catch (Exception ex)
-        {
-            if (!ct.IsCancellationRequested)
-                await Shell.Current.DisplayAlert("Error", $"No se pudieron cargar los vídeos: {ex.Message}", "OK");
-        }
-        finally
-        {
-            if (!ct.IsCancellationRequested)
-                IsLoadingSelectedSessionVideos = false;
-        }
+        var result = await _cloudBackendService.GetDownloadUrlAsync(relativePath);
+        return result.Success ? result.Url : null;
     }
 
     private async Task PlaySelectedVideoAsync(VideoClip? video)
@@ -6238,52 +2464,6 @@ public class DashboardViewModel : BaseViewModel
         await Shell.Current.GoToAsync(nameof(SessionsPage));
     }
 
-    private async Task ViewVideoLessonsAsync()
-    {
-        try
-        {
-            IsLoadingSelectedSessionVideos = true;
-
-            // SIEMPRE desactivar secciones remotas
-            DeselectRemoteSections();
-
-            // Cambiar modo en el Dashboard (sin navegar)
-            // NOTA: Esto cancela _selectedSessionVideosCts, así que creamos el token DESPUÉS
-            SelectedSession = null;
-            IsAllGallerySelected = false;
-            IsVideoLessonsSelected = true;
-
-            // Crear nuevo CancellationTokenSource DESPUÉS de SelectedSession = null
-            // porque el setter de SelectedSession cancela el token anterior
-            _selectedSessionVideosCts?.Cancel();
-            _selectedSessionVideosCts?.Dispose();
-            _selectedSessionVideosCts = new CancellationTokenSource();
-            var ct = _selectedSessionVideosCts.Token;
-
-            // Desactivar selección múltiple (no aplica a videolecciones)
-            IsMultiSelectMode = false;
-            IsSelectAllActive = false;
-
-            // Limpiar caches de vídeos para que contadores y paginación no interfieran
-            _currentPage = 0;
-            _allVideosCache = null;
-            _filteredVideosCache = null;
-            HasMoreVideos = false;
-
-            await LoadVideoLessonsAsync(ct);
-        }
-        catch (Exception ex)
-        {
-            if (_selectedSessionVideosCts?.Token.IsCancellationRequested != true)
-                await Shell.Current.DisplayAlert("Error", $"No se pudieron cargar las videolecciones: {ex.Message}", "OK");
-        }
-        finally
-        {
-            if (_selectedSessionVideosCts?.Token.IsCancellationRequested != true)
-                IsLoadingSelectedSessionVideos = false;
-        }
-    }
-
     private static async Task ViewTrashAsync()
     {
         await Shell.Current.GoToAsync(nameof(TrashPage));
@@ -6293,527 +2473,6 @@ public class DashboardViewModel : BaseViewModel
     {
         await Shell.Current.GoToAsync(nameof(AthletesPage));
     }
-
-    #region Session Diary Methods
-
-    private async Task LoadSessionDiaryAsync()
-    {
-        if (SelectedSession == null) return;
-
-        try
-        {
-            // Obtener el atleta de referencia del perfil de usuario
-            var profile = await _databaseService.GetUserProfileAsync();
-            if (profile?.ReferenceAthleteId == null) return;
-
-            var athleteId = profile.ReferenceAthleteId.Value;
-
-            // Cargar diario existente o crear uno nuevo
-            _currentSessionDiary = await _databaseService.GetSessionDiaryAsync(SelectedSession.Id, athleteId);
-            
-            if (_currentSessionDiary != null)
-            {
-                DiaryValoracionFisica = _currentSessionDiary.ValoracionFisica;
-                DiaryValoracionMental = _currentSessionDiary.ValoracionMental;
-                DiaryValoracionTecnica = _currentSessionDiary.ValoracionTecnica;
-                DiaryNotas = _currentSessionDiary.Notas ?? "";
-                IsEditingDiary = false; // Hay datos, mostrar vista de resultados
-            }
-            else
-            {
-                // Valores por defecto
-                DiaryValoracionFisica = 3;
-                DiaryValoracionMental = 3;
-                DiaryValoracionTecnica = 3;
-                DiaryNotas = "";
-                IsEditingDiary = true; // No hay datos, mostrar formulario
-            }
-
-            OnPropertyChanged(nameof(HasDiaryData));
-            OnPropertyChanged(nameof(ShowDiaryResults));
-            OnPropertyChanged(nameof(ShowDiaryForm));
-
-            // Cargar promedios
-            await LoadValoracionAveragesAsync(athleteId);
-
-            // Cargar evolución
-            await LoadValoracionEvolutionAsync();
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Error cargando diario: {ex}");
-        }
-    }
-
-    private async Task LoadValoracionAveragesAsync(int athleteId)
-    {
-        try
-        {
-            var (fisica, mental, tecnica, count) = await _databaseService.GetValoracionAveragesAsync(athleteId, 30);
-            AvgValoracionFisica = fisica;
-            AvgValoracionMental = mental;
-            AvgValoracionTecnica = tecnica;
-            AvgValoracionCount = count;
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Error cargando promedios: {ex}");
-        }
-    }
-
-    private async Task LoadValoracionEvolutionAsync()
-    {
-        try
-        {
-            var profile = await _databaseService.GetUserProfileAsync();
-            if (profile?.ReferenceAthleteId == null) return;
-
-            var athleteId = profile.ReferenceAthleteId.Value;
-            var now = DateTimeOffset.UtcNow;
-            long startDate;
-
-            switch (SelectedEvolutionPeriod)
-            {
-                case 0: // Semana
-                    startDate = now.AddDays(-7).ToUnixTimeMilliseconds();
-                    break;
-                case 1: // Mes
-                    startDate = now.AddMonths(-1).ToUnixTimeMilliseconds();
-                    break;
-                case 2: // Año
-                    startDate = now.AddYears(-1).ToUnixTimeMilliseconds();
-                    break;
-                default: // Todo
-                    startDate = 0;
-                    break;
-            }
-
-            var endDate = now.ToUnixTimeMilliseconds();
-            var evolution = await _databaseService.GetValoracionEvolutionAsync(athleteId, startDate, endDate);
-            
-            ValoracionEvolution = new ObservableCollection<SessionDiary>(evolution);
-            
-            // Poblar colecciones para el gráfico de evolución
-            var fisicaValues = new ObservableCollection<int>();
-            var mentalValues = new ObservableCollection<int>();
-            var tecnicaValues = new ObservableCollection<int>();
-            var labels = new ObservableCollection<string>();
-            
-            foreach (var diary in evolution.OrderBy(d => d.CreatedAt))
-            {
-                fisicaValues.Add(diary.ValoracionFisica);
-                mentalValues.Add(diary.ValoracionMental);
-                tecnicaValues.Add(diary.ValoracionTecnica);
-                
-                // Formatear fecha como etiqueta
-                var date = DateTimeOffset.FromUnixTimeMilliseconds(diary.CreatedAt).LocalDateTime;
-                labels.Add(date.ToString("dd/MM"));
-            }
-            
-            EvolutionFisicaValues = fisicaValues;
-            EvolutionMentalValues = mentalValues;
-            EvolutionTecnicaValues = tecnicaValues;
-            EvolutionLabels = labels;
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Error cargando evolución: {ex}");
-        }
-    }
-
-    private async Task SaveDiaryAsync()
-    {
-        if (SelectedSession == null) return;
-
-        try
-        {
-            var profile = await _databaseService.GetUserProfileAsync();
-            if (profile?.ReferenceAthleteId == null)
-            {
-                await Shell.Current.DisplayAlert("Error", "No hay un atleta de referencia configurado en tu perfil.", "OK");
-                return;
-            }
-
-            var athleteId = profile.ReferenceAthleteId.Value;
-
-            var diary = new SessionDiary
-            {
-                SessionId = SelectedSession.Id,
-                AthleteId = athleteId,
-                ValoracionFisica = DiaryValoracionFisica,
-                ValoracionMental = DiaryValoracionMental,
-                ValoracionTecnica = DiaryValoracionTecnica,
-                Notas = DiaryNotas
-            };
-
-            await _databaseService.SaveSessionDiaryAsync(diary);
-            _currentSessionDiary = diary;
-            IsEditingDiary = false;
-            OnPropertyChanged(nameof(HasDiaryData));
-            OnPropertyChanged(nameof(ShowDiaryResults));
-            OnPropertyChanged(nameof(ShowDiaryForm));
-
-            // Recargar promedios y evolución
-            await LoadValoracionAveragesAsync(athleteId);
-            await LoadValoracionEvolutionAsync();
-
-            await Shell.Current.DisplayAlert("Guardado", "Tu diario de sesión se ha guardado correctamente.", "OK");
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Error guardando diario: {ex}");
-            await Shell.Current.DisplayAlert("Error", $"No se pudo guardar el diario: {ex.Message}", "OK");
-        }
-    }
-
-    private async Task SaveCalendarDiaryAsync(SessionWithDiary? sessionWithDiary)
-    {
-        if (sessionWithDiary == null) return;
-
-        try
-        {
-            var profile = await _databaseService.GetUserProfileAsync();
-            if (profile?.ReferenceAthleteId == null)
-            {
-                await Shell.Current.DisplayAlert("Error", "No hay un atleta de referencia configurado en tu perfil.", "OK");
-                return;
-            }
-
-            var athleteId = profile.ReferenceAthleteId.Value;
-
-            var diary = new SessionDiary
-            {
-                SessionId = sessionWithDiary.Session.Id,
-                AthleteId = athleteId,
-                ValoracionFisica = sessionWithDiary.EditValoracionFisica,
-                ValoracionMental = sessionWithDiary.EditValoracionMental,
-                ValoracionTecnica = sessionWithDiary.EditValoracionTecnica,
-                Notas = sessionWithDiary.EditNotas
-            };
-
-            await _databaseService.SaveSessionDiaryAsync(diary);
-            
-            // Actualizar el diario en el objeto
-            sessionWithDiary.Diary = diary;
-
-            // Recargar los datos del mes para actualizar indicadores del calendario
-            await LoadDiaryEntriesForMonthAsync(SelectedDiaryDate, athleteId);
-            
-            // Recargar promedios
-            await LoadValoracionAveragesAsync(athleteId);
-            await LoadValoracionEvolutionAsync();
-
-            await Shell.Current.DisplayAlert("Guardado", "Tu diario de sesión se ha guardado correctamente.", "OK");
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Error guardando diario desde calendario: {ex}");
-            await Shell.Current.DisplayAlert("Error", $"No se pudo guardar el diario: {ex.Message}", "OK");
-        }
-    }
-
-    private async Task ViewSessionAsPlaylistAsync(SessionWithDiary? sessionWithDiary)
-    {
-        if (sessionWithDiary == null || !sessionWithDiary.HasVideos) return;
-
-        try
-        {
-            // Cargar todos los vídeos de la sesión (no solo los 6 de preview)
-            var allVideos = await _databaseService.GetVideoClipsBySessionAsync(sessionWithDiary.Session.Id);
-            
-            if (allVideos.Count == 0)
-            {
-                await Shell.Current.DisplayAlert("Sesión", "Esta sesión no tiene vídeos.", "OK");
-                return;
-            }
-
-            // Ordenar por fecha de creación
-            var orderedVideos = allVideos.OrderBy(v => v.CreationDate).ToList();
-
-            // Navegar a SinglePlayerPage con la playlist
-            var singlePage = App.Current?.Handler?.MauiContext?.Services.GetService<Views.SinglePlayerPage>();
-            if (singlePage?.BindingContext is SinglePlayerViewModel singleVm)
-            {
-                await singleVm.InitializeWithPlaylistAsync(orderedVideos, 0);
-                await Shell.Current.Navigation.PushAsync(singlePage);
-            }
-            else
-            {
-                // Fallback: reproducir el primer video
-                var firstVideo = orderedVideos.First();
-                if (!string.IsNullOrEmpty(firstVideo.LocalClipPath))
-                {
-                    await Shell.Current.GoToAsync($"{nameof(Views.SinglePlayerPage)}?videoPath={Uri.EscapeDataString(firstVideo.LocalClipPath)}");
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Error abriendo playlist de sesión: {ex}");
-            await Shell.Current.DisplayAlert("Error", $"No se pudo abrir la sesión: {ex.Message}", "OK");
-        }
-    }
-
-    private async Task ConnectHealthKitAsync()
-    {
-        if (!_healthKitService.IsAvailable)
-        {
-            await Shell.Current.DisplayAlert("No disponible", "La app Salud no está disponible en este dispositivo.", "OK");
-            return;
-        }
-
-        try
-        {
-            var authorized = await _healthKitService.RequestAuthorizationAsync();
-            IsHealthKitAuthorized = authorized;
-
-            if (authorized)
-            {
-                await Shell.Current.DisplayAlert("Conectado", "Se han conectado correctamente los datos de la app Salud.", "OK");
-                // Recargar datos del día seleccionado
-                await LoadHealthDataForDateAsync(SelectedDiaryDate);
-            }
-            else
-            {
-                await Shell.Current.DisplayAlert("Permiso denegado", 
-                    "Para ver tus datos de salud, ve a Ajustes > Privacidad > Salud y permite el acceso a CrownRFEP Reader.", "OK");
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Error conectando HealthKit: {ex}");
-            await Shell.Current.DisplayAlert("Error", $"No se pudo conectar con la app Salud: {ex.Message}", "OK");
-        }
-    }
-
-    private async Task LoadHealthDataForDateAsync(DateTime date)
-    {
-        if (!_healthKitService.IsAvailable || !IsHealthKitAuthorized)
-        {
-            SelectedDateHealthData = null;
-            return;
-        }
-
-        try
-        {
-            IsLoadingHealthData = true;
-            SelectedDateHealthData = await _healthKitService.GetHealthDataForDateAsync(date);
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Error cargando datos de salud: {ex}");
-            SelectedDateHealthData = null;
-        }
-        finally
-        {
-            IsLoadingHealthData = false;
-        }
-    }
-
-    #region Bienestar Diario (Entrada Manual)
-
-    private async Task LoadWellnessDataForDateAsync(DateTime date)
-    {
-        try
-        {
-            SelectedDateWellness = await _databaseService.GetDailyWellnessAsync(date);
-            if (SelectedDateWellness == null)
-            {
-                // Crear uno vacío para la fecha seleccionada
-                SelectedDateWellness = new DailyWellness { Date = date };
-            }
-            OnPropertyChanged(nameof(HasWellnessData));
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Error cargando datos de bienestar: {ex}");
-            SelectedDateWellness = new DailyWellness { Date = date };
-        }
-    }
-
-    private async Task ImportHealthDataToWellnessAsync()
-    {
-        if (!_healthKitService.IsAvailable)
-        {
-            await Shell.Current.DisplayAlert("No disponible", 
-                "La app Salud no está disponible en este dispositivo.", "OK");
-            return;
-        }
-
-        try
-        {
-            // Si no está autorizado, solicitar autorización
-            if (!IsHealthKitAuthorized)
-            {
-                var authorized = await _healthKitService.RequestAuthorizationAsync();
-                IsHealthKitAuthorized = authorized;
-                
-                if (!authorized)
-                {
-                    await Shell.Current.DisplayAlert("Permiso denegado", 
-                        "Para importar datos de salud, ve a Ajustes > Privacidad > Salud y permite el acceso a CrownRFEP Reader.", "OK");
-                    return;
-                }
-            }
-
-            // Obtener datos de salud para la fecha seleccionada
-            var healthData = await _healthKitService.GetHealthDataForDateAsync(SelectedDiaryDate);
-            
-            if (healthData == null || !healthData.HasData)
-            {
-                await Shell.Current.DisplayAlert("Sin datos", 
-                    $"No hay datos de salud disponibles para el {SelectedDiaryDate:d MMMM yyyy}.", "OK");
-                return;
-            }
-
-            // Rellenar los campos del formulario con los datos de HealthKit
-            var fieldsUpdated = new List<string>();
-            
-            if (healthData.SleepHours.HasValue && healthData.SleepHours > 0)
-            {
-                WellnessSleepHours = Math.Round(healthData.SleepHours.Value, 1);
-                fieldsUpdated.Add($"Sueño: {WellnessSleepHours:F1} h");
-            }
-            
-            if (healthData.RestingHeartRate.HasValue)
-            {
-                WellnessRestingHeartRate = healthData.RestingHeartRate.Value;
-                fieldsUpdated.Add($"FC reposo: {WellnessRestingHeartRate} bpm");
-            }
-            
-            if (healthData.HeartRateVariability.HasValue)
-            {
-                WellnessHRV = (int)Math.Round(healthData.HeartRateVariability.Value);
-                fieldsUpdated.Add($"HRV: {WellnessHRV} ms");
-            }
-
-            if (fieldsUpdated.Any())
-            {
-                await Shell.Current.DisplayAlert("Datos importados", 
-                    $"Se han importado los siguientes datos de la app Salud:\n\n• {string.Join("\n• ", fieldsUpdated)}", "OK");
-            }
-            else
-            {
-                await Shell.Current.DisplayAlert("Sin datos útiles", 
-                    "No se encontraron datos relevantes (sueño, FC, HRV) para importar.", "OK");
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Error importando datos de salud: {ex}");
-            await Shell.Current.DisplayAlert("Error", $"No se pudieron importar los datos: {ex.Message}", "OK");
-        }
-    }
-
-    private async Task SaveWellnessAsync()
-    {
-        try
-        {
-            var wellness = new DailyWellness
-            {
-                Date = SelectedDiaryDate,
-                SleepHours = WellnessSleepHours,
-                SleepQuality = WellnessSleepQuality,
-                RecoveryFeeling = WellnessRecoveryFeeling,
-                MuscleFatigue = WellnessMuscleFatigue,
-                MoodRating = WellnessMoodRating,
-                RestingHeartRate = WellnessRestingHeartRate,
-                HeartRateVariability = WellnessHRV,
-                Notes = WellnessNotes
-            };
-
-            SelectedDateWellness = await _databaseService.SaveDailyWellnessAsync(wellness);
-            IsEditingWellness = false;
-            OnPropertyChanged(nameof(HasWellnessData));
-
-            // Actualizar el calendario para reflejar los nuevos datos de bienestar
-            var startOfMonth = new DateTime(SelectedDiaryDate.Year, SelectedDiaryDate.Month, 1);
-            var endOfMonth = startOfMonth.AddMonths(1).AddDays(-1);
-            WellnessDataForMonth = await _databaseService.GetDailyWellnessRangeAsync(startOfMonth, endOfMonth);
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Error guardando bienestar: {ex}");
-            await Shell.Current.DisplayAlert("Error", $"No se pudo guardar: {ex.Message}", "OK");
-        }
-    }
-
-    private void CancelEditWellness()
-    {
-        IsEditingWellness = false;
-        // Restaurar valores originales
-        if (SelectedDateWellness != null)
-        {
-            WellnessSleepHours = SelectedDateWellness.SleepHours;
-            WellnessSleepQuality = SelectedDateWellness.SleepQuality;
-            WellnessRecoveryFeeling = SelectedDateWellness.RecoveryFeeling;
-            WellnessMuscleFatigue = SelectedDateWellness.MuscleFatigue;
-            WellnessMoodRating = SelectedDateWellness.MoodRating;
-            WellnessRestingHeartRate = SelectedDateWellness.RestingHeartRate;
-            WellnessHRV = SelectedDateWellness.HeartRateVariability;
-            WellnessNotes = SelectedDateWellness.Notes;
-        }
-        else
-        {
-            ClearWellnessFields();
-        }
-    }
-
-    private void ClearWellnessFields()
-    {
-        WellnessSleepHours = null;
-        WellnessSleepQuality = null;
-        WellnessRecoveryFeeling = null;
-        WellnessMuscleFatigue = null;
-        WellnessMoodRating = null;
-        WellnessRestingHeartRate = null;
-        WellnessHRV = null;
-        WellnessNotes = null;
-    }
-
-    private async Task ShowPPMInfoAsync()
-    {
-        await Shell.Current.DisplayAlert(
-            "PPM Basal (Frecuencia Cardíaca en Reposo)",
-            "La frecuencia cardíaca en reposo (FCR) o PPM basal es el número de latidos por minuto cuando estás completamente relajado.\n\n" +
-            "📊 VALORES DE REFERENCIA:\n" +
-            "• Atletas de élite: 40-50 bpm\n" +
-            "• Muy en forma: 50-60 bpm\n" +
-            "• En forma: 60-70 bpm\n" +
-            "• Promedio: 70-80 bpm\n" +
-            "• Por encima de 80 bpm: mejorable\n\n" +
-            "📈 INTERPRETACIÓN:\n" +
-            "• Una FCR más baja indica mejor condición cardiovascular\n" +
-            "• Si sube 5-10 bpm sobre tu media, puede indicar fatiga, estrés o enfermedad incipiente\n" +
-            "• Mídela siempre en las mismas condiciones (al despertar, antes de levantarte)\n\n" +
-            "💡 CONSEJO:\n" +
-            "Lleva un registro diario para detectar tendencias y ajustar tu entrenamiento.",
-            "Entendido");
-    }
-
-    private async Task ShowHRVInfoAsync()
-    {
-        await Shell.Current.DisplayAlert(
-            "HRV (Variabilidad de Frecuencia Cardíaca)",
-            "La HRV mide la variación en el tiempo entre latidos consecutivos. Se expresa en milisegundos (ms).\n\n" +
-            "📊 VALORES DE REFERENCIA:\n" +
-            "• Excelente: > 70 ms\n" +
-            "• Bueno: 50-70 ms\n" +
-            "• Normal: 30-50 ms\n" +
-            "• Bajo: < 30 ms\n\n" +
-            "📈 INTERPRETACIÓN:\n" +
-            "• HRV ALTA = Sistema nervioso equilibrado, buena recuperación, listo para entrenar fuerte\n" +
-            "• HRV BAJA = Estrés, fatiga acumulada, necesitas descanso o entrenamiento suave\n\n" +
-            "⚠️ IMPORTANTE:\n" +
-            "• La HRV es muy individual - compara con TU propia media\n" +
-            "• Varía con edad, sexo, genética y estilo de vida\n" +
-            "• Una caída del 10-15% respecto a tu media sugiere reducir intensidad\n\n" +
-            "💡 CONSEJO:\n" +
-            "Mídela cada mañana al despertar con apps como Elite HRV, HRV4Training u Oura Ring.",
-            "Entendido");
-    }
-
-    #endregion
 
     private async Task CreateNewSessionAsync()
     {
@@ -6834,7 +2493,7 @@ public class DashboardViewModel : BaseViewModel
                 TipoSesion = NewSessionType,
                 Lugar = NewSessionLugar,
                 Coach = coachName,
-                Fecha = new DateTimeOffset(SelectedDiaryDate.Date.AddHours(DateTime.Now.Hour).AddMinutes(DateTime.Now.Minute)).ToUnixTimeSeconds(),
+                Fecha = new DateTimeOffset(Diary.SelectedDiaryDate.Date.AddHours(DateTime.Now.Hour).AddMinutes(DateTime.Now.Minute)).ToUnixTimeSeconds(),
                 IsMerged = 0
             };
 
@@ -6847,8 +2506,7 @@ public class DashboardViewModel : BaseViewModel
             var profile = await _databaseService.GetUserProfileAsync();
             if (profile?.ReferenceAthleteId != null)
             {
-                await LoadDiaryEntriesForMonthAsync(SelectedDiaryDate, profile.ReferenceAthleteId.Value);
-                await LoadDiaryForDateAsync(SelectedDiaryDate);
+                await Diary.RefreshDiaryForSelectedDateAsync();
             }
 
             await Shell.Current.DisplayAlert("Sesión creada", $"La sesión '{NewSessionName}' se ha creado correctamente. Ahora puedes añadir tus valoraciones y notas.", "OK");
@@ -6870,10 +2528,10 @@ public class DashboardViewModel : BaseViewModel
             // Navegar a la página de cámara con los parámetros de la sesión
             var parameters = new Dictionary<string, object>
             {
-                { "SessionName", NewSessionName ?? $"Sesión {SelectedDiaryDate:dd/MM/yyyy}" },
+                { "SessionName", NewSessionName ?? $"Sesión {Diary.SelectedDiaryDate:dd/MM/yyyy}" },
                 { "SessionType", NewSessionType ?? "Entrenamiento" },
                 { "Place", NewSessionLugar ?? "" },
-                { "Date", SelectedDiaryDate }
+                { "Date", Diary.SelectedDiaryDate }
             };
 
             await Shell.Current.GoToAsync(nameof(Views.CameraPage), parameters);
@@ -7102,2695 +2760,11 @@ public class DashboardViewModel : BaseViewModel
         }
     }
 
-    #endregion
-
-    #region Diary View Methods (Calendar)
-
-    private async Task LoadDiaryViewDataAsync()
-    {
-        try
-        {
-            var profile = await _databaseService.GetUserProfileAsync();
-            if (profile?.ReferenceAthleteId == null) return;
-
-            // Cargar entradas del mes actual
-            await LoadDiaryEntriesForMonthAsync(SelectedDiaryDate, profile.ReferenceAthleteId.Value);
-            
-            // Cargar diario del día seleccionado
-            await LoadDiaryForDateAsync(SelectedDiaryDate);
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Error cargando vista diario: {ex}");
-        }
-    }
-
-    private async Task LoadDiaryEntriesForMonthAsync(DateTime month, int athleteId)
-    {
-        try
-        {
-            var startOfMonth = new DateTime(month.Year, month.Month, 1);
-            var endOfMonth = startOfMonth.AddMonths(1).AddDays(-1);
-
-            // Cargar sesiones del mes para mostrar iconos de video en el calendario
-            var startUnix = new DateTimeOffset(startOfMonth).ToUnixTimeSeconds();
-            var endUnix = new DateTimeOffset(endOfMonth.AddDays(1)).ToUnixTimeSeconds();
-            var sessions = await _databaseService.GetAllSessionsAsync();
-            SessionsForMonth = sessions.Where(s => s.Fecha >= startUnix && s.Fecha < endUnix).ToList();
-
-            // Cargar diarios de las sesiones del mes (filtrados por SessionId)
-            var sessionIds = SessionsForMonth.Select(s => s.Id).ToHashSet();
-            var allDiaries = await _databaseService.GetAllSessionDiariesForAthleteAsync(athleteId);
-            DiaryEntriesForMonth = allDiaries.Where(d => sessionIds.Contains(d.SessionId)).ToList();
-
-            // Cargar datos de bienestar del mes
-            WellnessDataForMonth = await _databaseService.GetDailyWellnessRangeAsync(startOfMonth, endOfMonth);
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Error cargando entradas del mes: {ex}");
-            DiaryEntriesForMonth = new List<SessionDiary>();
-            SessionsForMonth = new List<Session>();
-            WellnessDataForMonth = new List<DailyWellness>();
-        }
-    }
-
-    private async Task LoadDiaryForDateAsync(DateTime date)
-    {
-        try
-        {
-            var profile = await _databaseService.GetUserProfileAsync();
-            if (profile?.ReferenceAthleteId == null)
-            {
-                SelectedDateDiary = null;
-                SelectedDateSessionsWithDiary.Clear();
-                OnPropertyChanged(nameof(HasSelectedDateSessions));
-                return;
-            }
-
-            var athleteId = profile.ReferenceAthleteId.Value;
-
-            // Buscar un diario para esa fecha específica (mantener compatibilidad)
-            var entries = await _databaseService.GetSessionDiariesForPeriodAsync(
-                athleteId, date.Date, date.Date.AddDays(1).AddSeconds(-1));
-            
-            SelectedDateDiary = entries.FirstOrDefault();
-
-            // Cargar todas las sesiones del día con sus diarios
-            var sessionsForDate = SessionsForMonth
-                .Where(s => s.FechaDateTime.Date == date.Date)
-                .ToList();
-
-            SelectedDateSessionsWithDiary.Clear();
-
-            foreach (var session in sessionsForDate)
-            {
-                // Buscar el diario correspondiente a esta sesión
-                var diary = DiaryEntriesForMonth.FirstOrDefault(d => d.SessionId == session.Id);
-                
-                // Cargar los vídeos de la sesión (máximo 6 para la mini galería)
-                var allVideos = await _databaseService.GetVideoClipsBySessionAsync(session.Id);
-                var previewVideos = allVideos.Take(6).ToList();
-                
-                var sessionWithDiary = new SessionWithDiary
-                {
-                    Session = session,
-                    Diary = diary,
-                    VideoCount = allVideos.Count
-                };
-                
-                foreach (var video in previewVideos)
-                    sessionWithDiary.Videos.Add(video);
-
-                SelectedDateSessionsWithDiary.Add(sessionWithDiary);
-            }
-
-            OnPropertyChanged(nameof(HasSelectedDateSessions));
-            
-            // Cargar datos de salud si HealthKit está autorizado
-            await LoadHealthDataForDateAsync(date);
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Error cargando diario del día: {ex}");
-            SelectedDateDiary = null;
-            SelectedDateSessionsWithDiary.Clear();
-            OnPropertyChanged(nameof(HasSelectedDateSessions));
-        }
-    }
-
-    private void OpenSmartFolderSidebarPopup()
-    {
-        NewSmartFolderName = "";
-        NewSmartFolderMatchMode = "All";
-
-        foreach (var existing in NewSmartFolderCriteria)
-            existing.PropertyChanged -= OnNewSmartFolderCriterionChanged;
-
-        NewSmartFolderCriteria.Clear();
-        AddSmartFolderCriterion();
-        RecomputeNewSmartFolderLiveMatchCount();
-
-        ShowSmartFolderSidebarPopup = true;
-    }
-
-    private void CloseSmartFolderSidebarPopup()
-    {
-        ShowSmartFolderSidebarPopup = false;
-    }
-
-    private void AddSmartFolderCriterion()
-    {
-        var criterion = new SmartFolderCriterion();
-        criterion.PropertyChanged += OnNewSmartFolderCriterionChanged;
-        NewSmartFolderCriteria.Add(criterion);
-        RecomputeNewSmartFolderLiveMatchCount();
-    }
-
-    private void RemoveSmartFolderCriterion(SmartFolderCriterion? criterion)
-    {
-        if (criterion == null)
-            return;
-
-        criterion.PropertyChanged -= OnNewSmartFolderCriterionChanged;
-        NewSmartFolderCriteria.Remove(criterion);
-        RecomputeNewSmartFolderLiveMatchCount();
-    }
-
-    private void OnNewSmartFolderCriterionChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        RecomputeNewSmartFolderLiveMatchCount();
-    }
-
-    private async Task SelectCriterionFieldAsync(SmartFolderCriterion? criterion)
-    {
-        if (criterion == null)
-            return;
-
-        try
-        {
-            var page = Application.Current?.Windows?.FirstOrDefault()?.Page;
-            if (page == null)
-                return;
-
-            var options = SmartFolderFieldOptions.ToArray();
-            var result = await page.DisplayActionSheet("Seleccionar campo", "Cancelar", null, options);
-            if (!string.IsNullOrEmpty(result) && result != "Cancelar")
-            {
-                criterion.Field = result;
-            }
-        }
-        catch { }
-    }
-
-    private async Task SelectCriterionOperatorAsync(SmartFolderCriterion? criterion)
-    {
-        if (criterion == null)
-            return;
-
-        try
-        {
-            var page = Application.Current?.Windows?.FirstOrDefault()?.Page;
-            if (page == null)
-                return;
-
-            var options = criterion.AvailableOperators.ToArray();
-            var result = await page.DisplayActionSheet("Seleccionar operador", "Cancelar", null, options);
-            if (!string.IsNullOrEmpty(result) && result != "Cancelar")
-            {
-                criterion.Operator = result;
-            }
-        }
-        catch { }
-    }
-
-    private void CreateSmartFolder()
-    {
-        var name = (NewSmartFolderName ?? string.Empty).Trim();
-        if (string.IsNullOrWhiteSpace(name))
-            return;
-
-        var definition = new SmartFolderDefinition
-        {
-            Name = name,
-            MatchMode = NewSmartFolderMatchMode == "Any" ? "Any" : "All",
-            MatchingVideoCount = NewSmartFolderLiveMatchCount,
-            Criteria = NewSmartFolderCriteria
-                .Select(c => new SmartFolderCriterion
-                {
-                    Field = c.Field,
-                    Operator = c.Operator,
-                    Value = c.Value,
-                    Value2 = c.Value2,
-                })
-                .ToList(),
-        };
-
-        SmartFolders.Add(definition);
-
-        // Asegurar que los contadores se ajustan al estado actual de la caché.
-        UpdateSmartFolderVideoCounts();
-        SaveSmartFoldersToPreferences();
-        CloseSmartFolderSidebarPopup();
-    }
-
-    private void ToggleSmartFoldersExpansion()
-    {
-        IsSmartFoldersExpanded = !IsSmartFoldersExpanded;
-    }
-
-    private void ToggleSessionsExpansion()
-    {
-        IsSessionsExpanded = !IsSessionsExpanded;
-    }
-
-    private async Task SelectSmartFolderAsync(SmartFolderDefinition? definition)
-    {
-        if (definition == null)
-            return;
-
-        SelectedSession = null;
-        IsAllGallerySelected = true;
-
-        if (_allVideosCache == null)
-            await LoadAllVideosAsync();
-
-        await ApplySmartFolderFilterAsync(definition);
-    }
-
-    private async Task ApplySmartFolderFilterAsync(SmartFolderDefinition definition)
-    {
-        var version = Interlocked.Increment(ref _filtersVersion);
-
-        var source = _allVideosCache;
-        if (source == null)
-            return;
-
-        // Guardar la carpeta inteligente activa para que ApplyFiltersAsync la use
-        _activeSmartFolder = definition;
-
-        // Evitar que los filtros manuales se mezclen con el filtro de carpeta.
-        // Usamos skipApplyFilters=true para evitar que se sobrescriba el filtro de la carpeta inteligente.
-        ClearFilters(skipApplyFilters: true);
-
-        var criteria = definition.Criteria ?? new List<SmartFolderCriterion>();
-        bool matchAll = !string.Equals(definition.MatchMode, "Any", StringComparison.OrdinalIgnoreCase);
-
-        List<VideoClip> filtered;
-        if (criteria.Count == 0)
-        {
-            filtered = source.ToList();
-        }
-        else
-        {
-            filtered = source
-                .Where(v =>
-                {
-                    var matches = criteria.Select(c => MatchesCriterion(v, c)).ToList();
-                    return matchAll ? matches.All(m => m) : matches.Any(m => m);
-                })
-                .ToList();
-        }
-
-        _filteredVideosCache = filtered;
-        _smartFolderFilteredVideosCache = filtered; // Guardar cache de videos filtrados por carpeta inteligente
-
-        if (version != Volatile.Read(ref _filtersVersion))
-            return;
-
-        _currentPage = 0;
-        var firstBatch = filtered.Take(PageSize).ToList();
-        await MainThread.InvokeOnMainThreadAsync(async () =>
-        {
-            await ReplaceCollectionInBatchesAsync(SelectedSessionVideos, firstBatch, CancellationToken.None);
-        });
-        _currentPage = 1;
-        HasMoreVideos = filtered.Count > PageSize;
-
-        var snapshot = await Task.Run(() => BuildGalleryStatsSnapshot(filtered));
-
-        if (version != Volatile.Read(ref _filtersVersion))
-            return;
-        await ApplyGalleryStatsSnapshotAsync(snapshot, CancellationToken.None);
-
-        // Actualizar Stats con los datos filtrados de la carpeta inteligente
-        var uniqueSessionIds = filtered.Select(v => v.SessionId).Distinct().Count();
-        var uniqueAthleteIds = filtered.Where(v => v.AtletaId != 0).Select(v => v.AtletaId).Distinct().Count();
-        var totalDuration = filtered.Sum(v => v.ClipDuration);
-        
-        Stats = new DashboardStats
-        {
-            TotalSessions = uniqueSessionIds,
-            TotalVideos = filtered.Count,
-            TotalAthletes = uniqueAthleteIds,
-            TotalDurationSeconds = totalDuration
-        };
-
-        OnPropertyChanged(nameof(TotalFilteredVideoCount));
-        OnPropertyChanged(nameof(TotalFilteredDurationSeconds));
-        OnPropertyChanged(nameof(VideoCountDisplayText));
-        OnPropertyChanged(nameof(SelectedSessionTotalDurationSeconds));
-        OnPropertyChanged(nameof(SelectedSessionTotalDurationFormatted));
-    }
-
-    private void LoadSmartFoldersFromPreferences()
-    {
-        try
-        {
-            var json = Preferences.Get(SmartFoldersPreferencesKey, string.Empty);
-            if (string.IsNullOrWhiteSpace(json))
-                return;
-
-            var parsed = JsonSerializer.Deserialize<List<SmartFolderDefinition>>(json);
-            if (parsed == null)
-                return;
-
-            SmartFolders.Clear();
-            foreach (var def in parsed)
-                SmartFolders.Add(def);
-        }
-        catch
-        {
-            // Si falla la deserialización, ignorar y seguir sin carpetas.
-        }
-    }
-
-    /// <summary>
-    /// Updates the MatchingVideoCount for each SmartFolder based on the current _allVideosCache.
-    /// </summary>
-    private void UpdateSmartFolderVideoCounts()
-    {
-        var source = _allVideosCache;
-        if (source == null)
-            return;
-
-        foreach (var folder in SmartFolders)
-        {
-            var criteria = folder.Criteria ?? new List<SmartFolderCriterion>();
-            bool matchAll = !string.Equals(folder.MatchMode, "Any", StringComparison.OrdinalIgnoreCase);
-
-            int count;
-            if (criteria.Count == 0)
-            {
-                count = source.Count;
-            }
-            else
-            {
-                count = source.Count(v =>
-                {
-                    var matches = criteria.Select(c => MatchesCriterion(v, c)).ToList();
-                    return matchAll ? matches.All(m => m) : matches.Any(m => m);
-                });
-            }
-
-            folder.MatchingVideoCount = count;
-        }
-    }
-
-    private void SaveSmartFoldersToPreferences()
-    {
-        try
-        {
-            var json = JsonSerializer.Serialize(SmartFolders.ToList());
-            Preferences.Set(SmartFoldersPreferencesKey, json);
-        }
-        catch
-        {
-            // Ignorar errores de persistencia.
-        }
-    }
-
     private void LoadNasConnectionFromPreferences()
     {
         // Verificar si hay una sesión activa en el backend
-        _ = CheckAndRestoreCloudSessionAsync();
+        _ = Remote.RestoreCloudSessionAsync();
     }
-
-    /// <summary>
-    /// Login desde el modal obligatorio de inicio de sesión.
-    /// </summary>
-    private async Task CloudLoginAsync()
-    {
-        if (IsCloudLoginBusy)
-            return;
-
-        if (string.IsNullOrWhiteSpace(CloudLoginEmail) || string.IsNullOrWhiteSpace(CloudLoginPassword))
-        {
-            CloudLoginStatusMessage = "Introduce email y contraseña.";
-            return;
-        }
-
-        try
-        {
-            IsCloudLoginBusy = true;
-            CloudLoginStatusMessage = "Iniciando sesión...";
-
-            var result = await _cloudBackendService.LoginAsync(CloudLoginEmail.Trim(), CloudLoginPassword);
-
-            if (!result.Success)
-            {
-                CloudLoginStatusMessage = result.ErrorMessage ?? "No se pudo iniciar sesión";
-                return;
-            }
-
-            RemoteLibraryDisplayName = result.TeamName ?? "Organización";
-            IsRemoteLibraryVisible = true;
-            IsLoginRequired = false;
-            CloudLoginStatusMessage = $"Sesión iniciada: {result.UserName}";
-            CloudLoginPassword = string.Empty;
-            OnPropertyChanged(nameof(IsCloudAuthenticated));
-
-            await LoadTeamFilesAsync();
-        }
-        catch (Exception ex)
-        {
-            CloudLoginStatusMessage = $"No se pudo conectar: {ex.Message}";
-        }
-        finally
-        {
-            IsCloudLoginBusy = false;
-        }
-    }
-
-    /// <summary>
-    /// Verifica y restaura la sesión del backend si existe.
-    /// NO hay credenciales de Wasabi en el cliente - todo pasa por el backend seguro.
-    /// </summary>
-    private async Task CheckAndRestoreCloudSessionAsync()
-    {
-        try
-        {
-            if (_cloudBackendService.IsAuthenticated)
-            {
-                RemoteLibraryDisplayName = _cloudBackendService.TeamName ?? "Organización";
-                IsRemoteLibraryVisible = true;
-                IsLoginRequired = false;
-                OnPropertyChanged(nameof(IsCloudAuthenticated));
-                System.Diagnostics.Debug.WriteLine($"[CloudBackend] Sesión restaurada para {_cloudBackendService.CurrentUserName}");
-                
-                // Cargar información del equipo
-                await LoadTeamFilesAsync();
-            }
-            else
-            {
-                // No hay sesión activa - mostrar opción de login
-                IsRemoteLibraryVisible = false;
-                IsLoginRequired = true;
-                OnPropertyChanged(nameof(IsCloudAuthenticated));
-                System.Diagnostics.Debug.WriteLine("[CloudBackend] No hay sesión activa");
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[CloudBackend] Error verificando sesión: {ex.Message}");
-            IsRemoteLibraryVisible = false;
-            IsLoginRequired = true;
-        }
-    }
-
-    /// <summary>
-    /// Carga los archivos del equipo desde el backend.
-    /// </summary>
-    private async Task LoadTeamFilesAsync()
-    {
-        try
-        {
-            var result = await _cloudBackendService.ListFilesAsync();
-            if (result.Success && result.Files != null)
-            {
-                RemoteAllGalleryItemCount = result.Files.Count(f => !f.IsFolder).ToString();
-                System.Diagnostics.Debug.WriteLine($"[CloudBackend] Cargados {result.Files.Count} archivos del equipo");
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[CloudBackend] Error cargando archivos: {ex.Message}");
-        }
-    }
-
-    private async Task ConnectSynologyNasAsync()
-    {
-        var page = Application.Current?.MainPage;
-        if (page == null)
-            return;
-
-        // Mostrar diálogo de login al backend
-        var email = await page.DisplayPromptAsync(
-            "Iniciar sesión en Equipo",
-            "Email:",
-            "Continuar",
-            "Cancelar",
-            "",
-            100,
-            Keyboard.Email);
-
-        if (string.IsNullOrWhiteSpace(email))
-            return;
-
-        var password = await page.DisplayPromptAsync(
-            "Iniciar sesión en Equipo",
-            "Contraseña:",
-            "Iniciar sesión",
-            "Cancelar",
-            "",
-            100,
-            Keyboard.Default);
-
-        if (string.IsNullOrWhiteSpace(password))
-            return;
-
-        try
-        {
-            IsBusy = true;
-
-            var result = await _cloudBackendService.LoginAsync(email, password);
-
-            if (!result.Success)
-            {
-                await page.DisplayAlert("Error", result.ErrorMessage ?? "No se pudo iniciar sesión", "OK");
-                return;
-            }
-
-            RemoteLibraryDisplayName = result.TeamName ?? "Organización";
-            IsRemoteLibraryVisible = true;
-            IsLoginRequired = false;
-            OnPropertyChanged(nameof(IsCloudAuthenticated));
-
-            await page.DisplayAlert("Sesión iniciada",
-                $"Bienvenido, {result.UserName}\nEquipo: {result.TeamName}",
-                "OK");
-
-            // Cargar archivos del equipo
-            await LoadTeamFilesAsync();
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[CloudBackend] Error: {ex.Message}");
-            await page.DisplayAlert("Error", $"No se pudo conectar: {ex.Message}", "OK");
-        }
-        finally
-        {
-            IsBusy = false;
-        }
-    }
-
-    private async Task HandleRemoteSectionSelectedAsync(string sectionName)
-    {
-        SetRemoteSelection(sectionName);
-        ClearLocalSelection(); // Limpiar selección local
-
-        // Verificar autenticación
-        if (!_cloudBackendService.IsAuthenticated)
-        {
-            var page = Application.Current?.MainPage;
-            if (page != null)
-            {
-                await page.DisplayAlert("No autenticado", "Inicia sesión para acceder a los archivos del equipo.", "OK");
-            }
-            return;
-        }
-
-        if (sectionName == "Galería General")
-        {
-            await LoadRemoteGalleryAsync();
-        }
-        else
-        {
-            var page = Application.Current?.MainPage;
-            if (page != null)
-            {
-                await page.DisplayAlert("Biblioteca de organización", $"La sección '{sectionName}' estará disponible próximamente.", "OK");
-            }
-        }
-    }
-
-    /// <summary>
-    /// Limpia la selección local cuando se selecciona una sección remota
-    /// </summary>
-    private void ClearLocalSelection()
-    {
-        IsAllGallerySelected = false;
-        IsVideoLessonsSelected = false;
-        IsDiaryViewSelected = false;
-        SelectedSession = null;
-        OnPropertyChanged(nameof(SelectedSessionTitle));
-    }
-
-    /// <summary>
-    /// Carga los videos desde la galería remota (Wasabi)
-    /// </summary>
-    private async Task LoadRemoteGalleryAsync()
-    {
-        if (IsLoadingRemoteVideos) return;
-
-        try
-        {
-            IsLoadingRemoteVideos = true;
-            RemoteVideos.Clear();
-
-            System.Diagnostics.Debug.WriteLine("[Remote] Cargando galería remota...");
-
-            // Obtener lista de archivos desde el backend
-            var result = await _cloudBackendService.ListFilesAsync("sessions/", maxItems: 1000);
-
-            if (!result.Success)
-            {
-                System.Diagnostics.Debug.WriteLine($"[Remote] Error: {result.ErrorMessage}");
-                return;
-            }
-
-            var files = result.Files ?? new List<CloudFileInfo>();
-            _remoteFilesCache = files;
-
-            var remoteSessionMetadata = await LoadRemoteSessionMetadataAsync(files);
-
-            // Filtrar solo archivos de video
-            var videoFiles = files
-                .Where(f => !f.IsFolder && f.Key.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase))
-                .OrderByDescending(f => f.LastModified)
-                .ToList();
-
-            System.Diagnostics.Debug.WriteLine($"[Remote] Encontrados {videoFiles.Count} videos");
-
-            // Obtener videos locales para comparar
-            var localVideos = await _databaseService.GetAllVideoClipsAsync();
-            var localVideosByRemotePath = localVideos
-                .Where(v => !string.IsNullOrEmpty(v.ClipPath))
-                .ToDictionary(v => v.ClipPath!, v => v, StringComparer.OrdinalIgnoreCase);
-
-            var metadataFiles = files
-                .Where(f => !f.IsFolder && f.Key.EndsWith(".json", StringComparison.OrdinalIgnoreCase)
-                    && f.Key.Contains("/metadata/", StringComparison.OrdinalIgnoreCase))
-                .ToDictionary(f => NormalizeCloudKey(f.Key), f => f, StringComparer.OrdinalIgnoreCase);
-
-            var remotePaths = new HashSet<string>(
-                videoFiles.Select(f => f.Key.StartsWith("CrownRFEP/", StringComparison.OrdinalIgnoreCase)
-                    ? f.Key.Substring("CrownRFEP/".Length)
-                    : f.Key),
-                StringComparer.OrdinalIgnoreCase);
-
-            var orphanedLocal = localVideos
-                .Where(v => string.Equals(v.Source, "remote", StringComparison.OrdinalIgnoreCase))
-                .Where(v => !string.IsNullOrEmpty(v.ClipPath) && !remotePaths.Contains(v.ClipPath!))
-                .ToList();
-
-            if (orphanedLocal.Count > 0)
-            {
-                var orphanSessionIds = new HashSet<int>();
-                foreach (var local in orphanedLocal)
-                {
-                    orphanSessionIds.Add(local.SessionId);
-                    await RemoveLocalVideoClipAsync(local);
-                }
-
-                foreach (var sessionId in orphanSessionIds)
-                    await RemoveLocalSessionIfEmptyAsync(sessionId);
-            }
-
-            // Crear items remotos
-            foreach (var file in videoFiles)
-            {
-                // Buscar si existe localmente
-                VideoClip? linkedLocal = null;
-                var relativePath = file.Key;
-                if (relativePath.StartsWith("CrownRFEP/"))
-                {
-                    relativePath = relativePath.Substring("CrownRFEP/".Length);
-                }
-
-                if (localVideosByRemotePath.TryGetValue(relativePath, out var local))
-                {
-                    linkedLocal = local;
-                }
-
-                var remoteItem = RemoteVideoItem.FromCloudFile(file, linkedLocal);
-                RemoteVideos.Add(remoteItem);
-
-                // Cargar thumbnail remoto si no hay local
-                if (remoteItem.LinkedLocalVideo?.EffectiveThumbnailPath == null &&
-                    remoteItem.SessionId > 0 && remoteItem.VideoId > 0)
-                {
-                    _ = LoadRemoteThumbnailAsync(remoteItem);
-                }
-            }
-
-            await ApplyRemoteVideoMetadataAsync(files, remoteSessionMetadata);
-
-            var localSessions = await _databaseService.GetAllSessionsAsync();
-            var localSessionsById = localSessions.ToDictionary(s => s.Id, s => s);
-            var remoteSessionItems = RemoteVideos
-                .Where(v => v.SessionId > 0)
-                .GroupBy(v => v.SessionId)
-                .Select(group =>
-                {
-                    var sessionId = group.Key;
-                    localSessionsById.TryGetValue(sessionId, out var localSession);
-                    remoteSessionMetadata.TryGetValue(sessionId, out var metadata);
-
-                    var title = metadata?.SessionName
-                        ?? localSession?.DisplayName
-                        ?? $"Sesión {sessionId}";
-                    var place = metadata?.Place ?? localSession?.Lugar;
-                    var sessionDate = ResolveRemoteSessionDate(metadata, localSession?.FechaDateTime ?? group.Max(v => v.LastModified));
-                    var coach = metadata?.Coach ?? localSession?.Coach;
-                    return new RemoteSessionListItem(
-                        sessionId,
-                        title,
-                        place,
-                        sessionDate,
-                        coach,
-                        group.Count(),
-                        group.Max(v => v.LastModified));
-                })
-                .OrderByDescending(item => item.LastModified)
-                .ToList();
-
-            RemoteSessions = new ObservableCollection<RemoteSessionListItem>(remoteSessionItems);
-            if (SelectedRemoteSessionId > 0 && !RemoteSessions.Any(s => s.SessionId == SelectedRemoteSessionId))
-            {
-                SelectedRemoteSessionId = 0;
-            }
-            else
-            {
-                UpdateRemoteSessionSelectionStates(SelectedRemoteSessionId);
-            }
-
-            await SyncRemoteChangesToPersonalLibraryAsync(remoteSessionMetadata, metadataFiles);
-
-            RemoteAllGalleryItemCount = RemoteVideos.Count.ToString();
-            OnPropertyChanged(nameof(RemoteGalleryItems));
-            OnPropertyChanged(nameof(IsAnyRemoteSectionSelected));
-            OnPropertyChanged(nameof(SelectedSessionTitle));
-
-            System.Diagnostics.Debug.WriteLine($"[Remote] Galería cargada: {RemoteVideos.Count} videos");
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[Remote] Error cargando galería: {ex.Message}");
-        }
-        finally
-        {
-            IsLoadingRemoteVideos = false;
-        }
-    }
-
-    private async Task LoadRemoteThumbnailAsync(RemoteVideoItem remoteItem)
-    {
-        try
-        {
-            var remoteThumbPath = $"sessions/{remoteItem.SessionId}/thumbnails/{remoteItem.VideoId}.jpg";
-            var signResult = await _cloudBackendService.GetDownloadUrlAsync(remoteThumbPath, expirationMinutes: 60);
-            if (signResult.Success && !string.IsNullOrWhiteSpace(signResult.Url))
-            {
-                MainThread.BeginInvokeOnMainThread(() =>
-                {
-                    remoteItem.ThumbnailUrl = signResult.Url;
-                });
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[Remote] Error obteniendo thumbnail: {ex.Message}");
-        }
-    }
-
-    private async Task<Dictionary<int, RemoteSessionMetadata>> LoadRemoteSessionMetadataAsync(List<CloudFileInfo> files)
-    {
-        var result = new Dictionary<int, RemoteSessionMetadata>();
-
-        var metadataFiles = files
-            .Where(f => !f.IsFolder && f.Key.EndsWith("session.json", StringComparison.OrdinalIgnoreCase))
-            .ToList();
-
-        if (metadataFiles.Count == 0)
-        {
-            return result;
-        }
-
-        foreach (var file in metadataFiles)
-        {
-            var normalizedKey = NormalizeCloudKey(file.Key);
-            if (!TryParseSessionIdFromMetadataKey(normalizedKey, out var sessionId))
-            {
-                continue;
-            }
-
-            if (result.ContainsKey(sessionId))
-            {
-                continue;
-            }
-
-            try
-            {
-                var signResult = await _cloudBackendService.GetDownloadUrlAsync(normalizedKey, expirationMinutes: 10);
-                if (!signResult.Success || string.IsNullOrWhiteSpace(signResult.Url))
-                {
-                    continue;
-                }
-
-                var json = await _remoteMetadataHttpClient.GetStringAsync(signResult.Url);
-                var metadata = JsonSerializer.Deserialize<RemoteSessionMetadata>(json);
-                if (metadata != null)
-                {
-                    if (metadata.SessionId == 0)
-                    {
-                        metadata.SessionId = sessionId;
-                    }
-
-                    result[sessionId] = metadata;
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[Remote] Error leyendo metadatos de sesión {sessionId}: {ex.Message}");
-            }
-        }
-
-        return result;
-    }
-
-    private async Task ApplyRemoteVideoMetadataAsync(List<CloudFileInfo> files, Dictionary<int, RemoteSessionMetadata> sessionMetadata)
-    {
-        var metadataFiles = files
-            .Where(f => !f.IsFolder && f.Key.EndsWith(".json", StringComparison.OrdinalIgnoreCase) && f.Key.Contains("/metadata/", StringComparison.OrdinalIgnoreCase))
-            .ToDictionary(f => NormalizeCloudKey(f.Key), f => f);
-
-        if (metadataFiles.Count == 0)
-        {
-            return;
-        }
-
-        foreach (var remoteItem in RemoteVideos)
-        {
-            if (remoteItem.SessionId <= 0 || remoteItem.VideoId <= 0)
-            {
-                continue;
-            }
-
-            var metadataKey = $"sessions/{remoteItem.SessionId}/metadata/{remoteItem.VideoId}.json";
-            if (!metadataFiles.TryGetValue(metadataKey, out _))
-            {
-                continue;
-            }
-
-            try
-            {
-                var metadata = await LoadRemoteVideoMetadataAsync(metadataKey);
-                if (metadata == null)
-                {
-                    continue;
-                }
-
-                ApplyRemoteVideoMetadata(remoteItem, metadata, sessionMetadata);
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[Remote] Error aplicando metadatos de video {remoteItem.VideoId}: {ex.Message}");
-            }
-        }
-    }
-
-    private async Task<VideoSyncData?> LoadRemoteVideoMetadataAsync(string normalizedKey)
-    {
-        var signResult = await _cloudBackendService.GetDownloadUrlAsync(normalizedKey, expirationMinutes: 10);
-        if (!signResult.Success || string.IsNullOrWhiteSpace(signResult.Url))
-        {
-            return null;
-        }
-
-        var json = await _remoteMetadataHttpClient.GetStringAsync(signResult.Url);
-        return JsonSerializer.Deserialize<VideoSyncData>(json);
-    }
-
-    private void ApplyRemoteVideoMetadata(RemoteVideoItem remoteItem, VideoSyncData metadata, Dictionary<int, RemoteSessionMetadata> sessionMetadata)
-    {
-        var sessionName = sessionMetadata.TryGetValue(remoteItem.SessionId, out var sessionInfo)
-            ? (sessionInfo.SessionName ?? remoteItem.SessionName)
-            : remoteItem.SessionName;
-
-        remoteItem.SessionName = string.IsNullOrWhiteSpace(sessionName) ? remoteItem.SessionNameFallback : sessionName;
-
-        if (metadata.Video?.Section > 0)
-        {
-            remoteItem.Section = metadata.Video.Section;
-        }
-
-        ApplyRemoteVideoTags(remoteItem, metadata);
-
-        var athleteName = BuildAthleteDisplayName(metadata.Athlete);
-        var displayName = BuildRemoteVideoDisplayName(metadata.Video?.ComparisonName, athleteName, remoteItem.SessionName, remoteItem.FileName);
-        remoteItem.FileName = displayName;
-
-        if (metadata.Video?.CreationDate > 0)
-        {
-            remoteItem.LastModified = DateTimeOffset.FromUnixTimeSeconds(metadata.Video.CreationDate).LocalDateTime;
-        }
-
-        if (metadata.Video?.ClipSize > 0)
-        {
-            remoteItem.Size = metadata.Video.ClipSize;
-        }
-    }
-
-    private static void ApplyRemoteVideoTags(RemoteVideoItem remoteItem, VideoSyncData metadata)
-    {
-        if (metadata.Tags.Count == 0 && metadata.Inputs.Count == 0)
-        {
-            return;
-        }
-
-        var tagMap = metadata.Tags
-            .Where(t => t.Id > 0)
-            .GroupBy(t => t.Id)
-            .ToDictionary(g => g.Key, g => g.First().Name ?? string.Empty);
-
-        var tags = metadata.Tags
-            .Where(t => !string.IsNullOrWhiteSpace(t.Name))
-            .Select(t => new Tag { Id = t.Id, NombreTag = t.Name })
-            .ToList();
-
-        var eventGroups = metadata.Inputs
-            .Where(i => i.IsEvent == 1 && i.InputTypeId > 0)
-            .GroupBy(i => i.InputTypeId)
-            .ToList();
-
-        var eventTags = new List<Tag>();
-        foreach (var group in eventGroups)
-        {
-            var name = tagMap.TryGetValue(group.Key, out var tagName)
-                ? tagName
-                : group.Select(i => i.InputValue).FirstOrDefault(v => !string.IsNullOrWhiteSpace(v)) ?? $"Tag {group.Key}";
-            eventTags.Add(new Tag
-            {
-                Id = group.Key,
-                NombreTag = name,
-                IsEventTag = true,
-                EventCount = group.Count()
-            });
-        }
-
-        remoteItem.Tags = tags.Count > 0 ? tags : null;
-        remoteItem.EventTags = eventTags.Count > 0 ? eventTags : null;
-    }
-
-    private static string BuildAthleteDisplayName(AthleteSyncData? athlete)
-    {
-        if (athlete == null)
-        {
-            return string.Empty;
-        }
-
-        if (!string.IsNullOrWhiteSpace(athlete.Apellido))
-        {
-            var apellido = athlete.Apellido!.ToUpperInvariant();
-            var nombre = athlete.Nombre ?? "";
-            return $"{apellido} {nombre}".Trim();
-        }
-
-        return athlete.Nombre ?? string.Empty;
-    }
-
-    private static string BuildRemoteVideoDisplayName(string? comparisonName, string athleteName, string sessionName, string fallback)
-    {
-        if (!string.IsNullOrWhiteSpace(comparisonName))
-        {
-            return comparisonName;
-        }
-
-        var parts = new List<string>();
-        if (!string.IsNullOrWhiteSpace(athleteName))
-        {
-            parts.Add(athleteName);
-        }
-
-        if (!string.IsNullOrWhiteSpace(sessionName))
-        {
-            parts.Add(sessionName);
-        }
-
-        return parts.Count > 0 ? string.Join(" - ", parts) : fallback;
-    }
-
-    private static DateTime ResolveRemoteSessionDate(RemoteSessionMetadata? metadata, DateTime fallback)
-    {
-        if (metadata == null)
-        {
-            return fallback;
-        }
-
-        if (metadata.SessionDateUtc.HasValue && metadata.SessionDateUtc.Value > 0)
-        {
-            return DateTimeOffset.FromUnixTimeSeconds(metadata.SessionDateUtc.Value).LocalDateTime;
-        }
-
-        if (metadata.SessionDate.HasValue)
-        {
-            return metadata.SessionDate.Value;
-        }
-
-        return fallback;
-    }
-
-    private static string NormalizeCloudKey(string key)
-    {
-        return key.StartsWith("CrownRFEP/", StringComparison.OrdinalIgnoreCase)
-            ? key.Substring("CrownRFEP/".Length)
-            : key;
-    }
-
-    private static bool TryParseSessionIdFromMetadataKey(string key, out int sessionId)
-    {
-        sessionId = 0;
-        var parts = key.Split('/', StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length < 3)
-        {
-            return false;
-        }
-
-        if (!string.Equals(parts[0], "sessions", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        if (!string.Equals(parts[^1], "session.json", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        return int.TryParse(parts[1], out sessionId);
-    }
-
-    private sealed class RemoteSessionMetadata
-    {
-        [JsonPropertyName("sessionId")]
-        public int SessionId { get; set; }
-
-        [JsonPropertyName("sessionName")]
-        public string? SessionName { get; set; }
-
-        [JsonPropertyName("place")]
-        public string? Place { get; set; }
-
-        [JsonPropertyName("coach")]
-        public string? Coach { get; set; }
-
-        [JsonPropertyName("sessionType")]
-        public string? SessionType { get; set; }
-
-        [JsonPropertyName("sessionDateUtc")]
-        public long? SessionDateUtc { get; set; }
-
-        [JsonPropertyName("sessionDate")]
-        public DateTime? SessionDate { get; set; }
-    }
-
-    /// <summary>
-    /// Añade un video remoto a la biblioteca personal (solo crea referencia, sin descargar)
-    /// </summary>
-    private async Task AddRemoteVideoToLibraryAsync(RemoteVideoItem? remoteVideo)
-    {
-        if (remoteVideo == null) return;
-
-        try
-        {
-            // Verificar si ya existe en la biblioteca personal
-            if (remoteVideo.LinkedLocalVideo != null)
-            {
-                var page = Application.Current?.MainPage;
-                await page?.DisplayAlert("Ya existe", "Este video ya está en tu biblioteca personal.", "OK")!;
-                return;
-            }
-
-            var session = await EnsureRemoteSessionExistsAsync(remoteVideo);
-            if (session == null)
-            {
-                var page = Application.Current?.MainPage;
-                await page?.DisplayAlert("Error", "No se pudo crear la sesión contenedora.", "OK")!;
-                return;
-            }
-
-            // Crear entrada en la base de datos local (solo referencia, sin archivo físico)
-            var newVideo = new VideoClip
-            {
-                SessionId = session.Id,
-                ClipPath = remoteVideo.Key.StartsWith("CrownRFEP/") 
-                    ? remoteVideo.Key.Substring("CrownRFEP/".Length) 
-                    : remoteVideo.Key,
-                ThumbnailPath = remoteVideo.ThumbnailUrl,
-                ClipSize = remoteVideo.Size,
-                CreationDate = new DateTimeOffset(remoteVideo.LastModified).ToUnixTimeSeconds(),
-                Source = "remote", // Solo existe en remoto, no hay archivo local
-                IsSynced = 1, // Está sincronizado (existe en remoto)
-                LastSyncUtc = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-                LocalClipPath = null // No hay archivo local
-            };
-
-            await _databaseService.InsertVideoClipAsync(newVideo);
-
-            // Actualizar el item remoto
-            remoteVideo.LinkedLocalVideo = newVideo;
-            remoteVideo.IsLocallyAvailable = false; // Está en biblioteca personal pero no descargado
-
-            // Enlazar sesión para mostrar metadatos en UI local
-            newVideo.Session = session;
-
-            // Aplicar metadatos remotos (tags, eventos, tiempos, atleta, etc.)
-            await ApplyRemoteMetadataToLocalVideoAsync(remoteVideo, newVideo);
-
-            System.Diagnostics.Debug.WriteLine($"[Remote] Video {remoteVideo.VideoId} añadido a biblioteca personal (solo referencia)");
-
-            // Refrescar colecciones locales
-            if (IsAllGallerySelected)
-            {
-                await LoadAllVideosAsync();
-            }
-            else if (SelectedSession?.Id == session.Id)
-            {
-                await LoadSelectedSessionVideosAsync(SelectedSession);
-            }
-            else if (_allVideosCache != null)
-            {
-                _allVideosCache.Insert(0, newVideo);
-            }
-
-            // Refrescar contadores
-            await CheckPendingSyncAsync();
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[Remote] Error añadiendo a biblioteca: {ex.Message}");
-        }
-    }
-
-    private async Task<Session?> EnsureRemoteSessionExistsAsync(RemoteVideoItem remoteVideo)
-    {
-        if (remoteVideo.SessionId <= 0)
-            return null;
-
-        var existing = await _databaseService.GetSessionByIdAsync(remoteVideo.SessionId);
-        if (existing != null)
-        {
-            await EnsureSessionVisibleAsync(existing);
-            return existing;
-        }
-
-        var sessionName = GetRemoteSessionName(remoteVideo);
-        var sessionDate = GetRemoteSessionDate(remoteVideo);
-        var sessionPlace = GetRemoteSessionPlace(remoteVideo);
-
-        var matched = await FindMatchingLocalSessionAsync(sessionName, sessionDate, sessionPlace);
-        if (matched != null)
-        {
-            await EnsureSessionVisibleAsync(matched);
-            return matched;
-        }
-
-        var remoteSession = RemoteSessions.FirstOrDefault(s => s.SessionId == remoteVideo.SessionId);
-        var session = new Session
-        {
-            Id = remoteVideo.SessionId,
-            NombreSesion = sessionName,
-            Lugar = sessionPlace,
-            Coach = remoteSession?.Coach,
-            Fecha = new DateTimeOffset(sessionDate).ToUnixTimeSeconds(),
-            Participantes = ""
-        };
-
-        await _databaseService.InsertSessionWithIdAsync(session);
-
-        if (!string.IsNullOrWhiteSpace(session.Lugar))
-            await EnsurePlaceExistsAsync(session.Lugar);
-
-        await EnsureSessionVisibleAsync(session);
-        return session;
-    }
-
-    private string GetRemoteSessionName(RemoteVideoItem remoteVideo)
-    {
-        var remoteSession = RemoteSessions.FirstOrDefault(s => s.SessionId == remoteVideo.SessionId);
-        if (!string.IsNullOrWhiteSpace(remoteSession?.Title))
-            return remoteSession.Title;
-        if (!string.IsNullOrWhiteSpace(remoteVideo.SessionName))
-            return remoteVideo.SessionName;
-        return $"Sesión {remoteVideo.SessionId}";
-    }
-
-    private DateTime GetRemoteSessionDate(RemoteVideoItem remoteVideo)
-    {
-        var remoteSession = RemoteSessions.FirstOrDefault(s => s.SessionId == remoteVideo.SessionId);
-        return remoteSession?.SessionDate ?? remoteVideo.LastModified;
-    }
-
-    private string? GetRemoteSessionPlace(RemoteVideoItem remoteVideo)
-        => RemoteSessions.FirstOrDefault(s => s.SessionId == remoteVideo.SessionId)?.Place;
-
-    private async Task<Session?> FindMatchingLocalSessionAsync(string sessionName, DateTime sessionDate, string? sessionPlace)
-    {
-        var candidates = RecentSessions.AsEnumerable();
-        var matched = candidates.FirstOrDefault(s => IsMatchingSession(s, sessionName, sessionDate, sessionPlace));
-        if (matched != null)
-            return matched;
-
-        var allSessions = await _databaseService.GetAllSessionsAsync();
-        return allSessions.FirstOrDefault(s => IsMatchingSession(s, sessionName, sessionDate, sessionPlace));
-    }
-
-    private static bool IsMatchingSession(Session session, string sessionName, DateTime sessionDate, string? sessionPlace)
-    {
-        var name = session.NombreSesion ?? session.DisplayName;
-        if (!string.Equals(name?.Trim(), sessionName.Trim(), StringComparison.OrdinalIgnoreCase))
-            return false;
-
-        if (session.Fecha > 0 && sessionDate != DateTime.MinValue)
-        {
-            var localDate = DateTimeOffset.FromUnixTimeSeconds(session.Fecha).LocalDateTime.Date;
-            if (localDate != sessionDate.Date)
-                return false;
-        }
-
-        if (!string.IsNullOrWhiteSpace(sessionPlace))
-        {
-            if (!string.Equals(sessionPlace.Trim(), session.Lugar?.Trim(), StringComparison.OrdinalIgnoreCase))
-                return false;
-        }
-
-        return true;
-    }
-
-    private async Task ApplyRemoteMetadataToLocalVideoAsync(
-        RemoteVideoItem remoteVideo,
-        VideoClip localVideo,
-        bool replaceInputs = false,
-        long? metadataLastModifiedUtc = null)
-    {
-        try
-        {
-            var metadataKey = $"sessions/{remoteVideo.SessionId}/metadata/{remoteVideo.VideoId}.json";
-            var metadata = await LoadRemoteVideoMetadataAsync(metadataKey);
-            if (metadata == null)
-                return;
-
-            if (replaceInputs)
-                await _databaseService.DeleteInputsByVideoAsync(localVideo.Id);
-
-            if (metadata.Video != null)
-            {
-                if (!string.IsNullOrWhiteSpace(metadata.Video.ComparisonName))
-                    localVideo.ComparisonName = metadata.Video.ComparisonName;
-                if (metadata.Video.Section > 0)
-                    localVideo.Section = metadata.Video.Section;
-                if (metadata.Video.ClipDuration > 0)
-                    localVideo.ClipDuration = metadata.Video.ClipDuration;
-                if (metadata.Video.ClipSize > 0)
-                    localVideo.ClipSize = metadata.Video.ClipSize;
-                if (!string.IsNullOrWhiteSpace(metadata.Video.ThumbnailPath)
-                    && (metadata.Video.ThumbnailPath.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
-                        || metadata.Video.ThumbnailPath.StartsWith("https://", StringComparison.OrdinalIgnoreCase)))
-                {
-                    localVideo.ThumbnailPath = metadata.Video.ThumbnailPath;
-                }
-
-                await _databaseService.UpdateVideoClipAsync(localVideo);
-            }
-
-            if (metadata.Athlete != null && metadata.Athlete.Id > 0)
-            {
-                var localAthlete = await _databaseService.GetAthleteByIdAsync(metadata.Athlete.Id);
-                if (localAthlete == null)
-                {
-                    var newAthlete = new Athlete
-                    {
-                        Id = metadata.Athlete.Id,
-                        Nombre = metadata.Athlete.Nombre ?? "",
-                        Apellido = metadata.Athlete.Apellido ?? "",
-                        Category = metadata.Athlete.Category,
-                        CategoriaId = metadata.Athlete.CategoriaId,
-                        Favorite = metadata.Athlete.Favorite
-                    };
-                    await _databaseService.SaveAthleteAsync(newAthlete);
-                    localAthlete = newAthlete;
-                }
-
-                if (localVideo.AtletaId <= 0)
-                {
-                    localVideo.AtletaId = metadata.Athlete.Id;
-                    await _databaseService.UpdateVideoClipAsync(localVideo);
-                }
-
-                localVideo.Atleta = localAthlete;
-            }
-
-            if (metadata.Inputs.Count > 0)
-            {
-                if (metadata.Tags.Count > 0)
-                {
-                    foreach (var tagDef in metadata.Tags)
-                    {
-                        if (tagDef.Id <= 0) continue;
-                        await _databaseService.SaveTagAsync(new Tag
-                        {
-                            Id = tagDef.Id,
-                            NombreTag = tagDef.Name
-                        });
-                    }
-                }
-
-                var eventGroups = metadata.Inputs
-                    .Where(i => i.IsEvent == 1 && i.InputTypeId > 0)
-                    .GroupBy(i => i.InputTypeId)
-                    .ToList();
-
-                foreach (var group in eventGroups)
-                {
-                    var existingEvent = await _databaseService.GetEventTagByIdAsync(group.Key);
-                    if (existingEvent == null)
-                    {
-                        var name = metadata.Tags.FirstOrDefault(t => t.Id == group.Key)?.Name
-                            ?? group.Select(i => i.InputValue).FirstOrDefault(v => !string.IsNullOrWhiteSpace(v))
-                            ?? $"Tag {group.Key}";
-                        await _databaseService.InsertEventTagAsync(new EventTagDefinition
-                        {
-                            Id = group.Key,
-                            Nombre = name
-                        });
-                    }
-                }
-
-                foreach (var inputData in metadata.Inputs)
-                {
-                    var input = inputData.ToInput();
-                    input.Id = 0;
-                    input.VideoId = localVideo.Id;
-                    input.SessionId = localVideo.SessionId;
-                    await _databaseService.SaveInputAsync(input);
-                }
-            }
-            else if (metadata.Tags.Count > 0)
-            {
-                foreach (var tag in metadata.Tags)
-                {
-                    if (tag.Id <= 0) continue;
-                    await _databaseService.SaveTagAsync(new Tag
-                    {
-                        Id = tag.Id,
-                        NombreTag = tag.Name
-                    });
-                    var input = new Input
-                    {
-                        Id = 0,
-                        VideoId = localVideo.Id,
-                        SessionId = localVideo.SessionId,
-                        AthleteId = localVideo.AtletaId,
-                        InputTypeId = tag.Id,
-                        InputDateTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-                        InputValue = tag.Name,
-                        TimeStamp = 0,
-                        IsEvent = 0
-                    };
-                    await _databaseService.SaveInputAsync(input);
-                }
-            }
-
-            await _databaseService.DeleteExecutionTimingEventsByVideoAsync(localVideo.Id);
-            var timingEvents = metadata.TimingEvents.Select(t =>
-            {
-                var evt = t.ToEvent();
-                evt.Id = 0;
-                evt.VideoId = localVideo.Id;
-                evt.SessionId = localVideo.SessionId;
-                return evt;
-            }).ToList();
-
-            if (timingEvents.Count > 0)
-            {
-                await _databaseService.InsertExecutionTimingEventsAsync(timingEvents);
-                localVideo.HasTiming = true;
-            }
-
-            ApplyMetadataTagsToLocalVideo(localVideo, metadata);
-
-            localVideo.LastSyncUtc = metadataLastModifiedUtc ?? DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            await _databaseService.UpdateVideoClipAsync(localVideo);
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[Remote] Error aplicando metadatos a video local: {ex.Message}");
-        }
-    }
-
-    private async Task SyncRemoteChangesToPersonalLibraryAsync(
-        Dictionary<int, RemoteSessionMetadata> sessionMetadata,
-        Dictionary<string, CloudFileInfo> metadataFiles)
-    {
-        try
-        {
-            var sessionsToSync = RemoteVideos
-                .Where(v => v.SessionId > 0 && v.LinkedLocalVideo != null)
-                .Select(v => v.SessionId)
-                .Distinct()
-                .ToList();
-            if (sessionsToSync.Count == 0)
-                return;
-
-            // Actualizar metadatos de sesiones locales
-            var sessionsChanged = false;
-            foreach (var sessionId in sessionsToSync)
-            {
-                if (!sessionMetadata.TryGetValue(sessionId, out var metadata))
-                    continue;
-
-                var session = await _databaseService.GetSessionByIdAsync(sessionId);
-                if (session == null)
-                    continue;
-
-                var changed = false;
-                if (!string.IsNullOrWhiteSpace(metadata.SessionName) && session.NombreSesion != metadata.SessionName)
-                {
-                    session.NombreSesion = metadata.SessionName;
-                    changed = true;
-                }
-
-                if (!string.IsNullOrWhiteSpace(metadata.Place) && session.Lugar != metadata.Place)
-                {
-                    session.Lugar = metadata.Place;
-                    changed = true;
-                }
-
-                if (!string.IsNullOrWhiteSpace(metadata.Coach) && session.Coach != metadata.Coach)
-                {
-                    session.Coach = metadata.Coach;
-                    changed = true;
-                }
-
-                if (!string.IsNullOrWhiteSpace(metadata.SessionType) && session.TipoSesion != metadata.SessionType)
-                {
-                    session.TipoSesion = metadata.SessionType;
-                    changed = true;
-                }
-
-                var newFecha = metadata.SessionDateUtc.HasValue && metadata.SessionDateUtc.Value > 0
-                    ? metadata.SessionDateUtc.Value
-                    : (metadata.SessionDate.HasValue
-                        ? new DateTimeOffset(metadata.SessionDate.Value).ToUnixTimeSeconds()
-                        : 0);
-
-                if (newFecha > 0 && session.Fecha != newFecha)
-                {
-                    session.Fecha = newFecha;
-                    changed = true;
-                }
-
-                if (!changed)
-                    continue;
-
-                await _databaseService.SaveSessionAsync(session);
-                sessionsChanged = true;
-
-                var existing = RecentSessions.FirstOrDefault(s => s.Id == sessionId);
-                if (existing != null)
-                {
-                    var index = RecentSessions.IndexOf(existing);
-                    if (index >= 0)
-                        RecentSessions[index] = session;
-
-                    if (SelectedSession?.Id == sessionId)
-                        SelectedSession = session;
-                }
-            }
-
-            if (sessionsChanged)
-            {
-                SyncVisibleSessionRows();
-                OnPropertyChanged(nameof(SelectedSessionTitle));
-            }
-
-            // Añadir nuevos videos remotos en sesiones ya importadas
-            foreach (var remoteVideo in RemoteVideos
-                .Where(v => v.LinkedLocalVideo == null && sessionsToSync.Contains(v.SessionId)))
-            {
-                await AddRemoteVideoToLibraryAsync(remoteVideo);
-            }
-
-            // Actualizar metadatos de videos existentes si cambiaron en remoto
-            foreach (var remoteVideo in RemoteVideos
-                .Where(v => v.LinkedLocalVideo != null && sessionsToSync.Contains(v.SessionId)))
-            {
-                var localVideo = remoteVideo.LinkedLocalVideo;
-                if (localVideo == null)
-                    continue;
-
-                var metadataKey = $"sessions/{remoteVideo.SessionId}/metadata/{remoteVideo.VideoId}.json";
-                if (!metadataFiles.TryGetValue(metadataKey, out var metadataFile))
-                    continue;
-
-                var metadataUtc = new DateTimeOffset(metadataFile.LastModified).ToUnixTimeSeconds();
-                if (localVideo.LastSyncUtc > 0 && localVideo.LastSyncUtc >= metadataUtc)
-                    continue;
-
-                await ApplyRemoteMetadataToLocalVideoAsync(remoteVideo, localVideo, replaceInputs: true, metadataLastModifiedUtc: metadataUtc);
-
-                if (SelectedSession?.Id == localVideo.SessionId)
-                {
-                    await RefreshVideoClipInGalleryAsync(localVideo.Id);
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[Remote] Error sincronizando cambios remotos: {ex.Message}");
-        }
-    }
-
-    private static void ApplyMetadataTagsToLocalVideo(VideoClip localVideo, VideoSyncData metadata)
-    {
-        if (metadata.Tags.Count == 0 && metadata.Inputs.Count == 0)
-            return;
-
-        var tagMap = metadata.Tags
-            .Where(t => t.Id > 0)
-            .GroupBy(t => t.Id)
-            .ToDictionary(g => g.Key, g => g.First().Name ?? string.Empty);
-
-        var tags = metadata.Tags
-            .Where(t => !string.IsNullOrWhiteSpace(t.Name))
-            .Select(t => new Tag { Id = t.Id, NombreTag = t.Name })
-            .ToList();
-
-        var eventGroups = metadata.Inputs
-            .Where(i => i.IsEvent == 1 && i.InputTypeId > 0)
-            .GroupBy(i => i.InputTypeId)
-            .ToList();
-
-        var eventTags = new List<Tag>();
-        foreach (var group in eventGroups)
-        {
-            var name = tagMap.TryGetValue(group.Key, out var tagName)
-                ? tagName
-                : group.Select(i => i.InputValue).FirstOrDefault(v => !string.IsNullOrWhiteSpace(v)) ?? $"Tag {group.Key}";
-            eventTags.Add(new Tag
-            {
-                Id = group.Key,
-                NombreTag = name,
-                IsEventTag = true,
-                EventCount = group.Count()
-            });
-        }
-
-        localVideo.Tags = tags.Count > 0 ? tags : null;
-        localVideo.EventTags = eventTags.Count > 0 ? eventTags : null;
-    }
-
-    private async Task EnsureSessionVisibleAsync(Session session)
-    {
-        await MainThread.InvokeOnMainThreadAsync(() =>
-        {
-            if (RecentSessions.Any(s => s.Id == session.Id))
-                return;
-
-            var insertIndex = 0;
-            while (insertIndex < RecentSessions.Count && RecentSessions[insertIndex].Fecha > session.Fecha)
-                insertIndex++;
-
-            RecentSessions.Insert(insertIndex, session);
-
-            if (!IsSessionsListExpanded)
-                IsSessionsListExpanded = true;
-
-            SyncVisibleSessionRows();
-        });
-    }
-
-    /// <summary>
-    /// Añade todos los videos de una sesión remota a la biblioteca personal
-    /// </summary>
-    private async Task AddRemoteSessionToLibraryAsync(int sessionId)
-    {
-        if (sessionId <= 0) return;
-
-        try
-        {
-            var videosToAdd = RemoteVideos
-                .Where(v => v.SessionId == sessionId && v.LinkedLocalVideo == null)
-                .ToList();
-
-            if (videosToAdd.Count == 0)
-            {
-                var page = Application.Current?.MainPage;
-                await page?.DisplayAlert("Ya importada", "Todos los videos de esta sesión ya están en tu biblioteca personal.", "OK")!;
-                return;
-            }
-
-            foreach (var remoteVideo in videosToAdd)
-            {
-                await AddRemoteVideoToLibraryAsync(remoteVideo);
-            }
-
-            var mainPage = Application.Current?.MainPage;
-            await mainPage?.DisplayAlert("Sesión añadida", $"Se han añadido {videosToAdd.Count} videos a tu biblioteca personal.", "OK")!;
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[Remote] Error añadiendo sesión: {ex.Message}");
-        }
-    }
-
-    private async Task DeleteRemoteSessionFromCloudAsync(int sessionId)
-    {
-        if (sessionId <= 0)
-            return;
-
-        if (!CanDeleteRemoteSessions)
-        {
-            await Shell.Current.DisplayAlert("Permisos", "No tienes permisos para eliminar sesiones de la organización.", "OK");
-            return;
-        }
-
-        try
-        {
-            var prefix = $"sessions/{sessionId}/";
-            var result = await _cloudBackendService.ListFilesAsync(prefix, maxItems: 5000);
-            if (!result.Success || result.Files == null)
-            {
-                await Shell.Current.DisplayAlert("Error", "No se pudieron listar los archivos de la sesión.", "OK");
-                return;
-            }
-
-            foreach (var file in result.Files.Where(f => !f.IsFolder))
-            {
-                try
-                {
-                    await _cloudBackendService.DeleteFileAsync(file.Key);
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[Remote] Error eliminando archivo {file.Key}: {ex.Message}");
-                }
-            }
-
-            var removedVideos = RemoteVideos.Where(v => v.SessionId == sessionId).ToList();
-            var removedSession = RemoteSessions.FirstOrDefault(s => s.SessionId == sessionId);
-
-            foreach (var video in removedVideos)
-            {
-                if (video.LinkedLocalVideo != null)
-                    await RemoveLocalVideoClipAsync(video.LinkedLocalVideo);
-
-                video.LinkedLocalVideo = null;
-                video.IsLocallyAvailable = false;
-                video.LocalPath = null;
-            }
-
-            await RemoveLocalSessionIfEmptyAsync(sessionId);
-
-            await MainThread.InvokeOnMainThreadAsync(() =>
-            {
-                foreach (var video in removedVideos)
-                {
-                    RemoteVideos.Remove(video);
-                }
-
-                if (removedSession != null)
-                    RemoteSessions.Remove(removedSession);
-
-                if (SelectedRemoteSessionId == sessionId)
-                {
-                    SelectedRemoteSessionId = 0;
-                    OnPropertyChanged(nameof(RemoteGalleryItems));
-                }
-            });
-
-            if (_remoteFilesCache != null)
-            {
-                _remoteFilesCache = _remoteFilesCache
-                    .Where(f => !f.Key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-                    .ToList();
-            }
-
-            await Shell.Current.DisplayAlert("Sesión eliminada", "La sesión se eliminó de la biblioteca de organización.", "OK");
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[Remote] Error eliminando sesión remota {sessionId}: {ex.Message}");
-            await Shell.Current.DisplayAlert("Error", $"No se pudo eliminar la sesión: {ex.Message}", "OK");
-        }
-    }
-
-    private async Task RemoveLocalVideoClipAsync(VideoClip localVideo)
-    {
-        try
-        {
-            if (!string.IsNullOrEmpty(localVideo.LocalClipPath) && File.Exists(localVideo.LocalClipPath))
-            {
-                try { File.Delete(localVideo.LocalClipPath); } catch { }
-            }
-
-            if (!string.IsNullOrEmpty(localVideo.LocalThumbnailPath) && File.Exists(localVideo.LocalThumbnailPath))
-            {
-                try { File.Delete(localVideo.LocalThumbnailPath); } catch { }
-            }
-
-            await _databaseService.DeleteVideoClipAsync(localVideo.Id);
-            _databaseService.InvalidateCache();
-
-            if (_allVideosCache != null)
-            {
-                var cached = _allVideosCache.FirstOrDefault(v => v.Id == localVideo.Id);
-                if (cached != null)
-                    _allVideosCache.Remove(cached);
-            }
-
-            if (_favoriteVideosCache != null)
-            {
-                var cached = _favoriteVideosCache.FirstOrDefault(v => v.Id == localVideo.Id);
-                if (cached != null)
-                    _favoriteVideosCache.Remove(cached);
-            }
-
-            await MainThread.InvokeOnMainThreadAsync(() =>
-            {
-                var existing = SelectedSessionVideos.FirstOrDefault(v => v.Id == localVideo.Id);
-                if (existing != null)
-                    SelectedSessionVideos.Remove(existing);
-            });
-
-            OnPropertyChanged(nameof(VideoCountDisplayText));
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[Remote] Error eliminando referencia local: {ex.Message}");
-        }
-    }
-
-    private async Task RemoveLocalSessionIfEmptyAsync(int sessionId)
-    {
-        try
-        {
-            var db = await _databaseService.GetConnectionAsync();
-            var remaining = await db.Table<VideoClip>().Where(v => v.SessionId == sessionId).CountAsync();
-            if (remaining > 0)
-                return;
-
-            await _databaseService.DeleteSessionCascadeAsync(sessionId, deleteSessionFiles: false);
-
-            await MainThread.InvokeOnMainThreadAsync(() =>
-            {
-                var session = RecentSessions.FirstOrDefault(s => s.Id == sessionId);
-                if (session != null)
-                    RecentSessions.Remove(session);
-
-                if (SelectedSession?.Id == sessionId)
-                    SelectedSession = null;
-
-                SyncVisibleSessionRows();
-            });
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[Remote] Error eliminando sesión local vacía: {ex.Message}");
-        }
-    }
-
-    /// <summary>
-    /// Elimina un video remoto de la biblioteca personal (borra la referencia local y el archivo descargado si existe)
-    /// El video permanece en la nube, solo se elimina de la biblioteca personal.
-    /// </summary>
-    private async Task DeleteRemoteVideoFromLibraryAsync(RemoteVideoItem? remoteVideo)
-    {
-        if (remoteVideo == null) return;
-
-        try
-        {
-            // Verificar si tiene referencia en la biblioteca personal
-            if (remoteVideo.LinkedLocalVideo == null)
-            {
-                var page = Application.Current?.MainPage;
-                await page?.DisplayAlert("No está en biblioteca", "Este video no está en tu biblioteca personal.", "OK")!;
-                return;
-            }
-
-            var mainPage = Application.Current?.MainPage;
-            var confirm = await mainPage?.DisplayAlert(
-                "Quitar de biblioteca personal",
-                $"¿Eliminar '{remoteVideo.FileName}' de tu biblioteca personal?\n\nEl video seguirá disponible en la organización.",
-                "Eliminar", "Cancelar")!;
-
-            if (!confirm) return;
-
-            var videoId = remoteVideo.LinkedLocalVideo.Id;
-
-            // Eliminar archivo local si existe
-            if (remoteVideo.IsLocallyAvailable && !string.IsNullOrEmpty(remoteVideo.LocalPath))
-            {
-                try
-                {
-                    if (File.Exists(remoteVideo.LocalPath))
-                    {
-                        File.Delete(remoteVideo.LocalPath);
-                        System.Diagnostics.Debug.WriteLine($"[Remote] Archivo local eliminado: {remoteVideo.LocalPath}");
-                    }
-                }
-                catch (Exception fileEx)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[Remote] Error eliminando archivo: {fileEx.Message}");
-                }
-            }
-
-            // Eliminar thumbnail local si existe
-            var localThumbPath = remoteVideo.LinkedLocalVideo.LocalThumbnailPath;
-            if (!string.IsNullOrEmpty(localThumbPath) && File.Exists(localThumbPath))
-            {
-                try
-                {
-                    File.Delete(localThumbPath);
-                }
-                catch { }
-            }
-
-            // Eliminar la referencia de la base de datos local
-            await _databaseService.DeleteVideoClipAsync(videoId);
-            _databaseService.InvalidateCache();
-
-            // Actualizar el item remoto
-            remoteVideo.LinkedLocalVideo = null;
-            remoteVideo.IsLocallyAvailable = false;
-            remoteVideo.LocalPath = null;
-
-            System.Diagnostics.Debug.WriteLine($"[Remote] Video {remoteVideo.VideoId} eliminado de biblioteca personal");
-
-            // Refrescar contadores
-            await CheckPendingSyncAsync();
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[Remote] Error eliminando de biblioteca: {ex.Message}");
-            var page = Application.Current?.MainPage;
-            await page?.DisplayAlert("Error", $"No se pudo eliminar el video: {ex.Message}", "OK")!;
-        }
-    }
-
-    /// <summary>
-    /// Elimina la biblioteca de organización del sistema: elimina todos los videos locales,
-    /// desconecta del cloud y oculta la sección de biblioteca de organización.
-    /// </summary>
-    private async Task DeleteAllRemoteVideosFromLibraryAsync()
-    {
-        try
-        {
-            // Obtener todos los videos remotos que están en la biblioteca personal
-            var videosInLibrary = RemoteVideos.Where(v => v.LinkedLocalVideo != null).ToList();
-
-            var mainPage = Application.Current?.MainPage;
-            var videoCountText = videosInLibrary.Count > 0 
-                ? $"\n\nSe eliminarán {videosInLibrary.Count} videos descargados del dispositivo."
-                : "";
-            
-            var confirm = await mainPage?.DisplayAlert(
-                "Eliminar biblioteca de organización",
-                $"¿Desconectar de '{RemoteLibraryDisplayName}' y eliminar la biblioteca de organización del sistema?{videoCountText}\n\nPodrás volver a conectarte más tarde.",
-                "Eliminar y desconectar", "Cancelar")!;
-
-            if (!confirm) return;
-
-            int deleted = 0;
-            int errors = 0;
-
-            // Eliminar videos locales si existen
-            foreach (var remoteVideo in videosInLibrary)
-            {
-                try
-                {
-                    if (remoteVideo.LinkedLocalVideo == null) continue;
-
-                    var videoId = remoteVideo.LinkedLocalVideo.Id;
-
-                    // Eliminar archivo local si existe
-                    if (remoteVideo.IsLocallyAvailable && !string.IsNullOrEmpty(remoteVideo.LocalPath))
-                    {
-                        try
-                        {
-                            if (File.Exists(remoteVideo.LocalPath))
-                            {
-                                File.Delete(remoteVideo.LocalPath);
-                            }
-                        }
-                        catch { }
-                    }
-
-                    // Eliminar thumbnail local si existe
-                    var localThumbPath = remoteVideo.LinkedLocalVideo.LocalThumbnailPath;
-                    if (!string.IsNullOrEmpty(localThumbPath) && File.Exists(localThumbPath))
-                    {
-                        try { File.Delete(localThumbPath); } catch { }
-                    }
-
-                    // Eliminar la referencia de la base de datos local
-                    await _databaseService.DeleteVideoClipAsync(videoId);
-                    deleted++;
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[Remote] Error eliminando video {remoteVideo.VideoId}: {ex.Message}");
-                    errors++;
-                }
-            }
-
-            // Desconectar del cloud
-            try
-            {
-                await _cloudBackendService.LogoutAsync();
-                System.Diagnostics.Debug.WriteLine("[Remote] Desconectado del cloud backend");
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[Remote] Error en logout: {ex.Message}");
-            }
-
-            // Limpiar la colección de videos remotos
-            RemoteVideos.Clear();
-            
-            // Ocultar la biblioteca de organización
-            IsRemoteLibraryVisible = false;
-            IsRemoteLibraryExpanded = false;
-            RemoteLibraryDisplayName = "Organización";
-            RemoteAllGalleryItemCount = "—";
-            IsLoginRequired = true;
-            OnPropertyChanged(nameof(IsCloudAuthenticated));
-            
-            // Deseleccionar secciones remotas si estaban seleccionadas
-            if (IsAnyRemoteSectionSelected)
-            {
-                IsRemoteAllGallerySelected = false;
-                IsRemoteVideoLessonsSelected = false;
-                IsRemoteTrashSelected = false;
-                OnPropertyChanged(nameof(ShowRemoteGallery));
-                OnPropertyChanged(nameof(IsAnyRemoteSectionSelected));
-            }
-
-            _databaseService.InvalidateCache();
-            await CheckPendingSyncAsync();
-
-            var resultPage = Application.Current?.MainPage;
-            if (deleted > 0)
-            {
-                await resultPage?.DisplayAlert("Biblioteca eliminada", 
-                    $"Se desconectó de '{RemoteLibraryDisplayName}' y se eliminaron {deleted} videos del dispositivo.", "OK")!;
-            }
-            else
-            {
-                await resultPage?.DisplayAlert("Biblioteca eliminada", 
-                    "Se desconectó de la biblioteca de organización.", "OK")!;
-            }
-
-            System.Diagnostics.Debug.WriteLine($"[Remote] Biblioteca de organización eliminada. Videos eliminados: {deleted}, errores: {errors}");
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[Remote] Error eliminando biblioteca de organización: {ex.Message}");
-            var page = Application.Current?.MainPage;
-            await page?.DisplayAlert("Error", $"No se pudo eliminar la biblioteca de organización: {ex.Message}", "OK")!;
-        }
-    }
-
-    /// <summary>
-    /// Descarga un video remoto al dispositivo local
-    /// </summary>
-    private async Task DownloadRemoteVideoAsync(RemoteVideoItem? remoteVideo)
-    {
-        if (remoteVideo == null || _syncService == null) return;
-
-        try
-        {
-            remoteVideo.IsDownloading = true;
-            remoteVideo.DownloadProgress = 0;
-
-            // Si no tiene entrada en la biblioteca, crearla primero
-            if (remoteVideo.LinkedLocalVideo == null)
-            {
-                await AddRemoteVideoToLibraryAsync(remoteVideo);
-            }
-
-            if (remoteVideo.LinkedLocalVideo == null) return;
-
-            // Descargar el archivo
-            var progress = new Progress<double>(p => remoteVideo.DownloadProgress = p);
-            var result = await _syncService.DownloadVideoAsync(remoteVideo.LinkedLocalVideo, progress);
-
-            if (result.Success)
-            {
-                remoteVideo.IsLocallyAvailable = true;
-                remoteVideo.LocalPath = result.LocalPath;
-                System.Diagnostics.Debug.WriteLine($"[Remote] Video {remoteVideo.VideoId} descargado correctamente");
-            }
-            else
-            {
-                System.Diagnostics.Debug.WriteLine($"[Remote] Error descargando: {result.ErrorMessage}");
-                var page = Application.Current?.MainPage;
-                await page?.DisplayAlert("Error", $"No se pudo descargar el video: {result.ErrorMessage}", "OK")!;
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[Remote] Error descargando video: {ex.Message}");
-        }
-        finally
-        {
-            remoteVideo.IsDownloading = false;
-        }
-    }
-
-    private static bool IsStreamingUrl(string? path)
-    {
-        return !string.IsNullOrWhiteSpace(path) &&
-               (path.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
-                path.StartsWith("https://", StringComparison.OrdinalIgnoreCase));
-    }
-
-    private static string? NormalizeRemotePath(string? path)
-    {
-        if (string.IsNullOrWhiteSpace(path))
-            return null;
-
-        return path.StartsWith("CrownRFEP/", StringComparison.OrdinalIgnoreCase)
-            ? path.Substring("CrownRFEP/".Length)
-            : path;
-    }
-
-    private async Task<string?> GetStreamingUrlAsync(string? relativePath)
-    {
-        if (string.IsNullOrWhiteSpace(relativePath))
-            return null;
-
-        var result = await _cloudBackendService.GetDownloadUrlAsync(relativePath);
-        return result.Success ? result.Url : null;
-    }
-
-    /// <summary>
-    /// Reproduce un video remoto (descarga si es necesario y abre el reproductor)
-    /// </summary>
-    private async Task PlayRemoteVideoAsync(RemoteVideoItem? remoteVideo)
-    {
-        if (remoteVideo == null) return;
-
-        try
-        {
-            // Streaming desde organización (prioridad)
-            var remotePath = NormalizeRemotePath(remoteVideo.Key);
-            var streamingUrl = await GetStreamingUrlAsync(remotePath);
-            if (!string.IsNullOrWhiteSpace(streamingUrl))
-            {
-                var clip = remoteVideo.LinkedLocalVideo ?? new VideoClip
-                {
-                    Id = 0,
-                    SessionId = 0,
-                    ClipPath = remotePath,
-                    ClipSize = remoteVideo.Size,
-                    CreationDate = new DateTimeOffset(remoteVideo.LastModified).ToUnixTimeSeconds(),
-                    Source = "remote",
-                    IsSynced = 1
-                };
-
-                if (remoteVideo.Section > 0)
-                {
-                    clip.Section = remoteVideo.Section;
-                }
-
-                if (remoteVideo.Tags != null)
-                {
-                    clip.Tags = remoteVideo.Tags.ToList();
-                }
-
-                if (remoteVideo.EventTags != null)
-                {
-                    clip.EventTags = remoteVideo.EventTags.ToList();
-                }
-
-                clip.LocalClipPath = streamingUrl;
-                await PlaySelectedVideoAsync(clip);
-                return;
-            }
-
-            // Fallback: si no hay streaming, reproducir local si existe
-            if (remoteVideo.IsLocallyAvailable && remoteVideo.LinkedLocalVideo != null)
-            {
-                await PlaySelectedVideoAsync(remoteVideo.LinkedLocalVideo);
-                return;
-            }
-
-            var page = Application.Current?.MainPage;
-            await page?.DisplayAlert("No disponible", "No se pudo obtener el stream del video.", "OK")!;
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[Remote] Error reproduciendo video: {ex.Message}");
-        }
-    }
-
-    private void SetRemoteSelection(string sectionName)
-    {
-        ClearRemoteSessionSelection();
-        IsRemoteAllGallerySelected = sectionName == "Galería General";
-        IsRemoteVideoLessonsSelected = sectionName == "Videolecciones";
-        IsRemoteTrashSelected = sectionName == "Papelera";
-        
-        // Notificar cambios de visibilidad
-        OnPropertyChanged(nameof(ShowVideoGallery));
-        OnPropertyChanged(nameof(ShowRemoteGallery));
-        OnPropertyChanged(nameof(IsAnyRemoteSectionSelected));
-        OnPropertyChanged(nameof(SelectedSessionTitle));
-    }
-
-    private async Task SelectRemoteSessionAsync(RemoteSessionListItem? sessionItem)
-    {
-        if (sessionItem == null) return;
-
-        ClearRemoteVideoSelection();
-        ClearLocalSelection();
-
-        if (!_cloudBackendService.IsAuthenticated)
-        {
-            var page = Application.Current?.MainPage;
-            if (page != null)
-            {
-                await page.DisplayAlert("No autenticado", "Inicia sesión para acceder a los archivos del equipo.", "OK");
-            }
-            return;
-        }
-
-        IsRemoteAllGallerySelected = false;
-        IsRemoteVideoLessonsSelected = false;
-        IsRemoteTrashSelected = false;
-        SelectedRemoteSessionId = sessionItem.SessionId;
-
-        if (RemoteVideos.Count == 0)
-        {
-            await LoadRemoteGalleryAsync();
-        }
-        else
-        {
-            OnPropertyChanged(nameof(RemoteGalleryItems));
-        }
-    }
-
-    private void ClearRemoteSessionSelection()
-    {
-        if (SelectedRemoteSessionId > 0)
-        {
-            SelectedRemoteSessionId = 0;
-        }
-
-        UpdateRemoteSessionSelectionStates(0);
-    }
-
-    private void UpdateRemoteSessionSelectionStates(int selectedSessionId)
-    {
-        foreach (var session in RemoteSessions)
-        {
-            session.IsSelected = session.SessionId == selectedSessionId;
-        }
-    }
-
-    // ==================== ACCIONES EN LOTE DE VIDEOS REMOTOS ====================
-
-    /// <summary>
-    /// Alterna el modo de selección múltiple para videos remotos
-    /// </summary>
-    private void ToggleRemoteMultiSelectMode()
-    {
-        IsRemoteMultiSelectMode = !IsRemoteMultiSelectMode;
-        if (!IsRemoteMultiSelectMode)
-        {
-            ClearRemoteVideoSelection();
-        }
-    }
-
-    /// <summary>
-    /// Alterna "Seleccionar todos" para videos remotos
-    /// </summary>
-    private void ToggleRemoteSelectAll()
-    {
-        if (!IsRemoteMultiSelectMode)
-        {
-            IsRemoteMultiSelectMode = true;
-        }
-
-        IsRemoteSelectAllActive = !IsRemoteSelectAllActive;
-
-        foreach (var video in RemoteVideos)
-        {
-            video.IsSelected = IsRemoteSelectAllActive;
-        }
-        OnPropertyChanged(nameof(SelectedRemoteVideoCount));
-    }
-
-    /// <summary>
-    /// Alterna la selección de un video remoto individual
-    /// </summary>
-    private void ToggleRemoteVideoSelection(RemoteVideoItem? video)
-    {
-        if (video == null || !IsRemoteMultiSelectMode) return;
-        
-        video.IsSelected = !video.IsSelected;
-        OnPropertyChanged(nameof(SelectedRemoteVideoCount));
-        
-        // Actualizar estado de "Seleccionar todos"
-        IsRemoteSelectAllActive = RemoteVideos.All(v => v.IsSelected);
-    }
-
-    /// <summary>
-    /// Limpia la selección de todos los videos remotos
-    /// </summary>
-    private void ClearRemoteVideoSelection()
-    {
-        foreach (var video in RemoteVideos)
-        {
-            video.IsSelected = false;
-        }
-        IsRemoteSelectAllActive = false;
-        OnPropertyChanged(nameof(SelectedRemoteVideoCount));
-    }
-
-    /// <summary>
-    /// Descarga los videos remotos seleccionados
-    /// </summary>
-    private async Task DownloadSelectedRemoteVideosAsync()
-    {
-        var selectedVideos = RemoteVideos.Where(v => v.IsSelected).ToList();
-        
-        if (selectedVideos.Count == 0)
-        {
-            var page = Application.Current?.MainPage;
-            await page?.DisplayAlert("Descargar", "No hay videos seleccionados.", "OK")!;
-            return;
-        }
-
-        var page2 = Application.Current?.MainPage;
-        var confirm = await page2?.DisplayAlert(
-            "Descargar videos",
-            $"¿Descargar {selectedVideos.Count} video(s) al dispositivo?",
-            "Descargar",
-            "Cancelar")!;
-
-        if (!confirm) return;
-
-        int downloaded = 0;
-        int errors = 0;
-
-        foreach (var video in selectedVideos)
-        {
-            try
-            {
-                if (!video.IsLocallyAvailable)
-                {
-                    await DownloadRemoteVideoAsync(video);
-                    if (video.IsLocallyAvailable)
-                        downloaded++;
-                }
-                else
-                {
-                    downloaded++; // Ya estaba descargado
-                }
-            }
-            catch
-            {
-                errors++;
-            }
-        }
-
-        ClearRemoteVideoSelection();
-        IsRemoteMultiSelectMode = false;
-
-        var resultPage = Application.Current?.MainPage;
-        if (errors > 0)
-        {
-            await resultPage?.DisplayAlert("Descarga completada",
-                $"Se descargaron {downloaded} videos. {errors} fallaron.", "OK")!;
-        }
-        else
-        {
-            await resultPage?.DisplayAlert("Descarga completada",
-                $"Se descargaron {downloaded} videos correctamente.", "OK")!;
-        }
-    }
-
-    /// <summary>
-    /// Añade los videos remotos seleccionados a la biblioteca personal
-    /// </summary>
-    private async Task AddSelectedRemoteToLibraryAsync()
-    {
-        var selectedVideos = RemoteVideos.Where(v => v.IsSelected && v.LinkedLocalVideo == null).ToList();
-        
-        if (selectedVideos.Count == 0)
-        {
-            var page = Application.Current?.MainPage;
-            await page?.DisplayAlert("Añadir a biblioteca personal", "No hay videos nuevos seleccionados para añadir.", "OK")!;
-            return;
-        }
-
-        int added = 0;
-        foreach (var video in selectedVideos)
-        {
-            try
-            {
-                await AddRemoteVideoToLibraryAsync(video);
-                added++;
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[Remote] Error añadiendo video {video.VideoId}: {ex.Message}");
-            }
-        }
-
-        ClearRemoteVideoSelection();
-        IsRemoteMultiSelectMode = false;
-
-        var resultPage = Application.Current?.MainPage;
-        await resultPage?.DisplayAlert("Añadidos a biblioteca personal",
-            $"Se añadieron {added} videos a tu biblioteca personal.", "OK")!;
-    }
-
-    /// <summary>
-    /// Elimina los videos remotos seleccionados de la NUBE (Wasabi) - Acción destructiva
-    /// </summary>
-    private async Task DeleteSelectedRemoteFromCloudAsync()
-    {
-        var selectedVideos = RemoteVideos.Where(v => v.IsSelected).ToList();
-        
-        if (selectedVideos.Count == 0)
-        {
-            var page = Application.Current?.MainPage;
-            await page?.DisplayAlert("Eliminar de la nube", "No hay videos seleccionados.", "OK")!;
-            return;
-        }
-
-        var page2 = Application.Current?.MainPage;
-        var confirm = await page2?.DisplayAlert(
-            "⚠️ Eliminar de la nube",
-            $"¿Eliminar PERMANENTEMENTE {selectedVideos.Count} video(s) de la nube?\n\n" +
-            "Esta acción es IRREVERSIBLE. Los archivos se eliminarán del servidor remoto.",
-            "Eliminar permanentemente",
-            "Cancelar")!;
-
-        if (!confirm) return;
-
-        // Segunda confirmación para acción destructiva
-        var confirm2 = await page2?.DisplayAlert(
-            "Confirmar eliminación",
-            "¿Estás seguro? Esta acción no se puede deshacer.",
-            "Sí, eliminar",
-            "No, cancelar")!;
-
-        if (!confirm2) return;
-
-        int deleted = 0;
-        int errors = 0;
-        var affectedSessionIds = new HashSet<int>();
-
-        foreach (var video in selectedVideos)
-        {
-            try
-            {
-                System.Diagnostics.Debug.WriteLine($"[Remote] Intentando eliminar: Key={video.Key}");
-                
-                // Eliminar del cloud usando el backend
-                var deleteSuccess = await _cloudBackendService.DeleteFileAsync(video.Key);
-                
-                System.Diagnostics.Debug.WriteLine($"[Remote] Resultado eliminación: {deleteSuccess}");
-                
-                if (deleteSuccess)
-                {
-                    // También eliminar el thumbnail si existe
-                    var thumbKey = video.Key.Replace("/videos/", "/thumbnails/").Replace(".mp4", ".jpg");
-                    await _cloudBackendService.DeleteFileAsync(thumbKey);
-                    
-                    // También eliminar metadatos si existe
-                    var metaKey = video.Key.Replace("/videos/", "/metadata/").Replace(".mp4", ".json");
-                    await _cloudBackendService.DeleteFileAsync(metaKey);
-
-                    // Si estaba en biblioteca personal, eliminar también
-                    if (video.LinkedLocalVideo != null)
-                    {
-                        affectedSessionIds.Add(video.LinkedLocalVideo.SessionId);
-                        await RemoveLocalVideoClipAsync(video.LinkedLocalVideo);
-                        video.LinkedLocalVideo = null;
-                        video.IsLocallyAvailable = false;
-                        video.LocalPath = null;
-                    }
-
-                    deleted++;
-                }
-                else
-                {
-                    System.Diagnostics.Debug.WriteLine($"[Remote] Error eliminando {video.Key}");
-                    errors++;
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[Remote] Error eliminando video {video.VideoId}: {ex.Message}");
-                errors++;
-            }
-        }
-        foreach (var sessionId in affectedSessionIds)
-            await RemoveLocalSessionIfEmptyAsync(sessionId);
-
-        // Refrescar la lista de videos remotos
-        await LoadRemoteGalleryAsync();
-
-        ClearRemoteVideoSelection();
-        IsRemoteMultiSelectMode = false;
-
-        var resultPage = Application.Current?.MainPage;
-        if (errors > 0)
-        {
-            await resultPage?.DisplayAlert("Eliminación completada",
-                $"Se eliminaron {deleted} videos de la nube. {errors} fallaron.", "OK")!;
-        }
-        else
-        {
-            await resultPage?.DisplayAlert("Eliminación completada",
-                $"Se eliminaron {deleted} videos de la nube permanentemente.", "OK")!;
-        }
-    }
-
-    /// <summary>
-    /// Elimina los videos remotos seleccionados de la biblioteca personal (no de la nube)
-    /// </summary>
-    private async Task DeleteSelectedRemoteFromLibraryAsync()
-    {
-        var selectedVideos = RemoteVideos.Where(v => v.IsSelected && v.LinkedLocalVideo != null).ToList();
-        
-        if (selectedVideos.Count == 0)
-        {
-            var page = Application.Current?.MainPage;
-            await page?.DisplayAlert("Eliminar de biblioteca personal", "No hay videos en biblioteca seleccionados.", "OK")!;
-            return;
-        }
-
-        var page2 = Application.Current?.MainPage;
-        var confirm = await page2?.DisplayAlert(
-            "Eliminar de biblioteca personal",
-            $"¿Eliminar {selectedVideos.Count} video(s) de tu biblioteca personal?\n\n" +
-            "Los videos permanecerán en la organización y podrás añadirlos de nuevo.",
-            "Eliminar de biblioteca personal",
-            "Cancelar")!;
-
-        if (!confirm) return;
-
-        int deleted = 0;
-
-        foreach (var video in selectedVideos)
-        {
-            try
-            {
-                if (video.LinkedLocalVideo == null) continue;
-
-                // Eliminar archivo local si existe
-                if (!string.IsNullOrEmpty(video.LocalPath) && File.Exists(video.LocalPath))
-                {
-                    try { File.Delete(video.LocalPath); } catch { }
-                }
-
-                // Eliminar thumbnail local
-                var thumbPath = video.LinkedLocalVideo.LocalThumbnailPath;
-                if (!string.IsNullOrEmpty(thumbPath) && File.Exists(thumbPath))
-                {
-                    try { File.Delete(thumbPath); } catch { }
-                }
-
-                // Eliminar de base de datos local
-                await _databaseService.DeleteVideoClipAsync(video.LinkedLocalVideo.Id);
-
-                // Actualizar estado del item remoto
-                video.LinkedLocalVideo = null;
-                video.IsLocallyAvailable = false;
-                video.LocalPath = null;
-                
-                deleted++;
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[Remote] Error eliminando video {video.VideoId} de biblioteca: {ex.Message}");
-            }
-        }
-
-        ClearRemoteVideoSelection();
-        IsRemoteMultiSelectMode = false;
-
-        var resultPage = Application.Current?.MainPage;
-        await resultPage?.DisplayAlert("Eliminación completada",
-            $"Se eliminaron {deleted} videos de tu biblioteca personal.", "OK")!;
-    }
-
-    // ==================== FIN ACCIONES EN LOTE DE VIDEOS REMOTOS ====================
-
-    #region Smart Folder Context Menu
-
-    private static readonly string[] SmartFolderIconOptions = new[]
-    {
-        "folder", "folder.fill", "star", "star.fill", "heart", "heart.fill",
-        "flag", "flag.fill", "bookmark", "bookmark.fill", "tag", "tag.fill",
-        "bolt", "bolt.fill", "flame", "flame.fill", "trophy", "trophy.fill",
-        "sportscourt", "figure.run"
-    };
-
-    private static readonly (string Name, string HexColor)[] SmartFolderColorOptions = new[]
-    {
-        ("Gris", "#FF888888"),
-        ("Rojo", "#FFFF453A"),
-        ("Naranja", "#FFFF9F0A"),
-        ("Amarillo", "#FFFFD60A"),
-        ("Verde", "#FF30D158"),
-        ("Menta", "#FF63E6E2"),
-        ("Cyan", "#FF64D2FF"),
-        ("Azul", "#FF0A84FF"),
-        ("Morado", "#FFBF5AF2"),
-        ("Rosa", "#FFFF375F")
-    };
-
-    private async Task ShowSmartFolderContextMenuAsync(SmartFolderDefinition? folder)
-    {
-        if (folder == null) return;
-
-        var page = Application.Current?.MainPage;
-        if (page == null) return;
-
-        var result = await page.DisplayActionSheet(
-            folder.Name,
-            "Cancelar",
-            null,
-            "Renombrar",
-            "Cambiar icono",
-            "Cambiar color",
-            "Eliminar");
-
-        switch (result)
-        {
-            case "Renombrar":
-                await RenameSmartFolderAsync(folder);
-                break;
-            case "Cambiar icono":
-                await ChangeSmartFolderIconAsync(folder);
-                break;
-            case "Cambiar color":
-                await ChangeSmartFolderColorAsync(folder);
-                break;
-            case "Eliminar":
-                await DeleteSmartFolderAsync(folder);
-                break;
-        }
-    }
-
-    private async Task RenameSmartFolderAsync(SmartFolderDefinition? folder)
-    {
-        if (folder == null) return;
-
-        var page = Application.Current?.MainPage;
-        if (page == null) return;
-
-        var newName = await page.DisplayPromptAsync(
-            "Renombrar carpeta",
-            "Introduce el nuevo nombre:",
-            "Aceptar",
-            "Cancelar",
-            folder.Name,
-            50,
-            Keyboard.Text,
-            folder.Name);
-
-        if (!string.IsNullOrWhiteSpace(newName) && newName != folder.Name)
-        {
-            folder.Name = newName;
-            SaveSmartFoldersToPreferences();
-        }
-    }
-
-    private async Task DeleteSmartFolderAsync(SmartFolderDefinition? folder)
-    {
-        if (folder == null) return;
-
-        var page = Application.Current?.MainPage;
-        if (page == null) return;
-
-        var confirm = await page.DisplayAlert(
-            "Eliminar carpeta",
-            $"¿Seguro que quieres eliminar la carpeta \"{folder.Name}\"?",
-            "Eliminar",
-            "Cancelar");
-
-        if (confirm)
-        {
-            SmartFolders.Remove(folder);
-            SaveSmartFoldersToPreferences();
-        }
-    }
-
-    private async Task ChangeSmartFolderIconAsync(SmartFolderDefinition? folder)
-    {
-        if (folder == null) return;
-
-        var page = Application.Current?.MainPage;
-        if (page == null) return;
-
-        var result = await page.DisplayActionSheet(
-            "Seleccionar icono",
-            "Cancelar",
-            null,
-            SmartFolderIconOptions);
-
-        if (!string.IsNullOrEmpty(result) && result != "Cancelar")
-        {
-            folder.Icon = result;
-            SaveSmartFoldersToPreferences();
-        }
-    }
-
-    private async Task ChangeSmartFolderColorAsync(SmartFolderDefinition? folder)
-    {
-        if (folder == null) return;
-
-        var page = Application.Current?.MainPage;
-        if (page == null) return;
-
-        var colorNames = SmartFolderColorOptions.Select(c => c.Name).ToArray();
-        var result = await page.DisplayActionSheet(
-            "Seleccionar color",
-            "Cancelar",
-            null,
-            colorNames);
-
-        if (!string.IsNullOrEmpty(result) && result != "Cancelar")
-        {
-            var selected = SmartFolderColorOptions.FirstOrDefault(c => c.Name == result);
-            if (!string.IsNullOrEmpty(selected.HexColor))
-            {
-                folder.IconColor = selected.HexColor;
-                SaveSmartFoldersToPreferences();
-            }
-        }
-    }
-
-    private void SetSmartFolderIcon(object? parameter)
-    {
-        if (parameter is ValueTuple<SmartFolderDefinition, string> tuple)
-        {
-            var (folder, icon) = tuple;
-            folder.Icon = icon;
-            SaveSmartFoldersToPreferences();
-        }
-    }
-
-    private void SetSmartFolderColor(object? parameter)
-    {
-        if (parameter is ValueTuple<SmartFolderDefinition, string> tuple)
-        {
-            var (folder, color) = tuple;
-            folder.IconColor = color;
-            SaveSmartFoldersToPreferences();
-        }
-    }
-
-    #endregion
-
     #region Session Context Menu
 
     private const string SessionCustomizationsPreferencesKey = "SessionCustomizations";
@@ -9906,7 +2880,7 @@ public class DashboardViewModel : BaseViewModel
     {
         if (row?.Session == null) return;
 
-        var page = Application.Current?.MainPage;
+        var page = Application.Current?.Windows.FirstOrDefault()?.Page;
         if (page == null) return;
 
         var session = row.Session;
@@ -9934,7 +2908,7 @@ public class DashboardViewModel : BaseViewModel
     {
         if (row?.Session == null) return;
 
-        var page = Application.Current?.MainPage;
+        var page = Application.Current?.Windows.FirstOrDefault()?.Page;
         if (page == null) return;
 
         var session = row.Session;
@@ -10006,7 +2980,7 @@ public class DashboardViewModel : BaseViewModel
         OnPropertyChanged(nameof(IsPickerForSession));
         OnPropertyChanged(nameof(IconColorPickerTitle));
         UpdateIconPickerSelection();
-        ShowIconColorPickerPopup = true;
+        Layout.ShowIconColorPickerPopup = true;
     }
 
     private void OpenIconColorPickerForSession(SessionRow? row)
@@ -10018,25 +2992,31 @@ public class DashboardViewModel : BaseViewModel
         OnPropertyChanged(nameof(IsPickerForSession));
         OnPropertyChanged(nameof(IconColorPickerTitle));
         UpdateIconPickerSelection();
-        ShowIconColorPickerPopup = true;
+        Layout.ShowIconColorPickerPopup = true;
     }
 
     private void CloseIconColorPicker()
     {
-        ShowIconColorPickerPopup = false;
+        Layout.ShowIconColorPickerPopup = false;
         IconColorPickerTargetSmartFolder = null;
         IconColorPickerTargetSession = null;
     }
 
     private void UpdateIconPickerSelection()
     {
-        var selectedIcon = SelectedPickerIcon;
+        var selectedIcon = IconColorPickerTargetSmartFolder?.Icon
+            ?? IconColorPickerTargetSession?.Session?.Icon
+            ?? "oar.2.crossed";
+        var selectedColor = IconColorPickerTargetSmartFolder?.IconColor
+            ?? IconColorPickerTargetSession?.Session?.IconColor
+            ?? "#FF6DDDFF";
+
+        SelectedPickerIcon = selectedIcon;
+        SelectedPickerColor = selectedColor;
         foreach (var item in AvailableIcons)
         {
             item.IsSelected = string.Equals(item.Name, selectedIcon, StringComparison.OrdinalIgnoreCase);
         }
-        OnPropertyChanged(nameof(SelectedPickerIcon));
-        OnPropertyChanged(nameof(SelectedPickerColor));
     }
 
     private void SelectPickerIcon(string? icon)
@@ -10046,7 +3026,7 @@ public class DashboardViewModel : BaseViewModel
         if (IconColorPickerTargetSmartFolder is { } folder)
         {
             folder.Icon = icon;
-            SaveSmartFoldersToPreferences();
+            SmartFolders.SaveSmartFoldersToPreferences();
         }
         else if (IconColorPickerTargetSession?.Session is { } session)
         {
@@ -10064,7 +3044,7 @@ public class DashboardViewModel : BaseViewModel
         if (IconColorPickerTargetSmartFolder is { } folder)
         {
             folder.IconColor = color;
-            SaveSmartFoldersToPreferences();
+            SmartFolders.SaveSmartFoldersToPreferences();
         }
         else if (IconColorPickerTargetSession?.Session is { } session)
         {
@@ -10072,374 +3052,7 @@ public class DashboardViewModel : BaseViewModel
             _sessionCustomizations[session.Id] = (session.Icon, color);
             SaveSessionCustomizationsToPreferences();
         }
-        OnPropertyChanged(nameof(SelectedPickerColor));
-    }
-
-    #endregion
-
-    private void RecomputeNewSmartFolderLiveMatchCount()
-    {
-        try
-        {
-            var source = _allVideosCache;
-            if (source == null || source.Count == 0)
-            {
-                NewSmartFolderLiveMatchCount = 0;
-                return;
-            }
-
-            var criteriaSnapshot = NewSmartFolderCriteria.ToList();
-            if (criteriaSnapshot.Count == 0)
-            {
-                NewSmartFolderLiveMatchCount = source.Count;
-                return;
-            }
-
-            bool matchAll = NewSmartFolderMatchMode != "Any";
-
-            int count = 0;
-            foreach (var video in source)
-            {
-                var matches = criteriaSnapshot.Select(c => MatchesCriterion(video, c)).ToList();
-                var ok = matchAll ? matches.All(m => m) : matches.Any(m => m);
-                if (ok)
-                    count++;
-            }
-
-            NewSmartFolderLiveMatchCount = count;
-        }
-        catch
-        {
-            NewSmartFolderLiveMatchCount = 0;
-        }
-    }
-
-    private static bool MatchesCriterion(VideoClip video, SmartFolderCriterion c)
-    {
-        var field = (c.Field ?? string.Empty).Trim();
-        var op = (c.Operator ?? string.Empty).Trim();
-        var value = (c.Value ?? string.Empty).Trim();
-        var value2 = (c.Value2 ?? string.Empty).Trim();
-
-        if (string.IsNullOrWhiteSpace(field))
-            return true;
-
-        if (field == "Fecha")
-        {
-            var dt = video.CreationDateTime.Date;
-
-            static bool TryParseDate(string s, out DateTime d)
-            {
-                if (DateTime.TryParse(s, CultureInfo.GetCultureInfo("es-ES"), DateTimeStyles.AssumeLocal, out d))
-                {
-                    d = d.Date;
-                    return true;
-                }
-                return false;
-            }
-
-            if (op == "Entre")
-            {
-                if (!TryParseDate(value, out var from) || !TryParseDate(value2, out var to))
-                    return false;
-                if (to < from)
-                    (from, to) = (to, from);
-                return dt >= from && dt <= to;
-            }
-
-            if (op == "Hasta")
-            {
-                if (!TryParseDate(value, out var to))
-                    return false;
-                return dt <= to;
-            }
-
-            // Desde (default)
-            if (!TryParseDate(value, out var fromDate))
-                return false;
-            return dt >= fromDate;
-        }
-
-        if (field == "Sección")
-        {
-            if (!int.TryParse(value, out var section))
-                return false;
-            return video.Section == section;
-        }
-
-        string haystack = field switch
-        {
-            "Lugar" => video.Session?.Lugar ?? string.Empty,
-            "Deportista" => video.Atleta?.NombreCompleto ?? string.Empty,
-            "Tag" => string.Join(" ", (video.Tags ?? new List<Tag>()).Select(t => t.NombreTag ?? string.Empty))
-                + " " + string.Join(" ", (video.EventTags ?? new List<Tag>()).Select(t => t.NombreTag ?? string.Empty)),
-            _ => string.Empty,
-        };
-
-        if (string.IsNullOrWhiteSpace(value))
-            return true;
-
-        if (op == "Es")
-            return string.Equals(haystack.Trim(), value, StringComparison.OrdinalIgnoreCase);
-
-        // Contiene (default)
-        return haystack.Contains(value, StringComparison.OrdinalIgnoreCase);
-    }
-
-    #endregion
-
-    #region Cloud Sync Methods
-
-    /// <summary>
-    /// Sincroniza todos los videos pendientes al servidor cloud.
-    /// </summary>
-    private async Task SyncAllVideosAsync()
-    {
-        if (_syncService == null)
-        {
-            await Shell.Current.DisplayAlert("Error", "Servicio de sincronización no disponible", "OK");
-            return;
-        }
-
-        if (!_cloudBackendService.IsAuthenticated)
-        {
-            await Shell.Current.DisplayAlert("No autenticado", "Inicia sesión en el servidor para sincronizar", "OK");
-            return;
-        }
-
-        try
-        {
-            IsSyncing = true;
-            SyncStatusText = "Obteniendo videos pendientes...";
-            
-            var pendingVideos = await _databaseService.GetUnsyncedVideoClipsAsync();
-            
-            if (pendingVideos.Count == 0)
-            {
-                SyncStatusText = "Todo sincronizado";
-                await Task.Delay(1500);
-                return;
-            }
-
-            var progress = new Progress<(int current, int total, string message)>(p =>
-            {
-                SyncProgress = (int)((double)p.current / p.total * 100);
-                SyncStatusText = p.message;
-            });
-
-            int successCount = 0;
-            int failCount = 0;
-
-            for (int i = 0; i < pendingVideos.Count; i++)
-            {
-                var video = pendingVideos[i];
-                SyncStatusText = $"Subiendo video {i + 1} de {pendingVideos.Count}...";
-                SyncProgress = (int)((double)(i + 1) / pendingVideos.Count * 100);
-
-                var result = await _syncService.UploadVideoAsync(video);
-                if (result.Success)
-                {
-                    successCount++;
-                    // También subir thumbnail
-                    await _syncService.UploadThumbnailAsync(video);
-                }
-                else
-                {
-                    failCount++;
-                    System.Diagnostics.Debug.WriteLine($"[Sync] Error: {result.ErrorMessage}");
-                }
-            }
-
-            SyncStatusText = $"Completado: {successCount} subidos, {failCount} errores";
-            await CheckPendingSyncAsync();
-            await Task.Delay(2000);
-        }
-        catch (Exception ex)
-        {
-            SyncStatusText = $"Error: {ex.Message}";
-            System.Diagnostics.Debug.WriteLine($"[Sync] Exception: {ex.Message}");
-        }
-        finally
-        {
-            IsSyncing = false;
-        }
-    }
-
-    /// <summary>
-    /// Sincroniza todos los videos de una sesión específica.
-    /// </summary>
-    private async Task SyncSessionAsync(Session? session)
-    {
-        if (session == null || _syncService == null) return;
-
-        if (!_cloudBackendService.IsAuthenticated)
-        {
-            await Shell.Current.DisplayAlert("No autenticado", "Inicia sesión en el servidor para sincronizar", "OK");
-            return;
-        }
-
-        try
-        {
-            IsSyncing = true;
-            SyncStatusText = $"Sincronizando sesión {session.DisplayName}...";
-
-            var progress = new Progress<(int current, int total, string message)>(p =>
-            {
-                SyncProgress = (int)((double)p.current / p.total * 100);
-                SyncStatusText = p.message;
-            });
-
-            var result = await _syncService.SyncSessionAsync(session.Id, SyncDirection.Upload, progress);
-
-            if (result.Success)
-            {
-                SyncStatusText = $"Sesión sincronizada: {result.SuccessCount} videos";
-            }
-            else
-            {
-                SyncStatusText = $"Errores: {result.FailedCount} de {result.TotalCount}";
-            }
-
-            await CheckPendingSyncAsync();
-            await Task.Delay(2000);
-        }
-        catch (Exception ex)
-        {
-            SyncStatusText = $"Error: {ex.Message}";
-        }
-        finally
-        {
-            IsSyncing = false;
-        }
-    }
-
-    /// <summary>
-    /// Sube un video individual al servidor.
-    /// </summary>
-    private async Task UploadVideoAsync(VideoClip? video)
-    {
-        if (video == null || _syncService == null) return;
-
-        if (!_cloudBackendService.IsAuthenticated)
-        {
-            await Shell.Current.DisplayAlert("No autenticado", "Inicia sesión para subir videos", "OK");
-            return;
-        }
-
-        try
-        {
-            IsSyncing = true;
-            SyncStatusText = "Subiendo video...";
-
-            var progress = new Progress<double>(p =>
-            {
-                SyncProgress = (int)(p * 100);
-            });
-
-            var result = await _syncService.UploadVideoAsync(video, progress);
-
-            if (result.Success)
-            {
-                SyncStatusText = "Video subido correctamente";
-                // Actualizar UI
-                OnPropertyChanged(nameof(SelectedSessionVideos));
-            }
-            else
-            {
-                await Shell.Current.DisplayAlert("Error", result.ErrorMessage ?? "Error al subir", "OK");
-            }
-
-            await CheckPendingSyncAsync();
-            await Task.Delay(1500);
-        }
-        catch (Exception ex)
-        {
-            SyncStatusText = $"Error: {ex.Message}";
-        }
-        finally
-        {
-            IsSyncing = false;
-        }
-    }
-
-    /// <summary>
-    /// Descarga un video del servidor.
-    /// </summary>
-    private async Task DownloadVideoAsync(VideoClip? video)
-    {
-        if (video == null || _syncService == null) return;
-
-        if (!_cloudBackendService.IsAuthenticated)
-        {
-            await Shell.Current.DisplayAlert("No autenticado", "Inicia sesión para descargar videos", "OK");
-            return;
-        }
-
-        try
-        {
-            IsSyncing = true;
-            SyncStatusText = "Descargando video...";
-
-            var progress = new Progress<double>(p =>
-            {
-                SyncProgress = (int)(p * 100);
-            });
-
-            var result = await _syncService.DownloadVideoAsync(video, progress);
-
-            if (result.Success)
-            {
-                SyncStatusText = "Video descargado correctamente";
-                // Actualizar UI
-                OnPropertyChanged(nameof(SelectedSessionVideos));
-            }
-            else
-            {
-                await Shell.Current.DisplayAlert("Error", result.ErrorMessage ?? "Error al descargar", "OK");
-            }
-
-            await Task.Delay(1500);
-        }
-        catch (Exception ex)
-        {
-            SyncStatusText = $"Error: {ex.Message}";
-        }
-        finally
-        {
-            IsSyncing = false;
-        }
-    }
-
-    /// <summary>
-    /// Verifica cuántos videos están pendientes de sincronizar.
-    /// </summary>
-    private async Task CheckPendingSyncAsync()
-    {
-        try
-        {
-            var pendingVideos = await _databaseService.GetUnsyncedVideoClipsAsync();
-            PendingSyncCount = pendingVideos.Count;
-            OnPropertyChanged(nameof(HasPendingSync));
-            
-            // Actualizar texto de estado
-            if (PendingSyncCount == 0)
-            {
-                SyncStatusText = "Todo sincronizado ✓";
-            }
-            else if (!_cloudBackendService.IsAuthenticated)
-            {
-                SyncStatusText = "Inicia sesión para sincronizar";
-            }
-            else
-            {
-                SyncStatusText = "Sincronización cloud";
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[Sync] Error checking pending: {ex.Message}");
-            SyncStatusText = "Error verificando estado";
-        }
+        SelectedPickerColor = color;
     }
 
     #endregion

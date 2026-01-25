@@ -16,6 +16,8 @@ public class VideoClip : INotifyPropertyChanged
     private bool _isCurrentlyPlaying;
     private List<Tag>? _tags;
     private List<Tag>? _eventTags;
+    private Athlete? _atleta;
+    private Session? _session;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -356,10 +358,33 @@ public class VideoClip : INotifyPropertyChanged
     }
 
     [Ignore]
-    public Athlete? Atleta { get; set; }
+    public Athlete? Atleta
+    {
+        get => _atleta;
+        set
+        {
+            if (ReferenceEquals(_atleta, value))
+                return;
+            _atleta = value;
+            OnPropertyChanged(nameof(Atleta));
+            OnPropertyChanged(nameof(DisplayLine1));
+        }
+    }
 
     [Ignore]
-    public Session? Session { get; set; }
+    public Session? Session
+    {
+        get => _session;
+        set
+        {
+            if (ReferenceEquals(_session, value))
+                return;
+            _session = value;
+            OnPropertyChanged(nameof(Session));
+            OnPropertyChanged(nameof(DisplayLine1));
+            OnPropertyChanged(nameof(DisplayLine2));
+        }
+    }
 
     /// <summary>
     /// Tags asignados al video (TimeStamp == 0)
