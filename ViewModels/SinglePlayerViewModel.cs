@@ -60,124 +60,19 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     private readonly AssignmentPanels _assignmentPanels = new();
     
     // Eventos de etiquetas con timestamps
-    private bool _showTagEventsPanel;
-    private ObservableCollection<EventTagDefinition> _allEventTags = new();
-    private ObservableCollection<TagEvent> _tagEvents = new();
-    private ObservableCollection<TimelineMarker> _timelineMarkers = new();
-    private EventTagDefinition? _selectedEventTagToAdd;
-    private string _newEventName = "";
+    private readonly TagEventsTimeline _tagEventsTimeline = new();
     
     // Medidor de tiempo (Split Time)
-    private bool _showSplitTimePanel;
-    private TimeSpan? _splitStartTime;
-    private TimeSpan? _splitEndTime;
-    private TimeSpan? _splitDuration;
-    private bool _hasSavedSplit;
-
-    // Laps dentro del Split Time (se guardan en execution_timing_events, igual que en Camera)
-    private readonly ObservableCollection<ExecutionTimingRow> _splitLapRows = new();
-    private readonly List<long> _splitLapMarksMs = new();
-    private bool _hasSplitLaps;
+    private readonly SplitTimePanel _splitTimePanel = new();
     
     // Modo de toma de parciales asistido
-    private bool _isAssistedModeEnabled;
-    private AssistedLapState _assistedLapState = AssistedLapState.Configuring;
-    private readonly ObservableCollection<AssistedLapDefinition> _assistedLaps = new();
-    private int _assistedLapCount = 3;
-    private int _currentAssistedLapIndex = 0;
-    
-    // Historial de configuraciones de parciales
-    private readonly ObservableCollection<LapConfigHistory> _recentLapConfigs = new();
+    private readonly AssistedLapPanel _assistedLapPanel = new();
 
-    // Comparación de videos
-    private bool _showComparisonPanel;
-    private ComparisonLayout _comparisonLayout = ComparisonLayout.Single;
-    
-    // Videos adicionales para comparación
-    private VideoClip? _comparisonVideo2;
-    private VideoClip? _comparisonVideo3;
-    private VideoClip? _comparisonVideo4;
-    private int _selectedComparisonSlot = 0; // 0 = ninguno, 2-4 = slot de video
-    
-    // Exportación de comparación
-    private bool _isComparisonExporting;
-    private double _comparisonExportProgress;
-    private string _comparisonExportStatus = string.Empty;
-    private bool _isComparisonLapSyncEnabled;
+    // Comparación de videos y sincronización por laps
+    private readonly ComparisonPlayer _comparisonPlayer = new();
 
-    // Sincronización por laps en playback de comparación
-    private sealed record LapSegment(int LapNumber, TimeSpan Start, TimeSpan End)
-    {
-        public TimeSpan Duration => End - Start;
-    }
-    
-    private List<LapSegment>? _lapSegments1; // Video principal
-    private List<LapSegment>? _lapSegments2; // ComparisonVideo2
-    private List<LapSegment>? _lapSegments3; // ComparisonVideo3
-    private List<LapSegment>? _lapSegments4; // ComparisonVideo4
-    
-    private TimeSpan _currentPosition2;
-    private TimeSpan _currentPosition3;
-    private TimeSpan _currentPosition4;
-    private TimeSpan _duration2;
-    private TimeSpan _duration3;
-    private TimeSpan _duration4;
-    private bool _isPlaying2;
-    private bool _isPlaying3;
-    private bool _isPlaying4;
-    
-    private bool _hasLapTiming;
-    private string _currentLapText1 = string.Empty;
-    private string _currentLapText2 = string.Empty;
-    private string _currentLapText3 = string.Empty;
-    private string _currentLapText4 = string.Empty;
-    private string _currentLapDiffText = string.Empty;
-    private Color _currentLapColor1 = Colors.White;
-    private Color _currentLapColor2 = Colors.White;
-    private Color _currentLapColor3 = Colors.White;
-    private Color _currentLapColor4 = Colors.White;
-    private Color _currentLapBgColor1 = Color.FromArgb("#E6000000");
-    private Color _currentLapBgColor2 = Color.FromArgb("#E6000000");
-    private Color _currentLapBgColor3 = Color.FromArgb("#E6000000");
-    private Color _currentLapBgColor4 = Color.FromArgb("#E6000000");
-
-    // Estado de sincronización por laps durante playback
-    private int _currentLapIndex1 = 0;
-    private int _currentLapIndex2 = 0;
-    private int _currentLapIndex3 = 0;
-    private int _currentLapIndex4 = 0;
-    private bool _waitingAtLapBoundary1;
-    private bool _waitingAtLapBoundary2;
-    private bool _waitingAtLapBoundary3;
-    private bool _waitingAtLapBoundary4;
-    private bool _isProcessingLapSync; // Evita re-entrada durante seek/pause
-
-    // Pestañas del panel lateral derecho
-    private bool _isToolsTabSelected = true;
-    private bool _isStatsTabSelected;
-    private bool _isDiaryTabSelected;
-    
-    // Visibilidad de paneles laterales (iOS)
-    private bool _isLeftPanelVisible = true;
-    private bool _isRightPanelVisible = true;
-    
-    // Diario de sesión
-    private SessionDiary? _currentSessionDiary;
-    private bool _isEditingDiary;
-    private int _diaryValoracionFisica = 3;
-    private int _diaryValoracionMental = 3;
-    private int _diaryValoracionTecnica = 3;
-    private string _diaryNotas = "";
-    private double _avgValoracionFisica;
-    private double _avgValoracionMental;
-    private double _avgValoracionTecnica;
-    private int _avgValoracionCount;
-    private int _selectedEvolutionPeriod = 1; // 0=Semana, 1=Mes, 2=Año, 3=Todo
-    private ObservableCollection<SessionDiary> _valoracionEvolution = new();
-    private ObservableCollection<int> _evolutionFisicaValues = new();
-    private ObservableCollection<int> _evolutionMentalValues = new();
-    private ObservableCollection<int> _evolutionTecnicaValues = new();
-    private ObservableCollection<string> _evolutionLabels = new();
+    // Pestañas del panel lateral derecho, estadísticas y diario
+    private readonly RightSidebarTabsAndDiary _rightSidebarTabsAndDiary = new();
 
     public SinglePlayerViewModel(DatabaseService databaseService, StatisticsService statisticsService, ITableExportService tableExportService, ICloudBackendService cloudBackendService, IVideoClipUpdateNotifier videoClipUpdateNotifier)
     {
@@ -244,12 +139,12 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         
         // Comandos de eventos de etiquetas (con timestamps)
         ToggleTagEventsPanelCommand = new Command(async () => await ToggleTagEventsPanelAsync());
-        AddTagEventCommand = new Command(async () => await AddTagEventAsync(), () => _selectedEventTagToAdd != null);
+        AddTagEventCommand = new Command(async () => await AddTagEventAsync(), () => SelectedEventTagToAdd != null);
         DeleteTagEventCommand = new Command<TagEvent>(async (e) => await DeleteTagEventAsync(e));
         SeekToTagEventCommand = new Command<TagEvent>(SeekToTagEvent);
         SeekToTimelineMarkerCommand = new Command<TimelineMarker>(SeekToTimelineMarker);
         SelectTagToAddCommand = new Command<EventTagDefinition>(SelectTagToAdd);
-        CreateAndAddEventCommand = new Command(async () => await CreateAndAddEventAsync(), () => !string.IsNullOrWhiteSpace(_newEventName));
+        CreateAndAddEventCommand = new Command(async () => await CreateAndAddEventAsync(), () => !string.IsNullOrWhiteSpace(NewEventName));
         DeleteEventTagFromListCommand = new Command<EventTagDefinition>(async (t) => await DeleteEventTagFromListAsync(t));
         
         // Comandos de Split Time
@@ -655,7 +550,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     /// <summary>
     /// Aspecto del video: AspectFill en layout 2x2, AspectFit en el resto
     /// </summary>
-    public Aspect VideoAspect => _comparisonLayout == ComparisonLayout.Quad2x2 ? Aspect.AspectFill : Aspect.AspectFit;
+    public Aspect VideoAspect => _comparisonPlayer.ComparisonLayout == ComparisonLayout.Quad2x2 ? Aspect.AspectFill : Aspect.AspectFit;
 
     public string AthleteName => _videoClip?.Atleta?.NombreCompleto ?? "—";
     
@@ -1000,58 +895,53 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     // ==================== POPUP TABLA DETALLADA DE TIEMPOS ====================
     
-    private bool _showDetailedTimesPopup;
     /// <summary>Indica si se muestra el popup de tiempos detallados</summary>
     public bool ShowDetailedTimesPopup
     {
-        get => _showDetailedTimesPopup;
-        set { _showDetailedTimesPopup = value; OnPropertyChanged(); }
+        get => _rightSidebarTabsAndDiary.ShowDetailedTimesPopup;
+        set { _rightSidebarTabsAndDiary.ShowDetailedTimesPopup = value; OnPropertyChanged(); }
     }
 
-    private string _detailedTimesHtml = string.Empty;
     /// <summary>HTML del informe de tiempos detallados</summary>
     public string DetailedTimesHtml
     {
-        get => _detailedTimesHtml;
-        set { _detailedTimesHtml = value; OnPropertyChanged(); }
+        get => _rightSidebarTabsAndDiary.DetailedTimesHtml;
+        set { _rightSidebarTabsAndDiary.DetailedTimesHtml = value; OnPropertyChanged(); }
     }
     
     /// <summary>Secciones con tiempos detallados (incluye Laps)</summary>
-    public ObservableCollection<SectionWithDetailedAthleteRows> DetailedSectionTimes { get; } = new();
+    public ObservableCollection<SectionWithDetailedAthleteRows> DetailedSectionTimes => _rightSidebarTabsAndDiary.DetailedSectionTimes;
     
     // ---- Opciones de visibilidad del informe ----
-    private ReportOptions _reportOptions = ReportOptions.FullAnalysis();
     /// <summary>Opciones de visibilidad para el informe de sesión</summary>
     public ReportOptions ReportOptions
     {
-        get => _reportOptions;
+        get => _rightSidebarTabsAndDiary.ReportOptions;
         set
         {
-            _reportOptions = value;
+            _rightSidebarTabsAndDiary.ReportOptions = value;
             OnPropertyChanged();
             RegenerateDetailedTimesHtml();
         }
     }
     
-    private bool _showReportOptionsPanel;
     /// <summary>Indica si se muestra el panel de opciones del informe</summary>
     public bool ShowReportOptionsPanel
     {
-        get => _showReportOptionsPanel;
-        set { _showReportOptionsPanel = value; OnPropertyChanged(); }
+        get => _rightSidebarTabsAndDiary.ShowReportOptionsPanel;
+        set { _rightSidebarTabsAndDiary.ShowReportOptionsPanel = value; OnPropertyChanged(); }
     }
 
     /// <summary>Lista de atletas disponibles para selección en el popup</summary>
-    public ObservableCollection<AthletePickerItem> DetailedTimesAthletes { get; } = new();
+    public ObservableCollection<AthletePickerItem> DetailedTimesAthletes => _rightSidebarTabsAndDiary.DetailedTimesAthletes;
 
-    private AthletePickerItem? _selectedDetailedTimesAthlete;
     /// <summary>Atleta seleccionado para marcar en los gráficos del popup</summary>
     public AthletePickerItem? SelectedDetailedTimesAthlete
     {
-        get => _selectedDetailedTimesAthlete;
+        get => _rightSidebarTabsAndDiary.SelectedDetailedTimesAthlete;
         set
         {
-            _selectedDetailedTimesAthlete = value;
+            _rightSidebarTabsAndDiary.SelectedDetailedTimesAthlete = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(HasSelectedDetailedTimesAthlete));
             OnPropertyChanged(nameof(SelectedDetailedTimesAthleteName));
@@ -1065,16 +955,13 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     /// <summary>Nombre del atleta seleccionado (para mostrar en el botón)</summary>
     public string SelectedDetailedTimesAthleteName => SelectedDetailedTimesAthlete?.DisplayName ?? "Selecciona atleta";
 
-    private bool _isAthleteDropdownExpanded;
     /// <summary>Indica si el dropdown de atletas está expandido</summary>
     public bool IsAthleteDropdownExpanded
     {
-        get => _isAthleteDropdownExpanded;
-        set { _isAthleteDropdownExpanded = value; OnPropertyChanged(); }
+        get => _rightSidebarTabsAndDiary.IsAthleteDropdownExpanded;
+        set { _rightSidebarTabsAndDiary.IsAthleteDropdownExpanded = value; OnPropertyChanged(); }
     }
     
-    private bool _isLoadingDetailedTimes;
-
     // Protección contra doble click en la galería
     private bool _isSelectingGalleryVideo;
     private DateTime _lastGallerySelectionAt = DateTime.MinValue;
@@ -1082,16 +969,15 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     /// <summary>Indica si se están cargando los tiempos detallados</summary>
     public bool IsLoadingDetailedTimes
     {
-        get => _isLoadingDetailedTimes;
-        set { _isLoadingDetailedTimes = value; OnPropertyChanged(); }
+        get => _rightSidebarTabsAndDiary.IsLoadingDetailedTimes;
+        set { _rightSidebarTabsAndDiary.IsLoadingDetailedTimes = value; OnPropertyChanged(); }
     }
 
-    private bool _isExportingDetailedTimes;
     /// <summary>Indica si se está exportando el informe</summary>
     public bool IsExportingDetailedTimes
     {
-        get => _isExportingDetailedTimes;
-        set { _isExportingDetailedTimes = value; OnPropertyChanged(); }
+        get => _rightSidebarTabsAndDiary.IsExportingDetailedTimes;
+        set { _rightSidebarTabsAndDiary.IsExportingDetailedTimes = value; OnPropertyChanged(); }
     }
     
     /// <summary>Indica si hay tiempos detallados con parciales</summary>
@@ -1177,8 +1063,8 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     public ObservableCollection<EventTagDefinition> AllEventTags
     {
-        get => _allEventTags;
-        set { _allEventTags = value; OnPropertyChanged(); }
+        get => _tagEventsTimeline.AllEventTags;
+        set { _tagEventsTimeline.SetAllEventTags(value); OnPropertyChanged(); }
     }
 
     public ObservableCollection<Tag> SelectedTags
@@ -1211,28 +1097,28 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     // Propiedades para eventos de etiquetas con timestamps
     public bool ShowTagEventsPanel
     {
-        get => _showTagEventsPanel;
-        set { _showTagEventsPanel = value; OnPropertyChanged(); }
+        get => _tagEventsTimeline.ShowTagEventsPanel;
+        set { _tagEventsTimeline.ShowTagEventsPanel = value; OnPropertyChanged(); }
     }
 
     public ObservableCollection<TagEvent> TagEvents
     {
-        get => _tagEvents;
-        set { _tagEvents = value; OnPropertyChanged(); }
+        get => _tagEventsTimeline.TagEvents;
+        set { _tagEventsTimeline.SetTagEvents(value); OnPropertyChanged(); }
     }
 
     public ObservableCollection<TimelineMarker> TimelineMarkers
     {
-        get => _timelineMarkers;
-        set { _timelineMarkers = value; OnPropertyChanged(); }
+        get => _tagEventsTimeline.TimelineMarkers;
+        set { _tagEventsTimeline.SetTimelineMarkers(value); OnPropertyChanged(); }
     }
 
     public EventTagDefinition? SelectedEventTagToAdd
     {
-        get => _selectedEventTagToAdd;
+        get => _tagEventsTimeline.SelectedEventTagToAdd;
         set
         {
-            _selectedEventTagToAdd = value;
+            _tagEventsTimeline.SelectedEventTagToAdd = value;
             OnPropertyChanged();
             ((Command)AddTagEventCommand).ChangeCanExecute();
         }
@@ -1240,39 +1126,39 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     public string NewEventName
     {
-        get => _newEventName;
+        get => _tagEventsTimeline.NewEventName;
         set
         {
-            _newEventName = value;
+            _tagEventsTimeline.NewEventName = value;
             OnPropertyChanged();
             ((Command)CreateAndAddEventCommand).ChangeCanExecute();
         }
     }
 
-    public bool HasTagEvents => _tagEvents.Count > 0;
+    public bool HasTagEvents => _tagEventsTimeline.HasTagEvents;
 
-    public string TagEventsCountText => _tagEvents.Count == 1 ? "1 evento" : $"{_tagEvents.Count} eventos";
+    public string TagEventsCountText => _tagEventsTimeline.TagEventsCountText;
 
     // Propiedades para Split Time
     public bool ShowSplitTimePanel
     {
-        get => _showSplitTimePanel;
-        set { _showSplitTimePanel = value; OnPropertyChanged(); }
+        get => _splitTimePanel.ShowSplitTimePanel;
+        set { _splitTimePanel.ShowSplitTimePanel = value; OnPropertyChanged(); }
     }
 
     // Propiedades para Comparación de videos
     public bool ShowComparisonPanel
     {
-        get => _showComparisonPanel;
-        set { _showComparisonPanel = value; OnPropertyChanged(); }
+        get => _comparisonPlayer.ShowComparisonPanel;
+        set { _comparisonPlayer.ShowComparisonPanel = value; OnPropertyChanged(); }
     }
 
     public ComparisonLayout ComparisonLayout
     {
-        get => _comparisonLayout;
+        get => _comparisonPlayer.ComparisonLayout;
         set 
         { 
-            _comparisonLayout = value; 
+            _comparisonPlayer.ComparisonLayout = value; 
             OnPropertyChanged();
             OnPropertyChanged(nameof(IsSingleLayout));
             OnPropertyChanged(nameof(IsHorizontal2x1Layout));
@@ -1299,13 +1185,13 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         }
     }
 
-    public bool IsSingleLayout => _comparisonLayout == ComparisonLayout.Single;
-    public bool IsHorizontal2x1Layout => _comparisonLayout == ComparisonLayout.Horizontal2x1;
-    public bool IsVertical1x2Layout => _comparisonLayout == ComparisonLayout.Vertical1x2;
-    public bool IsQuad2x2Layout => _comparisonLayout == ComparisonLayout.Quad2x2;
-    public bool IsMultiVideoLayout => _comparisonLayout != ComparisonLayout.Single;
+    public bool IsSingleLayout => _comparisonPlayer.ComparisonLayout == ComparisonLayout.Single;
+    public bool IsHorizontal2x1Layout => _comparisonPlayer.ComparisonLayout == ComparisonLayout.Horizontal2x1;
+    public bool IsVertical1x2Layout => _comparisonPlayer.ComparisonLayout == ComparisonLayout.Vertical1x2;
+    public bool IsQuad2x2Layout => _comparisonPlayer.ComparisonLayout == ComparisonLayout.Quad2x2;
+    public bool IsMultiVideoLayout => _comparisonPlayer.ComparisonLayout != ComparisonLayout.Single;
 
-    public string ComparisonLayoutText => _comparisonLayout switch
+    public string ComparisonLayoutText => _comparisonPlayer.ComparisonLayout switch
     {
         ComparisonLayout.Single => "1 video",
         ComparisonLayout.Horizontal2x1 => "2x1 Horizontal",
@@ -1317,10 +1203,10 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     // Propiedades para videos de comparación
     public VideoClip? ComparisonVideo2
     {
-        get => _comparisonVideo2;
+        get => _comparisonPlayer.ComparisonVideo2;
         set
         {
-            _comparisonVideo2 = value;
+            _comparisonPlayer.ComparisonVideo2 = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(HasComparisonVideo2));
             OnPropertyChanged(nameof(ComparisonVideo2Path));
@@ -1333,16 +1219,16 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             if (value != null && value.Id > 0)
                 _ = LoadLapSegmentsAsync(2, value.Id);
             else
-                _lapSegments2 = null;
+                _comparisonPlayer.LapSegments2 = null;
         }
     }
 
     public VideoClip? ComparisonVideo3
     {
-        get => _comparisonVideo3;
+        get => _comparisonPlayer.ComparisonVideo3;
         set
         {
-            _comparisonVideo3 = value;
+            _comparisonPlayer.ComparisonVideo3 = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(HasComparisonVideo3));
             OnPropertyChanged(nameof(ComparisonVideo3Path));
@@ -1355,16 +1241,16 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             if (value != null && value.Id > 0)
                 _ = LoadLapSegmentsAsync(3, value.Id);
             else
-                _lapSegments3 = null;
+                _comparisonPlayer.LapSegments3 = null;
         }
     }
 
     public VideoClip? ComparisonVideo4
     {
-        get => _comparisonVideo4;
+        get => _comparisonPlayer.ComparisonVideo4;
         set
         {
-            _comparisonVideo4 = value;
+            _comparisonPlayer.ComparisonVideo4 = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(HasComparisonVideo4));
             OnPropertyChanged(nameof(ComparisonVideo4Path));
@@ -1377,65 +1263,66 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             if (value != null && value.Id > 0)
                 _ = LoadLapSegmentsAsync(4, value.Id);
             else
-                _lapSegments4 = null;
+                _comparisonPlayer.LapSegments4 = null;
         }
     }
 
-    public bool HasComparisonVideo2 => _comparisonVideo2 != null;
-    public bool HasComparisonVideo3 => _comparisonVideo3 != null;
-    public bool HasComparisonVideo4 => _comparisonVideo4 != null;
+    public bool HasComparisonVideo2 => _comparisonPlayer.ComparisonVideo2 != null;
+    public bool HasComparisonVideo3 => _comparisonPlayer.ComparisonVideo3 != null;
+    public bool HasComparisonVideo4 => _comparisonPlayer.ComparisonVideo4 != null;
     
-    public string? ComparisonVideo2Path => _comparisonVideo2?.LocalClipPath ?? _comparisonVideo2?.ClipPath;
-    public string? ComparisonVideo3Path => _comparisonVideo3?.LocalClipPath ?? _comparisonVideo3?.ClipPath;
-    public string? ComparisonVideo4Path => _comparisonVideo4?.LocalClipPath ?? _comparisonVideo4?.ClipPath;
+    public string? ComparisonVideo2Path => _comparisonPlayer.ComparisonVideo2?.LocalClipPath ?? _comparisonPlayer.ComparisonVideo2?.ClipPath;
+    public string? ComparisonVideo3Path => _comparisonPlayer.ComparisonVideo3?.LocalClipPath ?? _comparisonPlayer.ComparisonVideo3?.ClipPath;
+    public string? ComparisonVideo4Path => _comparisonPlayer.ComparisonVideo4?.LocalClipPath ?? _comparisonPlayer.ComparisonVideo4?.ClipPath;
 
     #region Exportación de comparación
 
     public bool IsComparisonExporting
     {
-        get => _isComparisonExporting;
+        get => _comparisonPlayer.IsComparisonExporting;
         set
         {
-            _isComparisonExporting = value;
+            _comparisonPlayer.IsComparisonExporting = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(CanExportComparison));
-
             (ExportComparisonCommand as Command)?.ChangeCanExecute();
         }
     }
 
     public double ComparisonExportProgress
     {
-        get => _comparisonExportProgress;
-        set { _comparisonExportProgress = value; OnPropertyChanged(); }
+        get => _comparisonPlayer.ComparisonExportProgress;
+        set { _comparisonPlayer.ComparisonExportProgress = value; OnPropertyChanged(); }
     }
 
     public string ComparisonExportStatus
     {
-        get => _comparisonExportStatus;
-        set { _comparisonExportStatus = value; OnPropertyChanged(); }
+        get => _comparisonPlayer.ComparisonExportStatus;
+        set { _comparisonPlayer.ComparisonExportStatus = value; OnPropertyChanged(); }
     }
 
     public bool IsComparisonLapSyncEnabled
     {
-        get => _isComparisonLapSyncEnabled;
+        get => _comparisonPlayer.IsComparisonLapSyncEnabled;
         set
         {
-            if (_isComparisonLapSyncEnabled == value) return;
-            _isComparisonLapSyncEnabled = value;
+            if (_comparisonPlayer.IsComparisonLapSyncEnabled == value) return;
+            _comparisonPlayer.IsComparisonLapSyncEnabled = value;
             OnPropertyChanged();
-            
-            // Resetear estado de sincronización
-            _currentLapIndex1 = 0;
-            _currentLapIndex2 = 0;
-            _currentLapIndex3 = 0;
-            _currentLapIndex4 = 0;
-            _waitingAtLapBoundary1 = false;
-            _waitingAtLapBoundary2 = false;
-            _waitingAtLapBoundary3 = false;
-            _waitingAtLapBoundary4 = false;
+            OnPropertyChanged(nameof(SyncStatusText));
+            OnPropertyChanged(nameof(SyncDeltaText));
 
-            if (_isComparisonLapSyncEnabled)
+            // Resetear estado de sincronización
+            _comparisonPlayer.CurrentLapIndex1 = 0;
+            _comparisonPlayer.CurrentLapIndex2 = 0;
+            _comparisonPlayer.CurrentLapIndex3 = 0;
+            _comparisonPlayer.CurrentLapIndex4 = 0;
+            _comparisonPlayer.WaitingAtLapBoundary1 = false;
+            _comparisonPlayer.WaitingAtLapBoundary2 = false;
+            _comparisonPlayer.WaitingAtLapBoundary3 = false;
+            _comparisonPlayer.WaitingAtLapBoundary4 = false;
+
+            if (_comparisonPlayer.IsComparisonLapSyncEnabled)
             {
                 _ = EnsureLapSyncSegmentsLoadedAsync();
             }
@@ -1443,6 +1330,8 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             {
                 UpdateLapOverlay();
             }
+
+            (ResyncLapsCommand as Command)?.ChangeCanExecute();
         }
     }
 
@@ -1450,10 +1339,10 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     {
         var active = new List<int> { 1 };
 
-        if (_comparisonLayout != ComparisonLayout.Single && HasComparisonVideo2)
+        if (_comparisonPlayer.ComparisonLayout != ComparisonLayout.Single && HasComparisonVideo2)
             active.Add(2);
 
-        if (_comparisonLayout == ComparisonLayout.Quad2x2)
+        if (_comparisonPlayer.ComparisonLayout == ComparisonLayout.Quad2x2)
         {
             if (HasComparisonVideo3) active.Add(3);
             if (HasComparisonVideo4) active.Add(4);
@@ -1466,10 +1355,10 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     {
         var segments = videoIndex switch
         {
-            1 => _lapSegments1,
-            2 => _lapSegments2,
-            3 => _lapSegments3,
-            4 => _lapSegments4,
+            1 => _comparisonPlayer.LapSegments1,
+            2 => _comparisonPlayer.LapSegments2,
+            3 => _comparisonPlayer.LapSegments3,
+            4 => _comparisonPlayer.LapSegments4,
             _ => null
         };
 
@@ -1529,9 +1418,9 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
                 var videoId = idx switch
                 {
                     1 => _videoClip?.Id ?? 0,
-                    2 => _comparisonVideo2?.Id ?? 0,
-                    3 => _comparisonVideo3?.Id ?? 0,
-                    4 => _comparisonVideo4?.Id ?? 0,
+                    2 => _comparisonPlayer.ComparisonVideo2?.Id ?? 0,
+                    3 => _comparisonPlayer.ComparisonVideo3?.Id ?? 0,
+                    4 => _comparisonPlayer.ComparisonVideo4?.Id ?? 0,
                     _ => 0
                 };
 
@@ -1552,95 +1441,95 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     // Propiedades para sincronización por laps en playback
     public bool HasLapTiming
     {
-        get => _hasLapTiming;
-        set { _hasLapTiming = value; OnPropertyChanged(); }
+        get => _comparisonPlayer.HasLapTiming;
+        set { _comparisonPlayer.HasLapTiming = value; OnPropertyChanged(); }
     }
 
     public string CurrentLapText1
     {
-        get => _currentLapText1;
-        set { _currentLapText1 = value; OnPropertyChanged(); }
+        get => _comparisonPlayer.CurrentLapText1;
+        set { _comparisonPlayer.CurrentLapText1 = value; OnPropertyChanged(); }
     }
 
     public string CurrentLapText2
     {
-        get => _currentLapText2;
-        set { _currentLapText2 = value; OnPropertyChanged(); }
+        get => _comparisonPlayer.CurrentLapText2;
+        set { _comparisonPlayer.CurrentLapText2 = value; OnPropertyChanged(); }
     }
 
     public string CurrentLapText3
     {
-        get => _currentLapText3;
-        set { _currentLapText3 = value; OnPropertyChanged(); }
+        get => _comparisonPlayer.CurrentLapText3;
+        set { _comparisonPlayer.CurrentLapText3 = value; OnPropertyChanged(); }
     }
 
     public string CurrentLapText4
     {
-        get => _currentLapText4;
-        set { _currentLapText4 = value; OnPropertyChanged(); }
+        get => _comparisonPlayer.CurrentLapText4;
+        set { _comparisonPlayer.CurrentLapText4 = value; OnPropertyChanged(); }
     }
 
     public string CurrentLapDiffText
     {
-        get => _currentLapDiffText;
-        set { _currentLapDiffText = value; OnPropertyChanged(); }
+        get => _comparisonPlayer.CurrentLapDiffText;
+        set { _comparisonPlayer.CurrentLapDiffText = value; OnPropertyChanged(); }
     }
 
     public Color CurrentLapColor1
     {
-        get => _currentLapColor1;
-        set { _currentLapColor1 = value; OnPropertyChanged(); }
+        get => _comparisonPlayer.CurrentLapColor1;
+        set { _comparisonPlayer.CurrentLapColor1 = value; OnPropertyChanged(); }
     }
 
     public Color CurrentLapColor2
     {
-        get => _currentLapColor2;
-        set { _currentLapColor2 = value; OnPropertyChanged(); }
+        get => _comparisonPlayer.CurrentLapColor2;
+        set { _comparisonPlayer.CurrentLapColor2 = value; OnPropertyChanged(); }
     }
 
     public Color CurrentLapColor3
     {
-        get => _currentLapColor3;
-        set { _currentLapColor3 = value; OnPropertyChanged(); }
+        get => _comparisonPlayer.CurrentLapColor3;
+        set { _comparisonPlayer.CurrentLapColor3 = value; OnPropertyChanged(); }
     }
 
     public Color CurrentLapColor4
     {
-        get => _currentLapColor4;
-        set { _currentLapColor4 = value; OnPropertyChanged(); }
+        get => _comparisonPlayer.CurrentLapColor4;
+        set { _comparisonPlayer.CurrentLapColor4 = value; OnPropertyChanged(); }
     }
 
     public Color CurrentLapBgColor1
     {
-        get => _currentLapBgColor1;
-        set { _currentLapBgColor1 = value; OnPropertyChanged(); }
+        get => _comparisonPlayer.CurrentLapBgColor1;
+        set { _comparisonPlayer.CurrentLapBgColor1 = value; OnPropertyChanged(); }
     }
 
     public Color CurrentLapBgColor2
     {
-        get => _currentLapBgColor2;
-        set { _currentLapBgColor2 = value; OnPropertyChanged(); }
+        get => _comparisonPlayer.CurrentLapBgColor2;
+        set { _comparisonPlayer.CurrentLapBgColor2 = value; OnPropertyChanged(); }
     }
 
     public Color CurrentLapBgColor3
     {
-        get => _currentLapBgColor3;
-        set { _currentLapBgColor3 = value; OnPropertyChanged(); }
+        get => _comparisonPlayer.CurrentLapBgColor3;
+        set { _comparisonPlayer.CurrentLapBgColor3 = value; OnPropertyChanged(); }
     }
 
     public Color CurrentLapBgColor4
     {
-        get => _currentLapBgColor4;
-        set { _currentLapBgColor4 = value; OnPropertyChanged(); }
+        get => _comparisonPlayer.CurrentLapBgColor4;
+        set { _comparisonPlayer.CurrentLapBgColor4 = value; OnPropertyChanged(); }
     }
 
     public TimeSpan CurrentPosition2
     {
-        get => _currentPosition2;
+        get => _comparisonPlayer.CurrentPosition2;
         set
         {
-            var previousPosition = _currentPosition2;
-            _currentPosition2 = value;
+            var previousPosition = _comparisonPlayer.CurrentPosition2;
+            _comparisonPlayer.CurrentPosition2 = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(SliderMaximumSeconds));
             if (IsComparisonLapSyncEnabled)
@@ -1653,11 +1542,11 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     public TimeSpan CurrentPosition3
     {
-        get => _currentPosition3;
+        get => _comparisonPlayer.CurrentPosition3;
         set
         {
-            var previousPosition = _currentPosition3;
-            _currentPosition3 = value;
+            var previousPosition = _comparisonPlayer.CurrentPosition3;
+            _comparisonPlayer.CurrentPosition3 = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(SliderMaximumSeconds));
             if (IsComparisonLapSyncEnabled)
@@ -1670,11 +1559,11 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     public TimeSpan CurrentPosition4
     {
-        get => _currentPosition4;
+        get => _comparisonPlayer.CurrentPosition4;
         set
         {
-            var previousPosition = _currentPosition4;
-            _currentPosition4 = value;
+            var previousPosition = _comparisonPlayer.CurrentPosition4;
+            _comparisonPlayer.CurrentPosition4 = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(SliderMaximumSeconds));
             if (IsComparisonLapSyncEnabled)
@@ -1687,10 +1576,10 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     public TimeSpan Duration2
     {
-        get => _duration2;
+        get => _comparisonPlayer.Duration2;
         set
         {
-            _duration2 = value;
+            _comparisonPlayer.Duration2 = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(SliderMaximumSeconds));
         }
@@ -1698,10 +1587,10 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     public TimeSpan Duration3
     {
-        get => _duration3;
+        get => _comparisonPlayer.Duration3;
         set
         {
-            _duration3 = value;
+            _comparisonPlayer.Duration3 = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(SliderMaximumSeconds));
         }
@@ -1709,10 +1598,10 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     public TimeSpan Duration4
     {
-        get => _duration4;
+        get => _comparisonPlayer.Duration4;
         set
         {
-            _duration4 = value;
+            _comparisonPlayer.Duration4 = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(SliderMaximumSeconds));
         }
@@ -1720,20 +1609,20 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     public bool IsPlaying2
     {
-        get => _isPlaying2;
-        set { _isPlaying2 = value; OnPropertyChanged(); }
+        get => _comparisonPlayer.IsPlaying2;
+        set { _comparisonPlayer.IsPlaying2 = value; OnPropertyChanged(); }
     }
 
     public bool IsPlaying3
     {
-        get => _isPlaying3;
-        set { _isPlaying3 = value; OnPropertyChanged(); }
+        get => _comparisonPlayer.IsPlaying3;
+        set { _comparisonPlayer.IsPlaying3 = value; OnPropertyChanged(); }
     }
 
     public bool IsPlaying4
     {
-        get => _isPlaying4;
-        set { _isPlaying4 = value; OnPropertyChanged(); }
+        get => _comparisonPlayer.IsPlaying4;
+        set { _comparisonPlayer.IsPlaying4 = value; OnPropertyChanged(); }
     }
 
     /// <summary>
@@ -1746,7 +1635,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             if (IsComparisonExporting) return false;
             if (!IsMultiVideoLayout) return false;
 
-            return _comparisonLayout switch
+            return _comparisonPlayer.ComparisonLayout switch
             {
                 ComparisonLayout.Horizontal2x1 or ComparisonLayout.Vertical1x2 => HasComparisonVideo2,
                 ComparisonLayout.Quad2x2 => HasComparisonVideo2 && HasComparisonVideo3 && HasComparisonVideo4,
@@ -1760,25 +1649,12 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     #endregion
 
-    // Propiedades para mostrar delta de sincronización en el footer
-    private TimeSpan _comparisonPosition2;
-    private TimeSpan _comparisonPosition3;
-    private TimeSpan _comparisonPosition4;
-
-    // Baseline para calcular desfase desde el último Play
-    private bool _hasSyncBaseline;
-    private DateTime _lastSyncPlayUtc;
-    private TimeSpan _syncBaselineMain;
-    private TimeSpan _syncBaseline2;
-    private TimeSpan _syncBaseline3;
-    private TimeSpan _syncBaseline4;
-
     public TimeSpan ComparisonPosition2
     {
-        get => _comparisonPosition2;
+        get => _comparisonPlayer.ComparisonPosition2;
         set
         {
-            _comparisonPosition2 = value;
+            _comparisonPlayer.ComparisonPosition2 = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(SyncDeltaText));
             OnPropertyChanged(nameof(SyncStatusText));
@@ -1787,10 +1663,10 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     public TimeSpan ComparisonPosition3
     {
-        get => _comparisonPosition3;
+        get => _comparisonPlayer.ComparisonPosition3;
         set
         {
-            _comparisonPosition3 = value;
+            _comparisonPlayer.ComparisonPosition3 = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(SyncDeltaText));
         }
@@ -1798,10 +1674,10 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     public TimeSpan ComparisonPosition4
     {
-        get => _comparisonPosition4;
+        get => _comparisonPlayer.ComparisonPosition4;
         set
         {
-            _comparisonPosition4 = value;
+            _comparisonPlayer.ComparisonPosition4 = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(SyncDeltaText));
         }
@@ -1809,13 +1685,13 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     private void CaptureSyncBaselineForPlay()
     {
-        _hasSyncBaseline = true;
-        _lastSyncPlayUtc = DateTime.UtcNow;
+        _comparisonPlayer.HasSyncBaseline = true;
+        _comparisonPlayer.LastSyncPlayUtc = DateTime.UtcNow;
 
-        _syncBaselineMain = CurrentPosition;
-        _syncBaseline2 = _comparisonPosition2;
-        _syncBaseline3 = _comparisonPosition3;
-        _syncBaseline4 = _comparisonPosition4;
+        _comparisonPlayer.SyncBaselineMain = CurrentPosition;
+        _comparisonPlayer.SyncBaseline2 = _comparisonPlayer.ComparisonPosition2;
+        _comparisonPlayer.SyncBaseline3 = _comparisonPlayer.ComparisonPosition3;
+        _comparisonPlayer.SyncBaseline4 = _comparisonPlayer.ComparisonPosition4;
 
         OnPropertyChanged(nameof(SyncDeltaText));
         OnPropertyChanged(nameof(SyncStatusText));
@@ -1823,12 +1699,12 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     private void ClearSyncBaseline()
     {
-        _hasSyncBaseline = false;
-        _lastSyncPlayUtc = default;
-        _syncBaselineMain = TimeSpan.Zero;
-        _syncBaseline2 = TimeSpan.Zero;
-        _syncBaseline3 = TimeSpan.Zero;
-        _syncBaseline4 = TimeSpan.Zero;
+        _comparisonPlayer.HasSyncBaseline = false;
+        _comparisonPlayer.LastSyncPlayUtc = default;
+        _comparisonPlayer.SyncBaselineMain = TimeSpan.Zero;
+        _comparisonPlayer.SyncBaseline2 = TimeSpan.Zero;
+        _comparisonPlayer.SyncBaseline3 = TimeSpan.Zero;
+        _comparisonPlayer.SyncBaseline4 = TimeSpan.Zero;
 
         OnPropertyChanged(nameof(SyncDeltaText));
         OnPropertyChanged(nameof(SyncStatusText));
@@ -1845,28 +1721,28 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
             // Queremos el desfase DESDE el último Play: diferencia de progreso desde el instante
             // en el que el usuario pulsó Play (baseline).
-            if (!_hasSyncBaseline) return "";
+            if (!_comparisonPlayer.HasSyncBaseline) return "";
 
             var deltas = new List<string>();
 
-            var mainProgress = CurrentPosition - _syncBaselineMain;
+            var mainProgress = CurrentPosition - _comparisonPlayer.SyncBaselineMain;
             var mainProgressMs = mainProgress.TotalMilliseconds;
 
             if (HasComparisonVideo2)
             {
-                var p2 = _comparisonPosition2 - _syncBaseline2;
+                var p2 = _comparisonPlayer.ComparisonPosition2 - _comparisonPlayer.SyncBaseline2;
                 var delta2 = p2.TotalMilliseconds - mainProgressMs;
                 deltas.Add($"Δ2: {(delta2 >= 0 ? "+" : "")}{delta2:F0}ms");
             }
             if (HasComparisonVideo3)
             {
-                var p3 = _comparisonPosition3 - _syncBaseline3;
+                var p3 = _comparisonPlayer.ComparisonPosition3 - _comparisonPlayer.SyncBaseline3;
                 var delta3 = p3.TotalMilliseconds - mainProgressMs;
                 deltas.Add($"Δ3: {(delta3 >= 0 ? "+" : "")}{delta3:F0}ms");
             }
             if (HasComparisonVideo4)
             {
-                var p4 = _comparisonPosition4 - _syncBaseline4;
+                var p4 = _comparisonPlayer.ComparisonPosition4 - _comparisonPlayer.SyncBaseline4;
                 var delta4 = p4.TotalMilliseconds - mainProgressMs;
                 deltas.Add($"Δ4: {(delta4 >= 0 ? "+" : "")}{delta4:F0}ms");
             }
@@ -1889,7 +1765,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             if (HasComparisonVideo3) videoCount++;
             if (HasComparisonVideo4) videoCount++;
 
-            if (!_hasSyncBaseline)
+            if (!_comparisonPlayer.HasSyncBaseline)
                 return $"Comparación: {videoCount} videos | {ComparisonLayoutText}";
 
             return $"Sync desde Play | {videoCount} videos | {ComparisonLayoutText}";
@@ -1898,26 +1774,26 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     public int SelectedComparisonSlot
     {
-        get => _selectedComparisonSlot;
+        get => _comparisonPlayer.SelectedComparisonSlot;
         set
         {
-            _selectedComparisonSlot = value;
+            _comparisonPlayer.SelectedComparisonSlot = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(IsSelectingComparisonVideo));
         }
     }
 
-    public bool IsSelectingComparisonVideo => _selectedComparisonSlot > 0;
+    public bool IsSelectingComparisonVideo => _comparisonPlayer.SelectedComparisonSlot > 0;
 
     // Propiedades de pestañas del panel lateral derecho
     public bool IsToolsTabSelected
     {
-        get => _isToolsTabSelected;
+        get => _rightSidebarTabsAndDiary.IsToolsTabSelected;
         set
         {
-            if (_isToolsTabSelected != value)
+            if (_rightSidebarTabsAndDiary.IsToolsTabSelected != value)
             {
-                _isToolsTabSelected = value;
+                _rightSidebarTabsAndDiary.IsToolsTabSelected = value;
                 OnPropertyChanged();
                 if (value)
                 {
@@ -1930,12 +1806,12 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     public bool IsStatsTabSelected
     {
-        get => _isStatsTabSelected;
+        get => _rightSidebarTabsAndDiary.IsStatsTabSelected;
         set
         {
-            if (_isStatsTabSelected != value)
+            if (_rightSidebarTabsAndDiary.IsStatsTabSelected != value)
             {
-                _isStatsTabSelected = value;
+                _rightSidebarTabsAndDiary.IsStatsTabSelected = value;
                 OnPropertyChanged();
                 if (value)
                 {
@@ -1948,12 +1824,12 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     public bool IsDiaryTabSelected
     {
-        get => _isDiaryTabSelected;
+        get => _rightSidebarTabsAndDiary.IsDiaryTabSelected;
         set
         {
-            if (_isDiaryTabSelected != value)
+            if (_rightSidebarTabsAndDiary.IsDiaryTabSelected != value)
             {
-                _isDiaryTabSelected = value;
+                _rightSidebarTabsAndDiary.IsDiaryTabSelected = value;
                 OnPropertyChanged();
                 if (value)
                 {
@@ -1968,110 +1844,155 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     
     public bool IsLeftPanelVisible
     {
-        get => _isLeftPanelVisible;
-        set { _isLeftPanelVisible = value; OnPropertyChanged(); }
+        get => _rightSidebarTabsAndDiary.IsLeftPanelVisible;
+        set { _rightSidebarTabsAndDiary.IsLeftPanelVisible = value; OnPropertyChanged(); }
     }
     
     public bool IsRightPanelVisible
     {
-        get => _isRightPanelVisible;
-        set { _isRightPanelVisible = value; OnPropertyChanged(); }
+        get => _rightSidebarTabsAndDiary.IsRightPanelVisible;
+        set { _rightSidebarTabsAndDiary.IsRightPanelVisible = value; OnPropertyChanged(); }
     }
 
     // ===== Propiedades del Diario de Sesión =====
     
     public int DiaryValoracionFisica
     {
-        get => _diaryValoracionFisica;
-        set { _diaryValoracionFisica = Math.Clamp(value, 1, 5); OnPropertyChanged(); }
+        get => _rightSidebarTabsAndDiary.Diary.DiaryValoracionFisica;
+        set { _rightSidebarTabsAndDiary.Diary.DiaryValoracionFisica = Math.Clamp(value, 1, 5); OnPropertyChanged(); }
     }
 
     public int DiaryValoracionMental
     {
-        get => _diaryValoracionMental;
-        set { _diaryValoracionMental = Math.Clamp(value, 1, 5); OnPropertyChanged(); }
+        get => _rightSidebarTabsAndDiary.Diary.DiaryValoracionMental;
+        set { _rightSidebarTabsAndDiary.Diary.DiaryValoracionMental = Math.Clamp(value, 1, 5); OnPropertyChanged(); }
     }
 
     public int DiaryValoracionTecnica
     {
-        get => _diaryValoracionTecnica;
-        set { _diaryValoracionTecnica = Math.Clamp(value, 1, 5); OnPropertyChanged(); }
+        get => _rightSidebarTabsAndDiary.Diary.DiaryValoracionTecnica;
+        set { _rightSidebarTabsAndDiary.Diary.DiaryValoracionTecnica = Math.Clamp(value, 1, 5); OnPropertyChanged(); }
     }
 
     public string DiaryNotas
     {
-        get => _diaryNotas;
-        set { _diaryNotas = value ?? ""; OnPropertyChanged(); }
+        get => _rightSidebarTabsAndDiary.Diary.DiaryNotas;
+        set { _rightSidebarTabsAndDiary.Diary.DiaryNotas = value ?? ""; OnPropertyChanged(); }
     }
 
     public double AvgValoracionFisica
     {
-        get => _avgValoracionFisica;
-        set { _avgValoracionFisica = value; OnPropertyChanged(); }
+        get => _rightSidebarTabsAndDiary.Diary.AvgValoracionFisica;
+        set { _rightSidebarTabsAndDiary.Diary.AvgValoracionFisica = value; OnPropertyChanged(); }
     }
 
     public double AvgValoracionMental
     {
-        get => _avgValoracionMental;
-        set { _avgValoracionMental = value; OnPropertyChanged(); }
+        get => _rightSidebarTabsAndDiary.Diary.AvgValoracionMental;
+        set { _rightSidebarTabsAndDiary.Diary.AvgValoracionMental = value; OnPropertyChanged(); }
     }
 
     public double AvgValoracionTecnica
     {
-        get => _avgValoracionTecnica;
-        set { _avgValoracionTecnica = value; OnPropertyChanged(); }
+        get => _rightSidebarTabsAndDiary.Diary.AvgValoracionTecnica;
+        set { _rightSidebarTabsAndDiary.Diary.AvgValoracionTecnica = value; OnPropertyChanged(); }
     }
 
     public int AvgValoracionCount
     {
-        get => _avgValoracionCount;
-        set { _avgValoracionCount = value; OnPropertyChanged(); }
+        get => _rightSidebarTabsAndDiary.Diary.AvgValoracionCount;
+        set { _rightSidebarTabsAndDiary.Diary.AvgValoracionCount = value; OnPropertyChanged(); }
     }
 
     public int SelectedEvolutionPeriod
     {
-        get => _selectedEvolutionPeriod;
-        set { _selectedEvolutionPeriod = value; OnPropertyChanged(); }
+        get => _rightSidebarTabsAndDiary.Diary.SelectedEvolutionPeriod;
+        set { _rightSidebarTabsAndDiary.Diary.SelectedEvolutionPeriod = value; OnPropertyChanged(); }
     }
 
     public ObservableCollection<SessionDiary> ValoracionEvolution
     {
-        get => _valoracionEvolution;
-        set { _valoracionEvolution = value; OnPropertyChanged(); }
+        get => _rightSidebarTabsAndDiary.Diary.ValoracionEvolution;
+        set
+        {
+            _rightSidebarTabsAndDiary.Diary.ValoracionEvolution.Clear();
+            if (value != null)
+            {
+                foreach (var item in value)
+                    _rightSidebarTabsAndDiary.Diary.ValoracionEvolution.Add(item);
+            }
+            OnPropertyChanged();
+        }
     }
 
     public ObservableCollection<int> EvolutionFisicaValues
     {
-        get => _evolutionFisicaValues;
-        set { _evolutionFisicaValues = value; OnPropertyChanged(); }
+        get => _rightSidebarTabsAndDiary.Diary.EvolutionFisicaValues;
+        set
+        {
+            _rightSidebarTabsAndDiary.Diary.EvolutionFisicaValues.Clear();
+            if (value != null)
+            {
+                foreach (var item in value)
+                    _rightSidebarTabsAndDiary.Diary.EvolutionFisicaValues.Add(item);
+            }
+            OnPropertyChanged();
+        }
     }
 
     public ObservableCollection<int> EvolutionMentalValues
     {
-        get => _evolutionMentalValues;
-        set { _evolutionMentalValues = value; OnPropertyChanged(); }
+        get => _rightSidebarTabsAndDiary.Diary.EvolutionMentalValues;
+        set
+        {
+            _rightSidebarTabsAndDiary.Diary.EvolutionMentalValues.Clear();
+            if (value != null)
+            {
+                foreach (var item in value)
+                    _rightSidebarTabsAndDiary.Diary.EvolutionMentalValues.Add(item);
+            }
+            OnPropertyChanged();
+        }
     }
 
     public ObservableCollection<int> EvolutionTecnicaValues
     {
-        get => _evolutionTecnicaValues;
-        set { _evolutionTecnicaValues = value; OnPropertyChanged(); }
+        get => _rightSidebarTabsAndDiary.Diary.EvolutionTecnicaValues;
+        set
+        {
+            _rightSidebarTabsAndDiary.Diary.EvolutionTecnicaValues.Clear();
+            if (value != null)
+            {
+                foreach (var item in value)
+                    _rightSidebarTabsAndDiary.Diary.EvolutionTecnicaValues.Add(item);
+            }
+            OnPropertyChanged();
+        }
     }
 
     public ObservableCollection<string> EvolutionLabels
     {
-        get => _evolutionLabels;
-        set { _evolutionLabels = value; OnPropertyChanged(); }
+        get => _rightSidebarTabsAndDiary.Diary.EvolutionLabels;
+        set
+        {
+            _rightSidebarTabsAndDiary.Diary.EvolutionLabels.Clear();
+            if (value != null)
+            {
+                foreach (var item in value)
+                    _rightSidebarTabsAndDiary.Diary.EvolutionLabels.Add(item);
+            }
+            OnPropertyChanged();
+        }
     }
 
-    public bool HasDiaryData => _currentSessionDiary != null;
+    public bool HasDiaryData => _rightSidebarTabsAndDiary.Diary.CurrentSessionDiary != null;
 
     public bool IsEditingDiary
     {
-        get => _isEditingDiary;
+        get => _rightSidebarTabsAndDiary.Diary.IsEditingDiary;
         set 
         { 
-            _isEditingDiary = value; 
+            _rightSidebarTabsAndDiary.Diary.IsEditingDiary = value; 
             OnPropertyChanged(); 
             OnPropertyChanged(nameof(ShowDiaryResults));
             OnPropertyChanged(nameof(ShowDiaryForm));
@@ -2084,10 +2005,10 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     public TimeSpan? SplitStartTime
     {
-        get => _splitStartTime;
+        get => _splitTimePanel.SplitStartTime;
         set
         {
-            _splitStartTime = value;
+            _splitTimePanel.SplitStartTime = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(SplitStartTimeText));
             OnPropertyChanged(nameof(HasSplitStart));
@@ -2098,10 +2019,10 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     public TimeSpan? SplitEndTime
     {
-        get => _splitEndTime;
+        get => _splitTimePanel.SplitEndTime;
         set
         {
-            _splitEndTime = value;
+            _splitTimePanel.SplitEndTime = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(SplitEndTimeText));
             OnPropertyChanged(nameof(HasSplitEnd));
@@ -2112,10 +2033,10 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     public TimeSpan? SplitDuration
     {
-        get => _splitDuration;
+        get => _splitTimePanel.SplitDuration;
         private set
         {
-            _splitDuration = value;
+            _splitTimePanel.SetSplitDuration(value);
             OnPropertyChanged();
             OnPropertyChanged(nameof(SplitDurationText));
             OnPropertyChanged(nameof(HasSplitDuration));
@@ -2124,29 +2045,29 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     public bool HasSavedSplit
     {
-        get => _hasSavedSplit;
-        set { _hasSavedSplit = value; OnPropertyChanged(); }
+        get => _splitTimePanel.HasSavedSplit;
+        set { _splitTimePanel.HasSavedSplit = value; OnPropertyChanged(); }
     }
 
-    public bool HasSplitStart => _splitStartTime.HasValue;
-    public bool HasSplitEnd => _splitEndTime.HasValue;
-    public bool HasSplitDuration => _splitDuration.HasValue;
-    public bool CanSaveSplit => _splitStartTime.HasValue && _splitEndTime.HasValue && _splitDuration.HasValue && _splitDuration.Value.TotalMilliseconds > 0;
+    public bool HasSplitStart => _splitTimePanel.HasSplitStart;
+    public bool HasSplitEnd => _splitTimePanel.HasSplitEnd;
+    public bool HasSplitDuration => _splitTimePanel.HasSplitDuration;
+    public bool CanSaveSplit => _splitTimePanel.CanSaveSplit;
 
-    public string SplitStartTimeText => _splitStartTime.HasValue ? $"{_splitStartTime.Value:mm\\:ss\\.ff}" : "--:--:--";
-    public string SplitEndTimeText => _splitEndTime.HasValue ? $"{_splitEndTime.Value:mm\\:ss\\.ff}" : "--:--:--";
-    public string SplitDurationText => _splitDuration.HasValue ? $"{_splitDuration.Value:mm\\:ss\\.fff}" : "--:--:---";
+    public string SplitStartTimeText => _splitTimePanel.SplitStartTimeText;
+    public string SplitEndTimeText => _splitTimePanel.SplitEndTimeText;
+    public string SplitDurationText => _splitTimePanel.SplitDurationText;
 
-    public ObservableCollection<ExecutionTimingRow> SplitLapRows => _splitLapRows;
+    public ObservableCollection<ExecutionTimingRow> SplitLapRows => _splitTimePanel.SplitLapRows;
 
     public bool HasSplitLaps
     {
-        get => _hasSplitLaps;
+        get => _splitTimePanel.HasSplitLaps;
         private set
         {
-            if (_hasSplitLaps != value)
+            if (_splitTimePanel.HasSplitLaps != value)
             {
-                _hasSplitLaps = value;
+                _splitTimePanel.SetHasSplitLaps(value);
                 OnPropertyChanged();
             }
         }
@@ -2157,12 +2078,12 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     /// <summary>Indica si el modo de toma asistida está activado</summary>
     public bool IsAssistedModeEnabled
     {
-        get => _isAssistedModeEnabled;
+        get => _assistedLapPanel.IsAssistedModeEnabled;
         set
         {
-            if (_isAssistedModeEnabled != value)
+            if (_assistedLapPanel.IsAssistedModeEnabled != value)
             {
-                _isAssistedModeEnabled = value;
+                _assistedLapPanel.IsAssistedModeEnabled = value;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsManualModeEnabled));
                 
@@ -2176,7 +2097,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
                     {
                         // Al activar modo asistido, asegurarse de que haya parciales
                         // La lista debe tener AssistedLapCount parciales + 1 (el Fin)
-                        if (_assistedLaps.Count == 0 || _assistedLaps.Count != AssistedLapCount + 1)
+                        if (_assistedLapPanel.AssistedLaps.Count == 0 || _assistedLapPanel.AssistedLaps.Count != AssistedLapCount + 1)
                         {
                             InitializeAssistedLaps();
                         }
@@ -2198,17 +2119,17 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     }
     
     /// <summary>Indica si el modo manual está activo (inverso del asistido)</summary>
-    public bool IsManualModeEnabled => !_isAssistedModeEnabled;
+    public bool IsManualModeEnabled => !_assistedLapPanel.IsAssistedModeEnabled;
     
     /// <summary>Estado actual del flujo de toma asistida</summary>
     public AssistedLapState AssistedLapState
     {
-        get => _assistedLapState;
+        get => _assistedLapPanel.AssistedLapState;
         set
         {
-            if (_assistedLapState != value)
+            if (_assistedLapPanel.AssistedLapState != value)
             {
-                _assistedLapState = value;
+                _assistedLapPanel.AssistedLapState = value;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(AssistedStateDescription));
                 OnPropertyChanged(nameof(AssistedActionButtonText));
@@ -2226,13 +2147,13 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     /// <summary>Número de parciales a configurar (1-10)</summary>
     public int AssistedLapCount
     {
-        get => _assistedLapCount;
+        get => _assistedLapPanel.AssistedLapCount;
         set
         {
             var clamped = Math.Max(1, Math.Min(10, value));
-            if (_assistedLapCount != clamped)
+            if (_assistedLapPanel.AssistedLapCount != clamped)
             {
-                _assistedLapCount = clamped;
+                _assistedLapPanel.AssistedLapCount = clamped;
                 OnPropertyChanged();
                 InitializeAssistedLaps();
             }
@@ -2240,15 +2161,15 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     }
     
     /// <summary>Lista de parciales predefinidos</summary>
-    public ObservableCollection<AssistedLapDefinition> AssistedLaps => _assistedLaps;
+    public ObservableCollection<AssistedLapDefinition> AssistedLaps => _assistedLapPanel.AssistedLaps;
     
     /// <summary>Índice del parcial actual a marcar (0-based)</summary>
     public int CurrentAssistedLapIndex
     {
-        get => _currentAssistedLapIndex;
+        get => _assistedLapPanel.CurrentAssistedLapIndex;
         private set
         {
-            _currentAssistedLapIndex = value;
+            _assistedLapPanel.CurrentAssistedLapIndex = value;
             OnPropertyChanged();
             UpdateCurrentLapHighlight();
         }
@@ -2259,8 +2180,8 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     {
         AssistedLapState.Configuring => "Configura los parciales y pulsa 'Iniciar toma'",
         AssistedLapState.WaitingForStart => "▶ Pulsa el botón para marcar el INICIO",
-        AssistedLapState.MarkingLaps => CurrentAssistedLapIndex < _assistedLaps.Count 
-            ? $"▶ Marca el parcial: {_assistedLaps[CurrentAssistedLapIndex].DisplayName}" 
+        AssistedLapState.MarkingLaps => CurrentAssistedLapIndex < _assistedLapPanel.AssistedLaps.Count 
+            ? $"▶ Marca el parcial: {_assistedLapPanel.AssistedLaps[CurrentAssistedLapIndex].DisplayName}" 
             : "▶ Pulsa para marcar el FIN",
         AssistedLapState.WaitingForEnd => "▶ Pulsa el botón para marcar el FIN",
         AssistedLapState.Completed => "✓ Toma completada. Guarda o reinicia.",
@@ -2271,8 +2192,8 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     public string AssistedActionButtonText => AssistedLapState switch
     {
         AssistedLapState.WaitingForStart => "INICIO",
-        AssistedLapState.MarkingLaps => CurrentAssistedLapIndex < _assistedLaps.Count 
-            ? _assistedLaps[CurrentAssistedLapIndex].DisplayName 
+        AssistedLapState.MarkingLaps => CurrentAssistedLapIndex < _assistedLapPanel.AssistedLaps.Count 
+            ? _assistedLapPanel.AssistedLaps[CurrentAssistedLapIndex].DisplayName 
             : "FIN",
         AssistedLapState.WaitingForEnd => "FIN",
         _ => "MARCAR"
@@ -2297,10 +2218,10 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     public bool ShowAssistedResults => AssistedLapState != AssistedLapState.Configuring;
     
     /// <summary>Historial de configuraciones de parciales recientes</summary>
-    public ObservableCollection<LapConfigHistory> RecentLapConfigs => _recentLapConfigs;
+    public ObservableCollection<LapConfigHistory> RecentLapConfigs => _assistedLapPanel.RecentLapConfigs;
     
     /// <summary>Indica si hay configuraciones recientes disponibles</summary>
-    public bool HasRecentLapConfigs => _recentLapConfigs.Count > 0;
+    public bool HasRecentLapConfigs => _assistedLapPanel.RecentLapConfigs.Count > 0;
 
     #endregion
 
@@ -2913,14 +2834,14 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             var athleteId = profile.ReferenceAthleteId.Value;
 
             // Cargar diario existente o crear uno nuevo
-            _currentSessionDiary = await _databaseService.GetSessionDiaryAsync(sessionId, athleteId);
+            _rightSidebarTabsAndDiary.Diary.CurrentSessionDiary = await _databaseService.GetSessionDiaryAsync(sessionId, athleteId);
             
-            if (_currentSessionDiary != null)
+            if (_rightSidebarTabsAndDiary.Diary.CurrentSessionDiary != null)
             {
-                DiaryValoracionFisica = _currentSessionDiary.ValoracionFisica;
-                DiaryValoracionMental = _currentSessionDiary.ValoracionMental;
-                DiaryValoracionTecnica = _currentSessionDiary.ValoracionTecnica;
-                DiaryNotas = _currentSessionDiary.Notas ?? "";
+                DiaryValoracionFisica = _rightSidebarTabsAndDiary.Diary.CurrentSessionDiary.ValoracionFisica;
+                DiaryValoracionMental = _rightSidebarTabsAndDiary.Diary.CurrentSessionDiary.ValoracionMental;
+                DiaryValoracionTecnica = _rightSidebarTabsAndDiary.Diary.CurrentSessionDiary.ValoracionTecnica;
+                DiaryNotas = _rightSidebarTabsAndDiary.Diary.CurrentSessionDiary.Notas ?? "";
                 IsEditingDiary = false; // Hay datos, mostrar vista de resultados
             }
             else
@@ -3052,7 +2973,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             };
 
             await _databaseService.SaveSessionDiaryAsync(diary);
-            _currentSessionDiary = diary;
+            _rightSidebarTabsAndDiary.Diary.CurrentSessionDiary = diary;
             IsEditingDiary = false;
             OnPropertyChanged(nameof(HasDiaryData));
             OnPropertyChanged(nameof(ShowDiaryResults));
@@ -3854,12 +3775,12 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     /// </summary>
     private async Task CreateAndAddEventAsync()
     {
-        if (string.IsNullOrWhiteSpace(_newEventName) || _videoClip == null)
+        if (string.IsNullOrWhiteSpace(NewEventName) || _videoClip == null)
             return;
 
         try
         {
-            var normalizedName = _newEventName.Trim();
+            var normalizedName = NewEventName.Trim();
 
             // Reusar si ya existe el tipo de evento
             var existing = await _databaseService.FindEventTagByNameAsync(normalizedName);
@@ -3989,7 +3910,8 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             
             await MainThread.InvokeOnMainThreadAsync(() =>
             {
-                TagEvents = new ObservableCollection<TagEvent>(events);
+                _tagEventsTimeline.SetTagEvents(events);
+                OnPropertyChanged(nameof(TagEvents));
                 OnPropertyChanged(nameof(HasTagEvents));
                 OnPropertyChanged(nameof(TagEventsCountText));
                 RefreshTimelineMarkers();
@@ -4019,27 +3941,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     {
         try
         {
-            var durationMs = Duration.TotalMilliseconds;
-            if (durationMs <= 0 || _tagEvents == null || _tagEvents.Count == 0)
-            {
-                if (_timelineMarkers.Count > 0)
-                    _timelineMarkers.Clear();
-                return;
-            }
-
-            var markers = _tagEvents
-                .Where(e => e.TimestampMs >= 0)
-                .Select(e => new TimelineMarker
-                {
-                    Position = Math.Clamp(e.TimestampMs / durationMs, 0.0, 1.0),
-                    TimestampMs = e.TimestampMs,
-                    Label = e.TagName
-                })
-                .ToList();
-
-            _timelineMarkers.Clear();
-            foreach (var m in markers)
-                _timelineMarkers.Add(m);
+            _tagEventsTimeline.RefreshTimelineMarkers(Duration);
         }
         catch (Exception ex)
         {
@@ -4064,7 +3966,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         if (tag == null) return;
 
         // Toggle: si vuelves a tocar el mismo chip, se deselecciona.
-        if (_selectedEventTagToAdd?.Id == tag.Id && tag.IsSelected)
+        if (SelectedEventTagToAdd?.Id == tag.Id && tag.IsSelected)
         {
             tag.IsSelected = false;
             SelectedEventTagToAdd = null;
@@ -4080,7 +3982,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     private async Task AddTagEventAsync()
     {
-        if (_videoClip == null || _selectedEventTagToAdd == null)
+        if (_videoClip == null || SelectedEventTagToAdd == null)
             return;
 
         try
@@ -4091,7 +3993,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             // Añadir el evento a la base de datos
             var inputId = await _databaseService.AddTagEventAsync(
                 _videoClip.Id,
-                _selectedEventTagToAdd.Id,
+                SelectedEventTagToAdd.Id,
                 timestampMs,
                 _videoClip.SessionId,
                 _videoClip.AtletaId);
@@ -4105,13 +4007,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             // Limpiar selección para evitar re-uso accidental
             await MainThread.InvokeOnMainThreadAsync(() =>
             {
-                if (_selectedEventTagToAdd != null)
-                    _selectedEventTagToAdd.IsSelected = false;
-
-                SelectedEventTagToAdd = null;
-
-                foreach (var t in AllEventTags)
-                    t.IsSelected = false;
+                _tagEventsTimeline.ClearSelection();
                 
                 OnPropertyChanged(nameof(HasTagEvents));
                 OnPropertyChanged(nameof(TagEventsCountText));
@@ -4356,9 +4252,8 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
             // Recargar catálogo de eventos
             var allEventTags = await _databaseService.GetAllEventTagsAsync();
-            _allEventTags.Clear();
-            foreach (var t in allEventTags)
-                _allEventTags.Add(t);
+            _tagEventsTimeline.SetAllEventTags(allEventTags);
+            OnPropertyChanged(nameof(AllEventTags));
 
             if (_videoClip != null)
             {
@@ -4427,7 +4322,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             _ = LoadExistingSplitAsync();
             
             // Inicializar los parciales si están vacíos
-            if (_assistedLaps.Count == 0)
+            if (_assistedLapPanel.AssistedLaps.Count == 0)
             {
                 InitializeAssistedLaps();
             }
@@ -4439,7 +4334,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         SplitStartTime = CurrentPosition;
 
         // Igual que en Camera: al marcar inicio, empezamos nueva serie de laps
-        _splitLapMarksMs.Clear();
+        _splitTimePanel.SplitLapMarksMs.Clear();
         RebuildSplitLapRows();
     }
 
@@ -4454,7 +4349,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     private void AddSplitLap()
     {
-        System.Diagnostics.Debug.WriteLine($"[AddSplitLap] Entrando. VideoClip={_videoClip != null}, SplitStartTime={_splitStartTime}, CurrentPosition={CurrentPosition}");
+        System.Diagnostics.Debug.WriteLine($"[AddSplitLap] Entrando. VideoClip={_videoClip != null}, SplitStartTime={_splitTimePanel.SplitStartTime}, CurrentPosition={CurrentPosition}");
         
         if (_videoClip == null)
         {
@@ -4462,14 +4357,14 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             return;
         }
 
-        if (!_splitStartTime.HasValue)
+        if (!_splitTimePanel.SplitStartTime.HasValue)
         {
             System.Diagnostics.Debug.WriteLine("[AddSplitLap] Saliendo: no hay SplitStartTime");
             return;
         }
 
         var nowMs = (long)CurrentPosition.TotalMilliseconds;
-        var startMs = (long)_splitStartTime.Value.TotalMilliseconds;
+        var startMs = (long)_splitTimePanel.SplitStartTime.Value.TotalMilliseconds;
         System.Diagnostics.Debug.WriteLine($"[AddSplitLap] nowMs={nowMs}, startMs={startMs}");
         
         if (nowMs < startMs)
@@ -4478,9 +4373,9 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             return;
         }
 
-        if (_splitEndTime.HasValue)
+        if (_splitTimePanel.SplitEndTime.HasValue)
         {
-            var endMs = (long)_splitEndTime.Value.TotalMilliseconds;
+            var endMs = (long)_splitTimePanel.SplitEndTime.Value.TotalMilliseconds;
             if (nowMs > endMs)
             {
                 System.Diagnostics.Debug.WriteLine($"[AddSplitLap] Saliendo: nowMs > endMs ({endMs})");
@@ -4489,19 +4384,19 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         }
 
         // Evitar duplicados exactos
-        if (_splitLapMarksMs.Contains(nowMs))
+        if (_splitTimePanel.SplitLapMarksMs.Contains(nowMs))
         {
             System.Diagnostics.Debug.WriteLine("[AddSplitLap] Saliendo: duplicado");
             return;
         }
 
-        _splitLapMarksMs.Add(nowMs);
-        System.Diagnostics.Debug.WriteLine($"[AddSplitLap] Lap añadido: {nowMs}ms. Total laps: {_splitLapMarksMs.Count}");
+        _splitTimePanel.SplitLapMarksMs.Add(nowMs);
+        System.Diagnostics.Debug.WriteLine($"[AddSplitLap] Lap añadido: {nowMs}ms. Total laps: {_splitTimePanel.SplitLapMarksMs.Count}");
         
         FilterLapMarksToRange();
         RebuildSplitLapRows();
         
-        System.Diagnostics.Debug.WriteLine($"[AddSplitLap] Después de rebuild: HasSplitLaps={HasSplitLaps}, SplitLapRows.Count={_splitLapRows.Count}");
+        System.Diagnostics.Debug.WriteLine($"[AddSplitLap] Después de rebuild: HasSplitLaps={HasSplitLaps}, SplitLapRows.Count={_splitTimePanel.SplitLapRows.Count}");
     }
 
     private void ClearSplit()
@@ -4510,69 +4405,33 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         SplitEndTime = null;
         SplitDuration = null;
 
-        _splitLapMarksMs.Clear();
-        _splitLapRows.Clear();
+        _splitTimePanel.SplitLapMarksMs.Clear();
+        _splitTimePanel.SplitLapRows.Clear();
         HasSplitLaps = false;
         HasSavedSplit = false; // Permite volver a editar
     }
 
     private void FilterLapMarksToRange()
     {
-        if (!_splitStartTime.HasValue)
+        if (!_splitTimePanel.SplitStartTime.HasValue)
         {
-            _splitLapMarksMs.Clear();
+            _splitTimePanel.SplitLapMarksMs.Clear();
             return;
         }
 
-        var startMs = (long)_splitStartTime.Value.TotalMilliseconds;
-        long? endMs = _splitEndTime.HasValue ? (long)_splitEndTime.Value.TotalMilliseconds : null;
+        var startMs = (long)_splitTimePanel.SplitStartTime.Value.TotalMilliseconds;
+        long? endMs = _splitTimePanel.SplitEndTime.HasValue ? (long)_splitTimePanel.SplitEndTime.Value.TotalMilliseconds : null;
 
-        _splitLapMarksMs.RemoveAll(ms => ms < startMs || (endMs.HasValue && ms > endMs.Value));
+        _splitTimePanel.SplitLapMarksMs.RemoveAll(ms => ms < startMs || (endMs.HasValue && ms > endMs.Value));
     }
 
     private void RebuildSplitLapRows()
     {
-        System.Diagnostics.Debug.WriteLine($"[RebuildSplitLapRows] Entrando. LapMarks: {_splitLapMarksMs.Count}, SplitStartTime={_splitStartTime}");
+        System.Diagnostics.Debug.WriteLine($"[RebuildSplitLapRows] Entrando. LapMarks: {_splitTimePanel.SplitLapMarksMs.Count}, SplitStartTime={_splitTimePanel.SplitStartTime}");
         
-        _splitLapMarksMs.Sort();
-
-        _splitLapRows.Clear();
-
-        if (!_splitStartTime.HasValue)
-        {
-            HasSplitLaps = false;
-            System.Diagnostics.Debug.WriteLine("[RebuildSplitLapRows] Sin SplitStartTime, saliendo");
-            return;
-        }
-
-        var prev = (long)_splitStartTime.Value.TotalMilliseconds;
-        var lapIndex = 0;
-        foreach (var mark in _splitLapMarksMs)
-        {
-            lapIndex++;
-            var splitMs = mark - prev;
-            if (splitMs < 0) splitMs = 0;
-            prev = mark;
-
-            var row = new ExecutionTimingRow
-            {
-                Title = $"Lap {lapIndex}",
-                Value = FormatMs(splitMs),
-                IsTotal = false
-            };
-            _splitLapRows.Add(row);
-            System.Diagnostics.Debug.WriteLine($"[RebuildSplitLapRows] Añadido: {row.Title} = {row.Value}");
-        }
-
-        HasSplitLaps = _splitLapRows.Count > 0;
-        System.Diagnostics.Debug.WriteLine($"[RebuildSplitLapRows] Finalizado. HasSplitLaps={HasSplitLaps}, Total rows={_splitLapRows.Count}");
-    }
-
-    private static string FormatMs(long ms)
-    {
-        if (ms < 0) ms = 0;
-        var ts = TimeSpan.FromMilliseconds(ms);
-        return $"{(int)ts.TotalMinutes:00}:{ts.Seconds:00}.{ts.Milliseconds:000}";
+        _splitTimePanel.RebuildSplitLapRows();
+        HasSplitLaps = _splitTimePanel.HasSplitLaps;
+        System.Diagnostics.Debug.WriteLine($"[RebuildSplitLapRows] Finalizado. HasSplitLaps={HasSplitLaps}, Total rows={_splitTimePanel.SplitLapRows.Count}");
     }
     
     // ==================== MÉTODOS DEL MODO ASISTIDO ====================
@@ -4584,12 +4443,12 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     
     private void InitializeAssistedLaps()
     {
-        _assistedLaps.Clear();
+        _assistedLapPanel.AssistedLaps.Clear();
         
         // Crear los parciales intermedios definidos por el usuario
         for (int i = 1; i <= AssistedLapCount; i++)
         {
-            _assistedLaps.Add(new AssistedLapDefinition
+            _assistedLapPanel.AssistedLaps.Add(new AssistedLapDefinition
             {
                 Index = i,
                 Name = $"P{i}",
@@ -4598,7 +4457,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         }
         
         // Añadir el parcial final (FIN) que siempre existe
-        _assistedLaps.Add(new AssistedLapDefinition
+        _assistedLapPanel.AssistedLaps.Add(new AssistedLapDefinition
         {
             Index = AssistedLapCount + 1,
             Name = "Fin",
@@ -4621,19 +4480,19 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     private void WireAssistedLaps()
     {
-        for (int i = 0; i < _assistedLaps.Count; i++)
+        for (int i = 0; i < _assistedLapPanel.AssistedLaps.Count; i++)
         {
-            var lap = _assistedLaps[i];
+            var lap = _assistedLapPanel.AssistedLaps[i];
 
             // Evitar dobles suscripciones si se re-usa la misma instancia
             lap.PropertyChanged -= AssistedLap_PropertyChanged;
             lap.PropertyChanged += AssistedLap_PropertyChanged;
 
             lap.IsFirstLap = (i == 0);
-            lap.IsLastLap = (i == _assistedLaps.Count - 1);
+            lap.IsLastLap = (i == _assistedLapPanel.AssistedLaps.Count - 1);
 
             // Referencia al anterior para prefijos dinámicos
-            lap.PreviousLap = (i == 0) ? null : _assistedLaps[i - 1];
+            lap.PreviousLap = (i == 0) ? null : _assistedLapPanel.AssistedLaps[i - 1];
         }
 
         // Prefijos coherentes desde el primer render
@@ -4652,9 +4511,9 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     /// <summary>Actualiza los PreviousLapName de todos los parciales basándose en los nombres actuales</summary>
     private void UpdateAssistedLapPreviousNames()
     {
-        for (int i = 0; i < _assistedLaps.Count; i++)
+        for (int i = 0; i < _assistedLapPanel.AssistedLaps.Count; i++)
         {
-            var lap = _assistedLaps[i];
+            var lap = _assistedLapPanel.AssistedLaps[i];
             string newPrevName;
             
             if (i == 0)
@@ -4663,7 +4522,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             }
             else
             {
-                var prevLap = _assistedLaps[i - 1];
+                var prevLap = _assistedLapPanel.AssistedLaps[i - 1];
                 newPrevName = string.IsNullOrWhiteSpace(prevLap.Name) ? $"P{prevLap.Index}" : prevLap.Name;
             }
             
@@ -4682,7 +4541,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         
         // Limpiar cualquier marcado previo
         ClearSplit();
-        foreach (var lap in _assistedLaps)
+        foreach (var lap in _assistedLapPanel.AssistedLaps)
         {
             lap.MarkedMs = null;
             lap.IsCurrent = false;
@@ -4692,9 +4551,9 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         AssistedLapState = AssistedLapState.WaitingForStart;
         CurrentAssistedLapIndex = 0;
         
-        if (_assistedLaps.Count > 0)
+        if (_assistedLapPanel.AssistedLaps.Count > 0)
         {
-            _assistedLaps[0].IsCurrent = true;
+            _assistedLapPanel.AssistedLaps[0].IsCurrent = true;
         }
     }
     
@@ -4709,7 +4568,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             case AssistedLapState.WaitingForStart:
                 // Marcar inicio
                 SplitStartTime = CurrentPosition;
-                _splitLapMarksMs.Clear();
+                _splitTimePanel.SplitLapMarksMs.Clear();
                 
                 if (AssistedLapCount > 0)
                 {
@@ -4728,12 +4587,12 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
                 if (CurrentAssistedLapIndex < AssistedLapCount)
                 {
                     // Marcar el parcial actual (no incluye FIN)
-                    var lap = _assistedLaps[CurrentAssistedLapIndex];
+                    var lap = _assistedLapPanel.AssistedLaps[CurrentAssistedLapIndex];
                     lap.MarkedMs = nowMs;
                     lap.IsCurrent = false;
                     
                     // Añadir a la lista de laps
-                    _splitLapMarksMs.Add(nowMs);
+                    _splitTimePanel.SplitLapMarksMs.Add(nowMs);
                     RebuildSplitLapRows();
                     
                     // Avanzar al siguiente
@@ -4752,9 +4611,9 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
                 SplitEndTime = CurrentPosition;
                 
                 // Marcar también el último parcial (FIN) en la lista
-                if (_assistedLaps.Count > 0)
+                if (_assistedLapPanel.AssistedLaps.Count > 0)
                 {
-                    var lastLap = _assistedLaps[^1];
+                    var lastLap = _assistedLapPanel.AssistedLaps[^1];
                     lastLap.MarkedMs = nowMs;
                     lastLap.IsCurrent = false;
                 }
@@ -4772,7 +4631,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     
     private void UpdateCurrentLapHighlight()
     {
-        for (int i = 0; i < _assistedLaps.Count; i++)
+        for (int i = 0; i < _assistedLapPanel.AssistedLaps.Count; i++)
         {
             bool isCurrent = false;
             
@@ -4781,20 +4640,20 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
                 // Parciales intermedios
                 isCurrent = true;
             }
-            else if (AssistedLapState == AssistedLapState.WaitingForEnd && i == _assistedLaps.Count - 1)
+            else if (AssistedLapState == AssistedLapState.WaitingForEnd && i == _assistedLapPanel.AssistedLaps.Count - 1)
             {
                 // El elemento FIN cuando esperamos marcar el fin
                 isCurrent = true;
             }
             
-            _assistedLaps[i].IsCurrent = isCurrent;
+            _assistedLapPanel.AssistedLaps[i].IsCurrent = isCurrent;
         }
     }
     
     private void ResetAssistedCapture()
     {
         ClearSplit();
-        foreach (var lap in _assistedLaps)
+        foreach (var lap in _assistedLapPanel.AssistedLaps)
         {
             lap.MarkedMs = null;
             lap.IsCurrent = false;
@@ -4814,15 +4673,15 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             if (config != null)
             {
                 // Aplicar la configuración guardada
-                _assistedLapCount = config.LapCount;
+                _assistedLapPanel.AssistedLapCount = config.LapCount;
                 OnPropertyChanged(nameof(AssistedLapCount));
                 
                 // Recrear la lista de parciales con los nombres guardados
-                _assistedLaps.Clear();
+                _assistedLapPanel.AssistedLaps.Clear();
                 var names = config.LapNamesList;
                 for (int i = 0; i < config.LapCount; i++)
                 {
-                    _assistedLaps.Add(new AssistedLapDefinition
+                    _assistedLapPanel.AssistedLaps.Add(new AssistedLapDefinition
                     {
                         Index = i + 1,
                         Name = i < names.Count ? names[i] : $"P{i + 1}",
@@ -4848,7 +4707,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         
         try
         {
-            var lapNames = _assistedLaps.Select(l => l.Name).ToList();
+            var lapNames = _assistedLapPanel.AssistedLaps.Select(l => l.Name).ToList();
             await _databaseService.SaveSessionLapConfigAsync(_videoClip.SessionId, AssistedLapCount, lapNames);
             System.Diagnostics.Debug.WriteLine($"Configuración de parciales guardada: {AssistedLapCount} parciales");
             
@@ -4872,10 +4731,10 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         try
         {
             var configs = await _databaseService.GetRecentLapConfigsAsync(3);
-            _recentLapConfigs.Clear();
+            _assistedLapPanel.RecentLapConfigs.Clear();
             foreach (var config in configs)
             {
-                _recentLapConfigs.Add(config);
+                _assistedLapPanel.RecentLapConfigs.Add(config);
             }
             OnPropertyChanged(nameof(HasRecentLapConfigs));
         }
@@ -4893,15 +4752,15 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         if (config == null) return;
         
         // Aplicar la configuración
-        _assistedLapCount = config.LapCount;
+        _assistedLapPanel.AssistedLapCount = config.LapCount;
         OnPropertyChanged(nameof(AssistedLapCount));
         
         // Recrear la lista de parciales con los nombres guardados
-        _assistedLaps.Clear();
+        _assistedLapPanel.AssistedLaps.Clear();
         var names = config.LapNamesList;
         for (int i = 0; i < config.LapCount; i++)
         {
-            _assistedLaps.Add(new AssistedLapDefinition
+            _assistedLapPanel.AssistedLaps.Add(new AssistedLapDefinition
             {
                 Index = i + 1,
                 Name = i < names.Count ? names[i] : $"P{i + 1}",
@@ -4910,7 +4769,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         }
         
         // Añadir el parcial final (FIN) que siempre existe
-        _assistedLaps.Add(new AssistedLapDefinition
+        _assistedLapPanel.AssistedLaps.Add(new AssistedLapDefinition
         {
             Index = config.LapCount + 1,
             Name = "Fin",
@@ -4929,72 +4788,16 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     /// </summary>
     private void RebuildSplitLapRowsWithNames()
     {
-        _splitLapMarksMs.Sort();
-        _splitLapRows.Clear();
-
-        if (!_splitStartTime.HasValue)
-        {
-            HasSplitLaps = false;
-            return;
-        }
-
-        var prev = (long)_splitStartTime.Value.TotalMilliseconds;
-        
-        // Añadir filas para los parciales intermedios
-        for (int i = 0; i < _splitLapMarksMs.Count; i++)
-        {
-            var mark = _splitLapMarksMs[i];
-            var splitMs = mark - prev;
-            if (splitMs < 0) splitMs = 0;
-            prev = mark;
-
-            // Usar el nombre del parcial asistido si existe
-            var lapName = (i < _assistedLaps.Count) ? _assistedLaps[i].DisplayName : $"Lap {i + 1}";
-
-            _splitLapRows.Add(new ExecutionTimingRow
-            {
-                Title = lapName,
-                Value = FormatMs(splitMs),
-                IsTotal = false
-            });
-        }
-        
-        // Añadir el segmento final: desde el último parcial hasta Fin
-        if (_splitEndTime.HasValue)
-        {
-            var endMs = (long)_splitEndTime.Value.TotalMilliseconds;
-            var lastSegmentMs = endMs - prev;
-            if (lastSegmentMs < 0) lastSegmentMs = 0;
-            
-            // El parcial Fin es el último en la lista _assistedLaps
-            var finLapIndex = _assistedLaps.Count - 1;
-            var finLapName = (finLapIndex >= 0 && finLapIndex < _assistedLaps.Count) 
-                ? _assistedLaps[finLapIndex].DisplayName 
-                : "Fin";
-            
-            _splitLapRows.Add(new ExecutionTimingRow
-            {
-                Title = finLapName,
-                Value = FormatMs(lastSegmentMs),
-                IsTotal = false
-            });
-        }
-
-        HasSplitLaps = _splitLapRows.Count > 0;
+        _splitTimePanel.RebuildSplitLapRowsWithNames(_assistedLapPanel.AssistedLaps);
+        HasSplitLaps = _splitTimePanel.HasSplitLaps;
     }
 
     private void CalculateSplitDuration()
     {
-        if (_splitStartTime.HasValue && _splitEndTime.HasValue)
-        {
-            var duration = _splitEndTime.Value - _splitStartTime.Value;
-            // Permitir duración negativa mostrando valor absoluto para el cálculo
-            SplitDuration = duration.TotalMilliseconds >= 0 ? duration : TimeSpan.Zero;
-        }
-        else
-        {
-            SplitDuration = null;
-        }
+        _splitTimePanel.CalculateSplitDuration();
+        OnPropertyChanged(nameof(SplitDuration));
+        OnPropertyChanged(nameof(SplitDurationText));
+        OnPropertyChanged(nameof(HasSplitDuration));
     }
 
     private async Task LoadExistingSplitAsync()
@@ -5046,9 +4849,9 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
                 if (end != null)
                     SplitEndTime = TimeSpan.FromMilliseconds(end.ElapsedMilliseconds);
 
-                _splitLapMarksMs.Clear();
+                _splitTimePanel.SplitLapMarksMs.Clear();
                 foreach (var lap in timing.Where(t => t.Kind == 1).OrderBy(t => t.ElapsedMilliseconds))
-                    _splitLapMarksMs.Add(lap.ElapsedMilliseconds);
+                    _splitTimePanel.SplitLapMarksMs.Add(lap.ElapsedMilliseconds);
 
                 FilterLapMarksToRange();
                 RebuildSplitLapRows();
@@ -5072,9 +4875,9 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         {
             var splitData = new SplitTimeData
             {
-                StartMs = (long)_splitStartTime!.Value.TotalMilliseconds,
-                EndMs = (long)_splitEndTime!.Value.TotalMilliseconds,
-                DurationMs = (long)_splitDuration!.Value.TotalMilliseconds
+                StartMs = (long)_splitTimePanel.SplitStartTime!.Value.TotalMilliseconds,
+                EndMs = (long)_splitTimePanel.SplitEndTime!.Value.TotalMilliseconds,
+                DurationMs = (long)_splitTimePanel.SplitDuration!.Value.TotalMilliseconds
             };
 
             var json = System.Text.Json.JsonSerializer.Serialize(splitData);
@@ -5107,10 +4910,10 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
                 CreatedAtUnixSeconds = DateTimeOffset.Now.ToUnixTimeSeconds(),
             });
 
-            _splitLapMarksMs.Sort();
+            _splitTimePanel.SplitLapMarksMs.Sort();
             var prev = startMs;
             var lapIndex = 0;
-            foreach (var lapMs in _splitLapMarksMs)
+            foreach (var lapMs in _splitTimePanel.SplitLapMarksMs)
             {
                 if (lapMs <= startMs || lapMs >= endMs)
                     continue;
@@ -5256,23 +5059,23 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         {
             case 2:
                 ComparisonVideo2 = null;
-                _lapSegments2 = null;
-                _currentLapIndex2 = 0;
-                _waitingAtLapBoundary2 = false;
+                _comparisonPlayer.LapSegments2 = null;
+                _comparisonPlayer.CurrentLapIndex2 = 0;
+                _comparisonPlayer.WaitingAtLapBoundary2 = false;
                 ComparisonSlotCleared?.Invoke(this, 2);
                 break;
             case 3:
                 ComparisonVideo3 = null;
-                _lapSegments3 = null;
-                _currentLapIndex3 = 0;
-                _waitingAtLapBoundary3 = false;
+                _comparisonPlayer.LapSegments3 = null;
+                _comparisonPlayer.CurrentLapIndex3 = 0;
+                _comparisonPlayer.WaitingAtLapBoundary3 = false;
                 ComparisonSlotCleared?.Invoke(this, 3);
                 break;
             case 4:
                 ComparisonVideo4 = null;
-                _lapSegments4 = null;
-                _currentLapIndex4 = 0;
-                _waitingAtLapBoundary4 = false;
+                _comparisonPlayer.LapSegments4 = null;
+                _comparisonPlayer.CurrentLapIndex4 = 0;
+                _comparisonPlayer.WaitingAtLapBoundary4 = false;
                 ComparisonSlotCleared?.Invoke(this, 4);
                 break;
         }
@@ -5343,21 +5146,21 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         {
             case 2:
                 ComparisonVideo2 = video;
-                _lapSegments2 = null;
-                _currentLapIndex2 = 0;
-                _waitingAtLapBoundary2 = false;
+                _comparisonPlayer.LapSegments2 = null;
+                _comparisonPlayer.CurrentLapIndex2 = 0;
+                _comparisonPlayer.WaitingAtLapBoundary2 = false;
                 break;
             case 3:
                 ComparisonVideo3 = video;
-                _lapSegments3 = null;
-                _currentLapIndex3 = 0;
-                _waitingAtLapBoundary3 = false;
+                _comparisonPlayer.LapSegments3 = null;
+                _comparisonPlayer.CurrentLapIndex3 = 0;
+                _comparisonPlayer.WaitingAtLapBoundary3 = false;
                 break;
             case 4:
                 ComparisonVideo4 = video;
-                _lapSegments4 = null;
-                _currentLapIndex4 = 0;
-                _waitingAtLapBoundary4 = false;
+                _comparisonPlayer.LapSegments4 = null;
+                _comparisonPlayer.CurrentLapIndex4 = 0;
+                _comparisonPlayer.WaitingAtLapBoundary4 = false;
                 break;
         }
 
@@ -5370,15 +5173,15 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         ComparisonVideo2 = null;
         ComparisonVideo3 = null;
         ComparisonVideo4 = null;
-        _lapSegments2 = null;
-        _lapSegments3 = null;
-        _lapSegments4 = null;
-        _currentLapIndex2 = 0;
-        _currentLapIndex3 = 0;
-        _currentLapIndex4 = 0;
-        _waitingAtLapBoundary2 = false;
-        _waitingAtLapBoundary3 = false;
-        _waitingAtLapBoundary4 = false;
+        _comparisonPlayer.LapSegments2 = null;
+        _comparisonPlayer.LapSegments3 = null;
+        _comparisonPlayer.LapSegments4 = null;
+        _comparisonPlayer.CurrentLapIndex2 = 0;
+        _comparisonPlayer.CurrentLapIndex3 = 0;
+        _comparisonPlayer.CurrentLapIndex4 = 0;
+        _comparisonPlayer.WaitingAtLapBoundary2 = false;
+        _comparisonPlayer.WaitingAtLapBoundary3 = false;
+        _comparisonPlayer.WaitingAtLapBoundary4 = false;
         SelectedComparisonSlot = 0;
 
         ResetLapSyncForComparisonChange();
@@ -5388,9 +5191,9 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     private void ResetLapSyncForComparisonChange()
     {
         _lapSyncInitCts?.Cancel();
-        _isProcessingLapSync = false;
-        _currentLapIndex1 = 0;
-        _waitingAtLapBoundary1 = false;
+        _comparisonPlayer.IsProcessingLapSync = false;
+        _comparisonPlayer.CurrentLapIndex1 = 0;
+        _comparisonPlayer.WaitingAtLapBoundary1 = false;
 
         if (IsComparisonLapSyncEnabled)
             _ = EnsureLapSyncSegmentsLoadedAsync();
@@ -5465,7 +5268,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             }
 
             // Determinar el número de videos a exportar según el layout
-            var videoCount = _comparisonLayout switch
+            var videoCount = _comparisonPlayer.ComparisonLayout switch
             {
                 ComparisonLayout.Horizontal2x1 or ComparisonLayout.Vertical1x2 => 2,
                 ComparisonLayout.Quad2x2 => (HasComparisonVideo3 ? 3 : 2) + (HasComparisonVideo4 ? 1 : 0),
@@ -5474,7 +5277,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
             // Crear nombre de archivo descriptivo
             var athlete1Name = _videoClip.Atleta?.NombreCompleto ?? "Atleta1";
-            var athlete2Name = _comparisonVideo2?.Atleta?.NombreCompleto ?? "Atleta2";
+            var athlete2Name = ComparisonVideo2?.Atleta?.NombreCompleto ?? "Atleta2";
             string fileName;
 
             if (videoCount <= 2)
@@ -5498,27 +5301,27 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
             // Determinar las rutas de los videos
             var video1Path = _videoClip.LocalClipPath ?? _videoClip.ClipPath ?? string.Empty;
-            var video2Path = _comparisonVideo2?.LocalClipPath ?? _comparisonVideo2?.ClipPath ?? string.Empty;
+            var video2Path = ComparisonVideo2?.LocalClipPath ?? ComparisonVideo2?.ClipPath ?? string.Empty;
 
             System.Diagnostics.Debug.WriteLine($"[Export Comparison] Video1Path: {video1Path}");
             System.Diagnostics.Debug.WriteLine($"[Export Comparison] Video2Path: {video2Path}");
 
             // Para layouts 2x1 y 1x2 usamos exportación paralela
-            if (_comparisonLayout == ComparisonLayout.Horizontal2x1 || _comparisonLayout == ComparisonLayout.Vertical1x2)
+            if (_comparisonPlayer.ComparisonLayout == ComparisonLayout.Horizontal2x1 || _comparisonPlayer.ComparisonLayout == ComparisonLayout.Vertical1x2)
             {
                 var exportParams = new ParallelVideoExportParams
                 {
                     Video1Path = video1Path,
                     Video2Path = video2Path,
                     Video1StartPosition = CurrentPosition,
-                    Video2StartPosition = _comparisonPosition2,
-                    IsHorizontalLayout = _comparisonLayout == ComparisonLayout.Horizontal2x1,
+                    Video2StartPosition = _comparisonPlayer.ComparisonPosition2,
+                    IsHorizontalLayout = _comparisonPlayer.ComparisonLayout == ComparisonLayout.Horizontal2x1,
                     Video1AthleteName = _videoClip.Atleta?.NombreCompleto,
                     Video1Category = _videoClip.Atleta?.CategoriaNombre,
                     Video1Section = _videoClip.Section,
-                    Video2AthleteName = _comparisonVideo2?.Atleta?.NombreCompleto,
-                    Video2Category = _comparisonVideo2?.Atleta?.CategoriaNombre,
-                    Video2Section = _comparisonVideo2?.Section ?? 0,
+                    Video2AthleteName = ComparisonVideo2?.Atleta?.NombreCompleto,
+                    Video2Category = ComparisonVideo2?.Atleta?.CategoriaNombre,
+                    Video2Section = ComparisonVideo2?.Section ?? 0,
                     OutputPath = outputPath
                 };
 
@@ -5530,8 +5333,8 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
                         MainThread.BeginInvokeOnMainThread(() => statusBarService.UpdateProgress(0.0, "Leyendo parciales..."));
 
                     var timing1 = await _databaseService.GetExecutionTimingEventsByVideoAsync(_videoClip.Id);
-                    var timing2 = _comparisonVideo2 != null 
-                        ? await _databaseService.GetExecutionTimingEventsByVideoAsync(_comparisonVideo2.Id)
+                    var timing2 = ComparisonVideo2 != null 
+                        ? await _databaseService.GetExecutionTimingEventsByVideoAsync(ComparisonVideo2.Id)
                         : new List<ExecutionTimingEvent>();
 
                     var end1FromEventsMs = timing1.LastOrDefault(e => e.Kind == 2)?.ElapsedMilliseconds;
@@ -5552,7 +5355,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
                         : CurrentPosition;
                     var exportStart2 = start2FromEventsMs.HasValue
                         ? TimeSpan.FromMilliseconds(start2FromEventsMs.Value)
-                        : _comparisonPosition2;
+                        : _comparisonPlayer.ComparisonPosition2;
 
                     var boundaries1 = BuildLapBoundaries(timing1, exportStart1, end1);
                     var boundaries2 = BuildLapBoundaries(timing2, exportStart2, end2);
@@ -5588,11 +5391,11 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
                 await HandleExportResultAsync(result, session, sessionPath, outputFolder, fileName, exportNotifier, statusBarService);
             }
-            else if (_comparisonLayout == ComparisonLayout.Quad2x2)
+            else if (_comparisonPlayer.ComparisonLayout == ComparisonLayout.Quad2x2)
             {
                 // Para layout cuadrícula 2x2
-                var video3Path = _comparisonVideo3?.LocalClipPath ?? _comparisonVideo3?.ClipPath;
-                var video4Path = _comparisonVideo4?.LocalClipPath ?? _comparisonVideo4?.ClipPath;
+                var video3Path = ComparisonVideo3?.LocalClipPath ?? ComparisonVideo3?.ClipPath;
+                var video4Path = ComparisonVideo4?.LocalClipPath ?? ComparisonVideo4?.ClipPath;
 
                 var exportParams = new QuadVideoExportParams
                 {
@@ -5601,21 +5404,21 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
                     Video3Path = video3Path,
                     Video4Path = video4Path,
                     Video1StartPosition = CurrentPosition,
-                    Video2StartPosition = _comparisonPosition2,
-                    Video3StartPosition = _comparisonPosition3,
-                    Video4StartPosition = _comparisonPosition4,
+                    Video2StartPosition = _comparisonPlayer.ComparisonPosition2,
+                    Video3StartPosition = _comparisonPlayer.ComparisonPosition3,
+                    Video4StartPosition = _comparisonPlayer.ComparisonPosition4,
                     Video1AthleteName = _videoClip.Atleta?.NombreCompleto,
                     Video1Category = _videoClip.Atleta?.CategoriaNombre,
                     Video1Section = _videoClip.Section,
-                    Video2AthleteName = _comparisonVideo2?.Atleta?.NombreCompleto,
-                    Video2Category = _comparisonVideo2?.Atleta?.CategoriaNombre,
-                    Video2Section = _comparisonVideo2?.Section ?? 0,
-                    Video3AthleteName = _comparisonVideo3?.Atleta?.NombreCompleto,
-                    Video3Category = _comparisonVideo3?.Atleta?.CategoriaNombre,
-                    Video3Section = _comparisonVideo3?.Section ?? 0,
-                    Video4AthleteName = _comparisonVideo4?.Atleta?.NombreCompleto,
-                    Video4Category = _comparisonVideo4?.Atleta?.CategoriaNombre,
-                    Video4Section = _comparisonVideo4?.Section ?? 0,
+                    Video2AthleteName = ComparisonVideo2?.Atleta?.NombreCompleto,
+                    Video2Category = ComparisonVideo2?.Atleta?.CategoriaNombre,
+                    Video2Section = ComparisonVideo2?.Section ?? 0,
+                    Video3AthleteName = ComparisonVideo3?.Atleta?.NombreCompleto,
+                    Video3Category = ComparisonVideo3?.Atleta?.CategoriaNombre,
+                    Video3Section = ComparisonVideo3?.Section ?? 0,
+                    Video4AthleteName = ComparisonVideo4?.Atleta?.NombreCompleto,
+                    Video4Category = ComparisonVideo4?.Atleta?.CategoriaNombre,
+                    Video4Section = ComparisonVideo4?.Section ?? 0,
                     OutputPath = outputPath
                 };
 
@@ -5627,14 +5430,14 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
                         MainThread.BeginInvokeOnMainThread(() => statusBarService.UpdateProgress(0.0, "Leyendo parciales..."));
 
                     var timing1 = await _databaseService.GetExecutionTimingEventsByVideoAsync(_videoClip.Id);
-                    var timing2 = _comparisonVideo2 != null 
-                        ? await _databaseService.GetExecutionTimingEventsByVideoAsync(_comparisonVideo2.Id)
+                    var timing2 = ComparisonVideo2 != null 
+                        ? await _databaseService.GetExecutionTimingEventsByVideoAsync(ComparisonVideo2.Id)
                         : new List<ExecutionTimingEvent>();
-                    var timing3 = _comparisonVideo3 != null 
-                        ? await _databaseService.GetExecutionTimingEventsByVideoAsync(_comparisonVideo3.Id)
+                    var timing3 = ComparisonVideo3 != null 
+                        ? await _databaseService.GetExecutionTimingEventsByVideoAsync(ComparisonVideo3.Id)
                         : new List<ExecutionTimingEvent>();
-                    var timing4 = _comparisonVideo4 != null 
-                        ? await _databaseService.GetExecutionTimingEventsByVideoAsync(_comparisonVideo4.Id)
+                    var timing4 = ComparisonVideo4 != null 
+                        ? await _databaseService.GetExecutionTimingEventsByVideoAsync(ComparisonVideo4.Id)
                         : new List<ExecutionTimingEvent>();
 
                     var end1FromEventsMs = timing1.LastOrDefault(e => e.Kind == 2)?.ElapsedMilliseconds;
@@ -5665,13 +5468,13 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
                         : CurrentPosition;
                     var exportStart2 = start2FromEventsMs.HasValue
                         ? TimeSpan.FromMilliseconds(start2FromEventsMs.Value)
-                        : _comparisonPosition2;
+                        : _comparisonPlayer.ComparisonPosition2;
                     var exportStart3 = start3FromEventsMs.HasValue
                         ? TimeSpan.FromMilliseconds(start3FromEventsMs.Value)
-                        : _comparisonPosition3;
+                        : _comparisonPlayer.ComparisonPosition3;
                     var exportStart4 = start4FromEventsMs.HasValue
                         ? TimeSpan.FromMilliseconds(start4FromEventsMs.Value)
-                        : _comparisonPosition4;
+                        : _comparisonPlayer.ComparisonPosition4;
 
                     var boundaries1 = BuildLapBoundaries(timing1, exportStart1, end1);
                     var boundaries2 = BuildLapBoundaries(timing2, exportStart2, end2);
@@ -5804,7 +5607,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
                 MainThread.BeginInvokeOnMainThread(() => statusBarService.UpdateProgress(0.95, "Guardando en biblioteca..."));
 
             // Crear VideoClip para guardar en la base de datos
-            var layoutName = _comparisonLayout switch
+            var layoutName = _comparisonPlayer.ComparisonLayout switch
             {
                 ComparisonLayout.Horizontal2x1 => "2x1",
                 ComparisonLayout.Vertical1x2 => "1x2",
@@ -5812,14 +5615,14 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
                 _ => ""
             };
 
-            var comparisonName = $"{_videoClip?.Atleta?.NombreCompleto ?? "Atleta 1"} vs {_comparisonVideo2?.Atleta?.NombreCompleto ?? "Atleta 2"}";
-            if (_comparisonLayout == ComparisonLayout.Quad2x2)
+            var comparisonName = $"{_videoClip?.Atleta?.NombreCompleto ?? "Atleta 1"} vs {ComparisonVideo2?.Atleta?.NombreCompleto ?? "Atleta 2"}";
+            if (_comparisonPlayer.ComparisonLayout == ComparisonLayout.Quad2x2)
             {
                 var names = new List<string>();
                 if (_videoClip?.Atleta != null) names.Add(_videoClip.Atleta.NombreCompleto ?? "Atleta 1");
-                if (_comparisonVideo2?.Atleta != null) names.Add(_comparisonVideo2.Atleta.NombreCompleto ?? "Atleta 2");
-                if (_comparisonVideo3?.Atleta != null) names.Add(_comparisonVideo3.Atleta.NombreCompleto ?? "Atleta 3");
-                if (_comparisonVideo4?.Atleta != null) names.Add(_comparisonVideo4.Atleta.NombreCompleto ?? "Atleta 4");
+                if (ComparisonVideo2?.Atleta != null) names.Add(ComparisonVideo2.Atleta.NombreCompleto ?? "Atleta 2");
+                if (ComparisonVideo3?.Atleta != null) names.Add(ComparisonVideo3.Atleta.NombreCompleto ?? "Atleta 3");
+                if (ComparisonVideo4?.Atleta != null) names.Add(ComparisonVideo4.Atleta.NombreCompleto ?? "Atleta 4");
                 comparisonName = string.Join(" vs ", names);
             }
 
@@ -5994,10 +5797,10 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             {
                 switch (videoIndex)
                 {
-                    case 1: _lapSegments1 = null; break;
-                    case 2: _lapSegments2 = null; break;
-                    case 3: _lapSegments3 = null; break;
-                    case 4: _lapSegments4 = null; break;
+                    case 1: _comparisonPlayer.LapSegments1 = null; break;
+                    case 2: _comparisonPlayer.LapSegments2 = null; break;
+                    case 3: _comparisonPlayer.LapSegments3 = null; break;
+                    case 4: _comparisonPlayer.LapSegments4 = null; break;
                 }
                 return;
             }
@@ -6015,10 +5818,10 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             
             switch (videoIndex)
             {
-                case 1: _lapSegments1 = segments; break;
-                case 2: _lapSegments2 = segments; break;
-                case 3: _lapSegments3 = segments; break;
-                case 4: _lapSegments4 = segments; break;
+                case 1: _comparisonPlayer.LapSegments1 = segments; break;
+                case 2: _comparisonPlayer.LapSegments2 = segments; break;
+                case 3: _comparisonPlayer.LapSegments3 = segments; break;
+                case 4: _comparisonPlayer.LapSegments4 = segments; break;
             }
 
             if (IsComparisonLapSyncEnabled)
@@ -6060,10 +5863,10 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         {
             var segments = idx switch
             {
-                1 => _lapSegments1,
-                2 => _lapSegments2,
-                3 => _lapSegments3,
-                4 => _lapSegments4,
+                1 => _comparisonPlayer.LapSegments1,
+                2 => _comparisonPlayer.LapSegments2,
+                3 => _comparisonPlayer.LapSegments3,
+                4 => _comparisonPlayer.LapSegments4,
                 _ => null
             };
 
@@ -6195,7 +5998,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             return;
 
         // Evitar re-entrada mientras estamos procesando un sync
-        if (_isProcessingLapSync)
+        if (_comparisonPlayer.IsProcessingLapSync)
             return;
 
         // Evitar disparos por seek/scrub o saltos grandes.
@@ -6211,10 +6014,10 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
         var alreadyWaiting = videoIndex switch
         {
-            1 => _waitingAtLapBoundary1,
-            2 => _waitingAtLapBoundary2,
-            3 => _waitingAtLapBoundary3,
-            4 => _waitingAtLapBoundary4,
+            1 => _comparisonPlayer.WaitingAtLapBoundary1,
+            2 => _comparisonPlayer.WaitingAtLapBoundary2,
+            3 => _comparisonPlayer.WaitingAtLapBoundary3,
+            4 => _comparisonPlayer.WaitingAtLapBoundary4,
             _ => false
         };
         if (alreadyWaiting)
@@ -6223,10 +6026,10 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         // Obtener los lap segments del video
         var segments = videoIndex switch
         {
-            1 => _lapSegments1,
-            2 => _lapSegments2,
-            3 => _lapSegments3,
-            4 => _lapSegments4,
+            1 => _comparisonPlayer.LapSegments1,
+            2 => _comparisonPlayer.LapSegments2,
+            3 => _comparisonPlayer.LapSegments3,
+            4 => _comparisonPlayer.LapSegments4,
             _ => null
         };
 
@@ -6250,24 +6053,24 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             switch (videoIndex)
             {
                 case 1:
-                    _currentLapIndex1 = currentLap.LapNumber;
-                    _waitingAtLapBoundary1 = true;
+                    _comparisonPlayer.CurrentLapIndex1 = currentLap.LapNumber;
+                    _comparisonPlayer.WaitingAtLapBoundary1 = true;
                     break;
                 case 2:
-                    _currentLapIndex2 = currentLap.LapNumber;
-                    _waitingAtLapBoundary2 = true;
+                    _comparisonPlayer.CurrentLapIndex2 = currentLap.LapNumber;
+                    _comparisonPlayer.WaitingAtLapBoundary2 = true;
                     break;
                 case 3:
-                    _currentLapIndex3 = currentLap.LapNumber;
-                    _waitingAtLapBoundary3 = true;
+                    _comparisonPlayer.CurrentLapIndex3 = currentLap.LapNumber;
+                    _comparisonPlayer.WaitingAtLapBoundary3 = true;
                     break;
                 case 4:
-                    _currentLapIndex4 = currentLap.LapNumber;
-                    _waitingAtLapBoundary4 = true;
+                    _comparisonPlayer.CurrentLapIndex4 = currentLap.LapNumber;
+                    _comparisonPlayer.WaitingAtLapBoundary4 = true;
                     break;
             }
 
-            _isProcessingLapSync = true;
+            _comparisonPlayer.IsProcessingLapSync = true;
             LapSyncPauseRequested?.Invoke(this, new LapSyncPauseRequestEventArgs(videoIndex, boundaryPosition));
 
             // Intentar reanudar todos si todos están esperando
@@ -6291,10 +6094,10 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         {
             var isWaiting = videoIndex switch
             {
-                1 => _waitingAtLapBoundary1,
-                2 => _waitingAtLapBoundary2,
-                3 => _waitingAtLapBoundary3,
-                4 => _waitingAtLapBoundary4,
+                1 => _comparisonPlayer.WaitingAtLapBoundary1,
+                2 => _comparisonPlayer.WaitingAtLapBoundary2,
+                3 => _comparisonPlayer.WaitingAtLapBoundary3,
+                4 => _comparisonPlayer.WaitingAtLapBoundary4,
                 _ => false
             };
 
@@ -6312,20 +6115,20 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             {
                 switch (videoIndex)
                 {
-                    case 1: _waitingAtLapBoundary1 = false; break;
-                    case 2: _waitingAtLapBoundary2 = false; break;
-                    case 3: _waitingAtLapBoundary3 = false; break;
-                    case 4: _waitingAtLapBoundary4 = false; break;
+                    case 1: _comparisonPlayer.WaitingAtLapBoundary1 = false; break;
+                    case 2: _comparisonPlayer.WaitingAtLapBoundary2 = false; break;
+                    case 3: _comparisonPlayer.WaitingAtLapBoundary3 = false; break;
+                    case 4: _comparisonPlayer.WaitingAtLapBoundary4 = false; break;
                 }
             }
 
-            _isProcessingLapSync = false; // Liberar el lock antes de reanudar
+            _comparisonPlayer.IsProcessingLapSync = false; // Liberar el lock antes de reanudar
             LapSyncResumeAllRequested?.Invoke(this, EventArgs.Empty);
         }
         else
         {
             // Liberar el lock después de un breve delay para permitir que otros videos lleguen
-            Task.Delay(50).ContinueWith(_ => _isProcessingLapSync = false);
+            Task.Delay(50).ContinueWith(_ => _comparisonPlayer.IsProcessingLapSync = false);
         }
     }
 
@@ -6334,7 +6137,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         if (!IsMultiVideoLayout || !IsComparisonLapSyncEnabled)
             return;
 
-        if (_isProcessingLapSync)
+        if (_comparisonPlayer.IsProcessingLapSync)
             return;
 
         if (!CanLapSyncPlayback())
@@ -6351,10 +6154,10 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         {
             var segments = videoIndex switch
             {
-                1 => _lapSegments1,
-                2 => _lapSegments2,
-                3 => _lapSegments3,
-                4 => _lapSegments4,
+                1 => _comparisonPlayer.LapSegments1,
+                2 => _comparisonPlayer.LapSegments2,
+                3 => _comparisonPlayer.LapSegments3,
+                4 => _comparisonPlayer.LapSegments4,
                 _ => null
             };
 
@@ -6370,28 +6173,28 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         }
 
         // Limpiar estados de espera
-        _waitingAtLapBoundary1 = false;
-        _waitingAtLapBoundary2 = false;
-        _waitingAtLapBoundary3 = false;
-        _waitingAtLapBoundary4 = false;
+        _comparisonPlayer.WaitingAtLapBoundary1 = false;
+        _comparisonPlayer.WaitingAtLapBoundary2 = false;
+        _comparisonPlayer.WaitingAtLapBoundary3 = false;
+        _comparisonPlayer.WaitingAtLapBoundary4 = false;
 
         // Actualizar los lap index actuales al lap 1
         foreach (var videoIndex in activeVideos)
         {
             switch (videoIndex)
             {
-                case 1: _currentLapIndex1 = 1; break;
-                case 2: _currentLapIndex2 = 1; break;
-                case 3: _currentLapIndex3 = 1; break;
-                case 4: _currentLapIndex4 = 1; break;
+                case 1: _comparisonPlayer.CurrentLapIndex1 = 1; break;
+                case 2: _comparisonPlayer.CurrentLapIndex2 = 1; break;
+                case 3: _comparisonPlayer.CurrentLapIndex3 = 1; break;
+                case 4: _comparisonPlayer.CurrentLapIndex4 = 1; break;
             }
         }
 
-        _isProcessingLapSync = true;
+        _comparisonPlayer.IsProcessingLapSync = true;
         LapSyncResyncRequested?.Invoke(this, new LapSyncResyncEventArgs(1, seekPositions));
         
         // Liberar el lock después de un breve delay
-        Task.Delay(100).ContinueWith(_ => _isProcessingLapSync = false);
+        Task.Delay(100).ContinueWith(_ => _comparisonPlayer.IsProcessingLapSync = false);
     }
 
     #endregion
