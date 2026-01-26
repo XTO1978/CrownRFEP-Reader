@@ -1,0 +1,818 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView
+    x:Class="CrownRFEP_Reader.Views.Controls.DashboardVideosPanelView"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:appcontrols="clr-namespace:CrownRFEP_Reader.Controls"
+    xmlns:behaviors="clr-namespace:CrownRFEP_Reader.Behaviors"
+    xmlns:converters="clr-namespace:CrownRFEP_Reader.Converters"
+    xmlns:controls="clr-namespace:CrownRFEP_Reader.Views.Controls"
+    xmlns:models="clr-namespace:CrownRFEP_Reader.Models"
+    xmlns:vm="clr-namespace:CrownRFEP_Reader.ViewModels"
+    x:DataType="vm:DashboardViewModel">
+
+    <ContentView.Resources>
+        <ResourceDictionary>
+            <converters:NotNullOrEmptyBoolConverter x:Key="NotNullOrEmptyBoolConverter" />
+        </ResourceDictionary>
+    </ContentView.Resources>
+
+    <!--  Panel derecho: vídeos de la sesión seleccionada  -->
+    <Grid Padding="20" RowDefinitions="Auto,Auto,*">
+
+        <!--  Header con título y botón Grabar  -->
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+            <Label
+                Grid.Column="0"
+                FontSize="{StaticResource FontSizeTitle}"
+                LineBreakMode="TailTruncation"
+                Text="{Binding SelectedSessionTitle}"
+                TextColor="White"
+                VerticalOptions="Center" />
+
+            <!--  Botón Grabar (solo iOS, solo cuando hay sesión seleccionada)  -->
+            <Border
+                Grid.Column="1"
+                Padding="12,8"
+                BackgroundColor="#FFFF3B30"
+                Stroke="Transparent"
+                StrokeShape="RoundRectangle 4"
+                IsVisible="{Binding CanShowRecordButton}">
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding RecordForSelectedSessionCommand}" />
+                </Border.GestureRecognizers>
+                <HorizontalStackLayout Spacing="6">
+                    <controls:SymbolIcon
+                        HeightRequest="{StaticResource IconSizeMedium}"
+                        SymbolName="video.fill"
+                        TintColor="White"
+                        WidthRequest="{StaticResource IconSizeMedium}"
+                        VerticalOptions="Center" />
+                    <Label
+                        Text="Grabar"
+                        TextColor="White"
+                        FontAttributes="None"
+                        FontSize="{StaticResource FontSizeBody}"
+                        VerticalOptions="Center" />
+                </HorizontalStackLayout>
+            </Border>
+        </Grid>
+
+        <HorizontalStackLayout
+            Grid.Row="1"
+            Spacing="10"
+            VerticalOptions="Center">
+            <Label
+                FontSize="{StaticResource FontSizeBody}"
+                Text="{Binding Videos.VideoCountDisplayText}"
+                TextColor="#FFCCCCCC" />
+            <ActivityIndicator
+                HeightRequest="16"
+                IsRunning="{Binding Videos.IsLoadingSelectedSessionVideos}"
+                IsVisible="{Binding Videos.IsLoadingSelectedSessionVideos}"
+                WidthRequest="16"
+                Color="White" />
+        </HorizontalStackLayout>
+
+        <CollectionView
+            x:Name="VideoGallery"
+            Grid.Row="2"
+            ItemsSource="{Binding Videos.SelectedSessionVideos}"
+            IsVisible="{Binding Videos.ShowVideoGallery}"
+            RemainingItemsThreshold="{OnPlatform MacCatalyst=50, WinUI=10, iOS=10, Default=10}"
+            RemainingItemsThresholdReachedCommand="{Binding LoadMoreVideosCommand}"
+            SelectionMode="None"
+            Margin="{StaticResource MarginTopSmall}"
+            ItemSizingStrategy="MeasureFirstItem"
+            ItemsUpdatingScrollMode="KeepScrollOffset"
+            Scrolled="OnVideoGalleryScrolledInternal">
+            <CollectionView.ItemsLayout>
+                <GridItemsLayout
+                    HorizontalItemSpacing="{StaticResource SpacingLarge}"
+                    Orientation="Vertical"
+                    Span="{Binding Videos.VideoGalleryColumnSpan}"
+                    VerticalItemSpacing="50" />
+            </CollectionView.ItemsLayout>
+
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="models:VideoClip">
+                    <Grid RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="4">
+                        <!--  Fila 0: Thumbnail con Border  -->
+                        <Border
+                            Grid.Row="0"
+                            BackgroundColor="Transparent"
+                            Stroke="Transparent"
+                            StrokeShape="RoundRectangle 10"
+                            StrokeThickness="0">
+                            <Border.Behaviors>
+                                <!-- HoverBackgroundBehavior solo activo en Windows (código protegido con #if WINDOWS) -->
+                                <behaviors:HoverBackgroundBehavior />
+                            </Border.Behaviors>
+                            <Border.GestureRecognizers>
+                                <!-- iOS: clic simple abre reproductor. MacCatalyst/Windows: doble clic -->
+                                <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type controls:DashboardVideosPanelView}}, Path=BindingContext.VideoTapCommand}" CommandParameter="{Binding .}">
+                                    <TapGestureRecognizer.NumberOfTapsRequired>
+                                        <OnPlatform x:TypeArguments="x:Int32">
+                                            <On Platform="iOS" Value="1" />
+                                            <On Platform="MacCatalyst" Value="2" />
+                                            <On Platform="WinUI" Value="2" />
+                                        </OnPlatform>
+                                    </TapGestureRecognizer.NumberOfTapsRequired>
+                                </TapGestureRecognizer>
+                                <!-- MacCatalyst/Windows: clic simple selecciona (deshabilitado en iOS con 99 taps) -->
+                                <TapGestureRecognizer Tapped="OnVideoItemSingleTappedInternal">
+                                    <TapGestureRecognizer.NumberOfTapsRequired>
+                                        <OnPlatform x:TypeArguments="x:Int32">
+                                            <On Platform="iOS" Value="99" />
+                                            <On Platform="MacCatalyst" Value="1" />
+                                            <On Platform="WinUI" Value="1" />
+                                        </OnPlatform>
+                                    </TapGestureRecognizer.NumberOfTapsRequired>
+                                </TapGestureRecognizer>
+                                <TapGestureRecognizer Buttons="Secondary" Tapped="OnVideoItemContextMenuTappedInternal">
+                                    <TapGestureRecognizer.NumberOfTapsRequired>
+                                        <OnPlatform x:TypeArguments="x:Int32">
+                                            <On Platform="iOS" Value="99" />
+                                            <On Platform="MacCatalyst,WinUI" Value="1" />
+                                        </OnPlatform>
+                                    </TapGestureRecognizer.NumberOfTapsRequired>
+                                </TapGestureRecognizer>
+                                <DragGestureRecognizer CanDrag="True" DragStarting="OnDragStartingInternal" />
+                            </Border.GestureRecognizers>
+                            <Border.Triggers>
+                                <DataTrigger TargetType="Border" Binding="{Binding IsSelected}" Value="True">
+                                    <Setter Property="Stroke" Value="#FF0066" />
+                                    <Setter Property="StrokeThickness" Value="2" />
+                                </DataTrigger>
+                            </Border.Triggers>
+
+                            <controls:AspectRatioContainer AspectRatio="1.777" MinimumHeightRequest="100">
+                                <Grid>
+                                    <!--  Behavior de long press para preview en iOS  -->
+                                    <Grid.Behaviors>
+                                        <!-- LongPressVideoPreviewBehavior solo activo en iOS (código protegido con #if IOS) -->
+                                        <behaviors:LongPressVideoPreviewBehavior />
+                                    </Grid.Behaviors>
+                                    <Image
+                                        Aspect="AspectFill"
+                                        BackgroundColor="{StaticResource Gray300}"
+                                        Source="{Binding EffectiveThumbnailPath}" />
+
+                                    <!--  Overlay de play (oculto cuando está seleccionado en multiselect)  -->
+                                    <controls:SymbolIcon
+                                        HeightRequest="{StaticResource IconSizeXXLarge}"
+                                        SymbolName="play.circle.fill"
+                                        TintColor="White"
+                                        Opacity="0.5"
+                                        VerticalOptions="Center"
+                                        WidthRequest="{StaticResource IconSizeXXLarge}">
+                                        <controls:SymbolIcon.IsVisible>
+                                            <OnPlatform x:TypeArguments="x:Boolean">
+                                                <On Platform="MacCatalyst" Value="False" />
+                                                <On Platform="Default" Value="True" />
+                                            </OnPlatform>
+                                        </controls:SymbolIcon.IsVisible>
+                                    </controls:SymbolIcon>
+
+                                    <!--  Checkmark de selección  -->
+                                    <Border
+                                        BackgroundColor="#34000000"
+                                        HeightRequest="32"
+                                        HorizontalOptions="End"
+                                        Margin="6"
+                                        StrokeShape="RoundRectangle 16"
+                                        VerticalOptions="Start"
+                                        WidthRequest="32">
+                                        <Border.IsVisible>
+                                            <MultiBinding Converter="{StaticResource AllTrueConverter}">
+                                                <Binding Path="IsSelected" />
+                                                <Binding>
+                                                    <Binding.Source>
+                                                        <OnPlatform x:TypeArguments="x:Boolean">
+                                                            <On Platform="MacCatalyst" Value="False" />
+                                                            <On Platform="Default" Value="True" />
+                                                        </OnPlatform>
+                                                    </Binding.Source>
+                                                </Binding>
+                                            </MultiBinding>
+                                        </Border.IsVisible>
+                                        <controls:SymbolIcon
+                                            HeightRequest="{StaticResource IconSizeLarge}"
+                                            HorizontalOptions="Center"
+                                            SymbolName="checkmark"
+                                            TintColor="LightGray"
+                                            VerticalOptions="Center"
+                                            WidthRequest="{StaticResource IconSizeLarge}" />
+                                    </Border>
+
+                                    <!--  Botón de menú (tres puntos)  -->
+                                    <Border
+                                        Margin="6"
+                                        HeightRequest="28"
+                                        WidthRequest="28"
+                                        HorizontalOptions="End"
+                                        VerticalOptions="End"
+                                        BackgroundColor="#66000000"
+                                        StrokeThickness="0"
+                                        StrokeShape="RoundRectangle 14">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer Tapped="OnVideoItemContextMenuTappedInternal" />
+                                        </Border.GestureRecognizers>
+                                        <controls:SymbolIcon
+                                            HeightRequest="14"
+                                            WidthRequest="14"
+                                            SymbolName="ellipsis.circle"
+                                            TintColor="White"
+                                            HorizontalOptions="Center"
+                                            VerticalOptions="Center" />
+                                    </Border>
+
+                                    <!--  Indicador de video comparativo  -->
+                                    <Border
+                                        BackgroundColor="#CC000000"
+                                        HeightRequest="28"
+                                        HorizontalOptions="Start"
+                                        Margin="6"
+                                        Padding="6,4"
+                                        StrokeShape="RoundRectangle 4"
+                                        StrokeThickness="0"
+                                        VerticalOptions="Start">
+                                        <Border.IsVisible>
+                                            <MultiBinding Converter="{StaticResource AllTrueConverter}">
+                                                <Binding Path="IsComparisonVideo" />
+                                                <Binding>
+                                                    <Binding.Source>
+                                                        <OnPlatform x:TypeArguments="x:Boolean">
+                                                            <On Platform="MacCatalyst" Value="False" />
+                                                            <On Platform="Default" Value="True" />
+                                                        </OnPlatform>
+                                                    </Binding.Source>
+                                                </Binding>
+                                            </MultiBinding>
+                                        </Border.IsVisible>
+                                        <HorizontalStackLayout Spacing="4">
+                                            <controls:SymbolIcon
+                                                HeightRequest="{StaticResource IconSizeMedium}"
+                                                SymbolName="rectangle.on.rectangle"
+                                                TintColor="#FF0066"
+                                                VerticalOptions="Center"
+                                                WidthRequest="{StaticResource IconSizeMedium}" />
+                                            <Label
+                                                FontSize="{StaticResource FontSizeCaption}"
+                                                Text="VS"
+                                                TextColor="#FF0066"
+                                                VerticalOptions="Center"
+                                                FontAttributes="None" />
+                                        </HorizontalStackLayout>
+                                    </Border>
+
+                                    <!--  Indicador de tiempo/split  -->
+                                    <Border
+                                        BackgroundColor="#CC000000"
+                                        HeightRequest="28"
+                                        HorizontalOptions="Start"
+                                        Margin="6"
+                                        Padding="6,4"
+                                        StrokeShape="RoundRectangle 4"
+                                        StrokeThickness="0"
+                                        VerticalOptions="End">
+                                        <Border.IsVisible>
+                                            <MultiBinding Converter="{StaticResource AllTrueConverter}">
+                                                <Binding Path="HasTiming" />
+                                                <Binding>
+                                                    <Binding.Source>
+                                                        <OnPlatform x:TypeArguments="x:Boolean">
+                                                            <On Platform="MacCatalyst" Value="False" />
+                                                            <On Platform="Default" Value="True" />
+                                                        </OnPlatform>
+                                                    </Binding.Source>
+                                                </Binding>
+                                            </MultiBinding>
+                                        </Border.IsVisible>
+                                        <controls:SymbolIcon
+                                            HeightRequest="{StaticResource IconSizeMedium}"
+                                            SymbolName="timer"
+                                            TintColor="White"
+                                            VerticalOptions="Center"
+                                            WidthRequest="{StaticResource IconSizeMedium}" />
+                                    </Border>
+
+                                    <!--  Indicador de favorito  -->
+                                    <Border
+                                        BackgroundColor="#CC000000"
+                                        HeightRequest="26"
+                                        HorizontalOptions="Start"
+                                        Margin="6,34,0,0"
+                                        Padding="6,2"
+                                        StrokeShape="RoundRectangle 4"
+                                        StrokeThickness="0"
+                                        VerticalOptions="Start"
+                                        IsVisible="{Binding IsFavorite, Converter={StaticResource IntToBoolConverter}}">
+                                        <controls:SymbolIcon
+                                            HeightRequest="{StaticResource IconSizeMedium}"
+                                            WidthRequest="{StaticResource IconSizeMedium}"
+                                            SymbolName="star.fill"
+                                            TintColor="#FFFFAB40"
+                                            VerticalOptions="Center" />
+                                    </Border>
+
+                                    <!--  Indicador de sincronización cloud  -->
+                                    <Border
+                                        BackgroundColor="{Binding SyncStatusColor}"
+                                        HeightRequest="24"
+                                        HorizontalOptions="End"
+                                        Margin="6"
+                                        Padding="6,2"
+                                        StrokeShape="RoundRectangle 12"
+                                        StrokeThickness="0"
+                                        VerticalOptions="Start">
+                                        <controls:SymbolIcon
+                                            HeightRequest="12"
+                                            WidthRequest="12"
+                                            SymbolName="{Binding SyncStatusIcon}"
+                                            TintColor="White"
+                                            VerticalOptions="Center"
+                                            HorizontalOptions="Center" />
+                                    </Border>
+                                </Grid>
+                            </controls:AspectRatioContainer>
+                        </Border>
+
+                        <!--  Fila 1: Nombre del atleta  -->
+                        <Label
+                            Grid.Row="1"
+                            FontSize="{StaticResource FontSizeSubtitle}"
+                            FontAttributes="Bold"
+                            HorizontalTextAlignment="Center"
+                            LineBreakMode="TailTruncation"
+                            Text="{Binding DisplayLine1}"
+                            TextColor="White" />
+
+                        <!--  Fila 2: Lugar, fecha y hora  -->
+                        <Label
+                            Grid.Row="2"
+                            FontSize="{StaticResource FontSizeBody}"
+                            HorizontalTextAlignment="Center"
+                            LineBreakMode="TailTruncation"
+                            Text="{Binding DisplayLine2}"
+                            TextColor="White" />
+
+                        <!--  Fila 3: Etiquetas  -->
+                        <HorizontalStackLayout
+                            Grid.Row="3"
+                            HorizontalOptions="Center"
+                            Spacing="4"
+                            IsVisible="{Binding HasTagsSummary}">
+                            <controls:SymbolIcon
+                                HeightRequest="{StaticResource IconSizeSmall}"
+                                SymbolName="tag.fill"
+                                TintColor="White"
+                                VerticalOptions="Center"
+                                WidthRequest="{StaticResource IconSizeSmall}" />
+                            <Label
+                                FontSize="{StaticResource FontSizeSmall}"
+                                LineBreakMode="TailTruncation"
+                                Text="{Binding TagsSummary}"
+                                TextColor="White"
+                                VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                    </Grid>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+
+            <CollectionView.EmptyView>
+                <VerticalStackLayout
+                    Padding="40"
+                    HorizontalOptions="Center"
+                    VerticalOptions="Center">
+                    <Label
+                        FontSize="{StaticResource FontSizeTitle}"
+                        HorizontalOptions="Center"
+                        Text="Selecciona una sesión"
+                        TextColor="Gray" />
+                </VerticalStackLayout>
+            </CollectionView.EmptyView>
+
+            <CollectionView.Footer>
+                <VerticalStackLayout
+                    Padding="20"
+                    HorizontalOptions="Center"
+                    IsVisible="{Binding Videos.HasMoreVideos}">
+                    <ActivityIndicator
+                        HeightRequest="24"
+                        IsRunning="{Binding Videos.IsLoadingMore}"
+                        IsVisible="{Binding Videos.IsLoadingMore}"
+                        WidthRequest="24"
+                        Color="{StaticResource Primary}" />
+                    <Label
+                        FontSize="{StaticResource FontSizeSmall}"
+                        HorizontalOptions="Center"
+                        IsVisible="{Binding Videos.HasMoreVideos}"
+                        Text="Desplázate para cargar más..."
+                        TextColor="Gray" />
+                </VerticalStackLayout>
+            </CollectionView.Footer>
+        </CollectionView>
+
+        <!--  Galería de videos remotos (Wasabi)  -->
+        <CollectionView
+            x:Name="RemoteVideoGallery"
+            Grid.Row="2"
+            ItemsSource="{Binding Remote.RemoteGalleryItems}"
+            IsVisible="{Binding Remote.ShowRemoteGallery}"
+            SelectionMode="None"
+            Margin="{StaticResource MarginTopSmall}"
+            ItemSizingStrategy="MeasureFirstItem">
+            <CollectionView.ItemsLayout>
+                <GridItemsLayout
+                    HorizontalItemSpacing="{StaticResource SpacingLarge}"
+                    Orientation="Vertical"
+                    Span="{Binding Videos.VideoGalleryColumnSpan}"
+                    VerticalItemSpacing="50" />
+            </CollectionView.ItemsLayout>
+
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="models:RemoteVideoItem">
+                    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="4">
+                        <!--  Fila 0: Thumbnail con Border  -->
+                        <Border
+                            Grid.Row="0"
+                            BackgroundColor="#FF2A2A2A"
+                            Stroke="Transparent"
+                            StrokeShape="RoundRectangle 10"
+                            StrokeThickness="0">
+                            <Border.Triggers>
+                                <DataTrigger TargetType="Border" Binding="{Binding IsSelected}" Value="True">
+                                    <Setter Property="Stroke" Value="#FF0066" />
+                                    <Setter Property="StrokeThickness" Value="3" />
+                                </DataTrigger>
+                            </Border.Triggers>
+                            <Border.GestureRecognizers>
+                                <!--  Tap simple: seleccionar si está en modo multi-select  -->
+                                <TapGestureRecognizer
+                                    Command="{Binding Source={RelativeSource AncestorType={x:Type controls:DashboardVideosPanelView}}, Path=BindingContext.Remote.ToggleRemoteVideoSelectionCommand}"
+                                    CommandParameter="{Binding .}"
+                                    NumberOfTapsRequired="1" />
+                                <!--  Doble clic: reproducir en streaming  -->
+                                <TapGestureRecognizer
+                                    Command="{Binding Source={RelativeSource AncestorType={x:Type controls:DashboardVideosPanelView}}, Path=BindingContext.Remote.PlayRemoteVideoCommand}"
+                                    CommandParameter="{Binding .}"
+                                    NumberOfTapsRequired="2" />
+                                <!--  Clic derecho: menú contextual  -->
+                                <TapGestureRecognizer
+                                    Buttons="Secondary"
+                                    Tapped="OnRemoteVideoContextMenuInternal"
+                                    NumberOfTapsRequired="1" />
+                            </Border.GestureRecognizers>
+                            <controls:AspectRatioContainer AspectRatio="1.777">
+                                <Grid>
+                                    <!--  Placeholder con icono de cloud  -->
+                                    <Border BackgroundColor="#FF333333" StrokeThickness="0">
+                                        <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="8">
+                                            <controls:SymbolIcon
+                                                HeightRequest="48"
+                                                WidthRequest="48"
+                                                SymbolName="{Binding StatusIcon}"
+                                                TintColor="{Binding StatusColor}"
+                                                HorizontalOptions="Center" />
+                                            <Label
+                                                FontSize="{StaticResource FontSizeCaption}"
+                                                Text="{Binding SizeFormatted}"
+                                                TextColor="#888888"
+                                                HorizontalOptions="Center" />
+                                        </VerticalStackLayout>
+                                    </Border>
+
+                                    <!--  Thumbnail remota/local si existe  -->
+                                    <Image
+                                        Aspect="AspectFill"
+                                        Source="{Binding EffectiveThumbnailSource}"
+                                        IsVisible="{Binding EffectiveThumbnailSource, Converter={StaticResource NotNullOrEmptyBoolConverter}}" />
+
+                                    <!--  Indicador de descarga  -->
+                                    <Border
+                                        BackgroundColor="#80000000"
+                                        IsVisible="{Binding IsDownloading}">
+                                        <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="8">
+                                            <ActivityIndicator
+                                                Color="#FF0066"
+                                                IsRunning="{Binding IsDownloading}"
+                                                HeightRequest="32"
+                                                WidthRequest="32" />
+                                            <ProgressBar
+                                                Progress="{Binding DownloadProgress}"
+                                                ProgressColor="#FF0066"
+                                                WidthRequest="100" />
+                                        </VerticalStackLayout>
+                                    </Border>
+
+                                    <!--  Badge de estado  -->
+                                    <Border
+                                        Margin="8"
+                                        BackgroundColor="{Binding StatusColor}"
+                                        HorizontalOptions="End"
+                                        Padding="6,2"
+                                        StrokeShape="RoundRectangle 12"
+                                        StrokeThickness="0"
+                                        VerticalOptions="Start">
+                                        <HorizontalStackLayout Spacing="4">
+                                            <controls:SymbolIcon
+                                                HeightRequest="12"
+                                                WidthRequest="12"
+                                                SymbolName="{Binding StatusIcon}"
+                                                TintColor="White" />
+                                        </HorizontalStackLayout>
+                                    </Border>
+
+                                    <!--  Checkbox de selección (visible en modo multi-select)  -->
+                                    <Border
+                                        Margin="8"
+                                        HeightRequest="28"
+                                        WidthRequest="28"
+                                        HorizontalOptions="Start"
+                                        VerticalOptions="Start"
+                                        StrokeShape="RoundRectangle 14"
+                                        StrokeThickness="2"
+                                        Stroke="White"
+                                        BackgroundColor="#80000000"
+                                        IsVisible="{Binding Source={RelativeSource AncestorType={x:Type controls:DashboardVideosPanelView}}, Path=BindingContext.Remote.IsRemoteMultiSelectMode}">
+                                        <Border.Triggers>
+                                            <DataTrigger TargetType="Border" Binding="{Binding IsSelected}" Value="True">
+                                                <Setter Property="BackgroundColor" Value="#FF0066" />
+                                                <Setter Property="Stroke" Value="#FF0066" />
+                                            </DataTrigger>
+                                        </Border.Triggers>
+                                        <controls:SymbolIcon
+                                            HeightRequest="16"
+                                            WidthRequest="16"
+                                            SymbolName="checkmark"
+                                            TintColor="White"
+                                            HorizontalOptions="Center"
+                                            VerticalOptions="Center"
+                                            IsVisible="{Binding IsSelected}" />
+                                    </Border>
+
+                                    <!--  Botón de menú (tres puntos)  -->
+                                    <Border
+                                        Margin="8"
+                                        HeightRequest="28"
+                                        WidthRequest="28"
+                                        HorizontalOptions="End"
+                                        VerticalOptions="End"
+                                        BackgroundColor="#66000000"
+                                        StrokeThickness="0"
+                                        StrokeShape="RoundRectangle 14">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer Tapped="OnRemoteVideoContextMenuInternal" />
+                                        </Border.GestureRecognizers>
+                                        <controls:SymbolIcon
+                                            HeightRequest="14"
+                                            WidthRequest="14"
+                                            SymbolName="ellipsis.circle"
+                                            TintColor="White"
+                                            HorizontalOptions="Center"
+                                            VerticalOptions="Center" />
+                                    </Border>
+                                </Grid>
+                            </controls:AspectRatioContainer>
+                        </Border>
+
+                        <!--  Fila 1: Nombre del video  -->
+                        <Label
+                            Grid.Row="1"
+                            FontSize="{StaticResource FontSizeSubtitle}"
+                            FontAttributes="Bold"
+                            HorizontalTextAlignment="Center"
+                            LineBreakMode="TailTruncation"
+                            Text="{Binding FileName}"
+                            TextColor="White" />
+                        <!--  Fila 2: Sesión y tamaño  -->
+                        <Label
+                            Grid.Row="2"
+                            FontSize="{StaticResource FontSizeBody}"
+                            HorizontalTextAlignment="Center"
+                            LineBreakMode="TailTruncation"
+                            Text="{Binding SessionName}"
+                            TextColor="#AAAAAA" />
+
+                        <!--  Fila 3: Fecha  -->
+                        <Label
+                            Grid.Row="3"
+                            FontSize="{StaticResource FontSizeSmall}"
+                            HorizontalTextAlignment="Center"
+                            Text="{Binding LastModified, StringFormat='{0:dd/MM/yyyy HH:mm}'}"
+                            TextColor="#888888" />
+
+                        <!--  Fila 4: Etiquetas  -->
+                        <HorizontalStackLayout
+                            Grid.Row="4"
+                            HorizontalOptions="Center"
+                            Spacing="4"
+                            IsVisible="{Binding HasTagsSummary}">
+                            <controls:SymbolIcon
+                                HeightRequest="{StaticResource IconSizeSmall}"
+                                SymbolName="tag.fill"
+                                TintColor="White"
+                                VerticalOptions="Center"
+                                WidthRequest="{StaticResource IconSizeSmall}" />
+                            <Label
+                                FontSize="{StaticResource FontSizeSmall}"
+                                LineBreakMode="TailTruncation"
+                                Text="{Binding TagsSummary}"
+                                TextColor="White"
+                                VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                    </Grid>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+
+            <CollectionView.EmptyView>
+                <VerticalStackLayout
+                    Padding="40"
+                    HorizontalOptions="Center"
+                    VerticalOptions="Center">
+                    <controls:SymbolIcon
+                        HeightRequest="64"
+                        WidthRequest="64"
+                        SymbolName="icloud"
+                        TintColor="Gray"
+                        HorizontalOptions="Center"
+                        Margin="0,0,0,16" />
+                    <Label
+                        FontSize="{StaticResource FontSizeTitle}"
+                        HorizontalOptions="Center"
+                        Text="No hay videos en la nube"
+                        TextColor="Gray" />
+                    <Label
+                        FontSize="{StaticResource FontSizeBody}"
+                        HorizontalOptions="Center"
+                        Text="Sincroniza tus videos para verlos aquí"
+                        TextColor="#666666"
+                        Margin="0,8,0,0" />
+                </VerticalStackLayout>
+            </CollectionView.EmptyView>
+
+            <!--  Indicador de carga  -->
+            <CollectionView.Header>
+                <ActivityIndicator
+                    HeightRequest="32"
+                    WidthRequest="32"
+                    IsRunning="{Binding Remote.IsLoadingRemoteVideos}"
+                    IsVisible="{Binding Remote.IsLoadingRemoteVideos}"
+                    Color="#FF0066"
+                    HorizontalOptions="Center"
+                    Margin="0,20,0,0" />
+            </CollectionView.Header>
+        </CollectionView>
+
+        <CollectionView
+            x:Name="VideoLessonsGallery"
+            Grid.Row="2"
+            ItemsSource="{Binding Videos.VideoLessons}"
+            IsVisible="{Binding Layout.IsVideoLessonsSelected}"
+            SelectionMode="None"
+            Margin="{StaticResource MarginTopSmall}">
+            <CollectionView.ItemsLayout>
+                <GridItemsLayout
+                    HorizontalItemSpacing="{StaticResource SpacingXSmall}"
+                    Orientation="Vertical"
+                    Span="{Binding Videos.VideoGalleryColumnSpan}"
+                    VerticalItemSpacing="{StaticResource SpacingSmall}" />
+            </CollectionView.ItemsLayout>
+
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="models:VideoLesson">
+                    <Border
+                        BackgroundColor="Transparent"
+                        Stroke="Transparent"
+                        StrokeShape="RoundRectangle 4"
+                        StrokeThickness="0">
+                        <Border.Behaviors>
+                            <behaviors:HoverBackgroundBehavior />
+                        </Border.Behaviors>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer
+                                Command="{Binding Source={RelativeSource AncestorType={x:Type controls:DashboardVideosPanelView}}, Path=BindingContext.VideoLessonTapCommand}"
+                                CommandParameter="{Binding .}" />
+                        </Border.GestureRecognizers>
+
+                        <Grid RowDefinitions="Auto,Auto">
+                            <!--  Thumbnail con aspect ratio 16:9  -->
+                            <controls:AspectRatioContainer AspectRatio="1.777">
+                                <Grid>
+                                    <Image
+                                        Aspect="AspectFill"
+                                        BackgroundColor="{StaticResource Gray300}"
+                                        Source="{Binding EffectiveThumbnailPath}" />
+
+                                    <!--  Overlay de play  -->
+                                    <controls:SymbolIcon
+                                        HeightRequest="{StaticResource IconSizeXXLarge}"
+                                        SymbolName="play.circle.fill"
+                                        TintColor="Black"
+                                        Opacity="0.5"
+                                        VerticalOptions="Center"
+                                        WidthRequest="{StaticResource IconSizeXXLarge}" />
+                                </Grid>
+                            </controls:AspectRatioContainer>
+
+                            <!--  Footer con info y acciones  -->
+                            <Grid
+                                Grid.Row="1"
+                                Padding="8"
+                                ColumnDefinitions="*,Auto">
+                                <VerticalStackLayout Grid.Column="0" Spacing="2">
+                                    <Label
+                                        FontSize="{StaticResource FontSizeSmall}"
+                                        LineBreakMode="TailTruncation"
+                                        Text="{Binding DisplayTitle}"
+                                        TextColor="White" />
+                                    <Label
+                                        FontSize="{StaticResource FontSizeSmall}"
+                                        LineBreakMode="TailTruncation"
+                                        Text="{Binding SessionDisplayName}"
+                                        TextColor="#FFCCCCCC" />
+                                    <Label
+                                        FontSize="{StaticResource FontSizeSmall}"
+                                        Text="{Binding CreatedAtUtc, StringFormat='{0:dd/MM/yyyy HH:mm}'}"
+                                        TextColor="#FFCCCCCC" />
+                                </VerticalStackLayout>
+
+                                <!--  Botones de acción  -->
+                                <HorizontalStackLayout Grid.Column="1" Spacing="4" VerticalOptions="Center">
+                                    <Border
+                                        WidthRequest="{StaticResource ElementHeightMedium}"
+                                        HeightRequest="{StaticResource ElementHeightMedium}"
+                                        Padding="{StaticResource PaddingXSmall}"
+                                        BackgroundColor="#FF3A3A3A"
+                                        StrokeShape="RoundRectangle 14"
+                                        StrokeThickness="0">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type controls:DashboardVideosPanelView}}, Path=BindingContext.ShareVideoLessonCommand}"
+                                                CommandParameter="{Binding .}" />
+                                        </Border.GestureRecognizers>
+                                        <controls:SymbolIcon
+                                            WidthRequest="{StaticResource IconSizeSmall}"
+                                            HeightRequest="{StaticResource IconSizeSmall}"
+                                            SymbolName="square.and.arrow.up"
+                                            TintColor="White"
+                                            HorizontalOptions="Center"
+                                            VerticalOptions="Center" />
+                                    </Border>
+                                    <Border
+                                        WidthRequest="{StaticResource ElementHeightMedium}"
+                                        HeightRequest="{StaticResource ElementHeightMedium}"
+                                        Padding="{StaticResource PaddingXSmall}"
+                                        BackgroundColor="#FF3A3A3A"
+                                        StrokeShape="RoundRectangle 14"
+                                        StrokeThickness="0">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type controls:DashboardVideosPanelView}}, Path=BindingContext.DeleteVideoLessonCommand}"
+                                                CommandParameter="{Binding .}" />
+                                        </Border.GestureRecognizers>
+                                        <controls:SymbolIcon
+                                            WidthRequest="{StaticResource IconSizeSmall}"
+                                            HeightRequest="{StaticResource IconSizeSmall}"
+                                            SymbolName="trash"
+                                            TintColor="#FFFF6B6B"
+                                            HorizontalOptions="Center"
+                                            VerticalOptions="Center" />
+                                    </Border>
+                                </HorizontalStackLayout>
+                            </Grid>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+
+            <CollectionView.EmptyView>
+                <VerticalStackLayout
+                    Padding="40"
+                    HorizontalOptions="Center"
+                    VerticalOptions="Center">
+                    <Label
+                        FontSize="{StaticResource FontSizeTitle}"
+                        HorizontalOptions="Center"
+                        Text="No hay videolecciones"
+                        TextColor="Gray" />
+                </VerticalStackLayout>
+            </CollectionView.EmptyView>
+        </CollectionView>
+
+        <!--  Vista Diario: Calendario  -->
+        <controls:CalendarView
+            Grid.Row="2"
+            Margin="0,10,0,0"
+            IsVisible="{Binding Layout.IsDiaryViewSelected}"
+            SelectedDate="{Binding Diary.SelectedDiaryDate}"
+            DateSelectedCommand="{Binding Diary.SelectDiaryDateCommand}"
+            DiaryEntries="{Binding Diary.DiaryEntriesForMonth}"
+            Sessions="{Binding Diary.SessionsForMonth}"
+            WellnessData="{Binding Diary.WellnessDataForMonth}"
+            AverageWellnessScore="{Binding Diary.AverageWellnessScore}"
+            HorizontalOptions="Fill"
+            VerticalOptions="Fill" />
+    </Grid>
+</ContentView>

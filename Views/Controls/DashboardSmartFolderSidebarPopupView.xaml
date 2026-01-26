@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView
+    x:Class="CrownRFEP_Reader.Views.Controls.DashboardSmartFolderSidebarPopupView"
+    x:Name="ThisPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:converters="clr-namespace:CrownRFEP_Reader.Converters"
+    xmlns:controls="clr-namespace:CrownRFEP_Reader.Views.Controls"
+    xmlns:models="clr-namespace:CrownRFEP_Reader.Models"
+    xmlns:vm="clr-namespace:CrownRFEP_Reader.ViewModels"
+    x:DataType="vm:DashboardViewModel"
+    IsVisible="{Binding Layout.ShowSmartFolderSidebarPopup, FallbackValue=False, TargetNullValue=False}">
+
+    <ContentView.Resources>
+        <ResourceDictionary>
+            <converters:BoolToColorConverter x:Key="BoolToColorConverter" />
+            <converters:BoolToFontAttributesConverter x:Key="BoolToFontAttributesConverter" />
+        </ResourceDictionary>
+    </ContentView.Resources>
+
+    <!--  Popup de carpeta inteligente  -->
+    <Grid BackgroundColor="#CC000000">
+        <Border
+            Padding="24"
+            BackgroundColor="#FF1E1E1E"
+            HorizontalOptions="Center"
+            Stroke="#FF3A3A3A"
+            StrokeShape="RoundRectangle 12"
+            StrokeThickness="1"
+            VerticalOptions="Center"
+            WidthRequest="520">
+            <VerticalStackLayout Spacing="16">
+                <!--  Título  -->
+                <Grid ColumnDefinitions="*,Auto">
+                    <VerticalStackLayout Grid.Column="0">
+                        <Label
+                            FontAttributes="None"
+                            FontSize="{StaticResource FontSizeTitle}"
+                            Text="Carpeta inteligente"
+                            TextColor="White" />
+                        <Label
+                            FontSize="{StaticResource FontSizeSmall}"
+                            Text="Define criterios para agrupar vídeos automáticamente"
+                            TextColor="#FF888888" />
+                    </VerticalStackLayout>
+                    <Border
+                        Grid.Column="1"
+                        Padding="4"
+                        BackgroundColor="Transparent"
+                        Stroke="Transparent"
+                        StrokeShape="RoundRectangle 4">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding SmartFolders.CancelSmartFolderSidebarPopupCommand}" />
+                        </Border.GestureRecognizers>
+                        <controls:SymbolIcon
+                            HeightRequest="{StaticResource IconSizeLarge}"
+                            SymbolName="xmark"
+                            TintColor="#FF888888"
+                            WidthRequest="{StaticResource IconSizeLarge}" />
+                    </Border>
+                </Grid>
+
+                <!--  Nombre  -->
+                <VerticalStackLayout Spacing="4">
+                    <Label
+                        FontSize="{StaticResource FontSizeSmall}"
+                        Text="Nombre"
+                        TextColor="#FFCCCCCC" />
+                    <Entry
+                        Placeholder="Ej: Técnica - tags"
+                        PlaceholderColor="#FF666666"
+                        Text="{Binding SmartFolders.NewSmartFolderName}"
+                        TextColor="White"
+                        BackgroundColor="#FF404040" />
+                </VerticalStackLayout>
+
+                <!--  Match mode: AND/OR  -->
+                <VerticalStackLayout Spacing="8">
+                    <Label
+                        FontSize="{StaticResource FontSizeSmall}"
+                        Text="Condiciones"
+                        TextColor="#FFCCCCCC" />
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                        <Border
+                            Grid.Column="0"
+                            Padding="12,8"
+                            StrokeShape="RoundRectangle 6"
+                            StrokeThickness="0"
+                            BackgroundColor="{Binding SmartFolders.IsSmartFolderMatchAll, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF0066|#FF2A2A2A}">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding SmartFolders.SetSmartFolderMatchModeCommand}" CommandParameter="All" />
+                            </Border.GestureRecognizers>
+                            <Label
+                                FontSize="{StaticResource FontSizeSmall}"
+                                Text="Y (AND)"
+                                TextColor="{Binding SmartFolders.IsSmartFolderMatchAll, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF121212|#FFB1B1B1}"
+                                FontAttributes="{Binding SmartFolders.IsSmartFolderMatchAll, Converter={StaticResource BoolToFontAttributesConverter}}"
+                                HorizontalOptions="Center"
+                                VerticalOptions="Center" />
+                        </Border>
+                        <Border
+                            Grid.Column="1"
+                            Padding="12,8"
+                            StrokeShape="RoundRectangle 6"
+                            StrokeThickness="0"
+                            BackgroundColor="{Binding SmartFolders.IsSmartFolderMatchAny, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF0066|#FF2A2A2A}">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding SmartFolders.SetSmartFolderMatchModeCommand}" CommandParameter="Any" />
+                            </Border.GestureRecognizers>
+                            <Label
+                                FontSize="{StaticResource FontSizeSmall}"
+                                Text="O (OR)"
+                                TextColor="{Binding SmartFolders.IsSmartFolderMatchAny, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF121212|#FFB1B1B1}"
+                                FontAttributes="{Binding SmartFolders.IsSmartFolderMatchAny, Converter={StaticResource BoolToFontAttributesConverter}}"
+                                HorizontalOptions="Center"
+                                VerticalOptions="Center" />
+                        </Border>
+                    </Grid>
+                </VerticalStackLayout>
+
+                <!--  Lista de criterios  -->
+                <VerticalStackLayout Spacing="8">
+                    <CollectionView
+                        ItemsSource="{Binding SmartFolders.NewSmartFolderCriteria}"
+                        SelectionMode="None">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="models:SmartFolderCriterion">
+                                <Grid ColumnDefinitions="*,*,*,Auto" ColumnSpacing="8" RowDefinitions="Auto,Auto" Margin="0,0,0,8">
+                                    <Border
+                                        Grid.Row="0"
+                                        Grid.Column="0"
+                                        Padding="12,8"
+                                        BackgroundColor="#FF404040"
+                                        Stroke="#FF3A3A3A"
+                                        StrokeShape="RoundRectangle 4"
+                                        HeightRequest="44">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer
+                                                Command="{Binding BindingContext.SmartFolders.SelectCriterionFieldCommand, Source={x:Reference ThisPage}}"
+                                                CommandParameter="{Binding .}" />
+                                        </Border.GestureRecognizers>
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <Label
+                                                Grid.Column="0"
+                                                Text="{Binding Field}"
+                                                TextColor="White"
+                                                VerticalOptions="Center" />
+                                            <Label
+                                                Grid.Column="1"
+                                                Text="▼"
+                                                TextColor="#FF888888"
+                                                VerticalOptions="Center" />
+                                        </Grid>
+                                    </Border>
+                                    <Border
+                                        Grid.Row="0"
+                                        Grid.Column="1"
+                                        Padding="12,8"
+                                        BackgroundColor="#FF404040"
+                                        Stroke="#FF3A3A3A"
+                                        StrokeShape="RoundRectangle 4"
+                                        HeightRequest="44">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer
+                                                Command="{Binding BindingContext.SmartFolders.SelectCriterionOperatorCommand, Source={x:Reference ThisPage}}"
+                                                CommandParameter="{Binding .}" />
+                                        </Border.GestureRecognizers>
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <Label
+                                                Grid.Column="0"
+                                                Text="{Binding Operator}"
+                                                TextColor="White"
+                                                VerticalOptions="Center" />
+                                            <Label
+                                                Grid.Column="1"
+                                                Text="▼"
+                                                TextColor="#FF888888"
+                                                VerticalOptions="Center" />
+                                        </Grid>
+                                    </Border>
+                                    <Entry
+                                        Grid.Row="0"
+                                        Grid.Column="2"
+                                        Placeholder="Valor"
+                                        PlaceholderColor="#FF666666"
+                                        Text="{Binding Value}"
+                                        TextColor="White"
+                                        BackgroundColor="#FF404040" />
+                                    <Border
+                                        Grid.Row="0"
+                                        Grid.Column="3"
+                                        Padding="4"
+                                        BackgroundColor="Transparent"
+                                        Stroke="Transparent"
+                                        StrokeShape="RoundRectangle 4"
+                                        VerticalOptions="Center">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer
+                                                Command="{Binding BindingContext.SmartFolders.RemoveSmartFolderCriterionCommand, Source={x:Reference ThisPage}}"
+                                                CommandParameter="{Binding .}" />
+                                        </Border.GestureRecognizers>
+                                        <controls:SymbolIcon
+                                            HeightRequest="{StaticResource IconSizeLarge}"
+                                            SymbolName="trash"
+                                            TintColor="#FF888888"
+                                            WidthRequest="{StaticResource IconSizeLarge}" />
+                                    </Border>
+
+                                    <Entry
+                                        Grid.Row="1"
+                                        Grid.Column="2"
+                                        IsVisible="{Binding ShowSecondValue}"
+                                        Placeholder="Segundo valor (fecha)"
+                                        PlaceholderColor="#FF666666"
+                                        Text="{Binding Value2}"
+                                        TextColor="White"
+                                        BackgroundColor="#FF404040" />
+                                </Grid>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+
+                    <Button
+                        Text="Añadir condición"
+                        BackgroundColor="#FF404040"
+                        TextColor="#FFCCCCCC"
+                        CornerRadius="8"
+                        HeightRequest="{StaticResource ElementHeightLarge}"
+                        Command="{Binding SmartFolders.AddSmartFolderCriterionCommand}" />
+
+                    <Label
+                        FontSize="{StaticResource FontSizeSmall}"
+                        TextColor="#FF888888"
+                        Text="{Binding SmartFolders.NewSmartFolderLiveMatchCount, StringFormat='Coinciden: {0}'}" />
+                </VerticalStackLayout>
+
+                <!--  Botones  -->
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="12" Margin="0,8,0,0">
+                    <Button
+                        Grid.Column="0"
+                        Text="Cancelar"
+                        BackgroundColor="#FF404040"
+                        TextColor="#FFCCCCCC"
+                        CornerRadius="8"
+                        HeightRequest="{StaticResource ElementHeightLarge}"
+                        Command="{Binding SmartFolders.CancelSmartFolderSidebarPopupCommand}" />
+                    <Button
+                        Grid.Column="1"
+                        Text="Crear"
+                        BackgroundColor="#FF0066"
+                        TextColor="#FF121212"
+                        FontAttributes="None"
+                        CornerRadius="8"
+                        HeightRequest="{StaticResource ElementHeightLarge}"
+                        Command="{Binding SmartFolders.CreateSmartFolderCommand}" />
+                </Grid>
+            </VerticalStackLayout>
+        </Border>
+    </Grid>
+</ContentView>

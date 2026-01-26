@@ -20,12 +20,12 @@ public class VideoScrubBehavior : Behavior<View>
     private View? _attachedView;
     private double _lastScrollX;
     private DateTime _lastSeekTime = DateTime.MinValue;
-    private const int ThrottleMs = 50; // Limitar seeks a 20 por segundo
+    private const int ThrottleMs = 60; // 60ms (~16fps) de eventos de gesto es suficiente para UI fluida
 
     /// <summary>
     /// Sensibilidad del scrubbing: milisegundos a avanzar/retroceder por cada pixel de arrastre horizontal.
     /// </summary>
-    public double MillisecondsPerPixel { get; set; } = 5;
+    public double MillisecondsPerPixel { get; set; } = 8;
 
 #if MACCATALYST || IOS
     private UIView? _nativeView;
@@ -104,9 +104,11 @@ public class VideoScrubBehavior : Behavior<View>
             // Trackpad con dos dedos
             _scrollRecognizer = new UIPanGestureRecognizer(HandleGesture)
             {
-                MinimumNumberOfTouches = 2,
-                MaximumNumberOfTouches = 2
+                AllowedScrollTypesMask = UIScrollTypeMask.Discrete | UIScrollTypeMask.Continuous
             };
+            _scrollRecognizer.CancelsTouchesInView = false;
+            _scrollRecognizer.DelaysTouchesBegan = false;
+            _scrollRecognizer.DelaysTouchesEnded = false;
             uiView.AddGestureRecognizer(_scrollRecognizer);
 
             // Mouse con click (1 dedo)
@@ -116,6 +118,9 @@ public class VideoScrubBehavior : Behavior<View>
                 MaximumNumberOfTouches = 1,
                 AllowedScrollTypesMask = UIScrollTypeMask.Discrete | UIScrollTypeMask.Continuous
             };
+            _panRecognizer.CancelsTouchesInView = false;
+            _panRecognizer.DelaysTouchesBegan = false;
+            _panRecognizer.DelaysTouchesEnded = false;
             uiView.AddGestureRecognizer(_panRecognizer);
 #else
             // iOS: scrubbing con 1 dedo
@@ -250,6 +255,7 @@ public class VideoScrubBehavior : Behavior<View>
             if (_winElement == null)
                 return;
 
+                   uiView.MultipleTouchEnabled = true;
             var point = e.GetCurrentPoint(_winElement);
             if (!point.Properties.IsLeftButtonPressed)
                 return;

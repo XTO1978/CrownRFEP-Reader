@@ -494,6 +494,8 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
     {
         try
         {
+            bool playerReady = false;
+            
             // Esperar un poco y verificar el status (máx 5s)
             for (int i = 0; i < 50; i++)
             {
@@ -511,10 +513,37 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
                     return _playerItem.Status == AVPlayerItemStatus.ReadyToPlay;
                 });
 
-                if (isReady)
+                if (isReady && !playerReady)
                 {
+                    playerReady = true;
                     OnPlayerReady();
-                    return;
+                }
+                
+                // Continuar esperando hasta tener duración válida
+                if (playerReady)
+                {
+                    var hasDuration = await MainThread.InvokeOnMainThreadAsync(() =>
+                    {
+                        if (_isDisconnected || _playerItem == null || VirtualView == null)
+                            return true; // salir del bucle
+                        
+                        // Si ya tenemos duración en el VirtualView, listo
+                        if (VirtualView.Duration.TotalSeconds > 0)
+                            return true;
+                        
+                        // Intentar obtener duración ahora
+                        if (_playerItem.Duration.IsNumeric && _playerItem.Duration.Seconds > 0)
+                        {
+                            VirtualView.UpdateDuration(TimeSpan.FromSeconds(_playerItem.Duration.Seconds));
+                            AppLog.Info("PrecisionVideoPlayerHandler", $"CheckPlayerStatusAsync | Duration updated: {_playerItem.Duration.Seconds}s");
+                            return true;
+                        }
+                        
+                        return false;
+                    });
+                    
+                    if (hasDuration)
+                        return;
                 }
             }
         }
@@ -558,11 +587,29 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
             {
                 if (VirtualView != null && _playerItem != null)
                 {
-                    // Duration puede no estar disponible aún; no bloquear el "ready" por ello.
+                    // IMPORTANTE: Siempre intentar actualizar Duration
+                    // Primero verificar si ya es numérica
                     if (_playerItem.Duration.IsNumeric)
                     {
                         var duration = TimeSpan.FromSeconds(_playerItem.Duration.Seconds);
-                        VirtualView.UpdateDuration(duration);
+                        if (duration.TotalSeconds > 0)
+                        {
+                            VirtualView.UpdateDuration(duration);
+                            AppLog.Info("PrecisionVideoPlayerHandler", $"OnPlayerReady | Duration set to {duration.TotalSeconds}s");
+                        }
+                    }
+                    else
+                    {
+                        // Intentar obtener duración del asset directamente
+                        if (_playerItem.Asset?.Duration.IsNumeric == true)
+                        {
+                            var duration = TimeSpan.FromSeconds(_playerItem.Asset.Duration.Seconds);
+                            if (duration.TotalSeconds > 0)
+                            {
+                                VirtualView.UpdateDuration(duration);
+                                AppLog.Info("PrecisionVideoPlayerHandler", $"OnPlayerReady | Duration from Asset: {duration.TotalSeconds}s");
+                            }
+                        }
                     }
 
                     // Detectar frame rate del vídeo
@@ -783,7 +830,7 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
     private void OnPositionChangedFromBinding(object? sender, TimeSpan position)
     {
         // Si ya hay un seek en progreso, guardar la posición pendiente
-        // para hacer seek al finalizar el actual
+        // El callback del seek actual procesará la posición pendiente
         if (_isSeeking)
         {
             _pendingSeekPosition = position;
@@ -799,20 +846,62 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
     }
 
     /// <summary>
-    /// Realiza un seek preciso con tolerancia cero para mostrar el frame exacto
+    /// Realiza un seek preciso con tolerancia configurable
     /// </summary>
     private void SeekToTime(TimeSpan position, Action? completion = null)
     {
         if (_player == null || _isDisconnected) return;
 
+        var toleranceSeconds = 0.0;
+        try
+        {
+            if (VirtualView != null)
+                toleranceSeconds = Math.Max(0, VirtualView.SeekToleranceSeconds);
+        }
+        catch { }
+
+        // Durante scrubbing rápido (tolerancia alta), usar seek sin bloqueo
+        // Bajamos el umbral a 0.1 para asegurar que entramos aquí durante el scrubbing
+        if (toleranceSeconds >= 0.1)
+        {
+            var cmTime = CMTime.FromSeconds(position.TotalSeconds, 600);
+            var toleranceTime = CMTime.FromSeconds(toleranceSeconds, 600);
+            
+            // Seek no bloqueante - "fire and forget" pero actualizamos la posición
+            _player.Seek(cmTime, toleranceTime, toleranceTime, (finished) =>
+            {
+                // Actualizar UI cuando termine el seek (aunque sea rápido)
+                if (!_isDisconnected && finished)
+                {
+                    MainThread.BeginInvokeOnMainThread(() =>
+                    {
+                        try { VirtualView?.UpdatePosition(position); } catch { }
+                    });
+                }
+            });
+            
+            completion?.Invoke();
+            return;
+        }
+
+        // Para seeks precisos (tolerancia baja), usar el sistema de cola
+        if (_isSeeking)
+        {
+            _pendingSeekPosition = position;
+            return;
+        }
+
         _isUpdatingPosition = true;
         _isSeeking = true;
-        _pendingSeekPosition = TimeSpan.MinValue; // Resetear posición pendiente
+        _pendingSeekPosition = TimeSpan.MinValue;
 
-        var cmTime = CMTime.FromSeconds(position.TotalSeconds, 600);
+        var cmTimePrecise = CMTime.FromSeconds(position.TotalSeconds, 600);
+        var toleranceTimePrecise = toleranceSeconds > 0
+            ? CMTime.FromSeconds(toleranceSeconds, 600)
+            : CMTime.Zero;
         
-        // Seek con tolerancia cero para precisión de frame
-        _player.Seek(cmTime, CMTime.Zero, CMTime.Zero, (finished) =>
+        // Seek con tolerancia para precisión de frame
+        _player.Seek(cmTimePrecise, toleranceTimePrecise, toleranceTimePrecise, (finished) =>
         {
             _isUpdatingPosition = false;
             

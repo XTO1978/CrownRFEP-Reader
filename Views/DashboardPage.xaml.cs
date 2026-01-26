@@ -157,16 +157,18 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 
         try
         {
-            if (VideoGallery != null)
+            var videoGallery = VideosPanel?.VideoGalleryView;
+            if (videoGallery != null)
             {
-                VideoGallery.SizeChanged += OnVideoGallerySizeChanged;
-                OnVideoGallerySizeChanged(VideoGallery, EventArgs.Empty);
+                videoGallery.SizeChanged += OnVideoGallerySizeChanged;
+                OnVideoGallerySizeChanged(videoGallery, EventArgs.Empty);
             }
 
-            if (VideoLessonsGallery != null)
+            var videoLessonsGallery = VideosPanel?.VideoLessonsGalleryView;
+            if (videoLessonsGallery != null)
             {
-                VideoLessonsGallery.SizeChanged += OnVideoGallerySizeChanged;
-                OnVideoGallerySizeChanged(VideoLessonsGallery, EventArgs.Empty);
+                videoLessonsGallery.SizeChanged += OnVideoGallerySizeChanged;
+                OnVideoGallerySizeChanged(videoLessonsGallery, EventArgs.Empty);
             }
         }
         catch { }
@@ -289,8 +291,21 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 
         try { SidebarSessionsList.SizeChanged -= OnSidebarSessionsSizeChanged; } catch { }
 
-        try { VideoGallery.SizeChanged -= OnVideoGallerySizeChanged; } catch { }
-        try { VideoLessonsGallery.SizeChanged -= OnVideoGallerySizeChanged; } catch { }
+        try
+        {
+            var videoGallery = VideosPanel?.VideoGalleryView;
+            if (videoGallery != null)
+                videoGallery.SizeChanged -= OnVideoGallerySizeChanged;
+        }
+        catch { }
+
+        try
+        {
+            var videoLessonsGallery = VideosPanel?.VideoLessonsGalleryView;
+            if (videoLessonsGallery != null)
+                videoLessonsGallery.SizeChanged -= OnVideoGallerySizeChanged;
+        }
+        catch { }
 
         try { PreviewPlayer1Q.MediaOpened -= OnPreviewPlayerMediaOpened; } catch { }
         try { PreviewPlayer2Q.MediaOpened -= OnPreviewPlayerMediaOpened; } catch { }

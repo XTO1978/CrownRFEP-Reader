@@ -1,0 +1,513 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView
+    x:Class="CrownRFEP_Reader.Views.Controls.DashboardRemoteLibraryView"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:behaviors="clr-namespace:CrownRFEP_Reader.Behaviors"
+    xmlns:controls="clr-namespace:CrownRFEP_Reader.Views.Controls"
+    xmlns:models="clr-namespace:CrownRFEP_Reader.Models"
+    xmlns:vm="clr-namespace:CrownRFEP_Reader.ViewModels"
+    x:DataType="vm:DashboardViewModel">
+
+    <!--  Organización (biblioteca remota en Wasabi) - PRIMERO  -->
+    <VerticalStackLayout
+        x:Name="RemoteLibraryContainer"
+        HorizontalOptions="Fill"
+        IsVisible="{Binding Layout.IsRemoteLibraryVisible}">
+
+        <Border
+            x:Name="RemoteLibraryHeaderBorder"
+            Style="{StaticResource SidebarMenuItemBorder}"
+            BackgroundColor="#FF2E7D32"
+            Stroke="Transparent"
+            StrokeThickness="0"
+            StrokeShape="RoundRectangle 6">
+            <Border.GestureRecognizers>
+                <TapGestureRecognizer
+                    Buttons="Secondary"
+                    Tapped="OnRemoteLibraryHeaderContextMenuInternal"
+                    NumberOfTapsRequired="1" />
+            </Border.GestureRecognizers>
+            <Border.Padding>
+                <OnPlatform x:TypeArguments="Thickness">
+                    <On Platform="iOS" Value="10,6,4,6" />
+                    <On Platform="Default" Value="10,10,4,10" />
+                </OnPlatform>
+            </Border.Padding>
+            <Grid ColumnDefinitions="*,Auto" VerticalOptions="Center" HorizontalOptions="Fill">
+                <Grid
+                    Grid.Column="0"
+                    ColumnDefinitions="Auto,*"
+                    VerticalOptions="Center"
+                    HorizontalOptions="Fill">
+                    <Grid.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding Layout.ToggleRemoteLibraryExpandedCommand}" />
+                    </Grid.GestureRecognizers>
+
+                    <controls:SymbolIcon
+                        Grid.Column="0"
+                        Margin="4,0,0,0"
+                        HeightRequest="{StaticResource IconSizeSidebarMenu}"
+                        WidthRequest="{StaticResource IconSizeSidebarMenu}"
+                        SymbolName="person.2"
+                        TintColor="White"
+                        VerticalOptions="Center" />
+                    <VerticalStackLayout
+                        Grid.Column="1"
+                        Margin="8,0,0,0"
+                        Spacing="2"
+                        VerticalOptions="Center">
+                        <Label
+                            FontFamily="{StaticResource AppFontEmphasis}"
+                            FontSize="{StaticResource FontSizeBody}"
+                            FontAttributes="Bold"
+                            Text="Biblioteca de organización"
+                            TextColor="White"
+                            VerticalOptions="Center" />
+                        <Label
+                            FontFamily="{StaticResource AppFontBody}"
+                            FontSize="{StaticResource FontSizeSmall}"
+                            Text="{Binding Remote.RemoteLibraryDisplayName}"
+                            TextColor="#FFDDDDDD"
+                            VerticalOptions="Center" />
+                    </VerticalStackLayout>
+                </Grid>
+
+                <Border
+                    Grid.Column="1"
+                    Padding="2"
+                    Margin="0,0,8,0"
+                    BackgroundColor="Transparent"
+                    StrokeThickness="0">
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding Layout.ToggleRemoteLibraryExpandedCommand}" />
+                    </Border.GestureRecognizers>
+                    <controls:SymbolIcon
+                        HeightRequest="{StaticResource IconSizeSmall}"
+                        WidthRequest="{StaticResource IconSizeSmall}"
+                        SymbolName="chevron.up.chevron.down"
+                        TintColor="White"
+                        VerticalOptions="Center" />
+                </Border>
+            </Grid>
+        </Border>
+
+        <VerticalStackLayout
+            x:Name="RemoteLibraryItemsContainer"
+            HorizontalOptions="Fill"
+            IsVisible="{Binding Layout.IsRemoteLibraryExpanded}">
+            <VerticalStackLayout.Spacing>
+                <OnPlatform x:TypeArguments="x:Double">
+                    <On Platform="iOS" Value="6" />
+                    <On Platform="Default" Value="{StaticResource SpacingXSmall}" />
+                </OnPlatform>
+            </VerticalStackLayout.Spacing>
+
+            <Border
+                x:Name="RemoteAllGalleryHeaderBorder"
+                Style="{StaticResource SidebarMenuItemBorder}">
+                <Border.Padding>
+                    <OnPlatform x:TypeArguments="Thickness">
+                        <On Platform="iOS" Value="10,8,4,8" />
+                        <On Platform="Default" Value="10,6,4,6" />
+                    </OnPlatform>
+                </Border.Padding>
+                <Border.Behaviors>
+                    <behaviors:SidebarHoverBehavior />
+                </Border.Behaviors>
+                <Border.Triggers>
+                    <DataTrigger
+                        TargetType="Border"
+                        Binding="{Binding Layout.IsRemoteAllGallerySelected}"
+                        Value="True">
+                        <Setter Property="BackgroundColor" Value="#FF2A2A2A" />
+                    </DataTrigger>
+                </Border.Triggers>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding Remote.RemoteSelectAllGalleryCommand}" />
+                </Border.GestureRecognizers>
+                <Grid ColumnDefinitions="Auto,*,Auto" Margin="18,0,0,0" VerticalOptions="Center" HorizontalOptions="Fill">
+                    <controls:SymbolIcon
+                        Grid.Column="0"
+                        Margin="4,0,0,0"
+                        HeightRequest="{StaticResource IconSizeSidebarMenu}"
+                        SymbolName="photo.on.rectangle.angled"
+                        TintColor="White"
+                        VerticalOptions="Center"
+                        WidthRequest="{StaticResource IconSizeSidebarMenu}" />
+                    <Label
+                        Grid.Column="1"
+                        Margin="8,0,0,0"
+                        Style="{StaticResource SidebarMenuItemLabel}"
+                        Text="Galería General" />
+                    <Label
+                        Grid.Column="2"
+                        Margin="0,0,8,0"
+                        FontFamily="{StaticResource AppFontMono}"
+                        FontSize="{StaticResource FontSizeSmall}"
+                        HorizontalOptions="End"
+                        HorizontalTextAlignment="End"
+                        Text="{Binding Remote.RemoteAllGalleryItemCount}"
+                        TextColor="#FF888888"
+                        VerticalOptions="Center" />
+                </Grid>
+            </Border>
+
+            <Border
+                x:Name="RemoteVideoLessonsHeaderBorder"
+                Style="{StaticResource SidebarMenuItemBorder}">
+                <Border.Padding>
+                    <OnPlatform x:TypeArguments="Thickness">
+                        <On Platform="iOS" Value="10,8,4,8" />
+                        <On Platform="Default" Value="10,6,4,6" />
+                    </OnPlatform>
+                </Border.Padding>
+                <Border.Behaviors>
+                    <behaviors:SidebarHoverBehavior />
+                </Border.Behaviors>
+                <Border.Triggers>
+                    <DataTrigger
+                        TargetType="Border"
+                        Binding="{Binding Layout.IsRemoteVideoLessonsSelected}"
+                        Value="True">
+                        <Setter Property="BackgroundColor" Value="#FF2A2A2A" />
+                    </DataTrigger>
+                </Border.Triggers>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding Remote.RemoteViewVideoLessonsCommand}" />
+                </Border.GestureRecognizers>
+                <Grid ColumnDefinitions="Auto,*,Auto" Margin="18,0,0,0" VerticalOptions="Center" HorizontalOptions="Fill">
+                    <controls:SymbolIcon
+                        Grid.Column="0"
+                        Margin="4,0,0,0"
+                        HeightRequest="{StaticResource IconSizeSidebarMenu}"
+                        SymbolName="video"
+                        TintColor="White"
+                        VerticalOptions="Center"
+                        WidthRequest="{StaticResource IconSizeSidebarMenu}" />
+                    <Label
+                        Grid.Column="1"
+                        Margin="8,0,0,0"
+                        Style="{StaticResource SidebarMenuItemLabel}"
+                        Text="Videolecciones" />
+                    <Label
+                        Grid.Column="2"
+                        Margin="0,0,8,0"
+                        FontFamily="{StaticResource AppFontMono}"
+                        FontSize="{StaticResource FontSizeSmall}"
+                        HorizontalOptions="End"
+                        HorizontalTextAlignment="End"
+                        Text="{Binding Remote.RemoteVideoLessonsCount}"
+                        TextColor="#FF888888"
+                        VerticalOptions="Center" />
+                </Grid>
+            </Border>
+
+            <Border
+                x:Name="RemoteTrashHeaderBorder"
+                Style="{StaticResource SidebarMenuItemBorder}">
+                <Border.Padding>
+                    <OnPlatform x:TypeArguments="Thickness">
+                        <On Platform="iOS" Value="10,8,4,8" />
+                        <On Platform="Default" Value="10,6,4,6" />
+                    </OnPlatform>
+                </Border.Padding>
+                <Border.Behaviors>
+                    <behaviors:SidebarHoverBehavior />
+                </Border.Behaviors>
+                <Border.Triggers>
+                    <DataTrigger
+                        TargetType="Border"
+                        Binding="{Binding Layout.IsRemoteTrashSelected}"
+                        Value="True">
+                        <Setter Property="BackgroundColor" Value="#FF2A2A2A" />
+                    </DataTrigger>
+                </Border.Triggers>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding Remote.RemoteViewTrashCommand}" />
+                </Border.GestureRecognizers>
+                <Grid ColumnDefinitions="Auto,*,Auto" Margin="18,0,0,0" VerticalOptions="Center" HorizontalOptions="Fill">
+                    <controls:SymbolIcon
+                        Grid.Column="0"
+                        Margin="4,0,0,0"
+                        HeightRequest="{StaticResource IconSizeSidebarMenu}"
+                        SymbolName="trash"
+                        TintColor="White"
+                        VerticalOptions="Center"
+                        WidthRequest="{StaticResource IconSizeSidebarMenu}" />
+                    <Label
+                        Grid.Column="1"
+                        Margin="8,0,0,0"
+                        Style="{StaticResource SidebarMenuItemLabel}"
+                        Text="Papelera" />
+                    <Label
+                        Grid.Column="2"
+                        Margin="0,0,8,0"
+                        FontFamily="{StaticResource AppFontMono}"
+                        FontSize="{StaticResource FontSizeSmall}"
+                        HorizontalOptions="End"
+                        HorizontalTextAlignment="End"
+                        Text="{Binding Remote.RemoteTrashItemCount}"
+                        TextColor="#FF888888"
+                        VerticalOptions="Center" />
+                </Grid>
+            </Border>
+
+            <Border
+                x:Name="RemoteSessionsHeaderBorder"
+                Style="{StaticResource SidebarMenuItemBorder}">
+                <Border.Padding>
+                    <OnPlatform x:TypeArguments="Thickness">
+                        <On Platform="iOS" Value="10,8,4,8" />
+                        <On Platform="Default" Value="10,6,4,6" />
+                    </OnPlatform>
+                </Border.Padding>
+                <Border.Behaviors>
+                    <behaviors:SidebarHoverBehavior />
+                </Border.Behaviors>
+                <Grid ColumnDefinitions="Auto,Auto,*,Auto" VerticalOptions="Center" HorizontalOptions="Fill">
+                    <Border
+                        Grid.Column="0"
+                        Padding="2"
+                        BackgroundColor="Transparent"
+                        StrokeThickness="0">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding Layout.ToggleRemoteSessionsListExpandedCommand}" />
+                        </Border.GestureRecognizers>
+                        <controls:SymbolIcon
+                            HeightRequest="{StaticResource IconSizeSmall}"
+                            WidthRequest="{StaticResource IconSizeSmall}"
+                            TintColor="#FF888888"
+                            VerticalOptions="Center">
+                            <controls:SymbolIcon.Triggers>
+                                <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding Layout.IsRemoteSessionsListExpanded}" Value="True">
+                                    <Setter Property="SymbolName" Value="chevron.down" />
+                                </DataTrigger>
+                                <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding Layout.IsRemoteSessionsListExpanded}" Value="False">
+                                    <Setter Property="SymbolName" Value="chevron.right" />
+                                </DataTrigger>
+                            </controls:SymbolIcon.Triggers>
+                        </controls:SymbolIcon>
+                    </Border>
+                    <controls:SymbolIcon
+                        Grid.Column="1"
+                        Margin="4,0,0,0"
+                        HeightRequest="{StaticResource IconSizeSidebarMenu}"
+                        SymbolName="clock"
+                        TintColor="White"
+                        VerticalOptions="Center"
+                        WidthRequest="{StaticResource IconSizeSidebarMenu}" />
+                    <Label
+                        Grid.Column="2"
+                        Margin="8,0,0,0"
+                        Style="{StaticResource SidebarMenuItemLabel}"
+                        Text="Sesiones" />
+                    <Border
+                        x:Name="RemoteSessionsAddButton"
+                        Grid.Column="3"
+                        Margin="8,0,0,0"
+                        Padding="2"
+                        BackgroundColor="Transparent"
+                        Stroke="Transparent"
+                        StrokeShape="RoundRectangle 4"
+                        HorizontalOptions="End"
+                        VerticalOptions="Center">
+                        <Border.Opacity>
+                            <OnPlatform x:TypeArguments="x:Double">
+                                <On Platform="iOS" Value="1" />
+                                <On Platform="Default" Value="0" />
+                            </OnPlatform>
+                        </Border.Opacity>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnSessionsMenuNewSessionTappedInternal" />
+                        </Border.GestureRecognizers>
+                        <controls:SymbolIcon
+                            HeightRequest="{StaticResource IconSizeSmall}"
+                            SymbolName="plus"
+                            TintColor="#FF888888"
+                            WidthRequest="{StaticResource IconSizeSmall}" />
+                    </Border>
+                </Grid>
+            </Border>
+
+            <VerticalStackLayout
+                Spacing="{StaticResource SpacingXSmall}"
+                HorizontalOptions="Fill"
+                IsVisible="{Binding Layout.IsRemoteSessionsListExpanded}"
+                BindableLayout.ItemsSource="{Binding Remote.RemoteSessions}">
+                <VerticalStackLayout.Margin>
+                    <OnPlatform x:TypeArguments="Thickness">
+                        <On Platform="iOS" Value="0,0,0,2" />
+                        <On Platform="Default" Value="0,0,0,6" />
+                    </OnPlatform>
+                </VerticalStackLayout.Margin>
+                <BindableLayout.ItemTemplate>
+                    <DataTemplate x:DataType="vm:RemoteSessionListItem">
+                        <Border Style="{StaticResource SidebarMenuSubItemBorder}">
+                            <Border.Behaviors>
+                                <behaviors:SidebarHoverBehavior />
+                            </Border.Behaviors>
+                            <Border.Triggers>
+                                <DataTrigger TargetType="Border" Binding="{Binding IsSelected}" Value="True">
+                                    <Setter Property="BackgroundColor" Value="#FF2A2A2A" />
+                                </DataTrigger>
+                            </Border.Triggers>
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer
+                                    Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.Remote.SelectRemoteSessionCommand}"
+                                    CommandParameter="{Binding .}" />
+                            </Border.GestureRecognizers>
+                            <Grid ColumnDefinitions="Auto,*,Auto,Auto" VerticalOptions="Center" HorizontalOptions="Fill">
+                                <controls:SymbolIcon
+                                    Grid.Column="0"
+                                    HeightRequest="{StaticResource IconSizeSidebarMenu}"
+                                    WidthRequest="{StaticResource IconSizeSidebarMenu}"
+                                    SymbolName="clock"
+                                    TintColor="White"
+                                    VerticalOptions="Center" />
+                                <VerticalStackLayout Grid.Column="1" Margin="8,0,0,0" Spacing="2">
+                                    <Label
+                                        Style="{StaticResource SidebarMenuSubItemLabel}"
+                                        Text="{Binding PlaceDateText}" />
+                                    <Label
+                                        FontFamily="{StaticResource AppFontBody}"
+                                        FontSize="{StaticResource FontSizeSmall}"
+                                        TextColor="#FF888888"
+                                        Text="{Binding CoachText}" />
+                                </VerticalStackLayout>
+                                <Label
+                                    Grid.Column="2"
+                                    Margin="0,0,8,0"
+                                    FontFamily="{StaticResource AppFontMono}"
+                                    FontSize="{StaticResource FontSizeSmall}"
+                                    HorizontalOptions="End"
+                                    HorizontalTextAlignment="End"
+                                    TextColor="#FF888888"
+                                    Text="{Binding VideoCount}"
+                                    VerticalOptions="Center" />
+                                <Border
+                                    ClassId="ContextMenuButton"
+                                    Grid.Column="3"
+                                    Margin="0,0,4,0"
+                                    Padding="4"
+                                    BackgroundColor="Transparent"
+                                    StrokeThickness="0"
+                                    HorizontalOptions="End"
+                                    VerticalOptions="Center">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="OnRemoteSessionContextMenuTappedInternal" />
+                                    </Border.GestureRecognizers>
+                                    <controls:SymbolIcon
+                                        HeightRequest="{StaticResource IconSizeSmall}"
+                                        WidthRequest="{StaticResource IconSizeSmall}"
+                                        SymbolName="ellipsis.circle"
+                                        TintColor="#FF888888"
+                                        VerticalOptions="Center" />
+                                </Border>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </BindableLayout.ItemTemplate>
+            </VerticalStackLayout>
+
+            <Border
+                x:Name="RemoteSmartFoldersHeaderBorder"
+                Style="{StaticResource SidebarMenuItemBorder}">
+                <Border.Padding>
+                    <OnPlatform x:TypeArguments="Thickness">
+                        <On Platform="iOS" Value="10,8,4,8" />
+                        <On Platform="Default" Value="10,6,4,6" />
+                    </OnPlatform>
+                </Border.Padding>
+                <Border.Behaviors>
+                    <behaviors:SidebarHoverBehavior />
+                </Border.Behaviors>
+                <Grid ColumnDefinitions="Auto,Auto,*,Auto" VerticalOptions="Center" HorizontalOptions="Fill">
+                    <Border
+                        Grid.Column="0"
+                        Padding="2"
+                        BackgroundColor="Transparent"
+                        StrokeThickness="0">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding Layout.ToggleRemoteSmartFoldersExpandedCommand}" />
+                        </Border.GestureRecognizers>
+                        <controls:SymbolIcon
+                            HeightRequest="{StaticResource IconSizeSmall}"
+                            WidthRequest="{StaticResource IconSizeSmall}"
+                            TintColor="#FF888888"
+                            VerticalOptions="Center">
+                            <controls:SymbolIcon.Triggers>
+                                <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding Layout.IsRemoteSmartFoldersExpanded}" Value="True">
+                                    <Setter Property="SymbolName" Value="chevron.down" />
+                                </DataTrigger>
+                                <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding Layout.IsRemoteSmartFoldersExpanded}" Value="False">
+                                    <Setter Property="SymbolName" Value="chevron.right" />
+                                </DataTrigger>
+                            </controls:SymbolIcon.Triggers>
+                        </controls:SymbolIcon>
+                    </Border>
+                    <controls:SymbolIcon
+                        Grid.Column="1"
+                        Margin="4,0,0,0"
+                        HeightRequest="{StaticResource IconSizeSidebarMenu}"
+                        SymbolName="folder"
+                        TintColor="White"
+                        VerticalOptions="Center"
+                        WidthRequest="{StaticResource IconSizeSidebarMenu}" />
+                    <Label
+                        Grid.Column="2"
+                        Margin="8,0,0,0"
+                        Style="{StaticResource SidebarMenuItemLabel}"
+                        Text="Carpeta inteligente" />
+                </Grid>
+            </Border>
+
+            <VerticalStackLayout
+                Spacing="{StaticResource SpacingXSmall}"
+                HorizontalOptions="Fill"
+                IsVisible="{Binding Layout.IsRemoteSmartFoldersExpanded}"
+                BindableLayout.ItemsSource="{Binding Remote.RemoteSmartFolders}">
+                <VerticalStackLayout.Margin>
+                    <OnPlatform x:TypeArguments="Thickness">
+                        <On Platform="iOS" Value="0,0,0,2" />
+                        <On Platform="Default" Value="0,0,0,6" />
+                    </OnPlatform>
+                </VerticalStackLayout.Margin>
+                <BindableLayout.ItemTemplate>
+                    <DataTemplate x:DataType="models:SmartFolderDefinition">
+                        <Border Style="{StaticResource SidebarMenuSubItemBorder}">
+                            <Border.Behaviors>
+                                <behaviors:SidebarHoverBehavior />
+                            </Border.Behaviors>
+                            <Grid ColumnDefinitions="Auto,*,Auto" VerticalOptions="Center" HorizontalOptions="Fill">
+                                <controls:SymbolIcon
+                                    Grid.Column="0"
+                                    HeightRequest="{StaticResource IconSizeSidebarMenu}"
+                                    WidthRequest="{StaticResource IconSizeSidebarMenu}"
+                                    SymbolName="{Binding Icon}"
+                                    TintColor="{Binding IconColor, Converter={StaticResource HexStringToColorConverter}}"
+                                    VerticalOptions="Center" />
+                                <Label
+                                    Grid.Column="1"
+                                    Margin="8,0,0,0"
+                                    Style="{StaticResource SidebarMenuSubItemLabel}"
+                                    Text="{Binding Name}" />
+                                <Label
+                                    Grid.Column="2"
+                                    Margin="0,0,8,0"
+                                    FontFamily="{StaticResource AppFontMono}"
+                                    FontSize="{StaticResource FontSizeSmall}"
+                                    HorizontalOptions="End"
+                                    HorizontalTextAlignment="End"
+                                    TextColor="#FF888888"
+                                    Text="{Binding MatchingVideoCount}"
+                                    VerticalOptions="Center" />
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </BindableLayout.ItemTemplate>
+            </VerticalStackLayout>
+
+        </VerticalStackLayout>
+    </VerticalStackLayout>
+</ContentView>

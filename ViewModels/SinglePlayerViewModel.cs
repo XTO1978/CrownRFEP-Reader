@@ -1,5 +1,6 @@
 using CrownRFEP_Reader.Models;
 using CrownRFEP_Reader.Services;
+using CrownRFEP_Reader.ViewModels.SinglePlayer.Components;
 using Microsoft.Maui.ApplicationModel;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -47,52 +48,16 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     
     private string _videoPath = "";
     private string _videoTitle = "";
-    private bool _isPlaying;
-    private bool _isMuted = true; // Silenciado por defecto
-    private TimeSpan _currentPosition;
-    private TimeSpan _duration;
-    private double _progress;
-    private double _playbackSpeed = 1.0;
-    
-    // Flag para evitar actualizar Progress mientras el usuario arrastra el slider
-    private bool _isDraggingSlider;
+    private readonly PlaybackCore _playbackCore = new();
     
     // Información del video para el overlay
     private VideoClip? _videoClip;
-    private bool _showOverlay = true;
     
     // Sistema de filtrado y playlist
-    private List<VideoClip> _sessionVideos = new();
-    private List<VideoClip> _filteredPlaylist = new();
-    private int _currentPlaylistIndex;
-    private bool _showFilters;
+    private readonly PlaylistAndFilters _playlistAndFilters = new();
     
-    // Opciones de filtro
-    private ObservableCollection<FilterOption<Athlete>> _athleteOptions = new();
-    private ObservableCollection<FilterOption<int>> _sectionOptions = new();
-    private ObservableCollection<FilterOption<Category>> _categoryOptions = new();
-    
-    // Selecciones de filtro
-    private FilterOption<Athlete>? _selectedAthlete;
-    private FilterOption<int>? _selectedSection;
-    private FilterOption<Category>? _selectedCategory;
-    
-    // Asignación de atleta al video
-    private bool _showAthleteAssignPanel;
-    private ObservableCollection<Athlete> _allAthletes = new();
-    private Athlete? _selectedAthleteToAssign;
-    private string _newAthleteName = "";
-    private string _newAthleteSurname = "";
-    
-    // Asignación de sección/tramo
-    private bool _showSectionAssignPanel;
-    private int _sectionToAssign = 1;
-    
-    // Asignación de etiquetas
-    private bool _showTagsAssignPanel;
-    private ObservableCollection<Tag> _allTags = new();
-    private ObservableCollection<Tag> _selectedTags = new();
-    private string _newTagName = "";
+    // Asignación de atleta/section/tags
+    private readonly AssignmentPanels _assignmentPanels = new();
     
     // Eventos de etiquetas con timestamps
     private bool _showTagEventsPanel;
@@ -242,8 +207,8 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         
         // Comandos de asignación de atleta
         ToggleAthleteAssignPanelCommand = new Command(async () => await ToggleAthleteAssignPanelAsync());
-        AssignAthleteCommand = new Command(async () => await AssignAthleteAsync(), () => _selectedAthleteToAssign != null);
-        CreateAndAssignAthleteCommand = new Command(async () => await CreateAndAssignAthleteAsync(), () => !string.IsNullOrWhiteSpace(_newAthleteName) || !string.IsNullOrWhiteSpace(_newAthleteSurname));
+        AssignAthleteCommand = new Command(async () => await AssignAthleteAsync(), () => _assignmentPanels.SelectedAthleteToAssign != null);
+        CreateAndAssignAthleteCommand = new Command(async () => await CreateAndAssignAthleteAsync(), () => !string.IsNullOrWhiteSpace(_assignmentPanels.NewAthleteName) || !string.IsNullOrWhiteSpace(_assignmentPanels.NewAthleteSurname));
         SelectAthleteToAssignCommand = new Command<Athlete>(SelectAthleteToAssign);
         
         // Comandos de asignación de sección
@@ -272,7 +237,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         ToggleTagsAssignPanelCommand = new Command(async () => await ToggleTagsAssignPanelAsync());
         ToggleTagSelectionCommand = new Command<Tag>(ToggleTagSelection);
         SaveTagsCommand = new Command(async () => await SaveTagsAsync());
-        CreateAndAddTagCommand = new Command(async () => await CreateAndAddTagAsync(), () => !string.IsNullOrWhiteSpace(_newTagName));
+        CreateAndAddTagCommand = new Command(async () => await CreateAndAddTagAsync(), () => !string.IsNullOrWhiteSpace(_assignmentPanels.NewTagName));
         RemoveAssignedTagCommand = new Command<Tag>(async (t) => await RemoveAssignedTagAsync(t));
         RemoveEventTagCommand = new Command<Tag>(async (t) => await RemoveEventTagAsync(t));
         DeleteTagFromListCommand = new Command<Tag>(async (t) => await DeleteTagFromListAsync(t));
@@ -523,12 +488,12 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     public bool IsPlaying
     {
-        get => _isPlaying;
+        get => _playbackCore.IsPlaying;
         set
         {
-            if (_isPlaying != value)
+            if (_playbackCore.IsPlaying != value)
             {
-                _isPlaying = value;
+                _playbackCore.IsPlaying = value;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(PlayPauseIcon));
             }
@@ -537,12 +502,12 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     public bool IsMuted
     {
-        get => _isMuted;
+        get => _playbackCore.IsMuted;
         set
         {
-            if (_isMuted != value)
+            if (_playbackCore.IsMuted != value)
             {
-                _isMuted = value;
+                _playbackCore.IsMuted = value;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(MuteIcon));
             }
@@ -553,29 +518,21 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     public TimeSpan CurrentPosition
     {
-        get => _currentPosition;
+        get => _playbackCore.CurrentPosition;
         set
         {
-            var previousPosition = _currentPosition;
-            _currentPosition = value;
-            OnPropertyChanged();
-            OnPropertyChanged(nameof(CurrentPositionText));
-            OnPropertyChanged(nameof(SliderMaximumSeconds));
-            UpdateProgress();
-            if (IsComparisonLapSyncEnabled)
-            {
-                CheckLapBoundaryAndSync(1, previousPosition, value);
-                UpdateLapOverlay();
-            }
+            var previousPosition = _playbackCore.CurrentPosition;
+            _playbackCore.CurrentPosition = value;
+            HandleCurrentPositionChanged(previousPosition, value);
         }
     }
 
     public TimeSpan Duration
     {
-        get => _duration;
+        get => _playbackCore.Duration;
         set
         {
-            _duration = value;
+            _playbackCore.Duration = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(DurationText));
             OnPropertyChanged(nameof(SliderMaximumSeconds));
@@ -589,8 +546,21 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     public double Progress
     {
-        get => _progress;
-        set { _progress = value; OnPropertyChanged(); }
+        get => _playbackCore.Progress;
+        set { _playbackCore.Progress = value; OnPropertyChanged(); }
+    }
+
+    private void HandleCurrentPositionChanged(TimeSpan previousPosition, TimeSpan newPosition)
+    {
+        OnPropertyChanged(nameof(CurrentPosition));
+        OnPropertyChanged(nameof(CurrentPositionText));
+        OnPropertyChanged(nameof(SliderMaximumSeconds));
+        UpdateProgress();
+        if (IsComparisonLapSyncEnabled)
+        {
+            CheckLapBoundaryAndSync(1, previousPosition, newPosition);
+            UpdateLapOverlay();
+        }
     }
     
     /// <summary>
@@ -599,16 +569,16 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     /// </summary>
     public bool IsDraggingSlider
     {
-        get => _isDraggingSlider;
-        set => _isDraggingSlider = value;
+        get => _playbackCore.IsDraggingSlider;
+        set => _playbackCore.IsDraggingSlider = value;
     }
 
     public double PlaybackSpeed
     {
-        get => _playbackSpeed;
+        get => _playbackCore.PlaybackSpeed;
         set
         {
-            _playbackSpeed = value;
+            _playbackCore.PlaybackSpeed = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(SpeedText));
             SpeedChangeRequested?.Invoke(this, value);
@@ -671,8 +641,8 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     public bool ShowOverlay
     {
-        get => _showOverlay;
-        set { _showOverlay = value; OnPropertyChanged(); }
+        get => _playbackCore.ShowOverlay;
+        set { _playbackCore.ShowOverlay = value; OnPropertyChanged(); }
     }
 
     public bool HasVideoInfo => _videoClip != null;
@@ -750,34 +720,34 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     public bool ShowFilters
     {
-        get => _showFilters;
-        set { _showFilters = value; OnPropertyChanged(); }
+        get => _playlistAndFilters.ShowFilters;
+        set { _playlistAndFilters.ShowFilters = value; OnPropertyChanged(); }
     }
 
     public ObservableCollection<FilterOption<Athlete>> AthleteOptions
     {
-        get => _athleteOptions;
-        set { _athleteOptions = value; OnPropertyChanged(); }
+        get => _playlistAndFilters.AthleteOptions;
+        set { _playlistAndFilters.SetAthleteOptions(value); OnPropertyChanged(); }
     }
 
     public ObservableCollection<FilterOption<int>> SectionOptions
     {
-        get => _sectionOptions;
-        set { _sectionOptions = value; OnPropertyChanged(); }
+        get => _playlistAndFilters.SectionOptions;
+        set { _playlistAndFilters.SetSectionOptions(value); OnPropertyChanged(); }
     }
 
     public ObservableCollection<FilterOption<Category>> CategoryOptions
     {
-        get => _categoryOptions;
-        set { _categoryOptions = value; OnPropertyChanged(); }
+        get => _playlistAndFilters.CategoryOptions;
+        set { _playlistAndFilters.SetCategoryOptions(value); OnPropertyChanged(); }
     }
 
     public FilterOption<Athlete>? SelectedAthlete
     {
-        get => _selectedAthlete;
+        get => _playlistAndFilters.SelectedAthlete;
         set
         {
-            _selectedAthlete = value;
+            _playlistAndFilters.SelectedAthlete = value;
             OnPropertyChanged();
             ApplyFilters();
         }
@@ -785,10 +755,10 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     public FilterOption<int>? SelectedSection
     {
-        get => _selectedSection;
+        get => _playlistAndFilters.SelectedSection;
         set
         {
-            _selectedSection = value;
+            _playlistAndFilters.SelectedSection = value;
             OnPropertyChanged();
             ApplyFilters();
         }
@@ -796,40 +766,40 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     public FilterOption<Category>? SelectedCategory
     {
-        get => _selectedCategory;
+        get => _playlistAndFilters.SelectedCategory;
         set
         {
-            _selectedCategory = value;
+            _playlistAndFilters.SelectedCategory = value;
             OnPropertyChanged();
             ApplyFilters();
         }
     }
 
-    public int PlaylistCount => _filteredPlaylist.Count;
+    public int PlaylistCount => _playlistAndFilters.PlaylistCount;
     
-    public int CurrentPlaylistPosition => _filteredPlaylist.Count > 0 ? _currentPlaylistIndex + 1 : 0;
+    public int CurrentPlaylistPosition => _playlistAndFilters.PlaylistCount > 0 ? _playlistAndFilters.CurrentPlaylistIndex + 1 : 0;
     
-    public string PlaylistPositionText => _filteredPlaylist.Count > 0 
+    public string PlaylistPositionText => _playlistAndFilters.PlaylistCount > 0 
         ? $"{CurrentPlaylistPosition} / {PlaylistCount}" 
         : "—";
     
-    public bool CanGoPrevious => _currentPlaylistIndex > 0;
+    public bool CanGoPrevious => _playlistAndFilters.CanGoPrevious;
     
-    public bool CanGoNext => _currentPlaylistIndex < _filteredPlaylist.Count - 1;
+    public bool CanGoNext => _playlistAndFilters.CanGoNext;
     
-    public bool HasPlaylist => _filteredPlaylist.Count > 1;
+    public bool HasPlaylist => _playlistAndFilters.HasPlaylist;
 
     /// <summary>
     /// Lista de videos de la sesión filtrada para mostrar en la galería
     /// </summary>
-    public List<VideoClip> PlaylistVideos => _filteredPlaylist;
+    public List<VideoClip> PlaylistVideos => _playlistAndFilters.FilteredPlaylist;
 
     // ===== Propiedades de estadísticas de sesión =====
     
     /// <summary>
     /// Número total de videos en la sesión
     /// </summary>
-    public int SessionTotalVideoCount => _sessionVideos.Count;
+    public int SessionTotalVideoCount => _playlistAndFilters.SessionVideos.Count;
     
     /// <summary>
     /// Duración total de todos los videos de la sesión
@@ -838,7 +808,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     {
         get
         {
-            var totalSeconds = _sessionVideos.Sum(v => v.ClipDuration);
+            var totalSeconds = _playlistAndFilters.SessionVideos.Sum(v => v.ClipDuration);
             var ts = TimeSpan.FromSeconds(totalSeconds);
             return ts.TotalHours >= 1 
                 ? $"{(int)ts.TotalHours}:{ts.Minutes:D2}:{ts.Seconds:D2}"
@@ -849,7 +819,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     /// <summary>
     /// Número de atletas únicos en la sesión
     /// </summary>
-    public int SessionUniqueAthletesCount => _sessionVideos
+    public int SessionUniqueAthletesCount => _playlistAndFilters.SessionVideos
         .Where(v => v.AtletaId > 0)
         .Select(v => v.AtletaId)
         .Distinct()
@@ -858,7 +828,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     /// <summary>
     /// Número de secciones/tramos únicos en la sesión
     /// </summary>
-    public int SessionUniqueSectionsCount => _sessionVideos
+    public int SessionUniqueSectionsCount => _playlistAndFilters.SessionVideos
         .Where(v => v.Section > 0)
         .Select(v => v.Section)
         .Distinct()
@@ -867,29 +837,29 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     /// <summary>
     /// Total de eventos marcados en los videos de la sesión
     /// </summary>
-    public int SessionTotalEventsCount => _sessionVideos
+    public int SessionTotalEventsCount => _playlistAndFilters.SessionVideos
         .SelectMany(v => v.EventTags ?? new List<Tag>())
         .Count();
     
     /// <summary>
     /// Total de etiquetas asignadas en los videos de la sesión
     /// </summary>
-    public int SessionTotalTagsCount => _sessionVideos
+    public int SessionTotalTagsCount => _playlistAndFilters.SessionVideos
         .SelectMany(v => v.Tags ?? new List<Tag>())
         .Count();
     
     /// <summary>
     /// Porcentaje de videos con atleta asignado
     /// </summary>
-    public int SessionVideosWithAthletePercent => _sessionVideos.Count > 0
-        ? (int)Math.Round(_sessionVideos.Count(v => v.AtletaId > 0) * 100.0 / _sessionVideos.Count)
+    public int SessionVideosWithAthletePercent => _playlistAndFilters.SessionVideos.Count > 0
+        ? (int)Math.Round(_playlistAndFilters.SessionVideos.Count(v => v.AtletaId > 0) * 100.0 / _playlistAndFilters.SessionVideos.Count)
         : 0;
     
     /// <summary>
     /// Texto descriptivo de videos con atleta
     /// </summary>
-    public string SessionVideosWithAthleteText => 
-        $"{_sessionVideos.Count(v => v.AtletaId > 0)} de {_sessionVideos.Count}";
+    public string SessionVideosWithAthleteText =>
+        $"{_playlistAndFilters.SessionVideos.Count(v => v.AtletaId > 0)} de {_playlistAndFilters.SessionVideos.Count}";
 
     // ===== Propiedades para estadísticas completas (gráficos y tablas) =====
     
@@ -1104,6 +1074,11 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     }
     
     private bool _isLoadingDetailedTimes;
+
+    // Protección contra doble click en la galería
+    private bool _isSelectingGalleryVideo;
+    private DateTime _lastGallerySelectionAt = DateTime.MinValue;
+    private int _lastGallerySelectionVideoId = -1;
     /// <summary>Indica si se están cargando los tiempos detallados</summary>
     public bool IsLoadingDetailedTimes
     {
@@ -1125,22 +1100,22 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     // Propiedades para asignación de atleta
     public bool ShowAthleteAssignPanel
     {
-        get => _showAthleteAssignPanel;
-        set { _showAthleteAssignPanel = value; OnPropertyChanged(); }
+        get => _assignmentPanels.ShowAthleteAssignPanel;
+        set { _assignmentPanels.ShowAthleteAssignPanel = value; OnPropertyChanged(); }
     }
 
     public ObservableCollection<Athlete> AllAthletes
     {
-        get => _allAthletes;
-        set { _allAthletes = value; OnPropertyChanged(); }
+        get => _assignmentPanels.AllAthletes;
+        set { _assignmentPanels.SetAllAthletes(value); OnPropertyChanged(); }
     }
 
     public Athlete? SelectedAthleteToAssign
     {
-        get => _selectedAthleteToAssign;
+        get => _assignmentPanels.SelectedAthleteToAssign;
         set
         {
-            _selectedAthleteToAssign = value;
+            _assignmentPanels.SelectedAthleteToAssign = value;
             OnPropertyChanged();
             ((Command)AssignAthleteCommand).ChangeCanExecute();
         }
@@ -1148,10 +1123,10 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     public string NewAthleteName
     {
-        get => _newAthleteName;
+        get => _assignmentPanels.NewAthleteName;
         set
         {
-            _newAthleteName = value;
+            _assignmentPanels.NewAthleteName = value;
             OnPropertyChanged();
             ((Command)CreateAndAssignAthleteCommand).ChangeCanExecute();
         }
@@ -1159,10 +1134,10 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     public string NewAthleteSurname
     {
-        get => _newAthleteSurname;
+        get => _assignmentPanels.NewAthleteSurname;
         set
         {
-            _newAthleteSurname = value;
+            _assignmentPanels.NewAthleteSurname = value;
             OnPropertyChanged();
             ((Command)CreateAndAssignAthleteCommand).ChangeCanExecute();
         }
@@ -1175,14 +1150,14 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     // Propiedades para asignación de sección
     public bool ShowSectionAssignPanel
     {
-        get => _showSectionAssignPanel;
-        set { _showSectionAssignPanel = value; OnPropertyChanged(); }
+        get => _assignmentPanels.ShowSectionAssignPanel;
+        set { _assignmentPanels.ShowSectionAssignPanel = value; OnPropertyChanged(); }
     }
 
     public int SectionToAssign
     {
-        get => _sectionToAssign;
-        set { _sectionToAssign = value; OnPropertyChanged(); }
+        get => _assignmentPanels.SectionToAssign;
+        set { _assignmentPanels.SectionToAssign = value; OnPropertyChanged(); }
     }
 
     public string CurrentSectionText => _videoClip?.Section > 0 ? $"Tramo {_videoClip.Section}" : "Sin asignar";
@@ -1190,14 +1165,14 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     // Propiedades para asignación de etiquetas
     public bool ShowTagsAssignPanel
     {
-        get => _showTagsAssignPanel;
-        set { _showTagsAssignPanel = value; OnPropertyChanged(); }
+        get => _assignmentPanels.ShowTagsAssignPanel;
+        set { _assignmentPanels.ShowTagsAssignPanel = value; OnPropertyChanged(); }
     }
 
     public ObservableCollection<Tag> AllTags
     {
-        get => _allTags;
-        set { _allTags = value; OnPropertyChanged(); }
+        get => _assignmentPanels.AllTags;
+        set { _assignmentPanels.SetAllTags(value); OnPropertyChanged(); }
     }
 
     public ObservableCollection<EventTagDefinition> AllEventTags
@@ -1208,16 +1183,16 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     public ObservableCollection<Tag> SelectedTags
     {
-        get => _selectedTags;
-        set { _selectedTags = value; OnPropertyChanged(); }
+        get => _assignmentPanels.SelectedTags;
+        set { _assignmentPanels.SetSelectedTags(value); OnPropertyChanged(); }
     }
 
     public string NewTagName
     {
-        get => _newTagName;
+        get => _assignmentPanels.NewTagName;
         set
         {
-            _newTagName = value;
+            _assignmentPanels.NewTagName = value;
             OnPropertyChanged();
             ((Command)CreateAndAddTagCommand).ChangeCanExecute();
         }
@@ -2471,12 +2446,12 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             return;
         
         // Establecer la playlist directamente sin cargar datos de sesión
-        _sessionVideos = playlist;
-        _filteredPlaylist = playlist.OrderBy(v => v.CreationDate).ToList();
-        _currentPlaylistIndex = Math.Max(0, Math.Min(startIndex, _filteredPlaylist.Count - 1));
+        _playlistAndFilters.InitializeWithPlaylist(playlist, startIndex);
         
         // Inicializar con el primer video de la playlist
-        var firstVideo = _filteredPlaylist[_currentPlaylistIndex];
+        var firstVideo = _playlistAndFilters.GetCurrentPlaylistVideo();
+        if (firstVideo == null)
+            return;
         await LoadVideoDataAsync(firstVideo);
         VideoClip = firstVideo;
         
@@ -2563,8 +2538,9 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             await LoadSessionDataAsync(video.SessionId);
             
             // Encontrar el video actual en la playlist
-            _currentPlaylistIndex = _filteredPlaylist.FindIndex(v => v.Id == video.Id);
-            if (_currentPlaylistIndex < 0) _currentPlaylistIndex = 0;
+            var currentIndex = _playlistAndFilters.FindFilteredIndexByVideoId(video.Id);
+            if (currentIndex < 0) currentIndex = 0;
+            _playlistAndFilters.SetCurrentPlaylistIndex(currentIndex);
             
             UpdatePlaylistProperties();
         }
@@ -2740,65 +2716,67 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     private void TogglePlayPause()
     {
-        IsPlaying = !IsPlaying;
-        if (IsPlaying)
-        {
-            CaptureSyncBaselineForPlay();
-            PlayRequested?.Invoke(this, EventArgs.Empty);
-        }
-        else
-            PauseRequested?.Invoke(this, EventArgs.Empty);
+        _playbackCore.TogglePlayPause(
+            onPlayRequested: () => PlayRequested?.Invoke(this, EventArgs.Empty),
+            onPauseRequested: () => PauseRequested?.Invoke(this, EventArgs.Empty),
+            onPlayActivated: CaptureSyncBaselineForPlay);
+        OnPropertyChanged(nameof(IsPlaying));
+        OnPropertyChanged(nameof(PlayPauseIcon));
     }
 
     private void Stop()
     {
-        IsPlaying = false;
-        CurrentPosition = TimeSpan.Zero;
-        ClearSyncBaseline();
-        StopRequested?.Invoke(this, EventArgs.Empty);
+        var previousPosition = _playbackCore.CurrentPosition;
+        _playbackCore.Stop(
+            onStopRequested: () => StopRequested?.Invoke(this, EventArgs.Empty),
+            onStopActivated: ClearSyncBaseline);
+        OnPropertyChanged(nameof(IsPlaying));
+        OnPropertyChanged(nameof(PlayPauseIcon));
+        HandleCurrentPositionChanged(previousPosition, _playbackCore.CurrentPosition);
     }
 
     private void Seek(double seconds)
     {
-        var newPosition = CurrentPosition.TotalSeconds + seconds;
-        newPosition = Math.Max(0, Math.Min(newPosition, Duration.TotalSeconds));
-        // Un seek rompe la referencia del "desde Play".
-        ClearSyncBaseline();
-        SeekRequested?.Invoke(this, newPosition);
+        _playbackCore.Seek(
+            seconds,
+            getDurationSeconds: () => Duration.TotalSeconds,
+            onSeekRequested: newPosition =>
+            {
+                // Un seek rompe la referencia del "desde Play".
+                ClearSyncBaseline();
+                SeekRequested?.Invoke(this, newPosition);
+            });
     }
 
     private void StepForward()
     {
-        IsPlaying = false;
-        FrameForwardRequested?.Invoke(this, EventArgs.Empty);
+        _playbackCore.StepForward(() => FrameForwardRequested?.Invoke(this, EventArgs.Empty));
+        OnPropertyChanged(nameof(IsPlaying));
+        OnPropertyChanged(nameof(PlayPauseIcon));
     }
 
     private void StepBackward()
     {
-        IsPlaying = false;
-        FrameBackwardRequested?.Invoke(this, EventArgs.Empty);
+        _playbackCore.StepBackward(() => FrameBackwardRequested?.Invoke(this, EventArgs.Empty));
+        OnPropertyChanged(nameof(IsPlaying));
+        OnPropertyChanged(nameof(PlayPauseIcon));
     }
 
     private void SetSpeed(string? speedStr)
     {
-        if (double.TryParse(speedStr, System.Globalization.NumberStyles.Any,
-            System.Globalization.CultureInfo.InvariantCulture, out var speed))
-        {
-            PlaybackSpeed = speed;
-        }
+        _playbackCore.SetSpeed(
+            speedStr,
+            speed =>
+            {
+                OnPropertyChanged(nameof(PlaybackSpeed));
+                OnPropertyChanged(nameof(SpeedText));
+                SpeedChangeRequested?.Invoke(this, speed);
+            });
     }
 
     private void UpdateProgress()
     {
-        // No actualizar Progress si el usuario está arrastrando el slider
-        // para evitar conflictos con el binding que causa parpadeo
-        if (_isDraggingSlider)
-            return;
-            
-        if (Duration.TotalSeconds > 0)
-            Progress = CurrentPosition.TotalSeconds / Duration.TotalSeconds;
-        else
-            Progress = 0;
+        _playbackCore.UpdateProgress(progress => Progress = progress);
     }
 
     private double GetSliderMaxDurationSeconds()
@@ -2823,13 +2801,13 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         try
         {
             // Cargar todos los videos de la sesión
-            _sessionVideos = await _databaseService.GetVideoClipsBySessionAsync(sessionId);
+            _playlistAndFilters.SetSessionVideos(await _databaseService.GetVideoClipsBySessionAsync(sessionId));
             
             // Cargar la sesión para cada video y los tags
             var session = await _databaseService.GetSessionByIdAsync(sessionId);
             var categories = await _databaseService.GetAllCategoriesAsync();
             
-            foreach (var video in _sessionVideos)
+            foreach (var video in _playlistAndFilters.SessionVideos)
             {
                 video.Session = session;
                 if (video.Tags == null)
@@ -3287,140 +3265,85 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     private void PopulateFilterOptions(List<Category> allCategories)
     {
-        // Opción "Todos" para cada filtro
-        AthleteOptions.Clear();
-        AthleteOptions.Add(new FilterOption<Athlete>(null, "Todos los atletas"));
-        
-        SectionOptions.Clear();
-        SectionOptions.Add(new FilterOption<int>(0, "Todas las secciones"));
-        
-        CategoryOptions.Clear();
-        CategoryOptions.Add(new FilterOption<Category>(null, "Todas las categorías"));
-        
-        // Atletas únicos
-        var uniqueAthletes = _sessionVideos
-            .Where(v => v.Atleta != null)
-            .Select(v => v.Atleta!)
-            .DistinctBy(a => a.Id)
-            .OrderBy(a => a.NombreCompleto);
-        
-        foreach (var athlete in uniqueAthletes)
-        {
-            AthleteOptions.Add(new FilterOption<Athlete>(athlete, athlete.NombreCompleto ?? $"Atleta {athlete.Id}"));
-        }
-        
-        // Secciones únicas
-        var uniqueSections = _sessionVideos
-            .Select(v => v.Section)
-            .Distinct()
-            .OrderBy(s => s);
-        
-        foreach (var section in uniqueSections)
-        {
-            SectionOptions.Add(new FilterOption<int>(section, $"Sección {section}"));
-        }
-        
-        // Categorías únicas (basadas en los atletas de la sesión)
-        var usedCategoryIds = _sessionVideos
-            .Where(v => v.Atleta != null)
-            .Select(v => v.Atleta!.CategoriaId)
-            .Distinct()
-            .ToHashSet();
-        
-        var usedCategories = allCategories
-            .Where(c => usedCategoryIds.Contains(c.Id))
-            .OrderBy(c => c.NombreCategoria);
-        
-        foreach (var category in usedCategories)
-        {
-            CategoryOptions.Add(new FilterOption<Category>(category, category.NombreCategoria ?? $"Categoría {category.Id}"));
-        }
-        
-        // Seleccionar "Todos" por defecto
-        SelectedAthlete = AthleteOptions.FirstOrDefault();
-        SelectedSection = SectionOptions.FirstOrDefault();
-        SelectedCategory = CategoryOptions.FirstOrDefault();
+        _playlistAndFilters.PopulateFilterOptions(allCategories);
+        OnPropertyChanged(nameof(AthleteOptions));
+        OnPropertyChanged(nameof(SectionOptions));
+        OnPropertyChanged(nameof(CategoryOptions));
+        OnPropertyChanged(nameof(SelectedAthlete));
+        OnPropertyChanged(nameof(SelectedSection));
+        OnPropertyChanged(nameof(SelectedCategory));
     }
 
     private void ApplyFilters()
     {
-        var filtered = _sessionVideos.AsEnumerable();
-        
-        // Filtrar por atleta
-        if (SelectedAthlete?.Value != null)
+        _playlistAndFilters.ApplyFilters(_videoClip, out var shouldNavigateToFirst);
+        if (shouldNavigateToFirst)
         {
-            filtered = filtered.Where(v => v.AtletaId == SelectedAthlete.Value.Id);
+            _ = NavigateToCurrentPlaylistVideoAsync();
         }
-        
-        // Filtrar por sección
-        if (SelectedSection?.Value > 0)
-        {
-            filtered = filtered.Where(v => v.Section == SelectedSection.Value);
-        }
-        
-        // Filtrar por categoría
-        if (SelectedCategory?.Value != null)
-        {
-            filtered = filtered.Where(v => v.Atleta?.CategoriaId == SelectedCategory.Value.Id);
-        }
-        
-        _filteredPlaylist = filtered.OrderBy(v => v.CreationDate).ToList();
-        
-        // Actualizar índice actual
-        if (_videoClip != null)
-        {
-            _currentPlaylistIndex = _filteredPlaylist.FindIndex(v => v.Id == _videoClip.Id);
-            if (_currentPlaylistIndex < 0 && _filteredPlaylist.Count > 0)
-            {
-                // El video actual no está en la playlist filtrada, ir al primero
-                _currentPlaylistIndex = 0;
-                _ = NavigateToCurrentPlaylistVideoAsync();
-            }
-        }
-        
+
         UpdatePlaylistProperties();
     }
 
     private void ClearFilters()
     {
-        SelectedAthlete = AthleteOptions.FirstOrDefault();
-        SelectedSection = SectionOptions.FirstOrDefault();
-        SelectedCategory = CategoryOptions.FirstOrDefault();
+        _playlistAndFilters.ClearFilters();
+        OnPropertyChanged(nameof(SelectedAthlete));
+        OnPropertyChanged(nameof(SelectedSection));
+        OnPropertyChanged(nameof(SelectedCategory));
+        ApplyFilters();
     }
 
     private void GoToPreviousVideo()
     {
-        if (!CanGoPrevious) return;
-        
-        _currentPlaylistIndex--;
+        if (!_playlistAndFilters.TryMovePrevious()) return;
+
         _ = NavigateToCurrentPlaylistVideoAsync();
     }
 
     private void GoToNextVideo()
     {
-        if (!CanGoNext) return;
-        
-        _currentPlaylistIndex++;
+        if (!_playlistAndFilters.TryMoveNext()) return;
+
         _ = NavigateToCurrentPlaylistVideoAsync();
     }
 
     private async Task SelectGalleryVideoAsync(VideoClip? video)
     {
         if (video == null) return;
+
+        // Evitar doble click/rápidos taps que bloquean el reproductor
+        var now = DateTime.UtcNow;
+        if (_isSelectingGalleryVideo)
+            return;
+        if (_lastGallerySelectionVideoId == video.Id &&
+            (now - _lastGallerySelectionAt).TotalMilliseconds < 450)
+            return;
+
+        _isSelectingGalleryVideo = true;
+        _lastGallerySelectionAt = now;
+        _lastGallerySelectionVideoId = video.Id;
         
         // Si estamos seleccionando un video para un slot de comparación
-        if (SelectedComparisonSlot > 0)
+        try
         {
-            AssignVideoToComparisonSlot(video);
-            return;
+            if (SelectedComparisonSlot > 0)
+            {
+                AssignVideoToComparisonSlot(video);
+                return;
+            }
+            
+            // Comportamiento normal: cambiar el video principal
+            var index = _playlistAndFilters.FindFilteredIndexByVideoId(video.Id);
+            if (index >= 0)
+            {
+                _playlistAndFilters.SetCurrentPlaylistIndex(index);
+                await NavigateToCurrentPlaylistVideoAsync();
+            }
         }
-        
-        // Comportamiento normal: cambiar el video principal
-        var index = _filteredPlaylist.FindIndex(v => v.Id == video.Id);
-        if (index >= 0)
+        finally
         {
-            _currentPlaylistIndex = index;
-            await NavigateToCurrentPlaylistVideoAsync();
+            _isSelectingGalleryVideo = false;
         }
     }
 
@@ -3432,26 +3355,26 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         if (videoId <= 0) return;
         
         // Buscar el video en la playlist filtrada
-        var index = _filteredPlaylist.FindIndex(v => v.Id == videoId);
+        var index = _playlistAndFilters.FindFilteredIndexByVideoId(videoId);
         if (index >= 0)
         {
-            _currentPlaylistIndex = index;
+            _playlistAndFilters.SetCurrentPlaylistIndex(index);
             await NavigateToCurrentPlaylistVideoAsync();
             return;
         }
         
         // Si no está en la playlist filtrada, buscar en todos los videos de la sesión
-        var sessionIndex = _sessionVideos.FindIndex(v => v.Id == videoId);
+        var sessionIndex = _playlistAndFilters.FindSessionIndexByVideoId(videoId);
         if (sessionIndex >= 0)
         {
             // Limpiar filtros para poder navegar al video
             ClearFilters();
             
             // Buscar de nuevo en la playlist filtrada (ahora sin filtros)
-            index = _filteredPlaylist.FindIndex(v => v.Id == videoId);
+            index = _playlistAndFilters.FindFilteredIndexByVideoId(videoId);
             if (index >= 0)
             {
-                _currentPlaylistIndex = index;
+                _playlistAndFilters.SetCurrentPlaylistIndex(index);
                 await NavigateToCurrentPlaylistVideoAsync();
             }
         }
@@ -3459,10 +3382,9 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     private async Task NavigateToCurrentPlaylistVideoAsync()
     {
-        if (_currentPlaylistIndex < 0 || _currentPlaylistIndex >= _filteredPlaylist.Count)
+        var newVideo = _playlistAndFilters.GetCurrentPlaylistVideo();
+        if (newVideo == null)
             return;
-        
-        var newVideo = _filteredPlaylist[_currentPlaylistIndex];
         
         // Cargar datos actualizados del video desde la base de datos
         await LoadVideoDataAsync(newVideo);
@@ -3612,7 +3534,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     /// </summary>
     private void UpdateCurrentlyPlayingIndicator(VideoClip? currentVideo)
     {
-        foreach (var video in _filteredPlaylist)
+        foreach (var video in _playlistAndFilters.FilteredPlaylist)
         {
             video.IsCurrentlyPlaying = currentVideo != null && video.Id == currentVideo.Id;
         }
@@ -3647,7 +3569,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
                 // Si está seleccionado, también actualizamos la referencia para el botón "Asignar"
                 if (athlete.IsSelected)
                 {
-                    _selectedAthleteToAssign = athlete;
+                    _assignmentPanels.SelectedAthleteToAssign = athlete;
                 }
                 
                 AllAthletes.Add(athlete);
@@ -3656,7 +3578,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             // Si no hay atleta asignado actualmente, limpiar selección previa
             if (_videoClip?.AtletaId <= 0)
             {
-                _selectedAthleteToAssign = null;
+                _assignmentPanels.SelectedAthleteToAssign = null;
             }
             
             // Notificar el cambio explícitamente
@@ -3677,7 +3599,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             a.IsSelected = (a.Id == athlete.Id);
         }
         
-        _selectedAthleteToAssign = athlete;
+        _assignmentPanels.SelectedAthleteToAssign = athlete;
         
         // Forzar refresco visual recreando la colección (BindableLayout no detecta cambios en propiedades de items)
         var currentList = AllAthletes.ToList();
@@ -3692,14 +3614,14 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     private async Task AssignAthleteAsync()
     {
-        if (_selectedAthleteToAssign == null || _videoClip == null)
+        if (_assignmentPanels.SelectedAthleteToAssign == null || _videoClip == null)
             return;
 
         try
         {
             // Actualizar el video con el atleta seleccionado
-            _videoClip.AtletaId = _selectedAthleteToAssign.Id;
-            _videoClip.Atleta = _selectedAthleteToAssign;
+            _videoClip.AtletaId = _assignmentPanels.SelectedAthleteToAssign.Id;
+            _videoClip.Atleta = _assignmentPanels.SelectedAthleteToAssign;
             
             await _databaseService.SaveVideoClipAsync(_videoClip);
             
@@ -3707,7 +3629,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(AthleteName));
             OnPropertyChanged(nameof(HasCurrentAthlete));
             OnPropertyChanged(nameof(CurrentAthleteText));
-            VideoTitle = _selectedAthleteToAssign.NombreCompleto;
+            VideoTitle = _assignmentPanels.SelectedAthleteToAssign.NombreCompleto;
             
             // Cerrar panel y limpiar selección
             ShowAthleteAssignPanel = false;
@@ -3724,7 +3646,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     private async Task CreateAndAssignAthleteAsync()
     {
-        if (string.IsNullOrWhiteSpace(_newAthleteName) && string.IsNullOrWhiteSpace(_newAthleteSurname))
+        if (string.IsNullOrWhiteSpace(_assignmentPanels.NewAthleteName) && string.IsNullOrWhiteSpace(_assignmentPanels.NewAthleteSurname))
             return;
 
         if (_videoClip == null)
@@ -3735,8 +3657,8 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             // Crear nuevo atleta
             var newAthlete = new Athlete
             {
-                Nombre = _newAthleteName.Trim(),
-                Apellido = _newAthleteSurname.Trim()
+                Nombre = _assignmentPanels.NewAthleteName.Trim(),
+                Apellido = _assignmentPanels.NewAthleteSurname.Trim()
             };
             
             // Insertar en la base de datos
@@ -3781,7 +3703,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
         try
         {
-            _videoClip.Section = _sectionToAssign;
+            _videoClip.Section = _assignmentPanels.SectionToAssign;
             await _databaseService.SaveVideoClipAsync(_videoClip);
             
             // Actualizar UI
@@ -3896,7 +3818,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     private async Task CreateAndAddTagAsync()
     {
-        if (string.IsNullOrWhiteSpace(_newTagName))
+        if (string.IsNullOrWhiteSpace(_assignmentPanels.NewTagName))
             return;
 
         try
@@ -3904,7 +3826,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             // Crear nuevo tag
             var newTag = new Tag
             {
-                NombreTag = _newTagName.Trim(),
+                NombreTag = _assignmentPanels.NewTagName.Trim(),
                 IsSelected = 1
             };
             
@@ -4378,11 +4300,8 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             
             // Recargar la lista de tags
             var allTags = await _databaseService.GetAllTagsAsync();
-            _allTags.Clear();
-            foreach (var t in allTags)
-            {
-                _allTags.Add(t);
-            }
+            _assignmentPanels.SetAllTags(allTags);
+            OnPropertyChanged(nameof(AllTags));
             
             // Recargar datos del video actual si existe
             if (_videoClip != null)
@@ -5399,8 +5318,8 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             var (slotNumber, videoId) = tuple;
             
             // Buscar el video en la playlist o en la sesión
-            var video = _filteredPlaylist.FirstOrDefault(v => v.Id == videoId)
-                     ?? _sessionVideos.FirstOrDefault(v => v.Id == videoId);
+            var video = _playlistAndFilters.FilteredPlaylist.FirstOrDefault(v => v.Id == videoId)
+                     ?? _playlistAndFilters.SessionVideos.FirstOrDefault(v => v.Id == videoId);
             
             if (video != null)
             {

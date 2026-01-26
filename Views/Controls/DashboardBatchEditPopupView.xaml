@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView
+    x:Class="CrownRFEP_Reader.Views.Controls.DashboardBatchEditPopupView"
+    x:Name="ThisPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:converters="clr-namespace:CrownRFEP_Reader.Converters"
+    xmlns:controls="clr-namespace:CrownRFEP_Reader.Views.Controls"
+    xmlns:models="clr-namespace:CrownRFEP_Reader.Models"
+    xmlns:vm="clr-namespace:CrownRFEP_Reader.ViewModels"
+    x:DataType="vm:DashboardViewModel"
+    IsVisible="{Binding BatchEdit.ShowBatchEditPopup, FallbackValue=False, TargetNullValue=False}">
+
+    <ContentView.Resources>
+        <ResourceDictionary>
+            <converters:BoolToColorConverter x:Key="BoolToColorConverter" />
+        </ResourceDictionary>
+    </ContentView.Resources>
+
+    <!--  Popup de edición en lote  -->
+    <Grid BackgroundColor="#CC000000">
+        <Border
+            Padding="24"
+            BackgroundColor="#FF1E1E1E"
+            HorizontalOptions="Center"
+            Stroke="#FF3A3A3A"
+            StrokeShape="RoundRectangle 12"
+            StrokeThickness="1"
+            VerticalOptions="Center"
+            WidthRequest="400">
+            <VerticalStackLayout Spacing="16">
+                <!--  Título  -->
+                <Grid ColumnDefinitions="*,Auto">
+                    <Label
+                        FontAttributes="None"
+                        FontSize="{StaticResource FontSizeTitle}"
+                        Text="Editar vídeos seleccionados"
+                        TextColor="White" />
+                    <Border
+                        Grid.Column="1"
+                        Padding="4"
+                        BackgroundColor="Transparent"
+                        Stroke="Transparent"
+                        StrokeShape="RoundRectangle 4">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding BatchEdit.CloseBatchEditPopupCommand}" />
+                        </Border.GestureRecognizers>
+                        <controls:SymbolIcon
+                            HeightRequest="{StaticResource IconSizeLarge}"
+                            SymbolName="xmark"
+                            TintColor="#FF888888"
+                            WidthRequest="{StaticResource IconSizeLarge}" />
+                    </Border>
+                </Grid>
+
+                <Label
+                    FontSize="{StaticResource FontSizeBody}"
+                    Text="{Binding BatchEdit.SelectedVideoCount, StringFormat='Se modificarán {0} vídeos'}"
+                    TextColor="#FFAAAAAA" />
+
+                <!--  Atleta  -->
+                <VerticalStackLayout Spacing="8">
+                    <Grid ColumnDefinitions="Auto,*">
+                        <CheckBox
+                            IsChecked="{Binding BatchEdit.BatchEditAthleteEnabled}"
+                            Color="#FF0066"
+                            VerticalOptions="Center" />
+                        <Label
+                            Grid.Column="1"
+                            FontSize="{StaticResource FontSizeBody}"
+                            Text="Asignar atleta"
+                            TextColor="White"
+                            VerticalOptions="Center" />
+                    </Grid>
+                    <ScrollView 
+                        HeightRequest="120" 
+                        IsEnabled="{Binding BatchEdit.BatchEditAthleteEnabled}">
+                        <FlexLayout
+                            BindableLayout.ItemsSource="{Binding BatchEdit.BatchEditAthletes}"
+                            Direction="Row"
+                            Wrap="Wrap">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate x:DataType="models:Athlete">
+                                    <Border
+                                        Margin="0,0,8,8"
+                                        Padding="10,6"
+                                        BackgroundColor="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF4A9FD4|#FF2A2A2A'}"
+                                        Stroke="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF4A9FD4|#FF3A3A3A'}"
+                                        StrokeShape="RoundRectangle 4">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer
+                                                Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.BatchEdit.SelectBatchAthleteCommand}"
+                                                CommandParameter="{Binding .}" />
+                                        </Border.GestureRecognizers>
+                                        <Label
+                                            FontSize="{StaticResource FontSizeSmall}"
+                                            Text="{Binding NombreCompleto}"
+                                            TextColor="White" />
+                                    </Border>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </FlexLayout>
+                    </ScrollView>
+
+                    <!--  Nuevo atleta (no existente)  -->
+                    <Grid ColumnDefinitions="*,*,Auto" ColumnSpacing="8">
+                        <Entry
+                            BackgroundColor="#FF404040"
+                            Placeholder="Apellido"
+                            Text="{Binding BatchEdit.NewBatchAthleteSurname}"
+                            TextColor="White" />
+                        <Entry
+                            Grid.Column="1"
+                            BackgroundColor="#FF404040"
+                            Placeholder="Nombre"
+                            Text="{Binding BatchEdit.NewBatchAthleteName}"
+                            TextColor="White" />
+                        <Button
+                            Grid.Column="2"
+                            BackgroundColor="#FF3A3A3A"
+                            Command="{Binding BatchEdit.AddNewBatchAthleteCommand}"
+                            Text="Añadir"
+                            TextColor="White" />
+                    </Grid>
+
+                    <Label
+                        FontSize="{StaticResource FontSizeSmall}"
+                        Text="No hay atletas disponibles"
+                        TextColor="#FF888888">
+                        <Label.Triggers>
+                            <DataTrigger TargetType="Label" Binding="{Binding BatchEdit.BatchEditAthletes.Count}" Value="0">
+                                <Setter Property="IsVisible" Value="True" />
+                            </DataTrigger>
+                        </Label.Triggers>
+                        <Label.Style>
+                            <Style TargetType="Label">
+                                <Setter Property="IsVisible" Value="False" />
+                            </Style>
+                        </Label.Style>
+                    </Label>
+                </VerticalStackLayout>
+
+                <!--  Sección  -->
+                <VerticalStackLayout Spacing="8">
+                    <Grid ColumnDefinitions="Auto,*">
+                        <CheckBox
+                            IsChecked="{Binding BatchEdit.BatchEditSectionEnabled}"
+                            Color="#FF0066"
+                            VerticalOptions="Center" />
+                        <Label
+                            Grid.Column="1"
+                            FontSize="{StaticResource FontSizeBody}"
+                            Text="Asignar sección/tramo"
+                            TextColor="White"
+                            VerticalOptions="Center" />
+                    </Grid>
+                    <HorizontalStackLayout IsEnabled="{Binding BatchEdit.BatchEditSectionEnabled}" Spacing="12">
+                        <Entry
+                            BackgroundColor="#FF404040"
+                            Keyboard="Numeric"
+                            Text="{Binding BatchEdit.BatchEditSection}"
+                            TextColor="White"
+                            WidthRequest="80" />
+                        <Label
+                            FontSize="{StaticResource FontSizeBody}"
+                            Text="(1-99)"
+                            TextColor="#FF888888"
+                            VerticalOptions="Center" />
+                    </HorizontalStackLayout>
+                </VerticalStackLayout>
+
+                <!--  Etiquetas  -->
+                <VerticalStackLayout Spacing="8">
+                    <Label
+                        FontSize="{StaticResource FontSizeBody}"
+                        Text="Añadir etiquetas"
+                        TextColor="White" />
+
+                    <!--  Nueva etiqueta (no existente)  -->
+                    <HorizontalStackLayout Spacing="12">
+                        <Entry
+                            BackgroundColor="#FF404040"
+                            HorizontalOptions="FillAndExpand"
+                            Placeholder="Nueva etiqueta"
+                            Text="{Binding BatchEdit.NewBatchTagText}"
+                            TextColor="White" />
+                        <Button
+                            BackgroundColor="#FF3A3A3A"
+                            Command="{Binding BatchEdit.AddNewBatchTagCommand}"
+                            Text="Añadir"
+                            TextColor="White" />
+                    </HorizontalStackLayout>
+
+                    <FlexLayout
+                        BindableLayout.ItemsSource="{Binding BatchEdit.BatchEditTags}"
+                        Direction="Row"
+                        Wrap="Wrap">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate x:DataType="models:Tag">
+                                <Border
+                                    Margin="0,0,8,8"
+                                    Padding="10,6"
+                                    BackgroundColor="{Binding IsSelectedBool, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF4A9FD4|#FF2A2A2A'}"
+                                    Stroke="{Binding IsSelectedBool, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF4A9FD4|#FF3A3A3A'}"
+                                    StrokeShape="RoundRectangle 4">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer
+                                            Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.BatchEdit.ToggleBatchTagCommand}"
+                                            CommandParameter="{Binding .}" />
+                                    </Border.GestureRecognizers>
+                                    <Label
+                                        FontSize="{StaticResource FontSizeSmall}"
+                                        Text="{Binding NombreTag}"
+                                        TextColor="White" />
+                                </Border>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </FlexLayout>
+                    <Label
+                        FontSize="{StaticResource FontSizeSmall}"
+                        Text="No hay etiquetas disponibles"
+                        TextColor="#FF888888">
+                        <Label.Triggers>
+                            <DataTrigger TargetType="Label" Binding="{Binding BatchEdit.BatchEditTags.Count}" Value="0">
+                                <Setter Property="IsVisible" Value="True" />
+                            </DataTrigger>
+                        </Label.Triggers>
+                        <Label.Style>
+                            <Style TargetType="Label">
+                                <Setter Property="IsVisible" Value="False" />
+                            </Style>
+                        </Label.Style>
+                    </Label>
+                </VerticalStackLayout>
+
+                <!--  Botones  -->
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="12" Margin="0,8,0,0">
+                    <Button
+                        BackgroundColor="#FF3A3A3A"
+                        Command="{Binding BatchEdit.CloseBatchEditPopupCommand}"
+                        Text="Cancelar"
+                        TextColor="White" />
+                    <Button
+                        Grid.Column="1"
+                        BackgroundColor="#FF4A9FD4"
+                        Command="{Binding BatchEdit.ApplyBatchEditCommand}"
+                        Text="Aplicar"
+                        TextColor="White" />
+                </Grid>
+            </VerticalStackLayout>
+        </Border>
+    </Grid>
+</ContentView>

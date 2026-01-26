@@ -1,0 +1,465 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView
+    x:Class="CrownRFEP_Reader.Views.Controls.DashboardSessionDiaryView"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:converters="clr-namespace:CrownRFEP_Reader.Converters"
+    xmlns:controls="clr-namespace:CrownRFEP_Reader.Views.Controls"
+    xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+    xmlns:vm="clr-namespace:CrownRFEP_Reader.ViewModels"
+    x:DataType="vm:DashboardViewModel">
+
+    <ContentView.Resources>
+        <ResourceDictionary>
+            <converters:NotNullOrEmptyBoolConverter x:Key="NotNullOrEmptyBoolConverter" />
+        </ResourceDictionary>
+    </ContentView.Resources>
+
+    <!--  ===== PESTAÑA: DIARIO DE SESIÓN =====  -->
+    <VerticalStackLayout Spacing="16">
+        <VerticalStackLayout.IsVisible>
+            <MultiBinding Converter="{StaticResource AllTrueConverter}">
+                <Binding Path="Layout.IsDiaryTabSelected" />
+                <Binding Path="Layout.IsDiaryViewSelected" Converter="{toolkit:InvertedBoolConverter}" />
+            </MultiBinding>
+        </VerticalStackLayout.IsVisible>
+
+        <!--  Título  -->
+        <Label
+            FontAttributes="None"
+            FontSize="{StaticResource FontSizeTitle}"
+            Text="Diario de Sesión"
+            TextColor="White" />
+
+        <!--  ===== VISTA DE RESULTADOS (cuando hay datos guardados y no está editando) =====  -->
+        <Border
+            Padding="16"
+            BackgroundColor="#FF1E1E1E"
+            StrokeShape="RoundRectangle 12"
+            StrokeThickness="0"
+            IsVisible="{Binding Diary.ShowDiaryResults}">
+            <VerticalStackLayout Spacing="16">
+                <Label
+                    FontAttributes="None"
+                    FontSize="{StaticResource FontSizeBody}"
+                    Text="Tu valoración de esta sesión"
+                    TextColor="White" />
+
+                <!--  Resultados de valoración  -->
+                <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12">
+                    <!--  Físico  -->
+                    <Border
+                        Padding="12"
+                        BackgroundColor="#FF2A2A2A"
+                        StrokeShape="RoundRectangle 8"
+                        StrokeThickness="0">
+                        <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
+                            <Label
+                                FontAttributes="None"
+                                FontSize="{StaticResource FontSizeHeader}"
+                                HorizontalOptions="Center"
+                                Text="{Binding Diary.DiaryValoracionFisica}"
+                                TextColor="#FF8DD3C7" />
+                            <Label
+                                FontSize="{StaticResource FontSizeSmall}"
+                                HorizontalOptions="Center"
+                                Text="Físico"
+                                TextColor="#FF808080" />
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <!--  Mental  -->
+                    <Border
+                        Grid.Column="1"
+                        Padding="12"
+                        BackgroundColor="#FF2A2A2A"
+                        StrokeShape="RoundRectangle 8"
+                        StrokeThickness="0">
+                        <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
+                            <Label
+                                FontAttributes="None"
+                                FontSize="{StaticResource FontSizeHeader}"
+                                HorizontalOptions="Center"
+                                Text="{Binding Diary.DiaryValoracionMental}"
+                                TextColor="#FFFFED6F" />
+                            <Label
+                                FontSize="{StaticResource FontSizeSmall}"
+                                HorizontalOptions="Center"
+                                Text="Mental"
+                                TextColor="#FF808080" />
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <!--  Técnico  -->
+                    <Border
+                        Grid.Column="2"
+                        Padding="12"
+                        BackgroundColor="#FF2A2A2A"
+                        StrokeShape="RoundRectangle 8"
+                        StrokeThickness="0">
+                        <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
+                            <Label
+                                FontAttributes="None"
+                                FontSize="{StaticResource FontSizeHeader}"
+                                HorizontalOptions="Center"
+                                Text="{Binding Diary.DiaryValoracionTecnica}"
+                                TextColor="#FFBEBADA" />
+                            <Label
+                                FontSize="{StaticResource FontSizeSmall}"
+                                HorizontalOptions="Center"
+                                Text="Técnico"
+                                TextColor="#FF808080" />
+                        </VerticalStackLayout>
+                    </Border>
+                </Grid>
+
+                <!--  Notas guardadas  -->
+                <VerticalStackLayout Spacing="4" IsVisible="{Binding Diary.DiaryNotas, Converter={StaticResource NotNullOrEmptyBoolConverter}}">
+                    <Label
+                        FontSize="{StaticResource FontSizeSmall}"
+                        Text="Notas"
+                        TextColor="#FF808080" />
+                    <Label
+                        FontSize="{StaticResource FontSizeBody}"
+                        Text="{Binding Diary.DiaryNotas}"
+                        TextColor="#FFCCCCCC" />
+                </VerticalStackLayout>
+
+                <!--  Botón Editar valoración  -->
+                <Button
+                    Padding="16,10"
+                    BackgroundColor="#FF404040"
+                    Command="{Binding Diary.EditDiaryCommand}"
+                    CornerRadius="4"
+                    HorizontalOptions="Start"
+                    Text="Editar valoración"
+                    TextColor="White" />
+            </VerticalStackLayout>
+        </Border>
+
+        <!--  ===== FORMULARIO DE VALORACIÓN (cuando no hay datos o está editando) =====  -->
+        <!--  Cuestionario de valoraciones  -->
+        <Border
+            Padding="16"
+            BackgroundColor="Transparent"
+            StrokeShape="RoundRectangle 12"
+            StrokeThickness="0"
+            IsVisible="{Binding Diary.ShowDiaryForm}">
+            <VerticalStackLayout Spacing="16">
+                <Label
+                    FontAttributes="None"
+                    FontSize="{StaticResource FontSizeBody}"
+                    Text="¿Cómo te has sentido hoy?"
+                    TextColor="White" />
+
+                <!--  Valoración Física  -->
+                <Grid ColumnDefinitions="100,*,40" ColumnSpacing="12">
+                    <Label
+                        FontSize="{StaticResource FontSizeBody}"
+                        Text="Físico"
+                        TextColor="#FFCCCCCC"
+                        VerticalOptions="Center" />
+                    <Slider
+                        Grid.Column="1"
+                        Maximum="5"
+                        Minimum="1"
+                        MinimumTrackColor="#FF8DD3C7"
+                        MaximumTrackColor="#FF404040"
+                        ThumbColor="#FF8DD3C7"
+                        Value="{Binding Diary.DiaryValoracionFisica}" />
+                    <Label
+                        Grid.Column="2"
+                        FontAttributes="None"
+                        FontSize="{StaticResource FontSizeSubtitle}"
+                        HorizontalOptions="Center"
+                        Text="{Binding Diary.DiaryValoracionFisica}"
+                        TextColor="#FF8DD3C7"
+                        VerticalOptions="Center" />
+                </Grid>
+
+                <!--  Valoración Mental  -->
+                <Grid ColumnDefinitions="100,*,40" ColumnSpacing="12">
+                    <Label
+                        FontSize="{StaticResource FontSizeBody}"
+                        Text="Mental"
+                        TextColor="#FFCCCCCC"
+                        VerticalOptions="Center" />
+                    <Slider
+                        Grid.Column="1"
+                        Maximum="5"
+                        Minimum="1"
+                        MinimumTrackColor="#FFFFED6F"
+                        MaximumTrackColor="#FF404040"
+                        ThumbColor="#FFFFED6F"
+                        Value="{Binding Diary.DiaryValoracionMental}" />
+                    <Label
+                        Grid.Column="2"
+                        FontAttributes="None"
+                        FontSize="{StaticResource FontSizeSubtitle}"
+                        HorizontalOptions="Center"
+                        Text="{Binding Diary.DiaryValoracionMental}"
+                        TextColor="#FFFFED6F"
+                        VerticalOptions="Center" />
+                </Grid>
+
+                <!--  Valoración Técnica  -->
+                <Grid ColumnDefinitions="100,*,40" ColumnSpacing="12">
+                    <Label
+                        FontSize="{StaticResource FontSizeBody}"
+                        Text="Técnico"
+                        TextColor="#FFCCCCCC"
+                        VerticalOptions="Center" />
+                    <Slider
+                        Grid.Column="1"
+                        Maximum="5"
+                        Minimum="1"
+                        MinimumTrackColor="#FFBEBADA"
+                        MaximumTrackColor="#FF404040"
+                        ThumbColor="#FFBEBADA"
+                        Value="{Binding Diary.DiaryValoracionTecnica}" />
+                    <Label
+                        Grid.Column="2"
+                        FontAttributes="None"
+                        FontSize="{StaticResource FontSizeSubtitle}"
+                        HorizontalOptions="Center"
+                        Text="{Binding Diary.DiaryValoracionTecnica}"
+                        TextColor="#FFBEBADA"
+                        VerticalOptions="Center" />
+                </Grid>
+            </VerticalStackLayout>
+        </Border>
+
+        <Border HeightRequest="0.4" BackgroundColor="#FF0A0A0A"/>
+
+        <!--  Promedios últimos 30 días  -->
+        <Border
+            Padding="16"
+            BackgroundColor="Transparent"
+            StrokeShape="RoundRectangle 12"
+            StrokeThickness="0">
+            <VerticalStackLayout Spacing="12">
+                <Grid ColumnDefinitions="*,Auto">
+                    <Label
+                        FontAttributes="None"
+                        FontSize="{StaticResource FontSizeBody}"
+                        Text="Promedios (últimos 30 días)"
+                        TextColor="White"
+                        VerticalOptions="Center" />
+                    <Label
+                        Grid.Column="1"
+                        FontSize="{StaticResource FontSizeSmall}"
+                        Text="{Binding Diary.AvgValoracionCount, StringFormat='{0} sesiones'}"
+                        TextColor="#FF808080"
+                        VerticalOptions="Center" />
+                </Grid>
+
+                <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12">
+                    <!--  Promedio Físico  -->
+                    <Border
+                        Padding="12"
+                        BackgroundColor="#FF1E1E1E"
+                        StrokeShape="RoundRectangle 8"
+                        StrokeThickness="0">
+                        <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
+                            <Label
+                                FontAttributes="None"
+                                FontSize="{StaticResource FontSizeHeader}"
+                                HorizontalOptions="Center"
+                                Text="{Binding Diary.AvgValoracionFisica, StringFormat='{0:F1}'}"
+                                TextColor="#FF8DD3C7" />
+                            <Label
+                                FontSize="{StaticResource FontSizeSmall}"
+                                HorizontalOptions="Center"
+                                Text="Físico"
+                                TextColor="#FF808080" />
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <!--  Promedio Mental  -->
+                    <Border
+                        Grid.Column="1"
+                        Padding="12"
+                        BackgroundColor="#FF1E1E1E"
+                        StrokeShape="RoundRectangle 8"
+                        StrokeThickness="0">
+                        <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
+                            <Label
+                                FontAttributes="None"
+                                FontSize="{StaticResource FontSizeHeader}"
+                                HorizontalOptions="Center"
+                                Text="{Binding Diary.AvgValoracionMental, StringFormat='{0:F1}'}"
+                                TextColor="#FFFFED6F" />
+                            <Label
+                                FontSize="{StaticResource FontSizeSmall}"
+                                HorizontalOptions="Center"
+                                Text="Mental"
+                                TextColor="#FF808080" />
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <!--  Promedio Técnico  -->
+                    <Border
+                        Grid.Column="2"
+                        Padding="12"
+                        BackgroundColor="#FF1E1E1E"
+                        StrokeShape="RoundRectangle 8"
+                        StrokeThickness="0">
+                        <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
+                            <Label
+                                FontAttributes="None"
+                                FontSize="{StaticResource FontSizeHeader}"
+                                HorizontalOptions="Center"
+                                Text="{Binding Diary.AvgValoracionTecnica, StringFormat='{0:F1}'}"
+                                TextColor="#FFBEBADA" />
+                            <Label
+                                FontSize="{StaticResource FontSizeSmall}"
+                                HorizontalOptions="Center"
+                                Text="Técnico"
+                                TextColor="#FF808080" />
+                        </VerticalStackLayout>
+                    </Border>
+                </Grid>
+            </VerticalStackLayout>
+        </Border>
+        <Border HeightRequest="0.4" BackgroundColor="#FF0A0A0A"/>
+
+        <!--  Gráfico de evolución  -->
+        <Border
+            Padding="16"
+            BackgroundColor="Transparent"
+            StrokeShape="RoundRectangle 12"
+            StrokeThickness="0">
+            <VerticalStackLayout Spacing="12">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                    <Label
+                        FontAttributes="None"
+                        FontSize="{StaticResource FontSizeBody}"
+                        Text="Evolución"
+                        TextColor="White"
+                        VerticalOptions="Center" />
+
+                    <!--  Selector de periodo  -->
+                    <Grid Grid.Column="1" ColumnDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="4">
+                        <Border
+                            Padding="8,4"
+                            BackgroundColor="{Binding Diary.SelectedEvolutionPeriod, Converter={StaticResource IntEqualityToColorConverter}, ConverterParameter='0:#FF3A3A3A:#FF1E1E1E'}"
+                            StrokeShape="RoundRectangle 4"
+                            StrokeThickness="0">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding Diary.SetEvolutionPeriodCommand}" CommandParameter="0" />
+                            </Border.GestureRecognizers>
+                            <Label FontSize="{StaticResource FontSizeSmall}" Text="Semana" TextColor="White" />
+                        </Border>
+                        <Border
+                            Grid.Column="1"
+                            Padding="8,4"
+                            BackgroundColor="{Binding Diary.SelectedEvolutionPeriod, Converter={StaticResource IntEqualityToColorConverter}, ConverterParameter='1:#FF3A3A3A:#FF1E1E1E'}"
+                            StrokeShape="RoundRectangle 4"
+                            StrokeThickness="0">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding Diary.SetEvolutionPeriodCommand}" CommandParameter="1" />
+                            </Border.GestureRecognizers>
+                            <Label FontSize="{StaticResource FontSizeSmall}" Text="Mes" TextColor="White" />
+                        </Border>
+                        <Border
+                            Grid.Column="2"
+                            Padding="8,4"
+                            BackgroundColor="{Binding Diary.SelectedEvolutionPeriod, Converter={StaticResource IntEqualityToColorConverter}, ConverterParameter='2:#FF3A3A3A:#FF1E1E1E'}"
+                            StrokeShape="RoundRectangle 4"
+                            StrokeThickness="0">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding Diary.SetEvolutionPeriodCommand}" CommandParameter="2" />
+                            </Border.GestureRecognizers>
+                            <Label FontSize="{StaticResource FontSizeSmall}" Text="Año" TextColor="White" />
+                        </Border>
+                        <Border
+                            Grid.Column="3"
+                            Padding="8,4"
+                            BackgroundColor="{Binding Diary.SelectedEvolutionPeriod, Converter={StaticResource IntEqualityToColorConverter}, ConverterParameter='3:#FF3A3A3A:#FF1E1E1E'}"
+                            StrokeShape="RoundRectangle 4"
+                            StrokeThickness="0">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding Diary.SetEvolutionPeriodCommand}" CommandParameter="3" />
+                            </Border.GestureRecognizers>
+                            <Label FontSize="{StaticResource FontSizeSmall}" Text="Todo" TextColor="White" />
+                        </Border>
+                    </Grid>
+                </Grid>
+
+                <!--  Leyenda  -->
+                <HorizontalStackLayout Spacing="16" HorizontalOptions="Center">
+                    <HorizontalStackLayout Spacing="4">
+                        <BoxView WidthRequest="12" HeightRequest="12" Color="#FF8DD3C7" CornerRadius="2" />
+                        <Label FontSize="{StaticResource FontSizeSmall}" Text="Físico" TextColor="#FF808080" />
+                    </HorizontalStackLayout>
+                    <HorizontalStackLayout Spacing="4">
+                        <BoxView WidthRequest="12" HeightRequest="12" Color="#FFFFED6F" CornerRadius="2" />
+                        <Label FontSize="{StaticResource FontSizeSmall}" Text="Mental" TextColor="#FF808080" />
+                    </HorizontalStackLayout>
+                    <HorizontalStackLayout Spacing="4">
+                        <BoxView WidthRequest="12" HeightRequest="12" Color="#FFBEBADA" CornerRadius="2" />
+                        <Label FontSize="{StaticResource FontSizeSmall}" Text="Técnico" TextColor="#FF808080" />
+                    </HorizontalStackLayout>
+                </HorizontalStackLayout>
+
+                <!--  Mensaje si no hay datos  -->
+                <Label
+                    IsVisible="{Binding Diary.ValoracionEvolution.Count, Converter={StaticResource IntToBoolConverter}, ConverterParameter=invert}"
+                    FontSize="{StaticResource FontSizeBody}"
+                    HorizontalOptions="Center"
+                    Text="No hay datos de evolución para el periodo seleccionado"
+                    TextColor="#FF808080" />
+
+                <!--  Gráfico de evolución de valoraciones  -->
+                <controls:MultiLineChart 
+                    IsVisible="{Binding Diary.ValoracionEvolution.Count, Converter={StaticResource IntToBoolConverter}}"
+                    HeightRequest="180"
+                    Values1="{Binding Diary.EvolutionFisicaValues}"
+                    Values2="{Binding Diary.EvolutionMentalValues}"
+                    Values3="{Binding Diary.EvolutionTecnicaValues}"
+                    Labels="{Binding Diary.EvolutionLabels}"
+                    MinValue="1"
+                    MaxValue="5" />
+            </VerticalStackLayout>
+        </Border>
+
+        <Border HeightRequest="0.4" BackgroundColor="#FF0A0A0A"/>
+
+        <!--  Notas de sesión (solo en modo edición)  -->
+        <Border
+            Padding="16"
+            BackgroundColor="#FF1E1E1E"
+            StrokeShape="RoundRectangle 12"
+            StrokeThickness="0"
+            IsVisible="{Binding Diary.ShowDiaryForm}">
+            <VerticalStackLayout Spacing="12">
+                <Label
+                    FontAttributes="None"
+                    FontSize="{StaticResource FontSizeBody}"
+                    Text="Notas de sesión"
+                    TextColor="White" />
+
+                <Editor
+                    AutoSize="TextChanges"
+                    BackgroundColor="#FF1E1E1E"
+                    MinimumHeightRequest="500"
+                    Placeholder="Escribe tus notas sobre la sesión...&#x0a;Cómo te has sentido, qué esperas de tu siguiente sesión, etc."
+                    PlaceholderColor="#FF606060"
+                    Text="{Binding Diary.DiaryNotas}"
+                    TextColor="White" />
+            </VerticalStackLayout>
+        </Border>
+
+        <!--  Botón Guardar (solo en modo edición)  -->
+        <Button
+            Padding="20,12"
+            BackgroundColor="#FF303030"
+            Command="{Binding Diary.SaveDiaryCommand}"
+            CornerRadius="4"
+            HorizontalOptions="Fill"
+            Text="Guardar Diario"
+            TextColor="White"
+            IsVisible="{Binding Diary.ShowDiaryForm}" />
+
+    </VerticalStackLayout>
+</ContentView>
