@@ -2508,12 +2508,15 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         VideoClip? comparison4,
         ComparisonLayout layout)
     {
-        System.Diagnostics.Debug.WriteLine($"[SinglePlayerVM] InitializeWithComparisonAsync: mainVideo.Id={mainVideo?.Id}, layout={layout}");
+        if (mainVideo == null)
+            return;
+
+        System.Diagnostics.Debug.WriteLine($"[SinglePlayerVM] InitializeWithComparisonAsync: mainVideo.Id={mainVideo.Id}, layout={layout}");
         System.Diagnostics.Debug.WriteLine($"[SinglePlayerVM] comparison2: Id={comparison2?.Id}, Path={comparison2?.LocalClipPath ?? comparison2?.ClipPath}");
         System.Diagnostics.Debug.WriteLine($"[SinglePlayerVM] comparison3: Id={comparison3?.Id}, Path={comparison3?.LocalClipPath ?? comparison3?.ClipPath}");
         System.Diagnostics.Debug.WriteLine($"[SinglePlayerVM] comparison4: Id={comparison4?.Id}, Path={comparison4?.LocalClipPath ?? comparison4?.ClipPath}");
 
-        await InitializeWithVideoAsync(mainVideo);
+        await InitializeWithVideoAsync(mainVideo!);
 
         // Limpiar estado anterior
         ComparisonVideo2 = null;
@@ -2528,6 +2531,44 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             ComparisonLayout.Quad2x2 => "Quad2x2",
             _ => "Single"
         });
+
+        // Resolver rutas para videos de comparación (local o streaming)
+        if (comparison2 != null)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"[SinglePlayerVM] Resolving comparison2 path, current LocalClipPath={comparison2.LocalClipPath}");
+                var resolved = await ResolveVideoPathAsync(comparison2);
+                System.Diagnostics.Debug.WriteLine($"[SinglePlayerVM] comparison2 resolved to: {resolved}");
+                if (!string.IsNullOrWhiteSpace(resolved))
+                    comparison2.LocalClipPath = resolved;
+            }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[SinglePlayerVM] comparison2 resolve error: {ex.Message}"); }
+        }
+        if (comparison3 != null)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"[SinglePlayerVM] Resolving comparison3 path, current LocalClipPath={comparison3.LocalClipPath}");
+                var resolved = await ResolveVideoPathAsync(comparison3);
+                System.Diagnostics.Debug.WriteLine($"[SinglePlayerVM] comparison3 resolved to: {resolved}");
+                if (!string.IsNullOrWhiteSpace(resolved))
+                    comparison3.LocalClipPath = resolved;
+            }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[SinglePlayerVM] comparison3 resolve error: {ex.Message}"); }
+        }
+        if (comparison4 != null)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"[SinglePlayerVM] Resolving comparison4 path, current LocalClipPath={comparison4.LocalClipPath}");
+                var resolved = await ResolveVideoPathAsync(comparison4);
+                System.Diagnostics.Debug.WriteLine($"[SinglePlayerVM] comparison4 resolved to: {resolved}");
+                if (!string.IsNullOrWhiteSpace(resolved))
+                    comparison4.LocalClipPath = resolved;
+            }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[SinglePlayerVM] comparison4 resolve error: {ex.Message}"); }
+        }
 
         // Asignar videos de comparación
         ComparisonVideo2 = comparison2;
@@ -3408,6 +3449,27 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     {
         var videoPath = video.LocalClipPath;
 
+        // Si ya es una URL de streaming, regenerarla porque podría haber expirado
+        if (IsStreamingUrl(videoPath))
+        {
+            System.Diagnostics.Debug.WriteLine($"[SinglePlayerVM] ResolveVideoPathAsync: LocalClipPath is streaming URL, regenerating for video {video.Id}");
+            if (video.IsRemoteAvailable && _cloudBackendService.IsAuthenticated)
+            {
+                var remotePath = NormalizeRemotePath(video.ClipPath);
+                if (!string.IsNullOrWhiteSpace(remotePath))
+                {
+                    var signResult = await _cloudBackendService.GetDownloadUrlAsync(remotePath, expirationMinutes: 60);
+                    if (signResult.Success && !string.IsNullOrWhiteSpace(signResult.Url))
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[SinglePlayerVM] ResolveVideoPathAsync: regenerated streaming URL for video {video.Id}");
+                        return signResult.Url;
+                    }
+                }
+            }
+            // Si no se pudo regenerar, devolver la URL existente (podría funcionar si no expiró)
+            return videoPath;
+        }
+
         if (!IsStreamingUrl(videoPath))
         {
             // Fallback: construir ruta local desde la carpeta de la sesión
@@ -3445,9 +3507,12 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             if (video.IsRemoteAvailable && _cloudBackendService.IsAuthenticated)
             {
                 var remotePath = NormalizeRemotePath(video.ClipPath);
-                var signResult = await _cloudBackendService.GetDownloadUrlAsync(remotePath, expirationMinutes: 10);
-                if (signResult.Success && !string.IsNullOrWhiteSpace(signResult.Url))
-                    videoPath = signResult.Url;
+                if (!string.IsNullOrWhiteSpace(remotePath))
+                {
+                    var signResult = await _cloudBackendService.GetDownloadUrlAsync(remotePath, expirationMinutes: 60);
+                    if (signResult.Success && !string.IsNullOrWhiteSpace(signResult.Url))
+                        videoPath = signResult.Url;
+                }
             }
         }
 
@@ -5118,7 +5183,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     {
         if (SelectedComparisonSlot <= 0) return;
         
-        AssignVideoToSlot(SelectedComparisonSlot, video);
+        _ = AssignVideoToSlotAsync(SelectedComparisonSlot, video);
         SelectedComparisonSlot = 0;
     }
 
@@ -5127,7 +5192,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         if (parameter is ValueTuple<int, VideoClip> tuple)
         {
             var (slotNumber, video) = tuple;
-            AssignVideoToSlot(slotNumber, video);
+            _ = AssignVideoToSlotAsync(slotNumber, video);
         }
     }
 
@@ -5146,7 +5211,7 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             
             if (video != null)
             {
-                AssignVideoToSlot(slotNumber, video);
+                await AssignVideoToSlotAsync(slotNumber, video);
             }
             else
             {
@@ -5154,16 +5219,28 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
                 var loadedVideo = await _databaseService.GetVideoClipByIdAsync(videoId);
                 if (loadedVideo != null)
                 {
-                    AssignVideoToSlot(slotNumber, loadedVideo);
+                    await AssignVideoToSlotAsync(slotNumber, loadedVideo);
                 }
             }
         }
     }
 
-    private void AssignVideoToSlot(int slotNumber, VideoClip video)
+    private async Task AssignVideoToSlotAsync(int slotNumber, VideoClip video)
     {
         // Primero notificar que vamos a cambiar el slot (para que el View pueda limpiar)
         ComparisonSlotsChanged?.Invoke(this, EventArgs.Empty);
+
+        // Resolver ruta local/streaming para videos de organización
+        try
+        {
+            var resolvedPath = await ResolveVideoPathAsync(video);
+            if (!string.IsNullOrWhiteSpace(resolvedPath))
+                video.LocalClipPath = resolvedPath;
+        }
+        catch
+        {
+            // best effort
+        }
         
         // Pequeño delay para asegurar que la limpieza se ejecute antes de asignar el nuevo video
         MainThread.BeginInvokeOnMainThread(() =>
@@ -5420,8 +5497,15 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             else if (_comparisonPlayer.ComparisonLayout == ComparisonLayout.Quad2x2)
             {
                 // Para layout cuadrícula 2x2
-                var video3Path = ComparisonVideo3?.LocalClipPath ?? ComparisonVideo3?.ClipPath;
-                var video4Path = ComparisonVideo4?.LocalClipPath ?? ComparisonVideo4?.ClipPath;
+                var video3Path = ComparisonVideo3?.LocalClipPath ?? ComparisonVideo3?.ClipPath ?? string.Empty;
+                var video4Path = ComparisonVideo4?.LocalClipPath ?? ComparisonVideo4?.ClipPath ?? string.Empty;
+
+                if (string.IsNullOrWhiteSpace(video3Path) || string.IsNullOrWhiteSpace(video4Path))
+                {
+                    ComparisonExportStatus = "Faltan videos para exportar la comparación 2x2.";
+                    await Task.Delay(1500);
+                    return;
+                }
 
                 var exportParams = new QuadVideoExportParams
                 {
@@ -5553,9 +5637,12 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             if (statusBarService != null)
                 MainThread.BeginInvokeOnMainThread(() => statusBarService.EndOperation("Error exportando"));
 
-            if (Application.Current?.MainPage != null)
+            var errorPage = Application.Current?.Windows.Count > 0
+                ? Application.Current.Windows[0].Page
+                : null;
+            if (errorPage != null)
             {
-                await Application.Current.MainPage.DisplayAlert(
+                await errorPage.DisplayAlert(
                     "Error",
                     $"Error durante la exportación: {ex.Message}",
                     "OK");
@@ -5691,9 +5778,12 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             if (statusBarService != null)
                 MainThread.BeginInvokeOnMainThread(() => statusBarService.EndOperation("Error exportando"));
 
-            if (Application.Current?.MainPage != null)
+            var errorPage = Application.Current?.Windows.Count > 0
+                ? Application.Current.Windows[0].Page
+                : null;
+            if (errorPage != null)
             {
-                await Application.Current.MainPage.DisplayAlert(
+                await errorPage.DisplayAlert(
                     "Error de exportación",
                     result.ErrorMessage ?? "Error desconocido durante la exportación",
                     "OK");
@@ -6194,7 +6284,6 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             var firstLap = segments.OrderBy(s => s.LapNumber).FirstOrDefault();
             if (firstLap == null)
                 return;
-
             seekPositions[videoIndex] = firstLap.Start;
         }
 

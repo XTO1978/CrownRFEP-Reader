@@ -984,6 +984,10 @@ public class VideosViewModel : ObservableObject
             ClipSize = video.ClipSize,
             IsDeleted = video.IsDeleted,
             DeletedAtUtc = video.DeletedAtUtc,
+            Source = video.Source,
+            IsSynced = video.IsSynced,
+            LastSyncUtc = video.LastSyncUtc,
+            FileHash = video.FileHash,
             Atleta = video.Atleta,
             Session = video.Session,
             Tags = video.Tags,
@@ -1008,9 +1012,38 @@ public class VideosViewModel : ObservableObject
     {
         try
         {
+            // Si ya es una URL de streaming, regenerarla porque podría haber expirado
+            var currentPath = video.LocalClipPath;
+            if (IsStreamingUrl(currentPath) && video.IsRemoteAvailable && _cloudBackendService.IsAuthenticated)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Videos] ResolveVideoPathsAsync: regenerating streaming URL for video {video.Id}");
+                var remotePath = NormalizeRemotePath(video.ClipPath);
+                var streamingUrl = await GetStreamingUrlAsync(remotePath);
+                if (!string.IsNullOrWhiteSpace(streamingUrl))
+                {
+                    video.LocalClipPath = streamingUrl;
+                    System.Diagnostics.Debug.WriteLine($"[Videos] ResolveVideoPathsAsync: regenerated URL for video {video.Id}");
+                }
+                return;
+            }
+
             var session = await _databaseService.GetSessionByIdAsync(video.SessionId);
             if (session == null || string.IsNullOrWhiteSpace(session.PathSesion))
+            {
+                // Sin sesión local: intentar streaming si aplica
+                var fallbackPath = video.LocalClipPath;
+                if (!IsStreamingUrl(fallbackPath)
+                    && (string.IsNullOrWhiteSpace(fallbackPath) || !File.Exists(fallbackPath))
+                    && video.IsRemoteAvailable
+                    && _cloudBackendService.IsAuthenticated)
+                {
+                    var remotePath = NormalizeRemotePath(video.ClipPath);
+                    var streamingUrl = await GetStreamingUrlAsync(remotePath);
+                    if (!string.IsNullOrWhiteSpace(streamingUrl))
+                        video.LocalClipPath = streamingUrl;
+                }
                 return;
+            }
 
             var videoPath = video.LocalClipPath;
             if (string.IsNullOrWhiteSpace(videoPath) || !File.Exists(videoPath))
@@ -1025,6 +1058,19 @@ public class VideosViewModel : ObservableObject
                     video.LocalClipPath = candidate;
                 else if (!string.IsNullOrWhiteSpace(video.ClipPath))
                     video.LocalClipPath = video.ClipPath;
+            }
+
+            // Si no hay archivo local, intentar streaming desde organización
+            var resolvedPath = video.LocalClipPath;
+            if (!IsStreamingUrl(resolvedPath)
+                && (string.IsNullOrWhiteSpace(resolvedPath) || !File.Exists(resolvedPath))
+                && video.IsRemoteAvailable
+                && _cloudBackendService.IsAuthenticated)
+            {
+                var remotePath = NormalizeRemotePath(video.ClipPath);
+                var streamingUrl = await GetStreamingUrlAsync(remotePath);
+                if (!string.IsNullOrWhiteSpace(streamingUrl))
+                    video.LocalClipPath = streamingUrl;
             }
 
             var thumbnailPath = video.LocalThumbnailPath;
@@ -2149,31 +2195,43 @@ public class VideosViewModel : ObservableObject
         var singlePage = App.Current?.Handler?.MauiContext?.Services.GetService<Views.SinglePlayerPage>();
         if (singlePage?.BindingContext is SinglePlayerViewModel singleVm)
         {
-            var slotVideos = new List<(int slot, VideoClip clip)>();
-            if (ParallelVideo1 != null) slotVideos.Add((1, ParallelVideo1));
-            if (ParallelVideo2 != null) slotVideos.Add((2, ParallelVideo2));
-            if (ParallelVideo3 != null) slotVideos.Add((3, ParallelVideo3));
-            if (ParallelVideo4 != null) slotVideos.Add((4, ParallelVideo4));
+            var has1 = ParallelVideo1 != null;
+            var has2 = ParallelVideo2 != null;
+            var has3 = ParallelVideo3 != null;
+            var has4 = ParallelVideo4 != null;
 
-            if (slotVideos.Count == 0) return;
+            System.Diagnostics.Debug.WriteLine($"[VideosVM] PlayParallelAnalysisAsync: has1={has1}, has2={has2}, has3={has3}, has4={has4}");
+            System.Diagnostics.Debug.WriteLine($"[VideosVM] ParallelVideo1: Id={ParallelVideo1?.Id}, Path={ParallelVideo1?.LocalClipPath ?? ParallelVideo1?.ClipPath}");
+            System.Diagnostics.Debug.WriteLine($"[VideosVM] ParallelVideo2: Id={ParallelVideo2?.Id}, Path={ParallelVideo2?.LocalClipPath ?? ParallelVideo2?.ClipPath}");
+            System.Diagnostics.Debug.WriteLine($"[VideosVM] ParallelVideo3: Id={ParallelVideo3?.Id}, Path={ParallelVideo3?.LocalClipPath ?? ParallelVideo3?.ClipPath}");
+            System.Diagnostics.Debug.WriteLine($"[VideosVM] ParallelVideo4: Id={ParallelVideo4?.Id}, Path={ParallelVideo4?.LocalClipPath ?? ParallelVideo4?.ClipPath}");
 
-            var mainSlot = slotVideos[0];
-            VideoClip mainVideo = mainSlot.clip;
+            if (!has1 && !has2 && !has3 && !has4) return;
 
-            var occupiedSlots = slotVideos.Select(v => v.slot).ToHashSet();
+            var occupiedSlots = new HashSet<int>();
+            if (has1) occupiedSlots.Add(1);
+            if (has2) occupiedSlots.Add(2);
+            if (has3) occupiedSlots.Add(3);
+            if (has4) occupiedSlots.Add(4);
+
             var layout = DetermineLayoutFromOccupiedSlots(occupiedSlots);
+            System.Diagnostics.Debug.WriteLine($"[VideosVM] Layout determined: {layout}, occupiedSlots: {string.Join(",", occupiedSlots)}");
 
-            var comparisonVideos = slotVideos
-                .Where(v => v.slot != mainSlot.slot)
-                .OrderBy(v => v.slot)
-                .Select(v => (VideoClip?)v.clip)
-                .ToList();
+            var mainVideo = ParallelVideo1 ?? ParallelVideo2 ?? ParallelVideo3 ?? ParallelVideo4!;
+            var comparison2 = ReferenceEquals(mainVideo, ParallelVideo2) ? null : ParallelVideo2;
+            var comparison3 = ReferenceEquals(mainVideo, ParallelVideo3) ? null : ParallelVideo3;
+            var comparison4 = ReferenceEquals(mainVideo, ParallelVideo4) ? null : ParallelVideo4;
+
+            System.Diagnostics.Debug.WriteLine($"[VideosVM] mainVideo: Id={mainVideo.Id}");
+            System.Diagnostics.Debug.WriteLine($"[VideosVM] comparison2: Id={comparison2?.Id}");
+            System.Diagnostics.Debug.WriteLine($"[VideosVM] comparison3: Id={comparison3?.Id}");
+            System.Diagnostics.Debug.WriteLine($"[VideosVM] comparison4: Id={comparison4?.Id}");
 
             await singleVm.InitializeWithComparisonAsync(
                 mainVideo,
-                comparisonVideos.ElementAtOrDefault(0),
-                comparisonVideos.ElementAtOrDefault(1),
-                comparisonVideos.ElementAtOrDefault(2),
+                comparison2,
+                comparison3,
+                comparison4,
                 layout);
 
             await Shell.Current.Navigation.PushAsync(singlePage);
