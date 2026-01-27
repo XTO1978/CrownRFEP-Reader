@@ -59,6 +59,10 @@ public partial class SinglePlayerPage : ContentPage
     private DateTime _lastSeekTime = DateTime.MinValue;
     private const int SeekThrottleMs = 50;
     
+    // Throttle para actualizaciones de sliders (60fps -> ~30fps)
+    private DateTime _lastSliderUpdateTime = DateTime.MinValue;
+    private const int SliderUpdateThrottleMs = 33;
+    
     // Flags para controlar el scrubbing con trackpad/mouse
     private bool _isScrubbing;
     private bool _wasPlayingBeforeScrub;
@@ -1857,6 +1861,12 @@ public partial class SinglePlayerPage : ContentPage
         if (!_isPageActive || _isDraggingSlider)
             return;
 
+        // Throttle para evitar sobrecarga cuando hay múltiples players
+        var now = DateTime.UtcNow;
+        if ((now - _lastSliderUpdateTime).TotalMilliseconds < SliderUpdateThrottleMs)
+            return;
+        _lastSliderUpdateTime = now;
+
         var maxSeconds = GetEffectiveMaxSeconds();
         if (maxSeconds <= 0)
             return;
@@ -2666,17 +2676,26 @@ public partial class SinglePlayerPage : ContentPage
     {
         MainThread.BeginInvokeOnMainThread(() =>
         {
-            // Detener el reproductor correspondiente cuando se limpia el slot
+            // Detener y limpiar el reproductor correspondiente cuando se limpia el slot
             switch (slot)
             {
                 case 2:
+                    MediaPlayer2?.PrepareForCleanup();
                     MediaPlayer2?.Stop();
+                    if (MediaPlayer2 != null)
+                        MediaPlayer2.SetBinding(PrecisionVideoPlayer.SourceProperty, nameof(SinglePlayerViewModel.ComparisonVideo2Path));
                     break;
                 case 3:
+                    MediaPlayer3?.PrepareForCleanup();
                     MediaPlayer3?.Stop();
+                    if (MediaPlayer3 != null)
+                        MediaPlayer3.SetBinding(PrecisionVideoPlayer.SourceProperty, nameof(SinglePlayerViewModel.ComparisonVideo3Path));
                     break;
                 case 4:
+                    MediaPlayer4?.PrepareForCleanup();
                     MediaPlayer4?.Stop();
+                    if (MediaPlayer4 != null)
+                        MediaPlayer4.SetBinding(PrecisionVideoPlayer.SourceProperty, nameof(SinglePlayerViewModel.ComparisonVideo4Path));
                     break;
             }
         });

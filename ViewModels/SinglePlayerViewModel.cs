@@ -5162,30 +5162,36 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     private void AssignVideoToSlot(int slotNumber, VideoClip video)
     {
-        switch (slotNumber)
-        {
-            case 2:
-                ComparisonVideo2 = video;
-                _comparisonPlayer.LapSegments2 = null;
-                _comparisonPlayer.CurrentLapIndex2 = 0;
-                _comparisonPlayer.WaitingAtLapBoundary2 = false;
-                break;
-            case 3:
-                ComparisonVideo3 = video;
-                _comparisonPlayer.LapSegments3 = null;
-                _comparisonPlayer.CurrentLapIndex3 = 0;
-                _comparisonPlayer.WaitingAtLapBoundary3 = false;
-                break;
-            case 4:
-                ComparisonVideo4 = video;
-                _comparisonPlayer.LapSegments4 = null;
-                _comparisonPlayer.CurrentLapIndex4 = 0;
-                _comparisonPlayer.WaitingAtLapBoundary4 = false;
-                break;
-        }
-
-        ResetLapSyncForComparisonChange();
+        // Primero notificar que vamos a cambiar el slot (para que el View pueda limpiar)
         ComparisonSlotsChanged?.Invoke(this, EventArgs.Empty);
+        
+        // Pequeño delay para asegurar que la limpieza se ejecute antes de asignar el nuevo video
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            switch (slotNumber)
+            {
+                case 2:
+                    ComparisonVideo2 = video;
+                    _comparisonPlayer.LapSegments2 = null;
+                    _comparisonPlayer.CurrentLapIndex2 = 0;
+                    _comparisonPlayer.WaitingAtLapBoundary2 = false;
+                    break;
+                case 3:
+                    ComparisonVideo3 = video;
+                    _comparisonPlayer.LapSegments3 = null;
+                    _comparisonPlayer.CurrentLapIndex3 = 0;
+                    _comparisonPlayer.WaitingAtLapBoundary3 = false;
+                    break;
+                case 4:
+                    ComparisonVideo4 = video;
+                    _comparisonPlayer.LapSegments4 = null;
+                    _comparisonPlayer.CurrentLapIndex4 = 0;
+                    _comparisonPlayer.WaitingAtLapBoundary4 = false;
+                    break;
+            }
+
+            ResetLapSyncForComparisonChange();
+        });
     }
 
     private void ClearAllComparisonVideos()
