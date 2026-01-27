@@ -52,6 +52,11 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     
     // Información del video para el overlay
     private VideoClip? _videoClip;
+
+    // Evitar reinicializaciones duplicadas del mismo video
+    private int _lastInitVideoId = -1;
+    private string _lastInitVideoPath = string.Empty;
+    private DateTime _lastInitAtUtc = DateTime.MinValue;
     
     // Sistema de filtrado y playlist
     private readonly PlaylistAndFilters _playlistAndFilters = new();
@@ -2394,6 +2399,17 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     public async Task InitializeWithVideoAsync(VideoClip video)
     {
         // Algunos flujos pueden pasar un VideoClip “parcial” (Id=0).
+        var now = DateTime.UtcNow;
+        var initCandidatePath = !string.IsNullOrWhiteSpace(video.LocalClipPath) ? video.LocalClipPath : video.ClipPath;
+        var normalizedCandidate = NormalizeVideoPathForComparison(initCandidatePath);
+        if (video.Id > 0
+            && video.Id == _lastInitVideoId
+            && string.Equals(_lastInitVideoPath, normalizedCandidate, StringComparison.Ordinal)
+            && (now - _lastInitAtUtc).TotalMilliseconds < 800)
+        {
+            return;
+        }
+
         // ===== Reset de estados de carga para Singleton reutilizado =====
         IsLoadingTools = true;
         IsLoadingGallery = true;
@@ -2415,12 +2431,12 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
         // Sin Id no podemos recargar eventos/tags desde la BD, así que resolvemos por ruta.
         if (video.Id <= 0)
         {
-            var candidatePath = !string.IsNullOrWhiteSpace(video.LocalClipPath) ? video.LocalClipPath : video.ClipPath;
-            if (!string.IsNullOrWhiteSpace(candidatePath))
+            var lookupPath = !string.IsNullOrWhiteSpace(video.LocalClipPath) ? video.LocalClipPath : video.ClipPath;
+            if (!string.IsNullOrWhiteSpace(lookupPath))
             {
                 try
                 {
-                    var resolved = await _databaseService.FindVideoClipByAnyPathAsync(candidatePath);
+                    var resolved = await _databaseService.FindVideoClipByAnyPathAsync(lookupPath);
                     if (resolved != null && resolved.Id > 0)
                     {
                         if (!string.IsNullOrWhiteSpace(video.LocalClipPath))
@@ -2450,6 +2466,10 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
             _videoPath = video.LocalClipPath ?? video.ClipPath ?? "";
         }
         OnPropertyChanged(nameof(VideoPath));
+
+        _lastInitVideoId = video.Id;
+        _lastInitVideoPath = NormalizeVideoPathForComparison(_videoPath);
+        _lastInitAtUtc = now;
 
         VideoClip = video;
         VideoTitle = video.Atleta?.NombreCompleto ?? Path.GetFileNameWithoutExtension(_videoPath);

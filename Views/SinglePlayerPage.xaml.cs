@@ -35,6 +35,9 @@ public partial class SinglePlayerPage : ContentPage
     private bool _videoLessonCameraEnabled = true;
     private bool _videoLessonMicEnabled = true;
 
+    private int _lastLoadedVideoId = -1;
+    private string _lastLoadedVideoPath = string.Empty;
+
     // Timer para el cronómetro de grabación
     private System.Timers.Timer? _recordingTimer;
     private DateTime _recordingStartTime;
@@ -2475,6 +2478,35 @@ public partial class SinglePlayerPage : ContentPage
         MainThread.BeginInvokeOnMainThread(() =>
         {
             if (!_isPageActive) return;
+
+            var newPath = newVideo.LocalClipPath ?? newVideo.ClipPath ?? string.Empty;
+            var normalizedNewPath = NormalizeVideoPathForComparison(newPath);
+            
+            // Guard: si es el mismo video que ya tenemos cargado, no hacer nada
+            // Esto evita que OnVideoChanged interrumpa un video que ya está reproduciéndose
+            if (newVideo.Id == _lastLoadedVideoId && string.Equals(_lastLoadedVideoPath, normalizedNewPath, StringComparison.Ordinal))
+            {
+                AppLog.Info("SinglePlayerPage", $"OnVideoChanged SKIP (same video) id={newVideo.Id}");
+                return;
+            }
+            
+            // Guard adicional: si el player ya tiene este Source cargado, no reiniciar
+            var currentSource = MediaPlayer?.Source;
+            if (!string.IsNullOrEmpty(currentSource))
+            {
+                var normalizedCurrentSource = NormalizeVideoPathForComparison(currentSource);
+                if (string.Equals(normalizedCurrentSource, normalizedNewPath, StringComparison.Ordinal))
+                {
+                    AppLog.Info("SinglePlayerPage", $"OnVideoChanged SKIP (source already loaded) id={newVideo.Id}");
+                    _lastLoadedVideoId = newVideo.Id;
+                    _lastLoadedVideoPath = normalizedNewPath;
+                    return;
+                }
+            }
+
+            AppLog.Info("SinglePlayerPage", $"OnVideoChanged LOADING new video id={newVideo.Id}");
+            _lastLoadedVideoId = newVideo.Id;
+            _lastLoadedVideoPath = normalizedNewPath;
             
             // Detener reproducción actual
             _viewModel.IsPlaying = false;
@@ -2485,11 +2517,43 @@ public partial class SinglePlayerPage : ContentPage
             _viewModel.Duration = TimeSpan.Zero;
             
             // Cargar nuevo video (el binding de Source ya está actualizado)
-            if (!string.IsNullOrEmpty(newVideo.LocalClipPath) && MediaPlayer != null)
+            if (MediaPlayer != null)
             {
-                MediaPlayer.Source = newVideo.LocalClipPath;
+                // Reforzar el binding para evitar que se rompa al cambiar de video
+                MediaPlayer.SetBinding(PrecisionVideoPlayer.SourceProperty, nameof(SinglePlayerViewModel.VideoPath));
             }
         });
+    }
+
+    private static string NormalizeVideoPathForComparison(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return string.Empty;
+
+        var trimmed = path.Trim();
+        if (trimmed.StartsWith("file://", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                if (Uri.TryCreate(trimmed, UriKind.Absolute, out var uri) && uri.IsFile)
+                    trimmed = uri.LocalPath;
+            }
+            catch
+            {
+                // Ignorar y seguir con el string original
+            }
+        }
+
+        try
+        {
+            trimmed = Uri.UnescapeDataString(trimmed);
+        }
+        catch
+        {
+            // Ignorar
+        }
+
+        return trimmed.Replace('\\', '/');
     }
     
     private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)

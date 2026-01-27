@@ -86,6 +86,11 @@ public class VideosViewModel : ObservableObject
 
     private CancellationTokenSource? _selectedSessionVideosCts;
 
+    // Debounce para evitar aperturas duplicadas desde doble click/tap
+    private bool _isOpeningSinglePlayer;
+    private int _lastOpenedVideoId = -1;
+    private DateTime _lastOpenedVideoAt = DateTime.MinValue;
+
     private VideoClip? _hoverVideo;
 
     private string? _expandedFilter;
@@ -2253,86 +2258,103 @@ public class VideosViewModel : ObservableObject
     {
         if (video == null) return;
 
-        var videoPath = video.LocalClipPath;
+        var now = DateTime.UtcNow;
+        if (_isOpeningSinglePlayer)
+            return;
+        if (_lastOpenedVideoId == video.Id && (now - _lastOpenedVideoAt).TotalMilliseconds < 800)
+            return;
 
-        if (!IsStreamingUrl(videoPath))
+        _isOpeningSinglePlayer = true;
+        _lastOpenedVideoId = video.Id;
+        _lastOpenedVideoAt = now;
+
+        try
         {
-            if (string.IsNullOrWhiteSpace(videoPath) || !File.Exists(videoPath))
-            {
-                try
-                {
-                    var session = SelectedSession ?? await _databaseService.GetSessionByIdAsync(video.SessionId);
-                    if (!string.IsNullOrWhiteSpace(session?.PathSesion))
-                    {
-                        var normalized = (video.ClipPath ?? "").Replace('\\', '/');
-                        var fileName = Path.GetFileName(normalized);
-                        if (string.IsNullOrWhiteSpace(fileName))
-                            fileName = $"CROWN{video.Id}.mp4";
+            var videoPath = video.LocalClipPath;
 
-                        var candidate = Path.Combine(session.PathSesion, "videos", fileName);
-                        if (File.Exists(candidate))
-                            videoPath = candidate;
+            if (!IsStreamingUrl(videoPath))
+            {
+                if (string.IsNullOrWhiteSpace(videoPath) || !File.Exists(videoPath))
+                {
+                    try
+                    {
+                        var session = SelectedSession ?? await _databaseService.GetSessionByIdAsync(video.SessionId);
+                        if (!string.IsNullOrWhiteSpace(session?.PathSesion))
+                        {
+                            var normalized = (video.ClipPath ?? "").Replace('\\', '/');
+                            var fileName = Path.GetFileName(normalized);
+                            if (string.IsNullOrWhiteSpace(fileName))
+                                fileName = $"CROWN{video.Id}.mp4";
+
+                            var candidate = Path.Combine(session.PathSesion, "videos", fileName);
+                            if (File.Exists(candidate))
+                                videoPath = candidate;
+                        }
+                    }
+                    catch
+                    {
                     }
                 }
-                catch
+
+                if (string.IsNullOrWhiteSpace(videoPath))
+                    videoPath = video.ClipPath;
+            }
+
+            if (!IsStreamingUrl(videoPath) && (string.IsNullOrEmpty(videoPath) || !File.Exists(videoPath)))
+            {
+                if (video.IsRemoteAvailable && _cloudBackendService.IsAuthenticated)
                 {
+                    var remotePath = NormalizeRemotePath(video.ClipPath);
+                    var streamingUrl = await GetStreamingUrlAsync(remotePath);
+                    if (!string.IsNullOrWhiteSpace(streamingUrl))
+                    {
+                        videoPath = streamingUrl;
+                    }
                 }
             }
 
-            if (string.IsNullOrWhiteSpace(videoPath))
-                videoPath = video.ClipPath;
-        }
-
-        if (!IsStreamingUrl(videoPath) && (string.IsNullOrEmpty(videoPath) || !File.Exists(videoPath)))
-        {
-            if (video.IsRemoteAvailable && _cloudBackendService.IsAuthenticated)
+            if (string.IsNullOrEmpty(videoPath) || (!IsStreamingUrl(videoPath) && !File.Exists(videoPath)))
             {
-                var remotePath = NormalizeRemotePath(video.ClipPath);
-                var streamingUrl = await GetStreamingUrlAsync(remotePath);
-                if (!string.IsNullOrWhiteSpace(streamingUrl))
+                await Shell.Current.DisplayAlert("Error", "El archivo de video no está disponible", "OK");
+                return;
+            }
+
+            var playerPage = Microsoft.Maui.Controls.Application.Current?.Handler?.MauiContext?.Services.GetService<SinglePlayerPage>();
+            if (playerPage?.BindingContext is SinglePlayerViewModel vm)
+            {
+                if (video.Session == null && video.SessionId > 0)
                 {
-                    videoPath = streamingUrl;
+                    video.Session = SelectedSession ?? await _databaseService.GetSessionByIdAsync(video.SessionId);
                 }
+                if (video.Atleta == null && video.AtletaId > 0)
+                {
+                    video.Atleta = await _databaseService.GetAthleteByIdAsync(video.AtletaId);
+                }
+                if (video.Tags == null && video.Id > 0)
+                {
+                    video.Tags = await _databaseService.GetTagsForVideoAsync(video.Id);
+                }
+
+                video.LocalClipPath = videoPath;
+
+                var navStack = Shell.Current.Navigation.NavigationStack;
+                var isAlreadyInStack = navStack.Contains(playerPage);
+
+                if (!isAlreadyInStack)
+                {
+                    await Shell.Current.Navigation.PushAsync(playerPage);
+                }
+
+                await vm.InitializeWithVideoAsync(video);
+            }
+            else
+            {
+                await Shell.Current.GoToAsync($"{nameof(SinglePlayerPage)}?videoPath={Uri.EscapeDataString(videoPath)}");
             }
         }
-
-        if (string.IsNullOrEmpty(videoPath) || (!IsStreamingUrl(videoPath) && !File.Exists(videoPath)))
+        finally
         {
-            await Shell.Current.DisplayAlert("Error", "El archivo de video no está disponible", "OK");
-            return;
-        }
-
-        var playerPage = Microsoft.Maui.Controls.Application.Current?.Handler?.MauiContext?.Services.GetService<SinglePlayerPage>();
-        if (playerPage?.BindingContext is SinglePlayerViewModel vm)
-        {
-            if (video.Session == null && video.SessionId > 0)
-            {
-                video.Session = SelectedSession ?? await _databaseService.GetSessionByIdAsync(video.SessionId);
-            }
-            if (video.Atleta == null && video.AtletaId > 0)
-            {
-                video.Atleta = await _databaseService.GetAthleteByIdAsync(video.AtletaId);
-            }
-            if (video.Tags == null && video.Id > 0)
-            {
-                video.Tags = await _databaseService.GetTagsForVideoAsync(video.Id);
-            }
-
-            video.LocalClipPath = videoPath;
-
-            var navStack = Shell.Current.Navigation.NavigationStack;
-            var isAlreadyInStack = navStack.Contains(playerPage);
-
-            if (!isAlreadyInStack)
-            {
-                await Shell.Current.Navigation.PushAsync(playerPage);
-            }
-
-            await vm.InitializeWithVideoAsync(video);
-        }
-        else
-        {
-            await Shell.Current.GoToAsync($"{nameof(SinglePlayerPage)}?videoPath={Uri.EscapeDataString(videoPath)}");
+            _isOpeningSinglePlayer = false;
         }
     }
 
