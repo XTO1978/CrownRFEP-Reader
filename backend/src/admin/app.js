@@ -33,6 +33,7 @@ const orgWasabi = document.getElementById('org-wasabi');
 
 const ROOT_USER_EMAIL = 'xtaberna@outlook.com';
 
+const APP_VERSION = '20260130clean';
 const tokenKey = 'admin_token';
 
 function setStatus(text, type) {
@@ -40,6 +41,8 @@ function setStatus(text, type) {
   statusEl.classList.remove('ok', 'err');
   if (type) statusEl.classList.add(type);
 }
+
+console.log(`[Admin] App cargada v${APP_VERSION}`);
 
 function formatBytes(bytes) {
   if (bytes === 0) return '0 B';
@@ -63,13 +66,22 @@ async function api(path) {
   const res = await fetch(path, {
     headers: { Authorization: `Bearer ${token}` }
   });
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) {
+    if (res.status === 401 || res.status === 403) {
+      // Token inválido o expirado
+      localStorage.removeItem(tokenKey);
+      loginCard.style.display = '';
+      setStatus('Sesión expirada', 'err');
+    }
+    throw new Error(await res.text());
+  }
   return res.json();
 }
 
 async function loadAll() {
   try {
     setStatus('Cargando...', '');
+    console.log('[Admin] Cargando datos...');
     const [usersRes, teamsRes, statsRes, metricsRes, rolesRes] = await Promise.all([
       api('/api/admin/users'),
       api('/api/admin/teams'),
@@ -78,6 +90,8 @@ async function loadAll() {
       api('/api/admin/roles')
     ]);
 
+    console.log('[Admin] Datos recibidos:', { users: usersRes.users?.length, teams: teamsRes.teams?.length, roles: rolesRes.roles?.length });
+    
     renderOrgs(teamsRes.teams || []);
     renderTeamSelect(teamsRes.teams || []);
     renderRoles(rolesRes.roles || []);
@@ -91,9 +105,10 @@ async function loadAll() {
     totalBytes.textContent = formatBytes(statsRes.totals?.totalBytes ?? 0);
 
     setStatus('Conectado', 'ok');
+    console.log('[Admin] Carga completada');
   } catch (err) {
-    console.error(err);
-    setStatus('Error', 'err');
+    console.error('[Admin] Error en loadAll:', err);
+    setStatus('Error: ' + err.message, 'err');
   }
 }
 
@@ -357,11 +372,14 @@ function renderOrgs(teams) {
   });
 }
 
-loginForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
+const loginBtn = document.getElementById('login-btn');
+
+async function handleLogin() {
   const email = emailInput.value.trim();
   const password = passwordInput.value.trim();
-  if (!email || !password) return;
+  if (!email || !password) {
+    return;
+  }
 
   try {
     setStatus('Autenticando...', '');
@@ -380,10 +398,34 @@ loginForm.addEventListener('submit', async (e) => {
     loginCard.style.display = 'none';
     await loadAll();
   } catch (err) {
-    console.error(err);
+    console.error('[Admin] Error en login:', err);
     setStatus('Error login', 'err');
   }
-});
+}
+
+if (loginBtn) {
+  loginBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    handleLogin();
+  });
+}
+
+if (loginForm) {
+  loginForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    handleLogin();
+  });
+}
+
+if (passwordInput) {
+  passwordInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      debug('[Admin] Enter en password');
+      handleLogin();
+    }
+  });
+}
 
 userForm.addEventListener('submit', async (e) => {
   e.preventDefault();

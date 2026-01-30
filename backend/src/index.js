@@ -109,7 +109,15 @@ if (adminEmail && adminPassword) {
 
 // Admin UI estática (protegida por Basic Auth)
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-app.use('/admin', adminBasicAuth, express.static(path.join(__dirname, 'admin')));
+app.use(
+  '/admin',
+  adminBasicAuth,
+  express.static(path.join(__dirname, 'admin'), {
+    setHeaders: (res) => {
+      res.setHeader('Cache-Control', 'no-store');
+    }
+  })
+);
 
 // Rutas públicas
 app.get('/', (req, res) => {
