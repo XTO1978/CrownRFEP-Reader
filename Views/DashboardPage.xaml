@@ -1078,7 +1078,7 @@
                                         </OnPlatform>
                                     </Border.Opacity>
                                     <Border.GestureRecognizers>
-                                        <TapGestureRecognizer Tapped="OnSessionsMenuNewSessionTapped" />
+                                        <TapGestureRecognizer Tapped="OnSessionsMenuTapped" />
                                     </Border.GestureRecognizers>
                                     <controls:SymbolIcon
                                         HeightRequest="{StaticResource IconSizeSmall}"

@@ -97,6 +97,7 @@ router.post('/login', async (req, res) => {
         'SELECT * FROM user_devices WHERE user_id = ? AND device_id = ?'
       ).get(user.id, deviceId);
 
+      /* TEMPORALMENTE DESACTIVADO PARA TESTS
       const activeDevices = db.prepare(
         'SELECT * FROM user_devices WHERE user_id = ? AND revoked_at IS NULL'
       ).all(user.id);
@@ -116,6 +117,7 @@ router.post('/login', async (req, res) => {
             : 'Límite de instalaciones desktop alcanzado (1 dispositivo).'
         });
       }
+      FIN TEMPORALMENTE DESACTIVADO */
 
       if (existingDevice) {
         db.prepare(

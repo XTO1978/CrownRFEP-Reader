@@ -2518,7 +2518,7 @@
                                                     Margin="0,2">
                                                     <Border.GestureRecognizers>
                                                         <TapGestureRecognizer
-                                                            Command="{Binding Source={RelativeSource AncestorType={x:Type vm:SinglePlayerViewModel}}, Path=ApplyLapConfigCommand}"
+                                                            Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ApplyLapConfigCommand}"
                                                             CommandParameter="{Binding .}" />
                                                     </Border.GestureRecognizers>
                                                     <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
@@ -4432,7 +4432,7 @@
                                             <DataTemplate x:DataType="models:LapConfigHistory">
                                                 <Border Padding="8,6" BackgroundColor="#FF3A3A3A" StrokeShape="RoundRectangle 6" StrokeThickness="0" Margin="0,2">
                                                     <Border.GestureRecognizers>
-                                                        <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:SinglePlayerViewModel}}, Path=ApplyLapConfigCommand}" CommandParameter="{Binding .}" />
+                                                        <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ApplyLapConfigCommand}" CommandParameter="{Binding .}" />
                                                     </Border.GestureRecognizers>
                                                     <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
                                                         <Border Grid.Column="0" Padding="6,2" BackgroundColor="#FF4FC3F7" StrokeShape="RoundRectangle 4" StrokeThickness="0">

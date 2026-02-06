@@ -2652,28 +2652,35 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     /// </summary>
     public void CloseAllPanels()
     {
-        ShowAthleteAssignPanel = false;
-        ShowSectionAssignPanel = false;
-        ShowTagsAssignPanel = false;
-        ShowTagEventsPanel = false;
-        ShowSplitTimePanel = false;
-        ShowComparisonPanel = false;
-        
-        // Notificar al code-behind para cerrar paneles gestionados ahí (ej: DrawingTools)
-        // Aseguramos hilo UI porque el handler toca elementos visuales.
-        if (CloseExternalPanelsRequested is not null)
+        try
         {
-            if (MainThread.IsMainThread)
+            ShowAthleteAssignPanel = false;
+            ShowSectionAssignPanel = false;
+            ShowTagsAssignPanel = false;
+            ShowTagEventsPanel = false;
+            ShowSplitTimePanel = false;
+            ShowComparisonPanel = false;
+            
+            // Notificar al code-behind para cerrar paneles gestionados ahí (ej: DrawingTools)
+            // Aseguramos hilo UI porque el handler toca elementos visuales.
+            if (CloseExternalPanelsRequested is not null)
             {
-                CloseExternalPanelsRequested.Invoke(this, EventArgs.Empty);
-            }
-            else
-            {
-                MainThread.BeginInvokeOnMainThread(() =>
+                if (MainThread.IsMainThread)
                 {
-                    CloseExternalPanelsRequested?.Invoke(this, EventArgs.Empty);
-                });
+                    CloseExternalPanelsRequested.Invoke(this, EventArgs.Empty);
+                }
+                else
+                {
+                    MainThread.BeginInvokeOnMainThread(() =>
+                    {
+                        CloseExternalPanelsRequested?.Invoke(this, EventArgs.Empty);
+                    });
+                }
             }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[CloseAllPanels] ERROR: {ex.Message}\n{ex.StackTrace}");
         }
     }
 
@@ -4394,23 +4401,35 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
 
     private void ToggleSplitTimePanel()
     {
-        var wasOpen = ShowSplitTimePanel;
-        
-        // Cerrar todos los paneles (incluidos externos como DrawingTools)
-        CloseAllPanels();
-        
-        ShowSplitTimePanel = !wasOpen;
-
-        // Al abrir, cargar el split existente si lo hay
-        if (ShowSplitTimePanel && _videoClip != null)
+        try
         {
-            _ = LoadExistingSplitAsync();
+            var wasOpen = ShowSplitTimePanel;
             
-            // Inicializar los parciales si están vacíos
-            if (_assistedLapPanel.AssistedLaps.Count == 0)
+            // Cerrar todos los paneles (incluidos externos como DrawingTools)
+            CloseAllPanels();
+            
+            ShowSplitTimePanel = !wasOpen;
+
+            // Al abrir, cargar el split existente si lo hay
+            if (ShowSplitTimePanel && _videoClip != null)
+            {
+                _ = LoadExistingSplitAsync();
+                
+                // Inicializar los parciales si están vacíos
+                if (_assistedLapPanel.AssistedLaps.Count == 0)
+                {
+                    InitializeAssistedLaps();
+                }
+            }
+            // Si no hay video cargado pero queremos abrir el panel, inicializamos AssistedLaps vacío
+            else if (ShowSplitTimePanel && _assistedLapPanel.AssistedLaps.Count == 0)
             {
                 InitializeAssistedLaps();
             }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ToggleSplitTimePanel] ERROR: {ex.Message}\n{ex.StackTrace}");
         }
     }
 
@@ -4528,31 +4547,38 @@ public class SinglePlayerViewModel : INotifyPropertyChanged
     
     private void InitializeAssistedLaps()
     {
-        _assistedLapPanel.AssistedLaps.Clear();
-        
-        // Crear los parciales intermedios definidos por el usuario
-        for (int i = 1; i <= AssistedLapCount; i++)
+        try
         {
+            _assistedLapPanel.AssistedLaps.Clear();
+            
+            // Crear los parciales intermedios definidos por el usuario
+            for (int i = 1; i <= AssistedLapCount; i++)
+            {
+                _assistedLapPanel.AssistedLaps.Add(new AssistedLapDefinition
+                {
+                    Index = i,
+                    Name = $"P{i}",
+                    IsCurrent = false
+                });
+            }
+            
+            // Añadir el parcial final (FIN) que siempre existe
             _assistedLapPanel.AssistedLaps.Add(new AssistedLapDefinition
             {
-                Index = i,
-                Name = $"P{i}",
+                Index = AssistedLapCount + 1,
+                Name = "Fin",
                 IsCurrent = false
             });
-        }
-        
-        // Añadir el parcial final (FIN) que siempre existe
-        _assistedLapPanel.AssistedLaps.Add(new AssistedLapDefinition
-        {
-            Index = AssistedLapCount + 1,
-            Name = "Fin",
-            IsCurrent = false
-        });
 
-        WireAssistedLaps();
-        
-        AssistedLapState = AssistedLapState.Configuring;
-        CurrentAssistedLapIndex = 0;
+            WireAssistedLaps();
+            
+            AssistedLapState = AssistedLapState.Configuring;
+            CurrentAssistedLapIndex = 0;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[InitializeAssistedLaps] ERROR: {ex.Message}\n{ex.StackTrace}");
+        }
     }
 
     private void AssistedLap_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
