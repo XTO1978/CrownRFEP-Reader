@@ -36,7 +36,7 @@
                         <Label
                             FontAttributes="None"
                             FontSize="{StaticResource FontSizeTitle}"
-                            Text="Carpeta inteligente"
+                            Text="{Binding SmartFolders.SmartFolderPopupTitle}"
                             TextColor="White" />
                         <Label
                             FontSize="{StaticResource FontSizeSmall}"
@@ -246,7 +246,7 @@
                         Command="{Binding SmartFolders.CancelSmartFolderSidebarPopupCommand}" />
                     <Button
                         Grid.Column="1"
-                        Text="Crear"
+                        Text="{Binding SmartFolders.SmartFolderPopupActionText}"
                         BackgroundColor="#FF0066"
                         TextColor="#FF121212"
                         FontAttributes="None"

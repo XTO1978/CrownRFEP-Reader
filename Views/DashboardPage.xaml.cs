@@ -637,6 +637,40 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         }
     }
 
+    private void OnRemoteSessionsMenuTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            if (SessionsContextMenuOverlay == null || SessionsContextMenu == null || RootGrid == null)
+                return;
+
+            if (SessionsContextMenuOverlay.IsVisible)
+            {
+                HideSessionsContextMenu();
+                return;
+            }
+
+            HideUserLibraryContextMenu();
+            HideSessionRowContextMenu();
+            HideSmartFolderContextMenu();
+
+            // Posicionar el menú al lado del botón "+" de sesiones remotas.
+            if (sender is VisualElement anchor)
+            {
+                var anchorPos = GetPositionRelativeTo(anchor, RootGrid);
+                SessionsContextMenu.TranslationX = anchorPos.X + anchor.Width + 8;
+                SessionsContextMenu.TranslationY = anchorPos.Y;
+            }
+
+            SessionsContextMenuOverlay.IsVisible = true;
+            UpdateGlobalDismissOverlayVisibility();
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "OnRemoteSessionsMenuTapped error", ex);
+        }
+    }
+
     private void OnSessionsContextMenuDismissTapped(object? sender, TappedEventArgs e) => HideSessionsContextMenu();
 
     private void OnSessionsMenuImportCrownTapped(object? sender, TappedEventArgs e)
@@ -1142,8 +1176,8 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 
             if (BindingContext is DashboardViewModel vm)
             {
-                if (vm.SmartFolders.RenameSmartFolderCommand?.CanExecute(_contextMenuSmartFolder) ?? false)
-                    vm.SmartFolders.RenameSmartFolderCommand.Execute(_contextMenuSmartFolder);
+                if (vm.SmartFolders.EditSmartFolderCommand?.CanExecute(_contextMenuSmartFolder) ?? false)
+                    vm.SmartFolders.EditSmartFolderCommand.Execute(_contextMenuSmartFolder);
             }
         }
         catch (Exception ex)
@@ -1232,6 +1266,9 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
             }
 
             _contextMenuVideo = video;
+
+            // Actualizar visibilidad de opciones de descarga/nube según el estado del video
+            UpdateVideoContextMenuCloudOptions(video);
 
             HideUserLibraryContextMenu();
             HideSessionsContextMenu();
@@ -1780,6 +1817,72 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         catch (Exception ex)
         {
             AppLog.Error("DashboardPage", "OnVideoItemMenuDeleteTapped error", ex);
+        }
+    }
+
+    /// <summary>
+    /// Actualiza la visibilidad de las opciones de descarga/nube en el menú contextual
+    /// según el estado del video seleccionado.
+    /// </summary>
+    private void UpdateVideoContextMenuCloudOptions(VideoClip video)
+    {
+        // "Descargar (offline)" solo visible para videos de organización sin copia local
+        if (VideoCtxMenuDownloadOffline != null)
+            VideoCtxMenuDownloadOffline.IsVisible = video.Source == "remote";
+
+        // "Dejar en la nube" solo visible para videos de organización con copia local
+        if (VideoCtxMenuEvictLocal != null)
+            VideoCtxMenuEvictLocal.IsVisible = video.Source == "both";
+    }
+
+    private async void OnVideoItemMenuDownloadOfflineTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            HideVideoItemContextMenu();
+
+            if (_contextMenuVideo == null)
+                return;
+
+            if (BindingContext is DashboardViewModel vm)
+            {
+                if (vm.Remote.DownloadVideoCommand?.CanExecute(_contextMenuVideo) ?? false)
+                    vm.Remote.DownloadVideoCommand.Execute(_contextMenuVideo);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "OnVideoItemMenuDownloadOfflineTapped error", ex);
+        }
+    }
+
+    private async void OnVideoItemMenuEvictLocalTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            HideVideoItemContextMenu();
+
+            if (_contextMenuVideo == null)
+                return;
+
+            var confirm = await DisplayAlert(
+                "Quitar copia local",
+                "El vídeo seguirá disponible en la nube de la organización, pero necesitarás conexión para reproducirlo.\n\n¿Quitar la copia local?",
+                "Quitar",
+                "Cancelar");
+
+            if (!confirm)
+                return;
+
+            if (BindingContext is DashboardViewModel vm)
+            {
+                if (vm.Remote.EvictOfflineCopyCommand?.CanExecute(_contextMenuVideo) ?? false)
+                    vm.Remote.EvictOfflineCopyCommand.Execute(_contextMenuVideo);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardPage", "OnVideoItemMenuEvictLocalTapped error", ex);
         }
     }
 

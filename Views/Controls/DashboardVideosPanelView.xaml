@@ -316,7 +316,7 @@
                                             VerticalOptions="Center" />
                                     </Border>
 
-                                    <!--  Indicador de sincronización cloud  -->
+                                    <!--  Indicador de origen: organización descargado / solo referenciado  -->
                                     <Border
                                         BackgroundColor="{Binding SyncStatusColor}"
                                         HeightRequest="24"
@@ -325,7 +325,8 @@
                                         Padding="6,2"
                                         StrokeShape="RoundRectangle 12"
                                         StrokeThickness="0"
-                                        VerticalOptions="Start">
+                                        VerticalOptions="Start"
+                                        IsVisible="{Binding ShowSyncBadge}">
                                         <controls:SymbolIcon
                                             HeightRequest="12"
                                             WidthRequest="12"
@@ -506,12 +507,12 @@
                                         </VerticalStackLayout>
                                     </Border>
 
-                                    <!--  Badge de estado  -->
+                                    <!--  Badge de estado: descargado / en biblioteca / solo org  -->
                                     <Border
                                         Margin="8"
                                         BackgroundColor="{Binding StatusColor}"
                                         HorizontalOptions="End"
-                                        Padding="6,2"
+                                        Padding="8,3"
                                         StrokeShape="RoundRectangle 12"
                                         StrokeThickness="0"
                                         VerticalOptions="Start">
@@ -521,6 +522,11 @@
                                                 WidthRequest="12"
                                                 SymbolName="{Binding StatusIcon}"
                                                 TintColor="White" />
+                                            <Label
+                                                FontSize="10"
+                                                Text="{Binding StatusText}"
+                                                TextColor="White"
+                                                VerticalOptions="Center" />
                                         </HorizontalStackLayout>
                                     </Border>
 

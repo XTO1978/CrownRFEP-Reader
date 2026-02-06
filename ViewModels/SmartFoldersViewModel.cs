@@ -15,6 +15,7 @@ public class SmartFoldersViewModel : ObservableObject
 
     private Func<List<VideoClip>?> _getAllVideosCache = () => null;
     private Func<Task> _loadAllVideosAsync = () => Task.CompletedTask;
+    private Func<Task> _ensureAllVideosCacheAsync = () => Task.CompletedTask;
     private Action _clearFiltersSkipApply = () => { };
     private Action _clearSelectedSession = () => { };
     private Action _setAllGallerySelected = () => { };
@@ -30,10 +31,11 @@ public class SmartFoldersViewModel : ObservableObject
     private bool _isSmartFoldersExpanded = true;
     private SmartFolderDefinition? _activeSmartFolder;
     private List<VideoClip>? _smartFolderFilteredVideosCache;
+    private SmartFolderDefinition? _editingSmartFolder;
 
     public SmartFoldersViewModel()
     {
-        OpenSmartFolderSidebarPopupCommand = new RelayCommand(OpenSmartFolderSidebarPopup);
+        OpenSmartFolderSidebarPopupCommand = new AsyncRelayCommand(OpenSmartFolderSidebarPopupAsync);
         CancelSmartFolderSidebarPopupCommand = new RelayCommand(CloseSmartFolderSidebarPopup);
         AddSmartFolderCriterionCommand = new RelayCommand(AddSmartFolderCriterion);
         RemoveSmartFolderCriterionCommand = new RelayCommand<SmartFolderCriterion>(RemoveSmartFolderCriterion);
@@ -53,6 +55,7 @@ public class SmartFoldersViewModel : ObservableObject
         OpenIconColorPickerForSmartFolderCommand = new RelayCommand<SmartFolderDefinition>(OpenIconColorPickerForSmartFolder);
 
         ToggleSmartFoldersExpansionCommand = new RelayCommand(ToggleSmartFoldersExpansion);
+        EditSmartFolderCommand = new AsyncRelayCommand<SmartFolderDefinition>(OpenSmartFolderEditPopupAsync);
 
         LoadSmartFoldersFromPreferences();
     }
@@ -60,6 +63,7 @@ public class SmartFoldersViewModel : ObservableObject
     public void Configure(
         Func<List<VideoClip>?> getAllVideosCache,
         Func<Task> loadAllVideosAsync,
+        Func<Task> ensureAllVideosCacheAsync,
         Action clearFiltersSkipApply,
         Action clearSelectedSession,
         Action setAllGallerySelected,
@@ -71,6 +75,7 @@ public class SmartFoldersViewModel : ObservableObject
     {
         _getAllVideosCache = getAllVideosCache;
         _loadAllVideosAsync = loadAllVideosAsync;
+        _ensureAllVideosCacheAsync = ensureAllVideosCacheAsync;
         _clearFiltersSkipApply = clearFiltersSkipApply;
         _clearSelectedSession = clearSelectedSession;
         _setAllGallerySelected = setAllGallerySelected;
@@ -167,6 +172,13 @@ public class SmartFoldersViewModel : ObservableObject
     public ICommand SetSmartFolderColorCommand { get; }
     public ICommand OpenIconColorPickerForSmartFolderCommand { get; }
     public ICommand ToggleSmartFoldersExpansionCommand { get; }
+    public ICommand EditSmartFolderCommand { get; }
+
+    public bool IsEditingSmartFolder => _editingSmartFolder != null;
+
+    public string SmartFolderPopupTitle => IsEditingSmartFolder ? "Editar carpeta inteligente" : "Carpeta inteligente";
+
+    public string SmartFolderPopupActionText => IsEditingSmartFolder ? "Guardar" : "Crear";
 
     public void ClearActiveSmartFolder()
     {
@@ -203,8 +215,9 @@ public class SmartFoldersViewModel : ObservableObject
         }
     }
 
-    private void OpenSmartFolderSidebarPopup()
+    private async Task OpenSmartFolderSidebarPopupAsync()
     {
+        _editingSmartFolder = null;
         NewSmartFolderName = string.Empty;
         NewSmartFolderMatchMode = "All";
 
@@ -213,7 +226,61 @@ public class SmartFoldersViewModel : ObservableObject
 
         NewSmartFolderCriteria.Clear();
         AddSmartFolderCriterion();
+
+        // Asegurar que la caché tiene TODOS los vídeos para el conteo en vivo
+        await _ensureAllVideosCacheAsync();
+
         RecomputeNewSmartFolderLiveMatchCount();
+
+        OnPropertyChanged(nameof(IsEditingSmartFolder));
+        OnPropertyChanged(nameof(SmartFolderPopupTitle));
+        OnPropertyChanged(nameof(SmartFolderPopupActionText));
+
+        _setSmartFolderSidebarPopupVisible(true);
+    }
+
+    private async Task OpenSmartFolderEditPopupAsync(SmartFolderDefinition? folder)
+    {
+        if (folder == null)
+            return;
+
+        _editingSmartFolder = folder;
+        NewSmartFolderName = folder.Name;
+        NewSmartFolderMatchMode = string.Equals(folder.MatchMode, "Any", StringComparison.OrdinalIgnoreCase) ? "Any" : "All";
+
+        foreach (var existing in NewSmartFolderCriteria)
+            existing.PropertyChanged -= OnNewSmartFolderCriterionChanged;
+
+        NewSmartFolderCriteria.Clear();
+
+        if (folder.Criteria != null && folder.Criteria.Count > 0)
+        {
+            foreach (var c in folder.Criteria)
+            {
+                var criterion = new SmartFolderCriterion
+                {
+                    Field = c.Field,
+                    Operator = c.Operator,
+                    Value = c.Value,
+                    Value2 = c.Value2,
+                };
+                criterion.PropertyChanged += OnNewSmartFolderCriterionChanged;
+                NewSmartFolderCriteria.Add(criterion);
+            }
+        }
+        else
+        {
+            AddSmartFolderCriterion();
+        }
+
+        // Asegurar que la caché tiene TODOS los vídeos para el conteo en vivo
+        await _ensureAllVideosCacheAsync();
+
+        RecomputeNewSmartFolderLiveMatchCount();
+
+        OnPropertyChanged(nameof(IsEditingSmartFolder));
+        OnPropertyChanged(nameof(SmartFolderPopupTitle));
+        OnPropertyChanged(nameof(SmartFolderPopupActionText));
 
         _setSmartFolderSidebarPopupVisible(true);
     }
@@ -305,23 +372,38 @@ public class SmartFoldersViewModel : ObservableObject
         if (string.IsNullOrWhiteSpace(name))
             return;
 
-        var definition = new SmartFolderDefinition
-        {
-            Name = name,
-            MatchMode = NewSmartFolderMatchMode == "Any" ? "Any" : "All",
-            MatchingVideoCount = NewSmartFolderLiveMatchCount,
-            Criteria = NewSmartFolderCriteria
-                .Select(c => new SmartFolderCriterion
-                {
-                    Field = c.Field,
-                    Operator = c.Operator,
-                    Value = c.Value,
-                    Value2 = c.Value2,
-                })
-                .ToList(),
-        };
+        var criteria = NewSmartFolderCriteria
+            .Select(c => new SmartFolderCriterion
+            {
+                Field = c.Field,
+                Operator = c.Operator,
+                Value = c.Value,
+                Value2 = c.Value2,
+            })
+            .ToList();
 
-        SmartFolders.Add(definition);
+        if (_editingSmartFolder != null)
+        {
+            // Modo edición: actualizar la carpeta existente
+            _editingSmartFolder.Name = name;
+            _editingSmartFolder.MatchMode = NewSmartFolderMatchMode == "Any" ? "Any" : "All";
+            _editingSmartFolder.Criteria = criteria;
+            _editingSmartFolder.MatchingVideoCount = NewSmartFolderLiveMatchCount;
+            _editingSmartFolder = null;
+        }
+        else
+        {
+            // Modo creación: añadir nueva carpeta
+            var definition = new SmartFolderDefinition
+            {
+                Name = name,
+                MatchMode = NewSmartFolderMatchMode == "Any" ? "Any" : "All",
+                MatchingVideoCount = NewSmartFolderLiveMatchCount,
+                Criteria = criteria,
+            };
+
+            SmartFolders.Add(definition);
+        }
 
         UpdateSmartFolderVideoCounts();
         SaveSmartFoldersToPreferences();
@@ -341,8 +423,10 @@ public class SmartFoldersViewModel : ObservableObject
         _clearSelectedSession();
         _setAllGallerySelected();
 
-        if (_getAllVideosCache() == null)
-            await _loadAllVideosAsync();
+        // Usar EnsureAllVideosCacheAsync en vez de LoadAllVideosAsync para evitar que
+        // ClearFilters() dispare ApplyFiltersAsync() que incrementa _filtersVersion
+        // y causa que el version guard descarte nuestro filtrado
+        await _ensureAllVideosCacheAsync();
 
         await ApplySmartFolderFilterAsync(definition);
     }

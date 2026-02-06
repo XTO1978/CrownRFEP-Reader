@@ -242,40 +242,40 @@ public class SyncService
                 return result;
             }
 
-            // Generar ruta remota
+            // Generar ruta remota: usar ClipPath si existe, sino reconstruir desde IDs
             var remotePath = video.ClipPath ?? _pathService.GetRemoteVideoPath(video.SessionId, video.Id);
+            var canonicalPath = _pathService.GetRemoteVideoPath(video.SessionId, video.Id);
+
+            System.Diagnostics.Debug.WriteLine($"[Sync] Descarga video {video.Id}: ClipPath='{video.ClipPath}', remotePath='{remotePath}', canonical='{canonicalPath}', Source='{video.Source}'");
 
             progress?.Report(0.1);
 
-            // Obtener URL firmada para descargar
-            var signResult = await _cloudService.GetDownloadUrlAsync(remotePath);
+            // Intentar descargar con remotePath primero, luego con canonicalPath si falla
+            var downloadResult = await TryDownloadFromPathAsync(remotePath, progress);
 
-            if (!signResult.Success || string.IsNullOrEmpty(signResult.Url))
+            // Si falla con 404 y tenemos una ruta canónica diferente, intentar con ella
+            if (!downloadResult.Success && downloadResult.StatusCode == System.Net.HttpStatusCode.NotFound
+                && !string.Equals(remotePath, canonicalPath, StringComparison.OrdinalIgnoreCase))
             {
-                result.Success = false;
-                result.ErrorMessage = signResult.ErrorMessage ?? "No se pudo obtener URL de descarga";
-                return result;
+                System.Diagnostics.Debug.WriteLine($"[Sync] Ruta '{remotePath}' no encontrada, reintentando con ruta canónica '{canonicalPath}'");
+                downloadResult = await TryDownloadFromPathAsync(canonicalPath, progress);
             }
 
-            progress?.Report(0.2);
-
-            // Preparar ruta local
-            _pathService.EnsureSessionDirectoryExists(video.SessionId);
-            var localPath = _pathService.GetLocalVideoPath(video.SessionId, video.Id);
-
-            // Descargar el archivo
-            var response = await _httpClient.GetAsync(signResult.Url);
-            if (!response.IsSuccessStatusCode)
+            if (!downloadResult.Success)
             {
                 result.Success = false;
-                result.ErrorMessage = $"Error al descargar: {response.StatusCode}";
+                result.ErrorMessage = downloadResult.ErrorMessage;
+                System.Diagnostics.Debug.WriteLine($"[Sync] Error descargando video {video.Id}: {downloadResult.ErrorMessage}");
                 return result;
             }
 
             progress?.Report(0.5);
 
-            var fileBytes = await response.Content.ReadAsByteArrayAsync();
-            await File.WriteAllBytesAsync(localPath, fileBytes);
+            // Preparar ruta local
+            _pathService.EnsureSessionDirectoryExists(video.SessionId);
+            var localPath = _pathService.GetLocalVideoPath(video.SessionId, video.Id);
+
+            await File.WriteAllBytesAsync(localPath, downloadResult.FileBytes!);
 
             progress?.Report(0.9);
 
@@ -285,8 +285,16 @@ public class SyncService
             video.IsSynced = 1;
             video.LastSyncUtc = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             video.Source = "both";
-            video.ClipSize = fileBytes.Length;
+            video.ClipSize = downloadResult.FileBytes!.Length;
             await _databaseService.UpdateVideoClipAsync(video);
+
+            // Notificar cambios en UI
+            video.OnPropertyChanged(nameof(video.Source));
+            video.OnPropertyChanged(nameof(video.IsLocalAvailable));
+            video.OnPropertyChanged(nameof(video.SyncStatusIcon));
+            video.OnPropertyChanged(nameof(video.SyncStatusColor));
+            video.OnPropertyChanged(nameof(video.SyncStatusText));
+            video.OnPropertyChanged(nameof(video.ShowSyncBadge));
 
             // Descargar y aplicar metadatos asociados
             await DownloadAndApplyVideoMetadataAsync(video);
@@ -308,6 +316,48 @@ public class SyncService
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Intenta descargar un archivo desde una ruta remota específica
+    /// </summary>
+    private async Task<(bool Success, string? ErrorMessage, byte[]? FileBytes, System.Net.HttpStatusCode? StatusCode)> TryDownloadFromPathAsync(
+        string remotePath, IProgress<double>? progress)
+    {
+        try
+        {
+            var signResult = await _cloudService.GetDownloadUrlAsync(remotePath);
+
+            if (!signResult.Success || string.IsNullOrEmpty(signResult.Url))
+            {
+                System.Diagnostics.Debug.WriteLine($"[Sync] Error obteniendo URL para '{remotePath}': {signResult.ErrorMessage}");
+                // Si el error contiene "no encontrado" o "not found", indicar 404 para activar fallback
+                var isNotFound = signResult.ErrorMessage?.Contains("no encontrado", StringComparison.OrdinalIgnoreCase) == true
+                    || signResult.ErrorMessage?.Contains("not found", StringComparison.OrdinalIgnoreCase) == true;
+                return (false, signResult.ErrorMessage ?? "No se pudo obtener URL de descarga", null,
+                    isNotFound ? System.Net.HttpStatusCode.NotFound : null);
+            }
+
+            System.Diagnostics.Debug.WriteLine($"[Sync] URL firmada obtenida para '{remotePath}': {signResult.Url?.Substring(0, Math.Min(signResult.Url?.Length ?? 0, 120))}...");
+
+            progress?.Report(0.2);
+
+            var response = await _httpClient.GetAsync(signResult.Url);
+            if (!response.IsSuccessStatusCode)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Sync] HTTP {response.StatusCode} descargando '{remotePath}'");
+                return (false, $"Error al descargar: {response.StatusCode} (ruta: {remotePath})", null, response.StatusCode);
+            }
+
+            var fileBytes = await response.Content.ReadAsByteArrayAsync();
+            System.Diagnostics.Debug.WriteLine($"[Sync] Descargados {fileBytes.Length} bytes para '{remotePath}'");
+            return (true, null, fileBytes, response.StatusCode);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Sync] Excepción descargando '{remotePath}': {ex.Message}");
+            return (false, $"Error: {ex.Message}", null, null);
+        }
     }
 
     /// <summary>

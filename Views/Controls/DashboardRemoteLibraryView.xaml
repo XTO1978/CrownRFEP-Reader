@@ -319,7 +319,7 @@
                             </OnPlatform>
                         </Border.Opacity>
                         <Border.GestureRecognizers>
-                            <TapGestureRecognizer Tapped="OnSessionsMenuNewSessionTappedInternal" />
+                            <TapGestureRecognizer Tapped="OnRemoteSessionsMenuTappedInternal" />
                         </Border.GestureRecognizers>
                         <controls:SymbolIcon
                             HeightRequest="{StaticResource IconSizeSmall}"

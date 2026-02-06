@@ -6,6 +6,7 @@ public partial class DashboardRemoteLibraryView : ContentView
 {
     public event EventHandler<TappedEventArgs>? RemoteLibraryHeaderContextMenu;
     public event EventHandler<TappedEventArgs>? SessionsMenuNewSessionTapped;
+    public event EventHandler<TappedEventArgs>? RemoteSessionsMenuTapped;
     public event EventHandler<TappedEventArgs>? RemoteSessionContextMenuTapped;
 
     public DashboardRemoteLibraryView()
@@ -18,6 +19,9 @@ public partial class DashboardRemoteLibraryView : ContentView
 
     private void OnSessionsMenuNewSessionTappedInternal(object? sender, TappedEventArgs e)
         => SessionsMenuNewSessionTapped?.Invoke(sender, e);
+
+    private void OnRemoteSessionsMenuTappedInternal(object? sender, TappedEventArgs e)
+        => RemoteSessionsMenuTapped?.Invoke(sender, e);
 
     private void OnRemoteSessionContextMenuTappedInternal(object? sender, TappedEventArgs e)
         => RemoteSessionContextMenuTapped?.Invoke(sender, e);

@@ -103,6 +103,21 @@ public class PrecisionVideoPlayerHandler : ViewHandler<Controls.PrecisionVideoPl
             _playerLayer = _containerView.PlayerLayer;
         }
 
+        // Desuscribirse primero para evitar acumulación de handlers si ConnectHandler
+        // se llama dos veces sin DisconnectHandler intermedio (posible en ciclos rápidos
+        // de visibilidad IsPreviewMode o navegación Shell).
+        VirtualView.PlayRequested -= OnPlayRequested;
+        VirtualView.PauseRequested -= OnPauseRequested;
+        VirtualView.StopRequested -= OnStopRequested;
+        VirtualView.StepForwardRequested -= OnStepForwardRequested;
+        VirtualView.StepBackwardRequested -= OnStepBackwardRequested;
+        VirtualView.SeekRequested -= OnSeekRequested;
+        VirtualView.PositionChangedFromBinding -= OnPositionChangedFromBinding;
+        VirtualView.SpeedChangedInternal -= OnSpeedChanged;
+        VirtualView.MutedChangedInternal -= OnMutedChanged;
+        VirtualView.AspectChangedInternal -= OnAspectChanged;
+        VirtualView.PrepareForCleanupRequested -= OnPrepareForCleanupRequested;
+
         // Suscribirse a eventos del control
         VirtualView.PlayRequested += OnPlayRequested;
         VirtualView.PauseRequested += OnPauseRequested;

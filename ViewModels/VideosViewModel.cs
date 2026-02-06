@@ -77,6 +77,7 @@ public class VideosViewModel : ObservableObject
     private bool _hasMoreVideos;
     private bool _isLoadingMore;
     private List<VideoClip>? _allVideosCache;
+    private bool _allVideosCacheIsComplete;
     private List<VideoClip>? _filteredVideosCache;
     private List<Input>? _allInputsCache;
     private List<Tag>? _allTagsCache;
@@ -394,7 +395,7 @@ public class VideosViewModel : ObservableObject
                 OnPropertyChanged(nameof(ParallelVideo1ThumbnailPath));
                 OnPropertyChanged(nameof(ShowParallelVideo1Thumbnail));
                 if (value != null)
-                    _ = RefreshPreviewModeAsync();
+                    EnsurePreviewMode();
             }
         }
     }
@@ -412,7 +413,7 @@ public class VideosViewModel : ObservableObject
                 OnPropertyChanged(nameof(ParallelVideo2ThumbnailPath));
                 OnPropertyChanged(nameof(ShowParallelVideo2Thumbnail));
                 if (value != null)
-                    _ = RefreshPreviewModeAsync();
+                    EnsurePreviewMode();
             }
         }
     }
@@ -430,7 +431,7 @@ public class VideosViewModel : ObservableObject
                 OnPropertyChanged(nameof(ParallelVideo3ThumbnailPath));
                 OnPropertyChanged(nameof(ShowParallelVideo3Thumbnail));
                 if (value != null)
-                    _ = RefreshPreviewModeAsync();
+                    EnsurePreviewMode();
             }
         }
     }
@@ -448,7 +449,7 @@ public class VideosViewModel : ObservableObject
                 OnPropertyChanged(nameof(ParallelVideo4ThumbnailPath));
                 OnPropertyChanged(nameof(ShowParallelVideo4Thumbnail));
                 if (value != null)
-                    _ = RefreshPreviewModeAsync();
+                    EnsurePreviewMode();
             }
         }
     }
@@ -1108,11 +1109,15 @@ public class VideosViewModel : ObservableObject
         IsPreviewPlayer4Ready = false;
     }
 
-    private async Task RefreshPreviewModeAsync()
+    /// <summary>
+    /// Activa IsPreviewMode si no lo está ya.
+    /// NO toglea false→true para evitar destruir y recrear todos los AVPlayers activos.
+    /// El cambio de Source ya se propaga vía PropertyMapper sin necesidad de toggle.
+    /// </summary>
+    private void EnsurePreviewMode()
     {
-        IsPreviewMode = false;
-        await Task.Delay(50);
-        IsPreviewMode = true;
+        if (!IsPreviewMode)
+            IsPreviewMode = true;
     }
 
     private void ExpandFilter(string filterName)
@@ -1459,6 +1464,7 @@ public class VideosViewModel : ObservableObject
 
         _currentPage = 0;
         _allVideosCache = null;
+        _allVideosCacheIsComplete = false;
         _filteredVideosCache = null;
         HasMoreVideos = false;
 
@@ -1475,6 +1481,7 @@ public class VideosViewModel : ObservableObject
             await Task.Yield();
 
             _allVideosCache = await _databaseService.GetAllVideoClipsAsync();
+            _allVideosCacheIsComplete = true;
             if (ct.IsCancellationRequested) return;
 
             OnPropertyChanged(nameof(AllGalleryItemCount));
@@ -1557,6 +1564,7 @@ public class VideosViewModel : ObservableObject
 
         _currentPage = 0;
         _allVideosCache = null;
+        _allVideosCacheIsComplete = false;
         _filteredVideosCache = null;
         HasMoreVideos = false;
 
@@ -1576,6 +1584,7 @@ public class VideosViewModel : ObservableObject
             }
 
             _allVideosCache = clips;
+            _allVideosCacheIsComplete = false;
 
             var firstBatch = clips.Take(PageSize).ToList();
             await MainThread.InvokeOnMainThreadAsync(async () =>
@@ -2441,12 +2450,13 @@ public class VideosViewModel : ObservableObject
         await RefreshFavoritesCountsAsync();
     }
 
-    private async Task EnsureAllVideosCacheAsync()
+    public async Task EnsureAllVideosCacheAsync()
     {
-        if (_allVideosCache != null)
+        if (_allVideosCache != null && _allVideosCacheIsComplete)
             return;
 
         _allVideosCache = await _databaseService.GetAllVideoClipsAsync();
+        _allVideosCacheIsComplete = true;
 
         var sessionIds = _allVideosCache?.Select(c => c.SessionId).Distinct().ToList() ?? new List<int>();
         var sessionsDict = new Dictionary<int, Session>();
@@ -2550,6 +2560,7 @@ public class VideosViewModel : ObservableObject
 
             _currentPage = 0;
             _allVideosCache = null;
+            _allVideosCacheIsComplete = false;
             _filteredVideosCache = null;
             HasMoreVideos = false;
 

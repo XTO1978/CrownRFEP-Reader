@@ -326,6 +326,7 @@
                         <controls:DashboardRemoteLibraryView
                             RemoteLibraryHeaderContextMenu="OnRemoteLibraryHeaderContextMenu"
                             SessionsMenuNewSessionTapped="OnSessionsMenuNewSessionTapped"
+                            RemoteSessionsMenuTapped="OnRemoteSessionsMenuTapped"
                             RemoteSessionContextMenuTapped="OnRemoteSessionContextMenuTapped" />
 
                         <!--  Separador entre organización y biblioteca personal  -->
@@ -1354,7 +1355,16 @@
                             <Binding Path="Layout.IsDiaryViewSelected" Converter="{toolkit:InvertedBoolConverter}" />
                         </MultiBinding>
                     </VerticalStackLayout.IsVisible>
-                    <HorizontalStackLayout Spacing="12" VerticalOptions="Center" IsVisible="{Binding Videos.IsQuickAnalysisIsolatedMode, Converter={toolkit:InvertedBoolConverter}}">
+                    <!--  Acciones de Biblioteca Personal (ocultas cuando se muestra Galería de Organización)  -->
+                    <VerticalStackLayout Spacing="12">
+                        <VerticalStackLayout.IsVisible>
+                            <MultiBinding Converter="{StaticResource AllTrueConverter}">
+                                <Binding Path="Videos.IsQuickAnalysisIsolatedMode" Converter="{toolkit:InvertedBoolConverter}" />
+                                <Binding Path="Remote.ShowRemoteGallery" Converter="{toolkit:InvertedBoolConverter}" />
+                            </MultiBinding>
+                        </VerticalStackLayout.IsVisible>
+
+                    <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
                         <controls:SymbolIcon
                             HeightRequest="{StaticResource IconSizeLarge}"
                             SymbolName="film.stack"
@@ -1371,10 +1381,9 @@
                     <Label
                         FontSize="{StaticResource FontSizeBody}"
                         Text="Selección de vídeos"
-                        TextColor="#FFCCCCCC"
-                        IsVisible="{Binding Videos.IsQuickAnalysisIsolatedMode, Converter={toolkit:InvertedBoolConverter}}" />
+                        TextColor="#FFCCCCCC" />
 
-                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8" IsVisible="{Binding Videos.IsQuickAnalysisIsolatedMode, Converter={toolkit:InvertedBoolConverter}}">
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
                         <!--  Toggle: Selección múltiple  -->
                         <Border
                             Padding="10,8"
@@ -1444,10 +1453,9 @@
                         Margin="0,12,0,0"
                         FontSize="{StaticResource FontSizeBody}"
                         Text="Acciones en lote"
-                        TextColor="#FFCCCCCC"
-                        IsVisible="{Binding Videos.IsQuickAnalysisIsolatedMode, Converter={toolkit:InvertedBoolConverter}}" />
+                        TextColor="#FFCCCCCC" />
 
-                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="8" IsVisible="{Binding Videos.IsQuickAnalysisIsolatedMode, Converter={toolkit:InvertedBoolConverter}}">
+                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="8">
                         <!--  Botón: Reproducir como playlist  -->
                         <Border
                             Grid.Row="0"
@@ -1536,6 +1544,8 @@
                             </HorizontalStackLayout>
                         </Border>
                     </Grid>
+                    </VerticalStackLayout>
+                    <!--  Fin acciones Biblioteca Personal  -->
 
                     <!--  ========== SECCIÓN: ACCIONES EN LOTE PARA VIDEOS REMOTOS ==========  -->
                     <VerticalStackLayout
@@ -1881,6 +1891,9 @@
                                     <BoxView
                                         BackgroundColor="Transparent"
                                         IsVisible="{Binding Videos.HasParallelVideo1}">
+                                        <BoxView.Behaviors>
+                                            <behaviors:VideoScrubBehavior VideoIndex="1" />
+                                        </BoxView.Behaviors>
                                         <BoxView.GestureRecognizers>
                                             <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen1" />
                                         </BoxView.GestureRecognizers>
@@ -1933,6 +1946,9 @@
                                     <BoxView
                                         BackgroundColor="Transparent"
                                         IsVisible="{Binding Videos.HasParallelVideo2}">
+                                        <BoxView.Behaviors>
+                                            <behaviors:VideoScrubBehavior VideoIndex="2" />
+                                        </BoxView.Behaviors>
                                         <BoxView.GestureRecognizers>
                                             <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen2" />
                                         </BoxView.GestureRecognizers>
@@ -1985,6 +2001,9 @@
                                     <BoxView
                                         BackgroundColor="Transparent"
                                         IsVisible="{Binding Videos.HasParallelVideo3}">
+                                        <BoxView.Behaviors>
+                                            <behaviors:VideoScrubBehavior VideoIndex="3" />
+                                        </BoxView.Behaviors>
                                         <BoxView.GestureRecognizers>
                                             <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen3" />
                                         </BoxView.GestureRecognizers>
@@ -2037,6 +2056,9 @@
                                     <BoxView
                                         BackgroundColor="Transparent"
                                         IsVisible="{Binding Videos.HasParallelVideo4}">
+                                        <BoxView.Behaviors>
+                                            <behaviors:VideoScrubBehavior VideoIndex="4" />
+                                        </BoxView.Behaviors>
                                         <BoxView.GestureRecognizers>
                                             <DropGestureRecognizer AllowDrop="True" Drop="OnDropScreen4" />
                                         </BoxView.GestureRecognizers>
@@ -2046,29 +2068,9 @@
                         </controls:AspectRatioContainer>
                     </Grid>
 
-                    <!--  Botones Reproducir y Limpiar  -->
-                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8" IsVisible="{Binding Videos.IsQuickAnalysisIsolatedMode, Converter={toolkit:InvertedBoolConverter}}">
+                    <!--  Botón Limpiar  -->
+                    <Grid IsVisible="{Binding Videos.IsQuickAnalysisIsolatedMode, Converter={toolkit:InvertedBoolConverter}}">
                         <Border
-                            Padding="10,8"
-                            BackgroundColor="#FF404040"
-                            Stroke="Transparent"
-                            StrokeShape="RoundRectangle 6">
-                            <Border.GestureRecognizers>
-                                <TapGestureRecognizer Command="{Binding PlayParallelAnalysisCommand}" />
-                            </Border.GestureRecognizers>
-                            <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
-                                <controls:SymbolIcon
-                                    HeightRequest="{StaticResource IconSizeMedium}"
-                                    SymbolName="play.fill"
-                                    TintColor="White"
-                                    WidthRequest="{StaticResource IconSizeMedium}"
-                                    VerticalOptions="Center" />
-                                <Label Text="Reproducir" TextColor="White" VerticalOptions="Center" />
-                            </HorizontalStackLayout>
-                        </Border>
-
-                        <Border
-                            Grid.Column="1"
                             Padding="10,8"
                             BackgroundColor="#FF404040"
                             Stroke="Transparent"
@@ -3171,7 +3173,7 @@
                             <Label
                                 FontAttributes="None"
                                 FontSize="{StaticResource FontSizeTitle}"
-                                Text="Carpeta inteligente"
+                                Text="{Binding SmartFolders.SmartFolderPopupTitle}"
                                 TextColor="White" />
                             <Label
                                 FontSize="{StaticResource FontSizeSmall}"
@@ -3381,7 +3383,7 @@
                             Command="{Binding SmartFolders.CancelSmartFolderSidebarPopupCommand}" />
                         <Button
                             Grid.Column="1"
-                            Text="Crear"
+                            Text="{Binding SmartFolders.SmartFolderPopupActionText}"
                             BackgroundColor="#FF0066"
                             TextColor="#FF121212"
                             FontAttributes="None"
@@ -4990,6 +4992,50 @@
                             <Label
                                 Text="Agregar a favoritos"
                                 Style="{StaticResource ContextMenuItemLabel}" />
+                        </HorizontalStackLayout>
+                    </Border>
+
+                    <!--  Descargar para offline (solo vídeos de organización sin copia local)  -->
+                    <Border x:Name="VideoCtxMenuDownloadOffline" Style="{StaticResource ContextMenuItemBorder}" IsVisible="False">
+                        <Border.Behaviors>
+                            <behaviors:SidebarHoverBehavior />
+                        </Border.Behaviors>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnVideoItemMenuDownloadOfflineTapped" />
+                        </Border.GestureRecognizers>
+                        <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                            <controls:SymbolIcon
+                                HeightRequest="18"
+                                WidthRequest="18"
+                                SymbolName="icloud.and.arrow.down"
+                                TintColor="#FF4CAF50"
+                                VerticalOptions="Center" />
+                            <Label
+                                Text="Descargar (disponible offline)"
+                                Style="{StaticResource ContextMenuItemLabel}"
+                                TextColor="#FF4CAF50" />
+                        </HorizontalStackLayout>
+                    </Border>
+
+                    <!--  Quitar copia local (solo vídeos descargados de organización)  -->
+                    <Border x:Name="VideoCtxMenuEvictLocal" Style="{StaticResource ContextMenuItemBorder}" IsVisible="False">
+                        <Border.Behaviors>
+                            <behaviors:SidebarHoverBehavior />
+                        </Border.Behaviors>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnVideoItemMenuEvictLocalTapped" />
+                        </Border.GestureRecognizers>
+                        <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                            <controls:SymbolIcon
+                                HeightRequest="18"
+                                WidthRequest="18"
+                                SymbolName="icloud.and.arrow.up"
+                                TintColor="#FF2196F3"
+                                VerticalOptions="Center" />
+                            <Label
+                                Text="Dejar en la nube"
+                                Style="{StaticResource ContextMenuItemLabel}"
+                                TextColor="#FF2196F3" />
                         </HorizontalStackLayout>
                     </Border>
 

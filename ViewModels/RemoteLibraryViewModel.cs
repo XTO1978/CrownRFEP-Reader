@@ -106,6 +106,7 @@ public class RemoteLibraryViewModel : ObservableObject
         SyncSessionCommand = new AsyncRelayCommand<Session>(SyncSessionAsync);
         UploadVideoCommand = new AsyncRelayCommand<VideoClip>(UploadVideoAsync);
         DownloadVideoCommand = new AsyncRelayCommand<VideoClip>(DownloadVideoAsync);
+        EvictOfflineCopyCommand = new AsyncRelayCommand<VideoClip>(EvictOfflineCopyAsync);
         CheckPendingSyncCommand = new AsyncRelayCommand(CheckPendingSyncAsync);
 
         AddRemoteVideoToLibraryCommand = new AsyncRelayCommand<RemoteVideoItem>(AddRemoteVideoToLibraryAsync);
@@ -381,6 +382,7 @@ public class RemoteLibraryViewModel : ObservableObject
     public ICommand SyncSessionCommand { get; }
     public ICommand UploadVideoCommand { get; }
     public ICommand DownloadVideoCommand { get; }
+    public ICommand EvictOfflineCopyCommand { get; }
     public ICommand CheckPendingSyncCommand { get; }
 
     public ICommand AddRemoteVideoToLibraryCommand { get; }
@@ -2075,11 +2077,25 @@ public class RemoteLibraryViewModel : ObservableObject
 
     private void ToggleRemoteVideoSelection(RemoteVideoItem? video)
     {
-        if (video == null || !IsRemoteMultiSelectMode) return;
+        if (video == null) return;
 
-        video.IsSelected = !video.IsSelected;
+        if (IsRemoteMultiSelectMode)
+        {
+            // Modo multi-select: toggle individual
+            video.IsSelected = !video.IsSelected;
+        }
+        else
+        {
+            // Modo normal: selección única (deseleccionar todos los demás)
+            foreach (var v in RemoteVideos)
+            {
+                if (v != video)
+                    v.IsSelected = false;
+            }
+            video.IsSelected = !video.IsSelected;
+        }
+
         OnPropertyChanged(nameof(SelectedRemoteVideoCount));
-
         IsRemoteSelectAllActive = RemoteVideos.All(v => v.IsSelected);
     }
 
@@ -2529,6 +2545,17 @@ public class RemoteLibraryViewModel : ObservableObject
             if (result.Success)
             {
                 SyncStatusText = "Video descargado correctamente";
+
+                // Actualizar el RemoteVideoItem correspondiente para reflejar el nuevo estado
+                var remoteItem = RemoteVideos.FirstOrDefault(r => r.LinkedLocalVideo?.Id == video.Id);
+                if (remoteItem != null)
+                {
+                    remoteItem.IsLocallyAvailable = true;
+                    remoteItem.LocalPath = result.LocalPath;
+                    // Forzar recálculo de propiedades derivadas (IsDownloadedLocally, StatusIcon, etc.)
+                    remoteItem.LinkedLocalVideo = video;
+                }
+
                 _notifySelectedSessionVideosChanged();
             }
             else
@@ -2573,6 +2600,66 @@ public class RemoteLibraryViewModel : ObservableObject
         {
             System.Diagnostics.Debug.WriteLine($"[Sync] Error checking pending: {ex.Message}");
             SyncStatusText = "Error verificando estado";
+        }
+    }
+
+    /// <summary>
+    /// Quita la copia local de un vídeo de organización, dejando solo la referencia cloud.
+    /// El vídeo pasa de Source="both" a Source="remote".
+    /// </summary>
+    private async Task EvictOfflineCopyAsync(VideoClip? video)
+    {
+        if (video == null) return;
+
+        // Solo aplica a vídeos que tienen copia local Y están en la organización
+        if (video.Source != "both")
+        {
+            await Shell.Current.DisplayAlert("Info", "Este vídeo no tiene copia local descargada de la organización.", "OK");
+            return;
+        }
+
+        try
+        {
+            // Eliminar archivo local
+            if (!string.IsNullOrEmpty(video.LocalClipPath) && File.Exists(video.LocalClipPath))
+            {
+                try { File.Delete(video.LocalClipPath); } catch { }
+            }
+
+            // Actualizar el modelo
+            video.LocalClipPath = null;
+            video.Source = "remote";
+
+            // Persistir en base de datos
+            var db = await _databaseService.GetConnectionAsync();
+            await db.ExecuteAsync(
+                "UPDATE VideoClip SET Source = ?, LocalClipPath = NULL WHERE Id = ?",
+                "remote", video.Id);
+            _databaseService.InvalidateCache();
+
+            // Notificar cambios de UI
+            video.OnPropertyChanged(nameof(VideoClip.SyncStatusIcon));
+            video.OnPropertyChanged(nameof(VideoClip.SyncStatusColor));
+            video.OnPropertyChanged(nameof(VideoClip.SyncStatusText));
+            video.OnPropertyChanged(nameof(VideoClip.ShowSyncBadge));
+            video.OnPropertyChanged(nameof(VideoClip.IsLocalAvailable));
+            video.OnPropertyChanged(nameof(VideoClip.NeedsDownload));
+
+            // Actualizar el RemoteVideoItem correspondiente
+            var remoteItem = RemoteVideos.FirstOrDefault(r => r.LinkedLocalVideo?.Id == video.Id);
+            if (remoteItem != null)
+            {
+                remoteItem.IsLocallyAvailable = false;
+                remoteItem.LocalPath = null;
+                remoteItem.LinkedLocalVideo = video; // Forzar recálculo de propiedades derivadas
+            }
+
+            _notifySelectedSessionVideosChanged();
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("RemoteLibraryVM", "EvictOfflineCopyAsync error", ex);
+            await Shell.Current.DisplayAlert("Error", $"No se pudo quitar la copia local: {ex.Message}", "OK");
         }
     }
 }

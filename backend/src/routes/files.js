@@ -153,6 +153,22 @@ router.post('/download-url', async (req, res) => {
     const userFolder = req.user.wasabiFolder || 'CrownRFEP';
     const key = `${userFolder}/${path}`;
 
+    // Verificar que el objeto existe antes de generar la URL firmada
+    try {
+      const headCommand = new HeadObjectCommand({
+        Bucket: getBucket(),
+        Key: key
+      });
+      await getS3Client().send(headCommand);
+    } catch (headErr) {
+      if (headErr.name === 'NotFound' || headErr.$metadata?.httpStatusCode === 404) {
+        console.warn(`[Files] Objeto no encontrado: ${key}`);
+        return res.status(404).json({ error: `Archivo no encontrado en la nube: ${path}`, key, bucket: getBucket() });
+      }
+      // Si es otro error (permisos, etc.), continuar de todas formas con la URL firmada
+      console.warn(`[Files] HEAD check falló para ${key}: ${headErr.message}, continuando con URL firmada`);
+    }
+
     const command = new GetObjectCommand({
       Bucket: getBucket(),
       Key: key

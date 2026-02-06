@@ -452,7 +452,7 @@ public class CloudBackendService : ICloudBackendService
 
         try
         {
-            var url = $"{_baseUrl}/files/list?path={Uri.EscapeDataString(folderPath)}&max={maxItems}";
+            var url = $"{_baseUrl}/files/list?prefix={Uri.EscapeDataString(folderPath)}&maxKeys={maxItems}";
             if (!string.IsNullOrEmpty(continuationToken))
             {
                 url += $"&token={Uri.EscapeDataString(continuationToken)}";
@@ -523,7 +523,9 @@ public class CloudBackendService : ICloudBackendService
 
             if (!response.IsSuccessStatusCode)
             {
-                return new PresignedUrlResult(false, TryParseError(responseBody) ?? "Error al obtener URL");
+                var errorMsg = TryParseError(responseBody) ?? "Error al obtener URL";
+                System.Diagnostics.Debug.WriteLine($"[CloudBackend] GetDownloadUrl falló para '{filePath}': HTTP {response.StatusCode} - {errorMsg}");
+                return new PresignedUrlResult(false, errorMsg);
             }
 
             var urlResponse = JsonSerializer.Deserialize<PresignedUrlResponseDto>(responseBody, JsonOptions);

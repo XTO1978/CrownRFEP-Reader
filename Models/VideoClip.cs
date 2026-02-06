@@ -147,37 +147,43 @@ public class VideoClip : INotifyPropertyChanged
     public bool NeedsDownload => IsRemoteAvailable && !IsLocalAvailable;
 
     /// <summary>
-    /// Icono de estado de sincronización para mostrar en UI
+    /// Icono de estado de sincronización para mostrar en UI (SF Symbols)
+    /// - Personal (propio del usuario): person.fill
+    /// - De organización, descargado (offline): checkmark.icloud.fill
+    /// - De organización, solo referencia (cloud): icloud
     /// </summary>
     [Ignore]
     public string SyncStatusIcon
     {
         get
         {
-            if (Source == "both" || IsSynced == 1)
-                return "☁️✓"; // Sincronizado
+            if (Source == "both")
+                return "checkmark.icloud.fill"; // Descargado de organización (disponible offline)
             if (Source == "remote" || (string.IsNullOrEmpty(LocalClipPath) && !string.IsNullOrEmpty(ClipPath)))
-                return "☁️"; // Solo en nube
+                return "icloud"; // Solo referenciado en organización (necesita conexión)
             if (Source == "local" || (IsSynced == 0 && !string.IsNullOrEmpty(LocalClipPath)))
-                return "📱"; // Solo local
-            return "❓"; // Desconocido
+                return "person.fill"; // Propio del usuario (personal)
+            return "questionmark.circle"; // Desconocido
         }
     }
 
     /// <summary>
     /// Color del indicador de sincronización
+    /// - Personal: gris discreto (propio, nada que indicar especial)
+    /// - Descargado de organización: verde (disponible offline)
+    /// - Solo referenciado: azul (solo cloud, necesita conexión)
     /// </summary>
     [Ignore]
     public string SyncStatusColor
     {
         get
         {
-            if (Source == "both" || IsSynced == 1)
-                return "#4CAF50"; // Verde - sincronizado
-            if (NeedsUpload)
-                return "#FF9800"; // Naranja - pendiente de subir
-            if (NeedsDownload)
-                return "#2196F3"; // Azul - pendiente de descargar
+            if (Source == "both")
+                return "#4CAF50"; // Verde - descargado de organización
+            if (Source == "remote" || NeedsDownload)
+                return "#2196F3"; // Azul - solo referenciado (cloud)
+            if (Source == "local" && IsSynced == 0)
+                return "#9E9E9E"; // Gris - personal propio
             return "#9E9E9E"; // Gris - desconocido
         }
     }
@@ -190,15 +196,25 @@ public class VideoClip : INotifyPropertyChanged
     {
         get
         {
-            if (Source == "both" || IsSynced == 1)
-                return "Sincronizado";
+            if (Source == "both")
+                return "Descargado de organización";
             if (Source == "remote")
                 return "Solo en organización";
+            if (Source == "local" && IsSynced == 0)
+                return "Vídeo personal";
             if (NeedsUpload)
                 return "Pendiente de subir";
-            return "Solo personal";
+            return "Vídeo personal";
         }
     }
+
+    /// <summary>
+    /// Indica si se debe mostrar el badge de estado de sincronización.
+    /// Solo se muestra para vídeos de organización (referenciados o descargados).
+    /// Los vídeos personales propios no muestran badge.
+    /// </summary>
+    [Ignore]
+    public bool ShowSyncBadge => Source == "remote" || Source == "both";
 
     // Propiedades computadas
     [Ignore]
@@ -536,7 +552,7 @@ public class VideoClip : INotifyPropertyChanged
         }
     }
 
-    private void OnPropertyChanged(string propertyName)
+    public void OnPropertyChanged(string propertyName)
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }

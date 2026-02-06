@@ -752,6 +752,7 @@ public class DashboardViewModel : BaseViewModel
                 return;
 
             Layout.IsStatsTabSelected = value;
+            OnPropertyChanged();
             if (value)
             {
                 IsCrudTechTabSelected = false;
@@ -769,6 +770,7 @@ public class DashboardViewModel : BaseViewModel
                 return;
 
             Layout.IsCrudTechTabSelected = value;
+            OnPropertyChanged();
             if (value)
             {
                 IsStatsTabSelected = false;
@@ -1536,6 +1538,7 @@ public class DashboardViewModel : BaseViewModel
         SmartFolders.Configure(
             () => Videos.AllVideosCache,
             () => Videos.LoadAllVideosAsync(),
+            () => Videos.EnsureAllVideosCacheAsync(),
             () => Videos.ClearFilters(true),
             () => SelectedSession = null,
             () => IsAllGallerySelected = true,
