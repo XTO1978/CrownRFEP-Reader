@@ -4,6 +4,8 @@ import dotenv from 'dotenv';
 import authRoutes from './routes/auth.js';
 import filesRoutes from './routes/files.js';
 import adminRoutes from './routes/admin.js';
+import teamRoutes from './routes/team.js';
+import sessionsRoutes from './routes/sessions.js';
 import { authenticateToken, requireAdmin } from './middleware/auth.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -152,6 +154,12 @@ app.use('/api/auth', authRoutes);
 
 // Rutas de archivos (protegidas)
 app.use('/api/files', authenticateToken, filesRoutes);
+
+// Rutas de equipo (protegidas)
+app.use('/api/team', authenticateToken, teamRoutes);
+
+// Rutas de sesiones (protegidas)
+app.use('/api/sessions', authenticateToken, sessionsRoutes);
 
 // Rutas de administración (solo admin)
 app.use('/api/admin', authenticateToken, requireAdmin, adminRoutes);

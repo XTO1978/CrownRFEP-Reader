@@ -176,6 +176,9 @@ public class BackendInitializationService
                 AppLog.Info("BackendInit", "⏳ Sincronización reciente, omitiendo...");
             }
 
+            // Sincronizar sesiones locales con el backend para replicación entre dispositivos
+            _ = SyncLocalSessionsToBackendAsync();
+
 #if IOS
             if (_uploadQueueService != null)
             {
@@ -188,6 +191,31 @@ public class BackendInitializationService
         else
         {
             AppLog.Info("BackendInit", "👤 Usuario no autenticado, omitiendo sincronización de galería");
+        }
+    }
+
+    /// <summary>
+    /// Sincroniza todas las sesiones locales con el backend para que estén disponibles
+    /// para otros dispositivos de la organización.
+    /// </summary>
+    public async Task SyncLocalSessionsToBackendAsync()
+    {
+        try
+        {
+            AppLog.Info("BackendInit", "📋 Sincronizando sesiones locales con el backend...");
+            var result = await _syncService.SyncAllSessionsToBackendAsync();
+            if (result != null && result.Success)
+            {
+                AppLog.Info("BackendInit", $"📋 Sesiones sincronizadas: {result.Created} nuevas, {result.Updated} actualizadas");
+            }
+            else if (result != null)
+            {
+                AppLog.Warn("BackendInit", $"📋 Error sincronizando sesiones: {result.ErrorMessage}");
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("BackendInit", "Error sincronizando sesiones", ex);
         }
     }
 

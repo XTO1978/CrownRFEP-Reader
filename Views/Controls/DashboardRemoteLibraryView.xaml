@@ -354,7 +354,7 @@
                             </Border.Triggers>
                             <Border.GestureRecognizers>
                                 <TapGestureRecognizer
-                                    Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.Remote.SelectRemoteSessionCommand}"
+                                    Command="{Binding Source={RelativeSource AncestorType={x:Type controls:DashboardRemoteLibraryView}}, Path=BindingContext.Remote.SelectRemoteSessionCommand}"
                                     CommandParameter="{Binding .}" />
                             </Border.GestureRecognizers>
                             <Grid ColumnDefinitions="Auto,*,Auto,Auto" VerticalOptions="Center" HorizontalOptions="Fill">

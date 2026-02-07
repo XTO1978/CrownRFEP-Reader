@@ -92,10 +92,41 @@ public interface ICloudBackendService
 Task<BackendHealthResult> CheckHealthAsync();
 
 /// <summary>
+/// Obtiene la configuración compartida de la organización (sidebar, smart folders, etc.).
+/// </summary>
+Task<OrgConfigResult> GetOrgConfigAsync();
+
+/// <summary>
+/// Guarda la configuración compartida de la organización.
+/// Solo roles con permisos de escritura (admin, org_admin, coach).
+/// </summary>
+Task<OrgConfigSaveResult> SaveOrgConfigAsync(OrgConfig config);
+
+/// <summary>
 /// Obtiene la lista de videos/archivos nuevos o actualizados desde la última sincronización.
 /// Útil para mantener la galería actualizada para atletas y entrenadores.
 /// </summary>
 Task<GallerySyncResult> CheckForGalleryUpdatesAsync(DateTime? lastSyncTime = null);
+
+/// <summary>
+/// Obtiene todas las sesiones del equipo desde el backend.
+/// </summary>
+Task<RemoteSessionListResult> GetRemoteSessionsAsync(DateTime? since = null);
+
+/// <summary>
+/// Sube/actualiza una sesión al backend (upsert por localSessionId + deviceId).
+/// </summary>
+Task<RemoteSessionSyncResult> SyncSessionToRemoteAsync(RemoteSessionPayload session);
+
+/// <summary>
+/// Sube múltiples sesiones al backend en una sola petición.
+/// </summary>
+Task<RemoteSessionBatchResult> SyncSessionsBatchAsync(List<RemoteSessionPayload> sessions);
+
+/// <summary>
+/// Elimina (soft-delete) una sesión en el backend.
+/// </summary>
+Task<bool> DeleteRemoteSessionAsync(int remoteSessionId);
 }
 
 /// <summary>
@@ -186,4 +217,148 @@ public record TeamMemberInfo(
     string Name,
     string Email,
     string Role
+);
+
+/// <summary>
+/// Configuración compartida de la organización.
+/// Se almacena como org-config.json en Wasabi.
+/// </summary>
+public class OrgConfig
+{
+    public int Version { get; set; }
+    public string? UpdatedAt { get; set; }
+    public OrgConfigAuthor? UpdatedBy { get; set; }
+    public List<OrgSmartFolder> SmartFolders { get; set; } = new();
+    public OrgSidebarSections SidebarSections { get; set; } = new();
+}
+
+public class OrgConfigAuthor
+{
+    public int UserId { get; set; }
+    public string? Name { get; set; }
+    public string? Email { get; set; }
+}
+
+public class OrgSmartFolder
+{
+    public string Id { get; set; } = "";
+    public string Name { get; set; } = "";
+    public string MatchMode { get; set; } = "All";
+    public string Icon { get; set; } = "folder";
+    public string IconColor { get; set; } = "#FF9800";
+    public List<OrgSmartFolderCriterion> Criteria { get; set; } = new();
+}
+
+public class OrgSmartFolderCriterion
+{
+    public string Field { get; set; } = "";
+    public string Operator { get; set; } = "";
+    public string Value { get; set; } = "";
+    public string? Value2 { get; set; }
+}
+
+public class OrgSidebarSections
+{
+    public bool GalleryVisible { get; set; } = true;
+    public bool VideoLessonsVisible { get; set; } = true;
+    public bool TrashVisible { get; set; } = true;
+    public bool SessionsVisible { get; set; } = true;
+    public bool SmartFoldersVisible { get; set; } = true;
+}
+
+public record OrgConfigResult(
+    bool Success,
+    string? ErrorMessage = null,
+    OrgConfig? Config = null
+);
+
+public record OrgConfigSaveResult(
+    bool Success,
+    string? ErrorMessage = null,
+    int Version = 0,
+    string? UpdatedAt = null
+);
+
+/// <summary>
+/// Payload para enviar datos de sesión al backend.
+/// </summary>
+public class RemoteSessionPayload
+{
+    public int LocalSessionId { get; set; }
+    public string? DeviceId { get; set; }
+    public string? SessionName { get; set; }
+    public string? Place { get; set; }
+    public string? Coach { get; set; }
+    public string? SessionType { get; set; }
+    public long SessionDateUtc { get; set; }
+    public string? Participants { get; set; }
+    public int IsMerged { get; set; }
+    public string? Icon { get; set; }
+    public string? IconColor { get; set; }
+    public int VideoCount { get; set; }
+}
+
+/// <summary>
+/// Sesión tal como viene del backend.
+/// </summary>
+public class RemoteSessionDto
+{
+    public int Id { get; set; }
+    public string? TeamId { get; set; }
+    public int LocalSessionId { get; set; }
+    public string? DeviceId { get; set; }
+    public string? SessionName { get; set; }
+    public string? Place { get; set; }
+    public string? Coach { get; set; }
+    public string? SessionType { get; set; }
+    public long SessionDateUtc { get; set; }
+    public string? Participants { get; set; }
+    public int IsMerged { get; set; }
+    public string? Icon { get; set; }
+    public string? IconColor { get; set; }
+    public int VideoCount { get; set; }
+    public int? CreatedByUserId { get; set; }
+    public string? CreatedByUserName { get; set; }
+    public string? CreatedAt { get; set; }
+    public string? UpdatedAt { get; set; }
+    public int IsDeleted { get; set; }
+    public string? DeletedAt { get; set; }
+}
+
+/// <summary>
+/// Resultado de consulta de sesiones remotas.
+/// </summary>
+public record RemoteSessionListResult(
+    bool Success,
+    string? ErrorMessage = null,
+    List<RemoteSessionDto>? Sessions = null,
+    int Count = 0
+);
+
+/// <summary>
+/// Resultado de sincronizar una sesión al backend.
+/// </summary>
+public record RemoteSessionSyncResult(
+    bool Success,
+    string? ErrorMessage = null,
+    RemoteSessionDto? Session = null,
+    bool IsNew = false
+);
+
+/// <summary>
+/// Resultado de sincronización batch de sesiones.
+/// </summary>
+public record RemoteSessionBatchResult(
+    bool Success,
+    string? ErrorMessage = null,
+    int Created = 0,
+    int Updated = 0,
+    int Total = 0,
+    List<RemoteSessionBatchItem>? Results = null
+);
+
+public record RemoteSessionBatchItem(
+    int LocalSessionId,
+    int RemoteId,
+    bool IsNew
 );

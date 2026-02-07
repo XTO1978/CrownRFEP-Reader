@@ -255,6 +255,12 @@ public class DashboardViewModel : BaseViewModel
     private bool _isSessionsExpanded = true;
     private bool _showNewSessionSidebarPopup;
 
+    /// <summary>
+    /// Cuando es true, la próxima importación que se complete desde ImportPage
+    /// se sincronizará automáticamente con la Biblioteca de Organización (S3 + backend).
+    /// </summary>
+    private bool _pendingOrgSyncAfterImport;
+
     public DashboardStats? Stats
     {
         get => _stats;
@@ -1351,7 +1357,9 @@ public class DashboardViewModel : BaseViewModel
 
     public ICommand ImportCommand { get; }
     public ICommand ImportCrownFileCommand { get; }
+    public ICommand ImportCrownFileForOrganizationCommand { get; }
     public ICommand CreateSessionFromVideosCommand { get; }
+    public ICommand CreateSessionFromVideosForOrganizationCommand { get; }
     public ICommand RefreshCommand { get; }
     public ICommand ViewSessionCommand { get; }
     public ICommand ViewAllSessionsCommand { get; }
@@ -1613,7 +1621,9 @@ public class DashboardViewModel : BaseViewModel
 
         ImportCommand = new AsyncRelayCommand(ShowImportOptionsAsync);
         ImportCrownFileCommand = new AsyncRelayCommand(ImportCrownFileAsync);
+        ImportCrownFileForOrganizationCommand = new AsyncRelayCommand(ImportCrownFileForOrganizationAsync);
         CreateSessionFromVideosCommand = new AsyncRelayCommand(OpenImportPageForVideosAsync);
+        CreateSessionFromVideosForOrganizationCommand = new AsyncRelayCommand(OpenImportPageForVideosForOrganizationAsync);
         RefreshCommand = new AsyncRelayCommand(LoadDataAsync);
         ViewSessionCommand = new AsyncRelayCommand<Session>(ViewSessionAsync);
         ViewAllSessionsCommand = new AsyncRelayCommand(ViewAllSessionsAsync);
@@ -1816,6 +1826,10 @@ public class DashboardViewModel : BaseViewModel
     {
         System.Diagnostics.Debug.WriteLine($"[DashboardViewModel] OnImportCompleted llamado. HasError={task.HasError}, SessionId={task.CreatedSessionId}");
         
+        // Capturar y resetear el flag de sincronización a org antes de cualquier await
+        var shouldSyncToOrg = _pendingOrgSyncAfterImport;
+        _pendingOrgSyncAfterImport = false;
+
         if (task.HasError)
         {
             IsBackgroundImporting = false;
@@ -1862,7 +1876,23 @@ public class DashboardViewModel : BaseViewModel
             if (task.CreatedSessionId.HasValue)
             {
                 var newSession = await _databaseService.GetSessionByIdAsync(task.CreatedSessionId.Value);
-                if (newSession != null)
+
+                // Si la importación fue iniciada desde la Biblioteca de Organización,
+                // marcar como IsRemoteOnly y subir a S3 en background
+                if (shouldSyncToOrg)
+                {
+                    if (newSession != null)
+                    {
+                        newSession.IsRemoteOnly = 1;
+                        await _databaseService.SaveSessionAsync(newSession);
+                    }
+
+                    System.Diagnostics.Debug.WriteLine($"[DashboardViewModel] Sincronizando sesión importada {task.CreatedSessionId.Value} a la organización...");
+                    var sessionName = newSession?.DisplayName ?? task.Name;
+                    _ = UploadImportedSessionToOrgInBackgroundAsync(
+                        task.CreatedSessionId.Value, sessionName, 0, 0);
+                }
+                else if (newSession != null)
                 {
                     System.Diagnostics.Debug.WriteLine($"[DashboardViewModel] Seleccionando nueva sesión: {newSession.DisplayName}");
                     SelectedSession = newSession;
@@ -2058,6 +2088,12 @@ public class DashboardViewModel : BaseViewModel
                 RecentSessions.Add(session);
             }
 
+            // Si hay sesiones, asegurar que la lista esté expandida para mostrarlas
+            if (RecentSessions.Count > 0 && !IsSessionsListExpanded)
+            {
+                IsSessionsListExpanded = true;
+            }
+
             SyncFavoriteSessionsFromRecent();
 
             SyncVisibleSessionRows();
@@ -2075,6 +2111,12 @@ public class DashboardViewModel : BaseViewModel
             if (IsVideoLessonsSelected)
             {
                 await Videos.ViewVideoLessonsAsync();
+            }
+            // Si hay una sección remota activa (org gallery, sesión remota, etc.), no resetear
+            else if (Remote.IsAnyRemoteSectionSelected)
+            {
+                // Mantener la vista de organización — no hacer nada que la sobreescriba
+                AppLog.Info("DashboardVM", "LoadDataAsync: manteniendo sección remota activa");
             }
             // Por defecto, mostrar Galería General al iniciar (solo si no hay ninguna vista activa)
             else if (SelectedSession == null && !IsAllGallerySelected && !IsDiaryViewSelected)
@@ -2454,6 +2496,139 @@ public class DashboardViewModel : BaseViewModel
                 ImportProgressValue = 0;
             });
         }
+    }
+
+    /// <summary>
+    /// Importa un archivo .crown y sube la sesión a la Biblioteca de Organización (S3 + backend DB).
+    /// La importación local se hace en primer plano para el file-picker; la subida a S3 se ejecuta
+    /// en background, mostrando el progreso en el AppFooter (StatusBarService).
+    /// La sesión se marca como IsRemoteOnly = 1 para que no aparezca en la biblioteca personal.
+    /// </summary>
+    private async Task ImportCrownFileForOrganizationAsync()
+    {
+        if (IsImporting) return;
+
+        try
+        {
+            IsImporting = true;
+            ImportProgressValue = 0;
+            ImportProgressText = "Abriendo selector de archivos...";
+
+            await Task.Yield();
+
+            // File picker debe ejecutarse en el hilo principal
+            var filePath = await _crownFileService.PickCrownFilePathAsync();
+
+            if (string.IsNullOrWhiteSpace(filePath))
+                return;
+
+            ImportProgressText = "Importando sesión...";
+
+            var progress = new Progress<ImportProgress>(p =>
+            {
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    ImportProgressText = p.Message;
+                    ImportProgressValue = p.Percentage;
+                });
+            });
+
+            // 1) Importar localmente (extrae videos al disco local y guarda en SQLite)
+            var result = await _crownFileService.ImportCrownFileAsync(filePath, progress);
+
+            if (!result.Success)
+            {
+                await Shell.Current.DisplayAlert("Error", result.ErrorMessage ?? "Error desconocido", "OK");
+                return;
+            }
+
+            // 2) Marcar la sesión como "solo organización" para que NO aparezca en el sidebar personal
+            var session = await _databaseService.GetSessionByIdAsync(result.SessionId);
+            if (session != null)
+            {
+                session.IsRemoteOnly = 1;
+                await _databaseService.SaveSessionAsync(session);
+            }
+
+            // Liberar la UI inmediatamente — el usuario puede seguir trabajando
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                IsImporting = false;
+                ImportProgressText = "";
+                ImportProgressValue = 0;
+            });
+
+            // 3) Lanzar la subida a S3 + backend en background, con progreso en el AppFooter
+            _ = UploadImportedSessionToOrgInBackgroundAsync(
+                result.SessionId, result.SessionName ?? "Sesión importada",
+                result.VideosImported, result.AthletesImported);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error en importación para organización: {ex}");
+            await Shell.Current.DisplayAlert("Error", $"Error al importar: {ex.Message}", "OK");
+        }
+        finally
+        {
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                IsImporting = false;
+                ImportProgressText = "";
+                ImportProgressValue = 0;
+            });
+        }
+    }
+
+    /// <summary>
+    /// Sube una sesión importada a la organización en background.
+    /// El progreso se muestra en el AppFooter a través del StatusBarService.
+    /// </summary>
+    private async Task UploadImportedSessionToOrgInBackgroundAsync(
+        int sessionId, string sessionName, int videosImported, int athletesImported)
+    {
+        StatusBarService? statusBar = null;
+        try
+        {
+            statusBar = IPlatformApplication.Current?.Services.GetService<StatusBarService>();
+            statusBar?.StartOperation($"Subiendo '{sessionName}' a organización...");
+
+            var syncProgress = new Progress<(int current, int total, string message)>(p =>
+            {
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    var pct = p.total > 0 ? (double)p.current / p.total : 0;
+                    statusBar?.UpdateProgress(pct, p.message);
+                });
+            });
+
+            var syncOk = await Remote.SyncImportedSessionToOrganizationAsync(
+                sessionId, sessionName, syncProgress);
+
+            if (syncOk)
+            {
+                statusBar?.EndOperation($"'{sessionName}' subida a la organización ({videosImported} videos)");
+            }
+            else
+            {
+                statusBar?.EndOperation($"'{sessionName}' subida parcial — algunos errores");
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[OrgImport] Error background: {ex.Message}");
+            statusBar?.EndOperation($"Error subiendo '{sessionName}'");
+        }
+    }
+
+    /// <summary>
+    /// Abre la página de importación desde videos y luego sube
+    /// la sesión creada a la Biblioteca de Organización.
+    /// </summary>
+    private async Task OpenImportPageForVideosForOrganizationAsync()
+    {
+        // Activar el flag para que al completarse la importación se sincronice a la org
+        _pendingOrgSyncAfterImport = true;
+        await Shell.Current.GoToAsync(nameof(ImportPage));
     }
 
     private async Task ViewSessionAsync(Session? session)

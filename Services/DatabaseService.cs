@@ -517,7 +517,7 @@ public class DatabaseService
     {
         var db = await GetConnectionAsync();
         var sessions = await db.Table<Session>()
-            .Where(s => s.IsDeleted == 0)
+            .Where(s => s.IsDeleted == 0 && s.IsRemoteOnly == 0)
             .OrderByDescending(s => s.Fecha)
             .ToListAsync();
         

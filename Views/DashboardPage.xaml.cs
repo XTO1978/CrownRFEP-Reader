@@ -53,6 +53,12 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
     // Indica si esta página está activa
     private bool _isPageActive;
 
+    /// <summary>
+    /// Indica si el menú contextual de sesiones se abrió desde la Biblioteca de Organización.
+    /// Cuando es true, las acciones de importación/creación deben subir a S3 y sincronizar con el backend.
+    /// </summary>
+    private bool _sessionsMenuIsForOrganization;
+
     private bool _isPageLoaded;
 
     private double _lastVideoGalleryMeasuredWidth = -1;
@@ -76,6 +82,7 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
     {
         InitializeComponent();
         BindingContext = _viewModel = viewModel;
+
 
         AppLog.Info("DashboardPage", "CTOR");
 
@@ -617,6 +624,8 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
                 return;
             }
 
+            _sessionsMenuIsForOrganization = false;
+
             HideUserLibraryContextMenu();
             HideSessionRowContextMenu();
             HideSmartFolderContextMenu();
@@ -650,6 +659,8 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
                 return;
             }
 
+            _sessionsMenuIsForOrganization = true;
+
             HideUserLibraryContextMenu();
             HideSessionRowContextMenu();
             HideSmartFolderContextMenu();
@@ -677,12 +688,21 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
     {
         try
         {
+            var isForOrg = _sessionsMenuIsForOrganization;
             HideSessionsContextMenu();
 
             if (BindingContext is DashboardViewModel vm)
             {
-                if (vm.ImportCrownFileCommand?.CanExecute(null) ?? false)
-                    vm.ImportCrownFileCommand.Execute(null);
+                if (isForOrg)
+                {
+                    if (vm.ImportCrownFileForOrganizationCommand?.CanExecute(null) ?? false)
+                        vm.ImportCrownFileForOrganizationCommand.Execute(null);
+                }
+                else
+                {
+                    if (vm.ImportCrownFileCommand?.CanExecute(null) ?? false)
+                        vm.ImportCrownFileCommand.Execute(null);
+                }
             }
         }
         catch (Exception ex)
@@ -713,12 +733,21 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
     {
         try
         {
+            var isForOrg = _sessionsMenuIsForOrganization;
             HideSessionsContextMenu();
 
             if (BindingContext is DashboardViewModel vm)
             {
-                if (vm.CreateSessionFromVideosCommand?.CanExecute(null) ?? false)
-                    vm.CreateSessionFromVideosCommand.Execute(null);
+                if (isForOrg)
+                {
+                    if (vm.CreateSessionFromVideosForOrganizationCommand?.CanExecute(null) ?? false)
+                        vm.CreateSessionFromVideosForOrganizationCommand.Execute(null);
+                }
+                else
+                {
+                    if (vm.CreateSessionFromVideosCommand?.CanExecute(null) ?? false)
+                        vm.CreateSessionFromVideosCommand.Execute(null);
+                }
             }
         }
         catch (Exception ex)

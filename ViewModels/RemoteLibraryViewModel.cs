@@ -65,8 +65,10 @@ public class RemoteLibraryViewModel : ObservableObject
     private ObservableCollection<SmartFolderDefinition> _remoteSmartFolders = new();
     private ObservableCollection<RemoteSessionListItem> _remoteSessions = new();
     private int _selectedRemoteSessionId;
+    private OrgConfig? _currentOrgConfig;
 
     private ObservableCollection<RemoteVideoItem> _remoteVideos = new();
+    private ObservableCollection<RemoteVideoItem> _remoteGalleryDisplayItems = new();
     private bool _isLoadingRemoteVideos;
     private List<CloudFileInfo>? _remoteFilesCache;
 
@@ -291,9 +293,10 @@ public class RemoteLibraryViewModel : ObservableObject
             {
                 UpdateRemoteSessionSelectionStates(value);
                 OnPropertyChanged(nameof(IsRemoteSessionSelected));
-                OnPropertyChanged(nameof(RemoteGalleryItems));
+                RefreshRemoteGalleryDisplayItems();
                 OnPropertyChanged(nameof(ShowRemoteGallery));
                 OnPropertyChanged(nameof(IsAnyRemoteSectionSelected));
+                _notifyShowVideoGalleryChanged();
                 _notifySelectedSessionTitleChanged();
             }
         }
@@ -301,9 +304,38 @@ public class RemoteLibraryViewModel : ObservableObject
 
     public bool IsRemoteSessionSelected => SelectedRemoteSessionId > 0;
 
-    public IEnumerable<RemoteVideoItem> RemoteGalleryItems => SelectedRemoteSessionId > 0
-        ? RemoteVideos.Where(v => v.SessionId == SelectedRemoteSessionId)
-        : RemoteVideos;
+    public ObservableCollection<RemoteVideoItem> RemoteGalleryItems
+    {
+        get => _remoteGalleryDisplayItems;
+        private set
+        {
+            if (_remoteGalleryDisplayItems == value) return;
+            _remoteGalleryDisplayItems = value;
+            OnPropertyChanged(nameof(RemoteGalleryItems));
+        }
+    }
+
+    /// <summary>
+    /// Reconstruye la colección de items visibles en la galería remota.
+    /// Se reemplaza la instancia de ObservableCollection para forzar
+    /// un re-render completo sin romper el binding XAML.
+    /// </summary>
+    private void RefreshRemoteGalleryDisplayItems()
+    {
+        var items = SelectedRemoteSessionId > 0
+            ? RemoteVideos.Where(v => v.SessionId == SelectedRemoteSessionId).ToList()
+            : RemoteVideos.ToList();
+
+        if (MainThread.IsMainThread)
+        {
+            RemoteGalleryItems = new ObservableCollection<RemoteVideoItem>(items);
+        }
+        else
+        {
+            MainThread.BeginInvokeOnMainThread(() =>
+                RemoteGalleryItems = new ObservableCollection<RemoteVideoItem>(items));
+        }
+    }
 
     public bool IsAnyRemoteSectionSelected => IsRemoteAllGallerySelected || IsRemoteVideoLessonsSelected || IsRemoteTrashSelected || IsRemoteSessionSelected;
 
@@ -719,6 +751,7 @@ public class RemoteLibraryViewModel : ObservableObject
 
                 var remoteItem = RemoteVideoItem.FromCloudFile(file, linkedLocal);
                 RemoteVideos.Add(remoteItem);
+                System.Diagnostics.Debug.WriteLine($"[RemoteSessions] Loaded RemoteVideo: Key={file.Key}, SessionId={remoteItem.SessionId}, VideoId={remoteItem.VideoId}");
 
                 if (remoteItem.LinkedLocalVideo?.EffectiveThumbnailPath == null &&
                     remoteItem.SessionId > 0 && remoteItem.VideoId > 0)
@@ -727,38 +760,20 @@ public class RemoteLibraryViewModel : ObservableObject
                 }
             }
 
+            System.Diagnostics.Debug.WriteLine($"[RemoteSessions] Total RemoteVideos: {RemoteVideos.Count}, Con SessionId>0: {RemoteVideos.Count(v => v.SessionId > 0)}");
+
             await ApplyRemoteVideoMetadataAsync(files, remoteSessionMetadata);
 
-            var localSessions = await _databaseService.GetAllSessionsAsync();
-            var localSessionsById = localSessions.ToDictionary(s => s.Id, s => s);
-            var remoteSessionItems = RemoteVideos
-                .Where(v => v.SessionId > 0)
-                .GroupBy(v => v.SessionId)
-                .Select(group =>
-                {
-                    var sessionId = group.Key;
-                    localSessionsById.TryGetValue(sessionId, out var localSession);
-                    remoteSessionMetadata.TryGetValue(sessionId, out var metadata);
-
-                    var title = metadata?.SessionName
-                        ?? localSession?.DisplayName
-                        ?? $"Sesión {sessionId}";
-                    var place = metadata?.Place ?? localSession?.Lugar;
-                    var sessionDate = ResolveRemoteSessionDate(metadata, localSession?.FechaDateTime ?? group.Max(v => v.LastModified));
-                    var coach = metadata?.Coach ?? localSession?.Coach;
-                    return new RemoteSessionListItem(
-                        sessionId,
-                        title,
-                        place,
-                        sessionDate,
-                        coach,
-                        group.Count(),
-                        group.Max(v => v.LastModified));
-                })
-                .OrderByDescending(item => item.LastModified)
-                .ToList();
+            // ── Construir lista de sesiones remotas ─────────────────────
+            // Fuente principal: backend DB (sesiones sincronizadas de todos los dispositivos)
+            // Fuente secundaria: agrupar RemoteVideos por SessionId (fallback si el backend no tiene la sesión)
+            var remoteSessionItems = await BuildRemoteSessionListAsync(remoteSessionMetadata);
 
             RemoteSessions = new ObservableCollection<RemoteSessionListItem>(remoteSessionItems);
+            System.Diagnostics.Debug.WriteLine($"[RemoteSessions] Built {remoteSessionItems.Count} session items:");
+            foreach (var s in remoteSessionItems)
+                System.Diagnostics.Debug.WriteLine($"  Session {s.SessionId}: {s.Title}, Videos={s.VideoCount}, Place={s.Place}");
+
             if (SelectedRemoteSessionId > 0 && !RemoteSessions.Any(s => s.SessionId == SelectedRemoteSessionId))
             {
                 SelectedRemoteSessionId = 0;
@@ -770,8 +785,11 @@ public class RemoteLibraryViewModel : ObservableObject
 
             await SyncRemoteChangesToPersonalLibraryAsync(remoteSessionMetadata, metadataFiles);
 
+            // Cargar configuración de la organización (smart folders compartidos, etc.)
+            await LoadOrgConfigAsync();
+
             RemoteAllGalleryItemCount = RemoteVideos.Count.ToString();
-            OnPropertyChanged(nameof(RemoteGalleryItems));
+            RefreshRemoteGalleryDisplayItems();
             OnPropertyChanged(nameof(IsAnyRemoteSectionSelected));
             _notifySelectedSessionTitleChanged();
 
@@ -785,6 +803,284 @@ public class RemoteLibraryViewModel : ObservableObject
         {
             IsLoadingRemoteVideos = false;
         }
+    }
+
+    /// <summary>
+    /// Construye la lista de sesiones remotas combinando dos fuentes:
+    /// 1. Backend DB (sesiones sincronizadas de TODOS los dispositivos de la organización)
+    /// 2. S3 video grouping (fallback para sesiones que solo tienen archivos en S3)
+    /// </summary>
+    private async Task<List<RemoteSessionListItem>> BuildRemoteSessionListAsync(
+        Dictionary<int, RemoteSessionMetadata> remoteSessionMetadata)
+    {
+        var sessionItemsById = new Dictionary<int, RemoteSessionListItem>();
+
+        // ── 1. Obtener sesiones del backend DB (fuente principal) ────
+        try
+        {
+            var backendResult = await _cloudBackendService.GetRemoteSessionsAsync();
+            if (backendResult.Success && backendResult.Sessions != null)
+            {
+                System.Diagnostics.Debug.WriteLine($"[RemoteSessions] Backend DB: {backendResult.Sessions.Count} sesiones");
+
+                foreach (var dto in backendResult.Sessions)
+                {
+                    var sessionId = dto.LocalSessionId;
+                    var videoCountFromVideos = RemoteVideos.Count(v => v.SessionId == sessionId);
+                    var sessionDate = dto.SessionDateUtc > 0
+                        ? DateTimeOffset.FromUnixTimeSeconds(dto.SessionDateUtc).LocalDateTime
+                        : DateTime.MinValue;
+                    var lastMod = RemoteVideos
+                        .Where(v => v.SessionId == sessionId)
+                        .Select(v => v.LastModified)
+                        .DefaultIfEmpty(DateTime.TryParse(dto.UpdatedAt, out var parsed) ? parsed : DateTime.MinValue)
+                        .Max();
+
+                    sessionItemsById[sessionId] = new RemoteSessionListItem(
+                        sessionId,
+                        dto.SessionName ?? $"Sesión {sessionId}",
+                        dto.Place,
+                        sessionDate,
+                        dto.Coach,
+                        Math.Max(dto.VideoCount, videoCountFromVideos),
+                        lastMod);
+                }
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"[RemoteSessions] Backend DB no disponible: {backendResult.ErrorMessage}");
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[RemoteSessions] Error consultando backend DB: {ex.Message}");
+        }
+
+        // ── 2. Enriquecer/añadir desde S3 metadata + video grouping (fallback) ────
+        var localSessions = await _databaseService.GetAllSessionsAsync();
+        var localSessionsById = localSessions.ToDictionary(s => s.Id, s => s);
+
+        var s3Groups = RemoteVideos
+            .Where(v => v.SessionId > 0)
+            .GroupBy(v => v.SessionId);
+
+        foreach (var group in s3Groups)
+        {
+            var sessionId = group.Key;
+
+            if (sessionItemsById.ContainsKey(sessionId))
+            {
+                // Ya tenemos esta sesión del backend; actualizar videoCount si es mayor
+                var existing = sessionItemsById[sessionId];
+                if (group.Count() > existing.VideoCount)
+                {
+                    sessionItemsById[sessionId] = new RemoteSessionListItem(
+                        existing.SessionId,
+                        existing.Title,
+                        existing.Place,
+                        existing.SessionDate,
+                        existing.Coach,
+                        group.Count(),
+                        group.Max(v => v.LastModified));
+                }
+                continue;
+            }
+
+            // Sesión no está en el backend DB → construir desde S3/local metadata
+            localSessionsById.TryGetValue(sessionId, out var localSession);
+            remoteSessionMetadata.TryGetValue(sessionId, out var metadata);
+
+            var title = metadata?.SessionName
+                ?? localSession?.DisplayName
+                ?? $"Sesión {sessionId}";
+            var place = metadata?.Place ?? localSession?.Lugar;
+            var sessionDate = ResolveRemoteSessionDate(
+                metadata, localSession?.FechaDateTime ?? group.Max(v => v.LastModified));
+            var coach = metadata?.Coach ?? localSession?.Coach;
+
+            sessionItemsById[sessionId] = new RemoteSessionListItem(
+                sessionId,
+                title,
+                place,
+                sessionDate,
+                coach,
+                group.Count(),
+                group.Max(v => v.LastModified));
+        }
+
+        return sessionItemsById.Values
+            .OrderByDescending(item => item.LastModified)
+            .ToList();
+    }
+
+    /// <summary>
+    /// Carga la configuración compartida de la organización (smart folders, visibilidad, etc.).
+    /// </summary>
+    private async Task LoadOrgConfigAsync()
+    {
+        try
+        {
+            var result = await _cloudBackendService.GetOrgConfigAsync();
+            if (!result.Success || result.Config == null)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Remote] org-config no disponible: {result.ErrorMessage}");
+                return;
+            }
+
+            _currentOrgConfig = result.Config;
+            System.Diagnostics.Debug.WriteLine($"[Remote] org-config cargado: v{result.Config.Version}, {result.Config.SmartFolders.Count} smart folders");
+
+            // Aplicar smart folders compartidos
+            var smartFolders = result.Config.SmartFolders.Select(sf => new SmartFolderDefinition
+            {
+                Name = sf.Name,
+                MatchMode = sf.MatchMode,
+                Icon = sf.Icon,
+                IconColor = sf.IconColor,
+                Criteria = sf.Criteria.Select(c => new SmartFolderCriterion
+                {
+                    Field = c.Field,
+                    Operator = c.Operator,
+                    Value = c.Value,
+                    Value2 = c.Value2
+                }).ToList()
+            }).ToList();
+
+            // Calcular MatchingVideoCount para cada smart folder basado en los videos remotos
+            foreach (var sf in smartFolders)
+            {
+                sf.MatchingVideoCount = CountRemoteVideosMatchingFolder(sf);
+            }
+
+            RemoteSmartFolders = new ObservableCollection<SmartFolderDefinition>(smartFolders);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Remote] Error cargando org-config: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Guarda la configuración actual de la organización en la nube.
+    /// </summary>
+    public async Task SaveOrgConfigAsync()
+    {
+        if (!IsOrgWriteRole(_cloudBackendService.CurrentUserRole))
+        {
+            System.Diagnostics.Debug.WriteLine("[Remote] Sin permisos para guardar org-config");
+            return;
+        }
+
+        try
+        {
+            var config = _currentOrgConfig ?? new OrgConfig();
+
+            // Serializar smart folders actuales
+            config.SmartFolders = RemoteSmartFolders.Select(sf => new OrgSmartFolder
+            {
+                Id = Guid.NewGuid().ToString("N")[..12],
+                Name = sf.Name ?? "",
+                MatchMode = sf.MatchMode ?? "All",
+                Icon = sf.Icon ?? "folder",
+                IconColor = sf.IconColor ?? "#FF9800",
+                Criteria = sf.Criteria?.Select(c => new OrgSmartFolderCriterion
+                {
+                    Field = c.Field ?? "",
+                    Operator = c.Operator ?? "",
+                    Value = c.Value ?? "",
+                    Value2 = c.Value2
+                }).ToList() ?? new()
+            }).ToList();
+
+            var result = await _cloudBackendService.SaveOrgConfigAsync(config);
+            if (result.Success)
+            {
+                if (_currentOrgConfig != null)
+                {
+                    _currentOrgConfig.Version = result.Version;
+                    _currentOrgConfig.UpdatedAt = result.UpdatedAt;
+                }
+                System.Diagnostics.Debug.WriteLine($"[Remote] org-config guardado: v{result.Version}");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"[Remote] Error guardando org-config: {result.ErrorMessage}");
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Remote] Error guardando org-config: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Cuenta cuántos videos remotos coinciden con los criterios de un smart folder.
+    /// </summary>
+    private int CountRemoteVideosMatchingFolder(SmartFolderDefinition folder)
+    {
+        if (folder.Criteria == null || folder.Criteria.Count == 0) return 0;
+
+        var count = 0;
+        foreach (var video in RemoteVideos)
+        {
+            var matches = folder.MatchMode == "All"
+                ? folder.Criteria.All(c => CriterionMatchesRemoteVideo(c, video))
+                : folder.Criteria.Any(c => CriterionMatchesRemoteVideo(c, video));
+
+            if (matches) count++;
+        }
+        return count;
+    }
+
+    /// <summary>
+    /// Evalúa si un criterio individual coincide con un video remoto.
+    /// </summary>
+    private bool CriterionMatchesRemoteVideo(SmartFolderCriterion criterion, RemoteVideoItem video)
+    {
+        switch (criterion.Field)
+        {
+            case "Deportista":
+                var athleteName = video.LinkedLocalVideo?.Atleta?.NombreCompleto ?? "";
+                return MatchesStringCriterion(criterion.Operator, criterion.Value, athleteName);
+
+            case "Sesión":
+                return MatchesStringCriterion(criterion.Operator, criterion.Value, video.SessionName);
+
+            case "Fecha":
+                return MatchesDateCriterion(criterion, video.LastModified);
+
+            case "Etiqueta":
+                var tags = video.Tags?.Select(t => t.NombreTag ?? "").ToList() ?? new List<string>();
+                return tags.Any(t => MatchesStringCriterion(criterion.Operator, criterion.Value, t));
+
+            default:
+                return false;
+        }
+    }
+
+    private static bool MatchesStringCriterion(string op, string expected, string actual)
+    {
+        return op switch
+        {
+            "Es" => string.Equals(actual, expected, StringComparison.OrdinalIgnoreCase),
+            "Contiene" => actual.Contains(expected, StringComparison.OrdinalIgnoreCase),
+            "Empieza por" => actual.StartsWith(expected, StringComparison.OrdinalIgnoreCase),
+            "No es" => !string.Equals(actual, expected, StringComparison.OrdinalIgnoreCase),
+            _ => false
+        };
+    }
+
+    private static bool MatchesDateCriterion(SmartFolderCriterion criterion, DateTime date)
+    {
+        if (!DateTime.TryParse(criterion.Value, out var from)) return false;
+
+        return criterion.Operator switch
+        {
+            "Desde" => date >= from,
+            "Hasta" => date <= from,
+            "Entre" => DateTime.TryParse(criterion.Value2, out var to) && date >= from && date <= to,
+            _ => false
+        };
     }
 
     private async Task LoadRemoteThumbnailAsync(RemoteVideoItem remoteItem)
@@ -1665,7 +1961,7 @@ public class RemoteLibraryViewModel : ObservableObject
                 if (SelectedRemoteSessionId == sessionId)
                 {
                     SelectedRemoteSessionId = 0;
-                    OnPropertyChanged(nameof(RemoteGalleryItems));
+                    RefreshRemoteGalleryDisplayItems();
                 }
             });
 
@@ -2022,13 +2318,11 @@ public class RemoteLibraryViewModel : ObservableObject
         IsRemoteTrashSelected = false;
         SelectedRemoteSessionId = sessionItem.SessionId;
 
+        // Si no hay videos cargados aún, cargar la galería completa
+        // (el setter de SelectedRemoteSessionId ya llamó RefreshRemoteGalleryDisplayItems)
         if (RemoteVideos.Count == 0)
         {
             await LoadRemoteGalleryAsync();
-        }
-        else
-        {
-            OnPropertyChanged(nameof(RemoteGalleryItems));
         }
     }
 
@@ -2357,6 +2651,78 @@ public class RemoteLibraryViewModel : ObservableObject
         var resultPage = Application.Current?.Windows.FirstOrDefault()?.Page;
         await resultPage?.DisplayAlert("Eliminación completada",
             $"Se eliminaron {deleted} videos de tu biblioteca personal.", "OK")!;
+    }
+
+    /// <summary>
+    /// Sube todos los videos de una sesión importada localmente a S3 y sincroniza
+    /// los metadatos de la sesión con la base de datos del backend.
+    /// Se usa cuando se importa una sesión desde el botón "+" de la Biblioteca de Organización.
+    /// </summary>
+    public async Task<bool> SyncImportedSessionToOrganizationAsync(
+        int sessionId,
+        string sessionName,
+        IProgress<(int current, int total, string message)>? progress = null)
+    {
+        if (_syncService == null)
+        {
+            await Shell.Current.DisplayAlert("Error", "Servicio de sincronización no disponible", "OK");
+            return false;
+        }
+
+        if (!_cloudBackendService.IsAuthenticated)
+        {
+            await Shell.Current.DisplayAlert("No autenticado",
+                "Inicia sesión en el servidor para importar a la biblioteca de organización.", "OK");
+            return false;
+        }
+
+        try
+        {
+            IsSyncing = true;
+            SyncStatusText = $"Subiendo sesión '{sessionName}' a la organización...";
+
+            // 1) Subir todos los videos de la sesión a S3
+            var syncResult = await _syncService.SyncSessionAsync(sessionId, SyncDirection.Upload, progress);
+
+            if (!syncResult.Success)
+            {
+                SyncStatusText = $"Errores al subir: {syncResult.FailedCount} de {syncResult.TotalCount}";
+                System.Diagnostics.Debug.WriteLine($"[Remote] Error sincronizando sesión {sessionId} a org: {string.Join(", ", syncResult.Errors)}");
+            }
+            else
+            {
+                SyncStatusText = $"Videos subidos: {syncResult.SuccessCount}";
+            }
+
+            // 2) Sincronizar metadatos de la sesión con el backend DB
+            SyncStatusText = "Sincronizando metadatos con la organización...";
+            var dbSyncOk = await _syncService.SyncSessionToBackendAsync(sessionId);
+            if (!dbSyncOk)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Remote] No se pudieron sincronizar metadatos de sesión {sessionId} al backend");
+            }
+
+            // 3) Refrescar la lista de sesiones remotas y videos
+            SyncStatusText = "Actualizando biblioteca de organización...";
+            await LoadRemoteGalleryAsync();
+
+            SyncStatusText = syncResult.Success
+                ? $"Sesión '{sessionName}' importada a la organización"
+                : $"Sesión importada con {syncResult.FailedCount} errores";
+            await Task.Delay(2000);
+
+            return syncResult.Success;
+        }
+        catch (Exception ex)
+        {
+            SyncStatusText = $"Error: {ex.Message}";
+            System.Diagnostics.Debug.WriteLine($"[Remote] Error en SyncImportedSessionToOrganizationAsync: {ex.Message}");
+            return false;
+        }
+        finally
+        {
+            IsSyncing = false;
+        }
     }
 
     private async Task SyncAllVideosAsync()

@@ -69,6 +69,33 @@ try {
     )
   `);
 
+  // Crear tabla de sesiones compartidas del equipo
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS sessions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      team_id TEXT NOT NULL,
+      local_session_id INTEGER NOT NULL,
+      device_id TEXT,
+      session_name TEXT,
+      place TEXT,
+      coach TEXT,
+      session_type TEXT,
+      session_date_utc INTEGER,
+      participants TEXT,
+      is_merged INTEGER DEFAULT 0,
+      icon TEXT DEFAULT 'oar.2.crossed',
+      icon_color TEXT DEFAULT '#FFFFFFFF',
+      video_count INTEGER DEFAULT 0,
+      created_by_user_id INTEGER,
+      created_by_user_name TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      is_deleted INTEGER DEFAULT 0,
+      deleted_at DATETIME,
+      UNIQUE(team_id, local_session_id, device_id)
+    )
+  `);
+
   // Insertar equipo RFEP por defecto si no existe
   const rfepTeam = db.prepare('SELECT * FROM teams WHERE id = ?').get('rfep');
   if (!rfepTeam) {

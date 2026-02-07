@@ -7,6 +7,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using CrownRFEP_Reader.Models;
+using Microsoft.Maui.Storage;
 
 namespace CrownRFEP_Reader.Services;
 
@@ -54,8 +55,10 @@ public class SyncService
                 return result;
             }
 
-            // Obtener ruta local absoluta
-            var localPath = _pathService.ToAbsoluteLocalPath(video.ClipPath ?? video.LocalClipPath ?? "");
+            // Obtener ruta local absoluta.
+            // Priorizar LocalClipPath (ruta absoluta de extracción) sobre ClipPath (ruta relativa que puede no resolver
+            // correctamente para archivos importados desde .crown).
+            var localPath = ResolveLocalVideoPath(video);
             if (!File.Exists(localPath))
             {
                 result.Success = false;
@@ -204,6 +207,9 @@ public class SyncService
             {
                 _sessionMetadataUploaded.Add(sessionId);
                 System.Diagnostics.Debug.WriteLine($"[Sync] Metadatos de sesión {sessionId} subidos: {remotePath}");
+
+                // También sincronizar la sesión al backend DB para replicación entre dispositivos
+                _ = SyncSessionToBackendAsync(sessionId);
             }
             else
             {
@@ -224,6 +230,129 @@ public class SyncService
         public string? Coach { get; set; }
         public string? SessionType { get; set; }
         public long SessionDateUtc { get; set; }
+    }
+
+    /// <summary>
+    /// Sincroniza los metadatos de una sesión con la base de datos del backend.
+    /// Esto permite que otros dispositivos de la organización vean la sesión.
+    /// </summary>
+    public async Task<bool> SyncSessionToBackendAsync(int sessionId)
+    {
+        try
+        {
+            if (!_cloudService.IsAuthenticated) return false;
+
+            var session = await _databaseService.GetSessionByIdAsync(sessionId);
+            if (session == null) return false;
+
+            var videoCount = (await _databaseService.GetVideoClipsBySessionAsync(sessionId)).Count;
+
+            var payload = new RemoteSessionPayload
+            {
+                LocalSessionId = session.Id,
+                DeviceId = await GetDeviceIdAsync(),
+                SessionName = session.NombreSesion ?? session.DisplayName,
+                Place = session.Lugar,
+                Coach = session.Coach,
+                SessionType = session.TipoSesion,
+                SessionDateUtc = session.Fecha,
+                Participants = session.Participantes,
+                IsMerged = session.IsMerged,
+                Icon = session.Icon,
+                IconColor = session.IconColor,
+                VideoCount = videoCount
+            };
+
+            var result = await _cloudService.SyncSessionToRemoteAsync(payload);
+            if (result.Success)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Sync] Sesión {sessionId} sincronizada al backend (remoteId={result.Session?.Id}, isNew={result.IsNew})");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"[Sync] Error sincronizando sesión {sessionId} al backend: {result.ErrorMessage}");
+            }
+
+            return result.Success;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Sync] Error en SyncSessionToBackendAsync({sessionId}): {ex.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Sincroniza todas las sesiones locales con el backend en una sola operación batch.
+    /// </summary>
+    public async Task<RemoteSessionBatchResult?> SyncAllSessionsToBackendAsync()
+    {
+        try
+        {
+            if (!_cloudService.IsAuthenticated) return null;
+
+            var sessions = await _databaseService.GetAllSessionsAsync();
+            if (sessions == null || sessions.Count == 0) return null;
+
+            var deviceId = await GetDeviceIdAsync();
+            var payloads = new List<RemoteSessionPayload>();
+
+            foreach (var session in sessions)
+            {
+                if (session.IsDeleted == 1) continue;
+
+                var videoCount = (await _databaseService.GetVideoClipsBySessionAsync(session.Id)).Count;
+
+                payloads.Add(new RemoteSessionPayload
+                {
+                    LocalSessionId = session.Id,
+                    DeviceId = deviceId,
+                    SessionName = session.NombreSesion ?? session.DisplayName,
+                    Place = session.Lugar,
+                    Coach = session.Coach,
+                    SessionType = session.TipoSesion,
+                    SessionDateUtc = session.Fecha,
+                    Participants = session.Participantes,
+                    IsMerged = session.IsMerged,
+                    Icon = session.Icon,
+                    IconColor = session.IconColor,
+                    VideoCount = videoCount
+                });
+            }
+
+            if (payloads.Count == 0) return null;
+
+            var result = await _cloudService.SyncSessionsBatchAsync(payloads);
+            if (result.Success)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Sync] Batch session sync: {result.Created} creadas, {result.Updated} actualizadas de {result.Total}");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"[Sync] Error en batch session sync: {result.ErrorMessage}");
+            }
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Sync] Error en SyncAllSessionsToBackendAsync: {ex.Message}");
+            return null;
+        }
+    }
+
+    private static async Task<string> GetDeviceIdAsync()
+    {
+        try
+        {
+            var stored = await SecureStorage.GetAsync("CloudBackend_DeviceId");
+            if (!string.IsNullOrWhiteSpace(stored))
+                return stored;
+        }
+        catch { }
+
+        var fallback = Preferences.Get("CloudBackend_DeviceId", string.Empty);
+        return string.IsNullOrWhiteSpace(fallback) ? "unknown" : fallback;
     }
 
     /// <summary>
@@ -376,7 +505,8 @@ public class SyncService
                 return result;
             }
 
-            var localThumbPath = _pathService.ToAbsoluteLocalPath(video.ThumbnailPath ?? video.LocalThumbnailPath ?? "");
+            // Priorizar LocalThumbnailPath (ruta absoluta real) sobre ThumbnailPath.
+            var localThumbPath = ResolveLocalThumbnailPath(video);
             if (!File.Exists(localThumbPath))
             {
                 result.Success = false;
@@ -794,6 +924,57 @@ public class SyncService
         }
 
         return files;
+    }
+
+    /// <summary>
+    /// Resuelve la ruta local real de un video.
+    /// Prioriza LocalClipPath (ruta absoluta de extracción/.crown) sobre ClipPath.
+    /// </summary>
+    private string ResolveLocalVideoPath(VideoClip video)
+    {
+        // 1) LocalClipPath suele ser una ruta absoluta real (extraída de .crown, grabada, etc.)
+        if (!string.IsNullOrEmpty(video.LocalClipPath))
+        {
+            if (Path.IsPathRooted(video.LocalClipPath) && File.Exists(video.LocalClipPath))
+                return video.LocalClipPath;
+        }
+
+        // 2) ClipPath puede ser relativa al media root – resolverla
+        if (!string.IsNullOrEmpty(video.ClipPath))
+        {
+            var resolved = _pathService.ToAbsoluteLocalPath(video.ClipPath);
+            if (File.Exists(resolved))
+                return resolved;
+        }
+
+        // 3) Fallback: intentar LocalClipPath sin verificar existencia (para que el mensaje de error sea útil)
+        return !string.IsNullOrEmpty(video.LocalClipPath)
+            ? video.LocalClipPath
+            : _pathService.ToAbsoluteLocalPath(video.ClipPath ?? "");
+    }
+
+    /// <summary>
+    /// Resuelve la ruta local real de un thumbnail.
+    /// Prioriza LocalThumbnailPath sobre ThumbnailPath.
+    /// </summary>
+    private string ResolveLocalThumbnailPath(VideoClip video)
+    {
+        if (!string.IsNullOrEmpty(video.LocalThumbnailPath))
+        {
+            if (Path.IsPathRooted(video.LocalThumbnailPath) && File.Exists(video.LocalThumbnailPath))
+                return video.LocalThumbnailPath;
+        }
+
+        if (!string.IsNullOrEmpty(video.ThumbnailPath))
+        {
+            var resolved = _pathService.ToAbsoluteLocalPath(video.ThumbnailPath);
+            if (File.Exists(resolved))
+                return resolved;
+        }
+
+        return !string.IsNullOrEmpty(video.LocalThumbnailPath)
+            ? video.LocalThumbnailPath
+            : _pathService.ToAbsoluteLocalPath(video.ThumbnailPath ?? "");
     }
 
     /// <summary>

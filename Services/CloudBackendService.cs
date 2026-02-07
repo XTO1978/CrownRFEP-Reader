@@ -766,6 +766,74 @@ public class CloudBackendService : ICloudBackendService
         }
     }
 
+    public async Task<OrgConfigResult> GetOrgConfigAsync()
+    {
+        if (!await EnsureAuthenticatedAsync())
+        {
+            return new OrgConfigResult(false, "No autenticado");
+        }
+
+        try
+        {
+            var response = await ExecuteWithRetryAsync(() => _httpClient.GetAsync($"{_baseUrl}/team/org-config"));
+            var responseBody = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return new OrgConfigResult(false, TryParseError(responseBody) ?? "Error al obtener configuración");
+            }
+
+            var config = JsonSerializer.Deserialize<OrgConfig>(responseBody, JsonOptions);
+            if (config == null)
+            {
+                return new OrgConfigResult(false, "Respuesta inválida");
+            }
+
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] OrgConfig cargado: v{config.Version}, {config.SmartFolders.Count} smart folders");
+            return new OrgConfigResult(true, null, config);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] Error obteniendo org-config: {ex.Message}");
+            return new OrgConfigResult(false, $"Error: {ex.Message}");
+        }
+    }
+
+    public async Task<OrgConfigSaveResult> SaveOrgConfigAsync(OrgConfig config)
+    {
+        if (!await EnsureAuthenticatedAsync())
+        {
+            return new OrgConfigSaveResult(false, "No autenticado");
+        }
+
+        try
+        {
+            var content = new StringContent(
+                JsonSerializer.Serialize(config, JsonOptions),
+                Encoding.UTF8,
+                "application/json"
+            );
+
+            var response = await ExecuteWithRetryAsync(
+                () => _httpClient.PutAsync($"{_baseUrl}/team/org-config", content));
+            var responseBody = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return new OrgConfigSaveResult(false, TryParseError(responseBody) ?? "Error al guardar configuración");
+            }
+
+            var result = JsonSerializer.Deserialize<OrgConfigSaveResponseDto>(responseBody, JsonOptions);
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] OrgConfig guardado: v{result?.Version}");
+            return new OrgConfigSaveResult(true, null, result?.Version ?? 0, result?.UpdatedAt);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] Error guardando org-config: {ex.Message}");
+            return new OrgConfigSaveResult(false, $"Error: {ex.Message}");
+        }
+    }
+
     public async Task<GallerySyncResult> CheckForGalleryUpdatesAsync(DateTime? lastSyncTime = null)
     {
         if (!await EnsureAuthenticatedAsync())
@@ -835,6 +903,171 @@ public class CloudBackendService : ICloudBackendService
         {
             System.Diagnostics.Debug.WriteLine($"[CloudBackend] Error checking gallery updates: {ex.Message}");
             return new GallerySyncResult(false, $"Error: {ex.Message}");
+        }
+    }
+
+    // ─── Session sync methods ─────────────────────────────────────
+
+    public async Task<RemoteSessionListResult> GetRemoteSessionsAsync(DateTime? since = null)
+    {
+        if (!await EnsureAuthenticatedAsync())
+        {
+            return new RemoteSessionListResult(false, "No autenticado");
+        }
+
+        try
+        {
+            var url = $"{_baseUrl}/sessions";
+            if (since.HasValue)
+            {
+                url += $"?since={Uri.EscapeDataString(since.Value.ToString("O"))}";
+            }
+
+            var response = await ExecuteWithRetryAsync(() => _httpClient.GetAsync(url));
+            var responseBody = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return new RemoteSessionListResult(false, TryParseError(responseBody) ?? "Error al obtener sesiones");
+            }
+
+            var listResponse = JsonSerializer.Deserialize<RemoteSessionListResponseDto>(responseBody, JsonOptions);
+            if (listResponse == null)
+            {
+                return new RemoteSessionListResult(false, "Respuesta inválida");
+            }
+
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] Sesiones remotas: {listResponse.Count} encontradas");
+
+            return new RemoteSessionListResult(
+                true,
+                null,
+                listResponse.Sessions,
+                listResponse.Count
+            );
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] Error obteniendo sesiones remotas: {ex.Message}");
+            return new RemoteSessionListResult(false, $"Error: {ex.Message}");
+        }
+    }
+
+    public async Task<RemoteSessionSyncResult> SyncSessionToRemoteAsync(RemoteSessionPayload session)
+    {
+        if (!await EnsureAuthenticatedAsync())
+        {
+            return new RemoteSessionSyncResult(false, "No autenticado");
+        }
+
+        try
+        {
+            var content = new StringContent(
+                JsonSerializer.Serialize(session, JsonOptions),
+                Encoding.UTF8,
+                "application/json"
+            );
+
+            var response = await ExecuteWithRetryAsync(
+                () => _httpClient.PostAsync($"{_baseUrl}/sessions", content));
+            var responseBody = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return new RemoteSessionSyncResult(false, TryParseError(responseBody) ?? "Error al sincronizar sesión");
+            }
+
+            var syncResponse = JsonSerializer.Deserialize<RemoteSessionSyncResponseDto>(responseBody, JsonOptions);
+            if (syncResponse == null)
+            {
+                return new RemoteSessionSyncResult(false, "Respuesta inválida");
+            }
+
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] Sesión {session.LocalSessionId} sincronizada (isNew={syncResponse.IsNew})");
+
+            return new RemoteSessionSyncResult(
+                true,
+                null,
+                syncResponse.Session,
+                syncResponse.IsNew
+            );
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] Error sincronizando sesión: {ex.Message}");
+            return new RemoteSessionSyncResult(false, $"Error: {ex.Message}");
+        }
+    }
+
+    public async Task<RemoteSessionBatchResult> SyncSessionsBatchAsync(List<RemoteSessionPayload> sessions)
+    {
+        if (!await EnsureAuthenticatedAsync())
+        {
+            return new RemoteSessionBatchResult(false, "No autenticado");
+        }
+
+        try
+        {
+            var requestBody = new { sessions };
+            var content = new StringContent(
+                JsonSerializer.Serialize(requestBody, JsonOptions),
+                Encoding.UTF8,
+                "application/json"
+            );
+
+            var response = await ExecuteWithRetryAsync(
+                () => _httpClient.PostAsync($"{_baseUrl}/sessions/batch", content));
+            var responseBody = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return new RemoteSessionBatchResult(false, TryParseError(responseBody) ?? "Error en batch sync");
+            }
+
+            var batchResponse = JsonSerializer.Deserialize<RemoteSessionBatchResponseDto>(responseBody, JsonOptions);
+            if (batchResponse == null)
+            {
+                return new RemoteSessionBatchResult(false, "Respuesta inválida");
+            }
+
+            var results = batchResponse.Results?.ConvertAll(r =>
+                new RemoteSessionBatchItem(r.LocalSessionId, r.RemoteId, r.IsNew));
+
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] Batch session sync: {batchResponse.Created} creadas, {batchResponse.Updated} actualizadas");
+
+            return new RemoteSessionBatchResult(
+                true,
+                null,
+                batchResponse.Created,
+                batchResponse.Updated,
+                batchResponse.Total,
+                results
+            );
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] Error en batch session sync: {ex.Message}");
+            return new RemoteSessionBatchResult(false, $"Error: {ex.Message}");
+        }
+    }
+
+    public async Task<bool> DeleteRemoteSessionAsync(int remoteSessionId)
+    {
+        if (!await EnsureAuthenticatedAsync())
+        {
+            return false;
+        }
+
+        try
+        {
+            var response = await ExecuteWithRetryAsync(
+                () => _httpClient.DeleteAsync($"{_baseUrl}/sessions/{remoteSessionId}"));
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] Error eliminando sesión remota {remoteSessionId}: {ex.Message}");
+            return false;
         }
     }
 
@@ -936,5 +1169,43 @@ public class CloudBackendService : ICloudBackendService
         public string? Status { get; set; }
         public string? Version { get; set; }
         public string? Timestamp { get; set; }
+    }
+
+    private class OrgConfigSaveResponseDto
+    {
+        public bool Success { get; set; }
+        public int Version { get; set; }
+        public string? UpdatedAt { get; set; }
+    }
+
+    // DTOs para sesiones remotas
+    private class RemoteSessionListResponseDto
+    {
+        public bool Success { get; set; }
+        public List<RemoteSessionDto>? Sessions { get; set; }
+        public int Count { get; set; }
+    }
+
+    private class RemoteSessionSyncResponseDto
+    {
+        public bool Success { get; set; }
+        public RemoteSessionDto? Session { get; set; }
+        public bool IsNew { get; set; }
+    }
+
+    private class RemoteSessionBatchResponseDto
+    {
+        public bool Success { get; set; }
+        public List<RemoteSessionBatchItemDto>? Results { get; set; }
+        public int Created { get; set; }
+        public int Updated { get; set; }
+        public int Total { get; set; }
+    }
+
+    private class RemoteSessionBatchItemDto
+    {
+        public int LocalSessionId { get; set; }
+        public int RemoteId { get; set; }
+        public bool IsNew { get; set; }
     }
 }
