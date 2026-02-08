@@ -602,11 +602,49 @@ public class DatabaseService
             .OrderByDescending(v => v.CreatedAtUtc)
             .ToListAsync();
     }
-    
+
+    /// <summary>Videolecciones de biblioteca personal (IsRemoteOnly != 1).</summary>
+    public async Task<List<VideoLesson>> GetLocalVideoLessonsAsync()
+    {
+        var db = await GetConnectionAsync();
+        return await db.Table<VideoLesson>()
+            .Where(v => v.IsRemoteOnly != 1)
+            .OrderByDescending(v => v.CreatedAtUtc)
+            .ToListAsync();
+    }
+
+    /// <summary>Videolecciones de biblioteca de organización (IsRemoteOnly == 1).</summary>
+    public async Task<List<VideoLesson>> GetRemoteVideoLessonsAsync()
+    {
+        var db = await GetConnectionAsync();
+        return await db.Table<VideoLesson>()
+            .Where(v => v.IsRemoteOnly == 1)
+            .OrderByDescending(v => v.CreatedAtUtc)
+            .ToListAsync();
+    }
+
     public async Task<int> GetVideoLessonsCountAsync()
     {
         var db = await GetConnectionAsync();
         return await db.Table<VideoLesson>().CountAsync();
+    }
+
+    /// <summary>Cuenta de videolecciones personales (IsRemoteOnly != 1).</summary>
+    public async Task<int> GetLocalVideoLessonsCountAsync()
+    {
+        var db = await GetConnectionAsync();
+        return await db.Table<VideoLesson>()
+            .Where(v => v.IsRemoteOnly != 1)
+            .CountAsync();
+    }
+
+    /// <summary>Cuenta de videolecciones de organización (IsRemoteOnly == 1).</summary>
+    public async Task<int> GetRemoteVideoLessonsCountAsync()
+    {
+        var db = await GetConnectionAsync();
+        return await db.Table<VideoLesson>()
+            .Where(v => v.IsRemoteOnly == 1)
+            .CountAsync();
     }
 
     public async Task<List<VideoLesson>> GetVideoLessonsBySessionAsync(int sessionId)

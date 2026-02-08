@@ -807,6 +807,143 @@
             </CollectionView.EmptyView>
         </CollectionView>
 
+        <!--  Videolecciones de Organización  -->
+        <CollectionView
+            x:Name="RemoteVideoLessonsGallery"
+            Grid.Row="2"
+            ItemsSource="{Binding Remote.RemoteVideoLessons}"
+            IsVisible="{Binding Remote.ShowRemoteVideoLessons}"
+            SelectionMode="None"
+            Margin="{StaticResource MarginTopSmall}">
+            <CollectionView.ItemsLayout>
+                <GridItemsLayout
+                    HorizontalItemSpacing="{StaticResource SpacingXSmall}"
+                    Orientation="Vertical"
+                    Span="{Binding Videos.VideoGalleryColumnSpan}"
+                    VerticalItemSpacing="{StaticResource SpacingSmall}" />
+            </CollectionView.ItemsLayout>
+
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="models:VideoLesson">
+                    <Border
+                        BackgroundColor="Transparent"
+                        Stroke="Transparent"
+                        StrokeShape="RoundRectangle 4"
+                        StrokeThickness="0">
+                        <Border.Behaviors>
+                            <behaviors:HoverBackgroundBehavior />
+                        </Border.Behaviors>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer
+                                Command="{Binding Source={RelativeSource AncestorType={x:Type controls:DashboardVideosPanelView}}, Path=BindingContext.Remote.RemoteVideoLessonTapCommand}"
+                                CommandParameter="{Binding .}" />
+                        </Border.GestureRecognizers>
+
+                        <Grid RowDefinitions="Auto,Auto">
+                            <!--  Thumbnail con aspect ratio 16:9  -->
+                            <controls:AspectRatioContainer AspectRatio="1.777">
+                                <Grid>
+                                    <Image
+                                        Aspect="AspectFill"
+                                        BackgroundColor="{StaticResource Gray300}"
+                                        Source="{Binding EffectiveThumbnailPath}" />
+
+                                    <!--  Overlay de play  -->
+                                    <controls:SymbolIcon
+                                        HeightRequest="{StaticResource IconSizeXXLarge}"
+                                        SymbolName="play.circle.fill"
+                                        TintColor="Black"
+                                        Opacity="0.5"
+                                        VerticalOptions="Center"
+                                        WidthRequest="{StaticResource IconSizeXXLarge}" />
+                                </Grid>
+                            </controls:AspectRatioContainer>
+
+                            <!--  Footer con info y acciones  -->
+                            <Grid
+                                Grid.Row="1"
+                                Padding="8"
+                                ColumnDefinitions="*,Auto">
+                                <VerticalStackLayout Grid.Column="0" Spacing="2">
+                                    <Label
+                                        FontSize="{StaticResource FontSizeSmall}"
+                                        LineBreakMode="TailTruncation"
+                                        Text="{Binding DisplayTitle}"
+                                        TextColor="White" />
+                                    <Label
+                                        FontSize="{StaticResource FontSizeSmall}"
+                                        LineBreakMode="TailTruncation"
+                                        Text="{Binding SessionDisplayName}"
+                                        TextColor="#FFCCCCCC" />
+                                    <Label
+                                        FontSize="{StaticResource FontSizeSmall}"
+                                        Text="{Binding CreatedAtUtc, StringFormat='{0:dd/MM/yyyy HH:mm}'}"
+                                        TextColor="#FFCCCCCC" />
+                                </VerticalStackLayout>
+
+                                <!--  Botones de acción  -->
+                                <HorizontalStackLayout Grid.Column="1" Spacing="4" VerticalOptions="Center">
+                                    <Border
+                                        WidthRequest="{StaticResource ElementHeightMedium}"
+                                        HeightRequest="{StaticResource ElementHeightMedium}"
+                                        Padding="{StaticResource PaddingXSmall}"
+                                        BackgroundColor="#FF3A3A3A"
+                                        StrokeShape="RoundRectangle 14"
+                                        StrokeThickness="0">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type controls:DashboardVideosPanelView}}, Path=BindingContext.Remote.ShareRemoteVideoLessonCommand}"
+                                                CommandParameter="{Binding .}" />
+                                        </Border.GestureRecognizers>
+                                        <controls:SymbolIcon
+                                            WidthRequest="{StaticResource IconSizeSmall}"
+                                            HeightRequest="{StaticResource IconSizeSmall}"
+                                            SymbolName="square.and.arrow.up"
+                                            TintColor="White"
+                                            HorizontalOptions="Center"
+                                            VerticalOptions="Center" />
+                                    </Border>
+                                    <Border
+                                        WidthRequest="{StaticResource ElementHeightMedium}"
+                                        HeightRequest="{StaticResource ElementHeightMedium}"
+                                        Padding="{StaticResource PaddingXSmall}"
+                                        BackgroundColor="#FF3A3A3A"
+                                        StrokeShape="RoundRectangle 14"
+                                        StrokeThickness="0">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type controls:DashboardVideosPanelView}}, Path=BindingContext.Remote.DeleteRemoteVideoLessonCommand}"
+                                                CommandParameter="{Binding .}" />
+                                        </Border.GestureRecognizers>
+                                        <controls:SymbolIcon
+                                            WidthRequest="{StaticResource IconSizeSmall}"
+                                            HeightRequest="{StaticResource IconSizeSmall}"
+                                            SymbolName="trash"
+                                            TintColor="#FFFF6B6B"
+                                            HorizontalOptions="Center"
+                                            VerticalOptions="Center" />
+                                    </Border>
+                                </HorizontalStackLayout>
+                            </Grid>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+
+            <CollectionView.EmptyView>
+                <VerticalStackLayout
+                    Padding="40"
+                    HorizontalOptions="Center"
+                    VerticalOptions="Center">
+                    <Label
+                        FontSize="{StaticResource FontSizeTitle}"
+                        HorizontalOptions="Center"
+                        Text="No hay videolecciones de organización"
+                        TextColor="Gray" />
+                </VerticalStackLayout>
+            </CollectionView.EmptyView>
+        </CollectionView>
+
         <!--  Vista Diario: Calendario  -->
         <controls:CalendarView
             Grid.Row="2"

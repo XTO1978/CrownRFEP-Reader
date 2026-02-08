@@ -580,6 +580,7 @@ public partial class SinglePlayerPage : ContentPage
             StopRecordingTimer();
 
             var sessionId = _viewModel.VideoClip?.SessionId ?? 0;
+            var isFromOrgLibrary = _viewModel.VideoClip?.Source == "remote";
             if (!string.IsNullOrWhiteSpace(path)
                 && await WaitForVideoLessonFileReadyAsync(path).ConfigureAwait(false))
             {
@@ -592,14 +593,21 @@ public partial class SinglePlayerPage : ContentPage
                     SessionId = sessionId,
                     CreatedAtUtc = DateTime.UtcNow,
                     FilePath = path,
-                    Title = null
+                    Title = null,
+                    IsRemoteOnly = isFromOrgLibrary ? 1 : 0
                 };
 
                 var savedId = await _databaseService.SaveVideoLessonAsync(lesson);
-                AppLog.Info("SinglePlayerPage", $"StopVideoLessonRecordingAsync: saved VideoLesson | id={savedId} | sessionId={sessionId}");
+                AppLog.Info("SinglePlayerPage", $"StopVideoLessonRecordingAsync: saved VideoLesson | id={savedId} | sessionId={sessionId} | isRemoteOnly={lesson.IsRemoteOnly}");
 
                 // Notificar que se ha creado una videolección para actualizar la galería
                 _videoLessonNotifier.NotifyVideoLessonCreated(savedId, sessionId);
+
+                // Si el video se abrió desde la Biblioteca de Organización, subir la videolección a S3
+                if (isFromOrgLibrary)
+                {
+                    _ = UploadVideoLessonToOrgAsync(lesson);
+                }
             }
             else
             {
@@ -619,6 +627,51 @@ public partial class SinglePlayerPage : ContentPage
         {
             _currentVideoLessonPath = null;
             _isVideoLessonStartStopInProgress = false;
+        }
+    }
+
+    /// <summary>
+    /// Sube una videolección a la Biblioteca de Organización (S3) en background.
+    /// Se invoca cuando la videolección se graba desde un video de la org library.
+    /// </summary>
+    private async Task UploadVideoLessonToOrgAsync(VideoLesson lesson)
+    {
+        try
+        {
+            var syncService = Application.Current?.Handler?.MauiContext?.Services.GetService<SyncService>();
+            if (syncService == null)
+            {
+                AppLog.Warn("SinglePlayerPage", "UploadVideoLessonToOrgAsync: SyncService no disponible");
+                return;
+            }
+
+            var statusBar = Application.Current?.Handler?.MauiContext?.Services.GetService<StatusBarService>();
+            statusBar?.StartOperation($"Subiendo videolección a la organización...");
+
+            var progress = new Progress<double>(p =>
+            {
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    statusBar?.UpdateProgress(p, $"Subiendo videolección... {p:P0}");
+                });
+            });
+
+            var ok = await syncService.UploadVideoLessonAsync(lesson, progress);
+
+            if (ok)
+            {
+                statusBar?.EndOperation("Videolección subida a la organización");
+                AppLog.Info("SinglePlayerPage", $"UploadVideoLessonToOrgAsync: videolección {lesson.Id} subida correctamente");
+            }
+            else
+            {
+                statusBar?.EndOperation("Error subiendo videolección");
+                AppLog.Warn("SinglePlayerPage", $"UploadVideoLessonToOrgAsync: error subiendo videolección {lesson.Id}");
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("SinglePlayerPage", $"UploadVideoLessonToOrgAsync: error: {ex.Message}", ex);
         }
     }
 
@@ -1250,6 +1303,7 @@ public partial class SinglePlayerPage : ContentPage
         {
             var pathToSave = _currentVideoLessonPath;
             var sessionIdToSave = _viewModel.VideoClip?.SessionId ?? 0;
+            var isFromOrgLibrary = _viewModel.VideoClip?.Source == "remote";
 
             AppLog.Info("SinglePlayerPage", $"CleanupResources: leaving while recording | path='{pathToSave}' | sessionId={sessionIdToSave}");
 
@@ -1272,10 +1326,17 @@ public partial class SinglePlayerPage : ContentPage
                             SessionId = sessionIdToSave,
                             CreatedAtUtc = DateTime.UtcNow,
                             FilePath = pathToSave,
-                            Title = null
+                            Title = null,
+                            IsRemoteOnly = isFromOrgLibrary ? 1 : 0
                         };
                         var savedId = await _databaseService.SaveVideoLessonAsync(lesson).ConfigureAwait(false);
-                        AppLog.Info("SinglePlayerPage", $"CleanupResources: saved VideoLesson | id={savedId} | sessionId={sessionIdToSave}");
+                        AppLog.Info("SinglePlayerPage", $"CleanupResources: saved VideoLesson | id={savedId} | sessionId={sessionIdToSave} | isRemoteOnly={lesson.IsRemoteOnly}");
+
+                        // Si el video se abrió desde la Biblioteca de Organización, subir a S3
+                        if (isFromOrgLibrary)
+                        {
+                            await UploadVideoLessonToOrgAsync(lesson).ConfigureAwait(false);
+                        }
                     }
                     else
                     {

@@ -141,6 +141,69 @@ public class SyncService
         return result;
     }
 
+    /// <summary>
+    /// Sube una videolección al servidor remoto (S3) en la carpeta lessons/{lessonId}.mp4
+    /// </summary>
+    public async Task<bool> UploadVideoLessonAsync(VideoLesson lesson, IProgress<double>? progress = null)
+    {
+        try
+        {
+            if (!_cloudService.IsAuthenticated)
+            {
+                System.Diagnostics.Debug.WriteLine("[Sync] UploadVideoLessonAsync: no autenticado");
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(lesson.FilePath) || !File.Exists(lesson.FilePath))
+            {
+                System.Diagnostics.Debug.WriteLine($"[Sync] UploadVideoLessonAsync: archivo no encontrado: {lesson.FilePath}");
+                return false;
+            }
+
+            var remotePath = _pathService.GetRemoteLessonPath(lesson.Id);
+            progress?.Report(0.1);
+
+            var signResult = await _cloudService.GetUploadUrlAsync(remotePath, "video/mp4");
+            if (!signResult.Success || string.IsNullOrEmpty(signResult.Url))
+            {
+                System.Diagnostics.Debug.WriteLine($"[Sync] UploadVideoLessonAsync: no se pudo obtener URL de subida: {signResult.ErrorMessage}");
+                return false;
+            }
+
+            progress?.Report(0.2);
+
+            var fileBytes = await File.ReadAllBytesAsync(lesson.FilePath);
+            var content = new ByteArrayContent(fileBytes);
+            content.Headers.ContentType = new MediaTypeHeaderValue("video/mp4");
+
+            if (signResult.Headers != null)
+            {
+                foreach (var header in signResult.Headers)
+                {
+                    content.Headers.TryAddWithoutValidation(header.Key, header.Value);
+                }
+            }
+
+            progress?.Report(0.5);
+
+            var response = await _httpClient.PutAsync(signResult.Url, content);
+            if (!response.IsSuccessStatusCode)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Sync] UploadVideoLessonAsync: error HTTP {response.StatusCode}");
+                return false;
+            }
+
+            progress?.Report(1.0);
+            System.Diagnostics.Debug.WriteLine($"[Sync] Videolección {lesson.Id} subida a {remotePath}");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Sync] Error subiendo videolección {lesson.Id}: {ex.Message}");
+            return false;
+        }
+    }
+
     private async Task UploadSessionMetadataAsync(int sessionId)
     {
         if (_sessionMetadataUploaded.Contains(sessionId)) return;

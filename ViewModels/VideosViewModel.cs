@@ -1887,7 +1887,7 @@ public class VideosViewModel : ObservableObject
     {
         await MainThread.InvokeOnMainThreadAsync(() => VideoLessons.Clear());
 
-        var lessons = await _databaseService.GetAllVideoLessonsAsync();
+        var lessons = await _databaseService.GetLocalVideoLessonsAsync();
         if (ct.IsCancellationRequested)
             return;
 
@@ -1971,7 +1971,7 @@ public class VideosViewModel : ObservableObject
     {
         try
         {
-            VideoLessonsCount = await _databaseService.GetVideoLessonsCountAsync();
+            VideoLessonsCount = await _databaseService.GetLocalVideoLessonsCountAsync();
         }
         catch
         {

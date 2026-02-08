@@ -72,6 +72,8 @@ public class RemoteLibraryViewModel : ObservableObject
     private bool _isLoadingRemoteVideos;
     private List<CloudFileInfo>? _remoteFilesCache;
 
+    private ObservableCollection<VideoLesson> _remoteVideoLessons = new();
+
     private bool _isLoginRequired;
     private bool _isCloudLoginBusy;
     private string _cloudLoginEmail = "";
@@ -126,6 +128,10 @@ public class RemoteLibraryViewModel : ObservableObject
         AddSelectedRemoteToLibraryCommand = new AsyncRelayCommand(AddSelectedRemoteToLibraryAsync);
         DeleteSelectedRemoteFromCloudCommand = new AsyncRelayCommand(DeleteSelectedRemoteFromCloudAsync);
         DeleteSelectedRemoteFromLibraryCommand = new AsyncRelayCommand(DeleteSelectedRemoteFromLibraryAsync);
+
+        RemoteVideoLessonTapCommand = new AsyncRelayCommand<VideoLesson>(OnRemoteVideoLessonTappedAsync);
+        ShareRemoteVideoLessonCommand = new AsyncRelayCommand<VideoLesson>(ShareRemoteVideoLessonAsync);
+        DeleteRemoteVideoLessonCommand = new AsyncRelayCommand<VideoLesson>(DeleteRemoteVideoLessonAsync);
     }
 
     public void Configure(
@@ -341,6 +347,18 @@ public class RemoteLibraryViewModel : ObservableObject
 
     public bool ShowRemoteGallery => IsRemoteAllGallerySelected || IsRemoteSessionSelected;
 
+    public bool ShowRemoteVideoLessons => IsRemoteVideoLessonsSelected;
+
+    public ObservableCollection<VideoLesson> RemoteVideoLessons
+    {
+        get => _remoteVideoLessons;
+        private set => SetProperty(ref _remoteVideoLessons, value);
+    }
+
+    public ICommand RemoteVideoLessonTapCommand { get; private set; } = null!;
+    public ICommand ShareRemoteVideoLessonCommand { get; private set; } = null!;
+    public ICommand DeleteRemoteVideoLessonCommand { get; private set; } = null!;
+
     public bool IsSyncing
     {
         get => _isSyncing;
@@ -442,6 +460,7 @@ public class RemoteLibraryViewModel : ObservableObject
             IsRemoteTrashSelected = false;
             ClearRemoteSessionSelection();
             OnPropertyChanged(nameof(ShowRemoteGallery));
+            OnPropertyChanged(nameof(ShowRemoteVideoLessons));
             OnPropertyChanged(nameof(IsAnyRemoteSectionSelected));
             _notifyShowVideoGalleryChanged();
             _notifySelectedSessionTitleChanged();
@@ -570,6 +589,9 @@ public class RemoteLibraryViewModel : ObservableObject
                 RemoteAllGalleryItemCount = result.Files.Count(f => !f.IsFolder).ToString();
                 System.Diagnostics.Debug.WriteLine($"[CloudBackend] Cargados {result.Files.Count} archivos del equipo");
             }
+
+            // Actualizar contador de videolecciones de organización
+            await RefreshRemoteVideoLessonsCountAsync();
         }
         catch (Exception ex)
         {
@@ -659,6 +681,10 @@ public class RemoteLibraryViewModel : ObservableObject
         if (sectionName == "Galería General")
         {
             await LoadRemoteGalleryAsync();
+        }
+        else if (sectionName == "Videolecciones")
+        {
+            await LoadRemoteVideoLessonsAsync();
         }
         else
         {
@@ -2291,6 +2317,7 @@ public class RemoteLibraryViewModel : ObservableObject
         IsRemoteTrashSelected = sectionName == "Papelera";
 
         OnPropertyChanged(nameof(ShowRemoteGallery));
+        OnPropertyChanged(nameof(ShowRemoteVideoLessons));
         OnPropertyChanged(nameof(IsAnyRemoteSectionSelected));
         _notifyShowVideoGalleryChanged();
         _notifySelectedSessionTitleChanged();
@@ -3026,6 +3053,177 @@ public class RemoteLibraryViewModel : ObservableObject
         {
             AppLog.Error("RemoteLibraryVM", "EvictOfflineCopyAsync error", ex);
             await Shell.Current.DisplayAlert("Error", $"No se pudo quitar la copia local: {ex.Message}", "OK");
+        }
+    }
+
+    // ==================== REMOTE VIDEO LESSONS ====================
+
+    private async Task LoadRemoteVideoLessonsAsync()
+    {
+        try
+        {
+            await MainThread.InvokeOnMainThreadAsync(() => RemoteVideoLessons.Clear());
+
+            var lessons = await _databaseService.GetRemoteVideoLessonsAsync();
+            var sessionNameCache = new Dictionary<int, string?>();
+
+            var thumbnailsDir = Path.Combine(FileSystem.AppDataDirectory, "videoLessonThumbs");
+            Directory.CreateDirectory(thumbnailsDir);
+
+            var thumbnailService = Application.Current?.Handler?.MauiContext?.Services.GetService<ThumbnailService>();
+
+            foreach (var lesson in lessons)
+            {
+                if (!sessionNameCache.TryGetValue(lesson.SessionId, out var sessionName))
+                {
+                    var session = lesson.SessionId > 0 ? await _databaseService.GetSessionByIdAsync(lesson.SessionId) : null;
+                    sessionName = session?.DisplayName;
+                    sessionNameCache[lesson.SessionId] = sessionName;
+                }
+                lesson.SessionDisplayName = sessionName;
+
+                var thumbPath = Path.Combine(thumbnailsDir, $"lesson_{lesson.Id}.jpg");
+                lesson.LocalThumbnailPath = File.Exists(thumbPath) ? thumbPath : null;
+
+                await MainThread.InvokeOnMainThreadAsync(() => RemoteVideoLessons.Add(lesson));
+
+                // Generar thumbnail en background si no existe
+                if (!File.Exists(thumbPath) && thumbnailService != null)
+                {
+                    var lessonRef = lesson;
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await thumbnailService.GenerateThumbnailAsync(lessonRef.FilePath, thumbPath);
+                            if (File.Exists(thumbPath))
+                            {
+                                lessonRef.LocalThumbnailPath = thumbPath;
+                                await MainThread.InvokeOnMainThreadAsync(() =>
+                                {
+                                    var idx = RemoteVideoLessons.IndexOf(lessonRef);
+                                    if (idx >= 0)
+                                        RemoteVideoLessons[idx] = lessonRef;
+                                });
+                            }
+                        }
+                        catch { }
+                    });
+                }
+            }
+
+            RemoteVideoLessonsCount = lessons.Count.ToString();
+            System.Diagnostics.Debug.WriteLine($"[Remote] Cargadas {lessons.Count} videolecciones de organización");
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("RemoteLibraryVM", "LoadRemoteVideoLessonsAsync error", ex);
+        }
+    }
+
+    public async Task RefreshRemoteVideoLessonsCountAsync()
+    {
+        try
+        {
+            var count = await _databaseService.GetRemoteVideoLessonsCountAsync();
+            RemoteVideoLessonsCount = count.ToString();
+        }
+        catch
+        {
+            RemoteVideoLessonsCount = RemoteVideoLessons.Count.ToString();
+        }
+    }
+
+    private async Task OnRemoteVideoLessonTappedAsync(VideoLesson? lesson)
+    {
+        if (lesson == null) return;
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(lesson.FilePath) || !File.Exists(lesson.FilePath))
+            {
+                await Shell.Current.DisplayAlert("Archivo no encontrado",
+                    "No se encontró el vídeo de esta videolección en el dispositivo.", "OK");
+                return;
+            }
+
+            await Shell.Current.GoToAsync($"{nameof(Views.SinglePlayerPage)}?videoPath={Uri.EscapeDataString(lesson.FilePath)}");
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("RemoteLibraryVM", "OnRemoteVideoLessonTappedAsync error", ex);
+        }
+    }
+
+    private async Task ShareRemoteVideoLessonAsync(VideoLesson? lesson)
+    {
+        if (lesson == null) return;
+
+        try
+        {
+            if (!File.Exists(lesson.FilePath))
+            {
+                await Shell.Current.DisplayAlert("Archivo no encontrado",
+                    "El archivo de la videolección no está disponible.", "OK");
+                return;
+            }
+
+            await Share.Default.RequestAsync(new ShareFileRequest
+            {
+                Title = lesson.DisplayTitle,
+                File = new ShareFile(lesson.FilePath)
+            });
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("RemoteLibraryVM", "ShareRemoteVideoLessonAsync error", ex);
+        }
+    }
+
+    private async Task DeleteRemoteVideoLessonAsync(VideoLesson? lesson)
+    {
+        if (lesson == null) return;
+
+        var page = Application.Current?.Windows.FirstOrDefault()?.Page;
+        if (page == null) return;
+
+        var confirm = await page.DisplayAlert("Eliminar videolección",
+            $"¿Eliminar '{lesson.DisplayTitle}'? Se eliminará de la base de datos local.",
+            "Eliminar", "Cancelar");
+
+        if (!confirm) return;
+
+        try
+        {
+            // Eliminar archivo físico
+            if (File.Exists(lesson.FilePath))
+            {
+                try { File.Delete(lesson.FilePath); } catch { }
+            }
+
+            // Eliminar thumbnail
+            var thumbPath = Path.Combine(FileSystem.AppDataDirectory, "videoLessonThumbs", $"lesson_{lesson.Id}.jpg");
+            if (File.Exists(thumbPath))
+            {
+                try { File.Delete(thumbPath); } catch { }
+            }
+
+            // Eliminar de DB
+            await _databaseService.DeleteVideoLessonAsync(lesson);
+
+            // Eliminar de colección
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                RemoteVideoLessons.Remove(lesson);
+                RemoteVideoLessonsCount = RemoteVideoLessons.Count.ToString();
+            });
+
+            AppLog.Info("RemoteLibraryVM", $"Videolección de organización eliminada: {lesson.DisplayTitle}");
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("RemoteLibraryVM", "DeleteRemoteVideoLessonAsync error", ex);
+            await page.DisplayAlert("Error", $"No se pudo eliminar la videolección: {ex.Message}", "OK");
         }
     }
 }
