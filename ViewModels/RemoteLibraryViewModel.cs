@@ -459,7 +459,7 @@ public class RemoteLibraryViewModel : ObservableObject
     }
 
     private static bool IsOrgWriteRole(string? role)
-        => string.Equals(role, "admin_org", StringComparison.OrdinalIgnoreCase)
+        => string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase)
             || string.Equals(role, "org_admin", StringComparison.OrdinalIgnoreCase)
             || string.Equals(role, "coach", StringComparison.OrdinalIgnoreCase);
 

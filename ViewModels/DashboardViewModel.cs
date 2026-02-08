@@ -261,6 +261,14 @@ public class DashboardViewModel : BaseViewModel
     /// </summary>
     private bool _pendingOrgSyncAfterImport;
 
+    /// <summary>
+    /// Cuando es true, al volver de CameraPage se sincronizará la sesión grabada
+    /// con la Biblioteca de Organización (S3 + backend).
+    /// </summary>
+    private bool _pendingOrgSyncAfterRecording;
+    private int _pendingOrgRecordingSessionId;
+    private string _pendingOrgRecordingSessionName = "";
+
     public DashboardStats? Stats
     {
         get => _stats;
@@ -401,7 +409,7 @@ public class DashboardViewModel : BaseViewModel
 
     public bool HasSpecificSessionSelected => SelectedSession != null;
 
-    public bool CanShowRecordButton => SelectedSession != null;
+    public bool CanShowRecordButton => SelectedSession != null || Remote.IsRemoteSessionSelected;
 
     public bool IsAddingNewSession
     {
@@ -1575,7 +1583,7 @@ public class DashboardViewModel : BaseViewModel
             session => SelectedSession = session,
             Videos.ClearLocalSelectionForRemote,
             () => Videos.NotifySelectionChanged(),
-            () => OnPropertyChanged(nameof(SelectedSessionTitle)),
+            () => { OnPropertyChanged(nameof(SelectedSessionTitle)); OnPropertyChanged(nameof(CanShowRecordButton)); },
             () => Videos.LoadAllVideosAsync(),
             session => Videos.LoadSelectedSessionVideosAsync(session),
             () => Videos.AllVideosCache,
@@ -2074,6 +2082,19 @@ public class DashboardViewModel : BaseViewModel
 
         try
         {
+            // Comprobar si hay una grabación de organización pendiente de sincronizar
+            if (_pendingOrgSyncAfterRecording && _pendingOrgRecordingSessionId > 0)
+            {
+                var syncSessionId = _pendingOrgRecordingSessionId;
+                var syncSessionName = _pendingOrgRecordingSessionName;
+                _pendingOrgSyncAfterRecording = false;
+                _pendingOrgRecordingSessionId = 0;
+                _pendingOrgRecordingSessionName = "";
+
+                AppLog.Info("DashboardVM", $"LoadDataAsync: sincronizando grabación de org session {syncSessionId} '{syncSessionName}'");
+                _ = UploadImportedSessionToOrgInBackgroundAsync(syncSessionId, syncSessionName, 0, 0);
+            }
+
             AppLog.Info("DashboardVM", "LoadDataAsync START");
             IsBusy = true;
             var stats = await _statisticsService.GetDashboardStatsAsync();
@@ -2849,12 +2870,21 @@ public class DashboardViewModel : BaseViewModel
     }
 
     /// <summary>
-    /// Abre la cámara para grabar videos en la sesión actualmente seleccionada
+    /// Abre la cámara para grabar videos en la sesión actualmente seleccionada.
+    /// Si la sesión pertenece a la Biblioteca de Organización, se crea una sesión local
+    /// con IsRemoteOnly=1 y al volver se sincroniza automáticamente con la organización.
     /// </summary>
     private async Task RecordForSelectedSessionAsync()
     {
         try
         {
+            // Si estamos en una sesión de la Biblioteca de Organización
+            if (Remote.IsRemoteSessionSelected)
+            {
+                await RecordForOrgSessionAsync();
+                return;
+            }
+
             if (SelectedSession == null)
             {
                 await Shell.Current.DisplayAlert("Error", "No hay ninguna sesión seleccionada", "OK");
@@ -2877,6 +2907,52 @@ public class DashboardViewModel : BaseViewModel
             System.Diagnostics.Debug.WriteLine($"Error abriendo cámara para sesión: {ex}");
             await Shell.Current.DisplayAlert("Error", $"No se pudo abrir la cámara: {ex.Message}", "OK");
         }
+    }
+
+    /// <summary>
+    /// Graba video para una sesión de la Biblioteca de Organización.
+    /// Crea una sesión local con IsRemoteOnly=1 y configura la sincronización
+    /// automática al volver de la cámara.
+    /// </summary>
+    private async Task RecordForOrgSessionAsync()
+    {
+        var remoteSessionId = Remote.SelectedRemoteSessionId;
+        var sessionItem = Remote.RemoteSessions.FirstOrDefault(s => s.SessionId == remoteSessionId);
+        if (sessionItem == null)
+        {
+            await Shell.Current.DisplayAlert("Error", "No se encontró la sesión de organización", "OK");
+            return;
+        }
+
+        var coachName = await GetCurrentCoachNameAsync();
+
+        // Crear una sesión local con IsRemoteOnly=1 (no aparecerá en la Biblioteca Personal)
+        var localSession = new Session
+        {
+            NombreSesion = sessionItem.Title,
+            TipoSesion = "Entrenamiento",
+            Lugar = sessionItem.Place ?? "",
+            Coach = coachName ?? sessionItem.Coach ?? "",
+            Fecha = new DateTimeOffset(sessionItem.SessionDate).ToUnixTimeSeconds(),
+            IsRemoteOnly = 1
+        };
+        await _databaseService.SaveSessionAsync(localSession);
+
+        // Configurar la sincronización pendiente para cuando volvamos de la cámara
+        _pendingOrgSyncAfterRecording = true;
+        _pendingOrgRecordingSessionId = localSession.Id;
+        _pendingOrgRecordingSessionName = sessionItem.Title;
+
+        var parameters = new Dictionary<string, object>
+        {
+            { "SessionId", localSession.Id },
+            { "SessionName", sessionItem.Title },
+            { "SessionType", "Entrenamiento" },
+            { "Place", sessionItem.Place ?? "" },
+            { "Date", sessionItem.SessionDate }
+        };
+
+        await Shell.Current.GoToAsync(nameof(Views.CameraPage), parameters);
     }
 
     /// <summary>

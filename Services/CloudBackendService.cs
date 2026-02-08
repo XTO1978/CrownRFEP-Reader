@@ -710,7 +710,7 @@ public class CloudBackendService : ICloudBackendService
                 m.Id ?? "",
                 m.Name ?? "",
                 m.Email ?? "",
-                m.Role ?? "member"
+                m.Role ?? "athlete"
             ));
 
             return new TeamInfoResult(
