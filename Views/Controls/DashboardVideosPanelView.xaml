@@ -30,14 +30,14 @@
                 TextColor="White"
                 VerticalOptions="Center" />
 
-            <!--  Botón Grabar (solo iOS, solo cuando hay sesión seleccionada)  -->
+            <!--  Botón Grabar (solo iOS — en macOS/Windows no hay grabación con cámara)  -->
             <Border
                 Grid.Column="1"
                 Padding="12,8"
                 BackgroundColor="#FFFF3B30"
                 Stroke="Transparent"
                 StrokeShape="RoundRectangle 4"
-                IsVisible="{Binding CanShowRecordButton}">
+                IsVisible="{OnPlatform Default=False, iOS={Binding CanShowRecordButton}}">
                 <Border.GestureRecognizers>
                     <TapGestureRecognizer Command="{Binding RecordForSelectedSessionCommand}" />
                 </Border.GestureRecognizers>

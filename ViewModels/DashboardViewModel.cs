@@ -340,6 +340,7 @@ public class DashboardViewModel : BaseViewModel
             OnPropertyChanged(nameof(SelectedSessionTitle));
             OnPropertyChanged(nameof(ShowSectionTimesTable));
             OnPropertyChanged(nameof(HasSpecificSessionSelected));
+            OnPropertyChanged(nameof(CanShowRecordButton));
         }
     }
 
@@ -369,6 +370,7 @@ public class DashboardViewModel : BaseViewModel
             OnPropertyChanged(nameof(ShowSectionTimesTable));
             OnPropertyChanged(nameof(HasSpecificSessionSelected));
             OnPropertyChanged(nameof(ShowVideoGallery));
+            OnPropertyChanged(nameof(CanShowRecordButton));
         }
     }
 
@@ -400,6 +402,7 @@ public class DashboardViewModel : BaseViewModel
             OnPropertyChanged(nameof(ShowSectionTimesTable));
             OnPropertyChanged(nameof(HasSpecificSessionSelected));
             OnPropertyChanged(nameof(ShowVideoGallery));
+            OnPropertyChanged(nameof(CanShowRecordButton));
         }
     }
 
@@ -409,7 +412,13 @@ public class DashboardViewModel : BaseViewModel
 
     public bool HasSpecificSessionSelected => SelectedSession != null;
 
-    public bool CanShowRecordButton => SelectedSession != null || Remote.IsRemoteSessionSelected;
+    /// <summary>
+    /// El botón Grabar se muestra solo en vistas de la biblioteca de organización
+    /// (galería remota o sesión remota seleccionada).
+    /// </summary>
+    public bool CanShowRecordButton =>
+        Remote.IsRemoteSessionSelected
+        || Remote.ShowRemoteGallery;
 
     public bool IsAddingNewSession
     {
@@ -1598,7 +1607,8 @@ public class DashboardViewModel : BaseViewModel
             RemoveLocalSessionIfEmptyAsync,
             EnsurePlaceExistsAsync,
             video => Videos.PlaySelectedVideoAsync(video),
-            () => Videos.NotifySelectedSessionVideosChanged());
+            () => Videos.NotifySelectedSessionVideosChanged(),
+            () => OnPropertyChanged(nameof(CanShowRecordButton)));
 
         Diary.Configure(
             () => SelectedSession,
@@ -2103,6 +2113,9 @@ public class DashboardViewModel : BaseViewModel
 
             await Videos.RefreshVideoLessonsCountAsync();
 
+            // Pre-cargar todas las galerías en paralelo (espera a que cloud session se restaure)
+            _ = PreloadVideoLessonGalleriesAsync();
+
             RecentSessions.Clear();
             foreach (var session in stats?.RecentSessions ?? new List<Session>())
             {
@@ -2164,6 +2177,127 @@ public class DashboardViewModel : BaseViewModel
         finally
         {
             IsBusy = false;
+        }
+    }
+
+    /// <summary>
+    /// Pre-carga todas las galerías (personal y organización) en paralelo.
+    /// Incluye videolecciones personales, videolecciones org y galería de videos remotos.
+    /// El progreso se muestra en el AppFooter a través del StatusBarService.
+    /// </summary>
+    private async Task PreloadVideoLessonGalleriesAsync()
+    {
+        StatusBarService? statusBar = null;
+        try
+        {
+            statusBar = IPlatformApplication.Current?.Services.GetService<StatusBarService>();
+            statusBar?.StartOperation("Cargando galerías...");
+
+            // Esperar a que la sesión cloud se haya restaurado (máx 10s) antes de comprobar auth
+            try
+            {
+                await Task.WhenAny(Remote.WaitForCloudSessionRestoredAsync(), Task.Delay(10_000));
+            }
+            catch { /* timeout o error, continuamos con lo que haya */ }
+
+            var personalLessonsDone = false;
+            var orgLessonsDone = false;
+            var orgGalleryDone = false;
+            var isOrgAuth = Remote.IsCloudAuthenticated;
+            // Si no hay autenticación org, marcar tareas org como completas de inicio
+            if (!isOrgAuth) { orgLessonsDone = true; orgGalleryDone = true; }
+
+            void ReportCombinedProgress()
+            {
+                var totalSteps = isOrgAuth ? 3.0 : 1.0;
+                var doneSteps = (personalLessonsDone ? 1.0 : 0.0)
+                              + (orgLessonsDone ? 1.0 : 0.0)
+                              + (orgGalleryDone ? 1.0 : 0.0);
+                if (!isOrgAuth) doneSteps = personalLessonsDone ? 1.0 : 0.0;
+
+                var progress = doneSteps / totalSteps;
+
+                var parts = new List<string>();
+                if (personalLessonsDone) parts.Add("Lecciones ✓");
+                else parts.Add("Lecciones...");
+
+                if (isOrgAuth)
+                {
+                    if (orgLessonsDone) parts.Add("Lecciones org ✓");
+                    else parts.Add("Lecciones org...");
+
+                    if (orgGalleryDone) parts.Add("Galería org ✓");
+                    else parts.Add("Galería org...");
+                }
+
+                var text = string.Join(" · ", parts);
+                statusBar?.UpdateProgress(progress, text);
+            }
+
+            ReportCombinedProgress();
+
+            var personalTask = Task.Run(async () =>
+            {
+                try
+                {
+                    await Videos.PreloadVideoLessonsAsync();
+                }
+                catch (Exception ex)
+                {
+                    AppLog.Warn("DashboardVM", $"PreloadGalleries personal lessons error: {ex.Message}");
+                }
+                finally
+                {
+                    personalLessonsDone = true;
+                    MainThread.BeginInvokeOnMainThread(ReportCombinedProgress);
+                }
+            });
+
+            var orgLessonsTask = Task.Run(async () =>
+            {
+                if (!isOrgAuth) return;
+                try
+                {
+                    await Remote.LoadRemoteVideoLessonsAsync();
+                }
+                catch (Exception ex)
+                {
+                    AppLog.Warn("DashboardVM", $"PreloadGalleries org lessons error: {ex.Message}");
+                }
+                finally
+                {
+                    orgLessonsDone = true;
+                    MainThread.BeginInvokeOnMainThread(ReportCombinedProgress);
+                }
+            });
+
+            var orgGalleryTask = Task.Run(async () =>
+            {
+                if (!isOrgAuth) return;
+                try
+                {
+                    await Remote.PreloadRemoteGalleryAsync();
+                }
+                catch (Exception ex)
+                {
+                    AppLog.Warn("DashboardVM", $"PreloadGalleries org gallery error: {ex.Message}");
+                }
+                finally
+                {
+                    orgGalleryDone = true;
+                    MainThread.BeginInvokeOnMainThread(ReportCombinedProgress);
+                }
+            });
+
+            await Task.WhenAll(personalTask, orgLessonsTask, orgGalleryTask);
+
+            statusBar?.EndOperation("Galerías cargadas");
+            AppLog.Info("DashboardVM", "PreloadVideoLessonGalleriesAsync: todas las galerías cargadas");
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardVM", $"PreloadVideoLessonGalleriesAsync error: {ex.Message}");
+            statusBar?.EndOperation("Error cargando galerías");
         }
     }
 
@@ -2885,9 +3019,10 @@ public class DashboardViewModel : BaseViewModel
                 return;
             }
 
+            // Si no hay sesión seleccionada, crear una sesión rápida automáticamente
             if (SelectedSession == null)
             {
-                await Shell.Current.DisplayAlert("Error", "No hay ninguna sesión seleccionada", "OK");
+                await QuickRecordWithNewSessionAsync();
                 return;
             }
 
@@ -2906,6 +3041,51 @@ public class DashboardViewModel : BaseViewModel
         {
             System.Diagnostics.Debug.WriteLine($"Error abriendo cámara para sesión: {ex}");
             await Shell.Current.DisplayAlert("Error", $"No se pudo abrir la cámara: {ex.Message}", "OK");
+        }
+    }
+
+    /// <summary>
+    /// Crea una sesión rápida con fecha/hora actual y abre la cámara directamente.
+    /// Se usa cuando el usuario pulsa Grabar sin tener una sesión seleccionada.
+    /// </summary>
+    private async Task QuickRecordWithNewSessionAsync()
+    {
+        try
+        {
+            var now = DateTime.Now;
+            var sessionName = $"Sesión {now:dd/MM/yyyy HH:mm}";
+            var coachName = await GetCurrentCoachNameAsync();
+
+            var session = new Session
+            {
+                NombreSesion = sessionName,
+                TipoSesion = "Entrenamiento",
+                Lugar = "",
+                Coach = coachName,
+                Fecha = DateTimeOffset.Now.ToUnixTimeSeconds()
+            };
+
+            await _databaseService.SaveSessionAsync(session);
+            AppLog.Info("DashboardVM", $"QuickRecordWithNewSessionAsync: created session {session.Id} '{sessionName}'");
+
+            // Recargar sesiones en background para que aparezca al volver
+            _ = LoadDataAsync();
+
+            var parameters = new Dictionary<string, object>
+            {
+                { "SessionId", session.Id },
+                { "SessionName", sessionName },
+                { "SessionType", "Entrenamiento" },
+                { "Place", "" },
+                { "Date", now }
+            };
+
+            await Shell.Current.GoToAsync(nameof(Views.CameraPage), parameters);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("DashboardVM", $"QuickRecordWithNewSessionAsync error: {ex.Message}");
+            await Shell.Current.DisplayAlert("Error", $"No se pudo crear la sesión de grabación: {ex.Message}", "OK");
         }
     }
 

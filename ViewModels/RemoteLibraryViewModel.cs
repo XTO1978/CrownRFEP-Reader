@@ -39,6 +39,7 @@ public class RemoteLibraryViewModel : ObservableObject
     private Action _clearLocalSelection = () => { };
     private Action _notifyShowVideoGalleryChanged = () => { };
     private Action _notifySelectedSessionTitleChanged = () => { };
+    private Action _notifyCanShowRecordButtonChanged = () => { };
 
     private Func<Task> _loadAllVideosAsync = () => Task.CompletedTask;
     private Func<Session?, Task> _loadSelectedSessionVideosAsync = _ => Task.CompletedTask;
@@ -89,6 +90,9 @@ public class RemoteLibraryViewModel : ObservableObject
     private int _syncProgress;
     private string _syncStatusText = "Sincronización cloud";
     private int _pendingSyncCount;
+
+    /// <summary>Se completa cuando la restauración de sesión cloud termina (éxito o fallo).</summary>
+    private readonly TaskCompletionSource _cloudSessionRestoredTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     public RemoteLibraryViewModel(
         DatabaseService databaseService,
@@ -168,7 +172,8 @@ public class RemoteLibraryViewModel : ObservableObject
         Func<int, Task> removeLocalSessionIfEmptyAsync,
         Func<string, Task> ensurePlaceExistsAsync,
         Func<VideoClip, Task> playSelectedVideoAsync,
-        Action notifySelectedSessionVideosChanged)
+        Action notifySelectedSessionVideosChanged,
+        Action notifyCanShowRecordButtonChanged)
     {
         _getIsRemoteLibraryVisible = getIsRemoteLibraryVisible;
         _setIsRemoteLibraryVisible = setIsRemoteLibraryVisible;
@@ -210,6 +215,7 @@ public class RemoteLibraryViewModel : ObservableObject
         _ensurePlaceExistsAsync = ensurePlaceExistsAsync;
         _playSelectedVideoAsync = playSelectedVideoAsync;
         _notifySelectedSessionVideosChanged = notifySelectedSessionVideosChanged;
+        _notifyCanShowRecordButtonChanged = notifyCanShowRecordButtonChanged;
     }
 
     public string RemoteLibraryDisplayName
@@ -464,13 +470,28 @@ public class RemoteLibraryViewModel : ObservableObject
             OnPropertyChanged(nameof(IsAnyRemoteSectionSelected));
             _notifyShowVideoGalleryChanged();
             _notifySelectedSessionTitleChanged();
+            // Notificar al DashboardViewModel que CanShowRecordButton puede haber cambiado
+            _notifyCanShowRecordButtonChanged();
         }
     }
 
     public async Task RestoreCloudSessionAsync()
     {
-        await CheckAndRestoreCloudSessionAsync();
+        try
+        {
+            await CheckAndRestoreCloudSessionAsync();
+        }
+        finally
+        {
+            _cloudSessionRestoredTcs.TrySetResult();
+        }
     }
+
+    /// <summary>
+    /// Espera a que la restauración de sesión cloud haya terminado.
+    /// Útil para coordinar pre-cargas que dependen de la autenticación.
+    /// </summary>
+    public Task WaitForCloudSessionRestoredAsync() => _cloudSessionRestoredTcs.Task;
 
     public async Task RefreshPendingSyncAsync()
     {
@@ -680,11 +701,17 @@ public class RemoteLibraryViewModel : ObservableObject
 
         if (sectionName == "Galería General")
         {
-            await LoadRemoteGalleryAsync();
+            // Solo recargar si no hay datos pre-cargados
+            if (RemoteVideos.Count == 0)
+                await LoadRemoteGalleryAsync();
+            else
+                RefreshRemoteGalleryDisplayItems();
         }
         else if (sectionName == "Videolecciones")
         {
-            await LoadRemoteVideoLessonsAsync();
+            // Solo recargar si no hay datos pre-cargados
+            if (RemoteVideoLessons.Count == 0)
+                await LoadRemoteVideoLessonsAsync();
         }
         else
         {
@@ -694,6 +721,15 @@ public class RemoteLibraryViewModel : ObservableObject
                 await page.DisplayAlert("Biblioteca de organización", $"La sección '{sectionName}' estará disponible próximamente.", "OK");
             }
         }
+    }
+
+    /// <summary>
+    /// Pre-carga la galería de videos remotos (S3).
+    /// Puede llamarse externamente (p.ej. desde DashboardViewModel) para tener los datos listos.
+    /// </summary>
+    public async Task PreloadRemoteGalleryAsync()
+    {
+        await LoadRemoteGalleryAsync();
     }
 
     private async Task LoadRemoteGalleryAsync()
@@ -761,6 +797,10 @@ public class RemoteLibraryViewModel : ObservableObject
                     await _removeLocalSessionIfEmptyAsync(sessionId);
             }
 
+            // Construir lista batch de RemoteVideoItems
+            var batchItems = new List<RemoteVideoItem>(videoFiles.Count);
+            var thumbnailQueue = new List<RemoteVideoItem>();
+
             foreach (var file in videoFiles)
             {
                 VideoClip? linkedLocal = null;
@@ -776,14 +816,22 @@ public class RemoteLibraryViewModel : ObservableObject
                 }
 
                 var remoteItem = RemoteVideoItem.FromCloudFile(file, linkedLocal);
-                RemoteVideos.Add(remoteItem);
-                System.Diagnostics.Debug.WriteLine($"[RemoteSessions] Loaded RemoteVideo: Key={file.Key}, SessionId={remoteItem.SessionId}, VideoId={remoteItem.VideoId}");
+                batchItems.Add(remoteItem);
 
                 if (remoteItem.LinkedLocalVideo?.EffectiveThumbnailPath == null &&
                     remoteItem.SessionId > 0 && remoteItem.VideoId > 0)
                 {
-                    _ = LoadRemoteThumbnailAsync(remoteItem);
+                    thumbnailQueue.Add(remoteItem);
                 }
+            }
+
+            // Reemplazo atómico de la colección (un solo re-render)
+            RemoteVideos = new ObservableCollection<RemoteVideoItem>(batchItems);
+
+            // Cargar thumbnails en background después del reemplazo
+            foreach (var item in thumbnailQueue)
+            {
+                _ = LoadRemoteThumbnailAsync(item);
             }
 
             System.Diagnostics.Debug.WriteLine($"[RemoteSessions] Total RemoteVideos: {RemoteVideos.Count}, Con SessionId>0: {RemoteVideos.Count(v => v.SessionId > 0)}");
@@ -2321,6 +2369,7 @@ public class RemoteLibraryViewModel : ObservableObject
         OnPropertyChanged(nameof(IsAnyRemoteSectionSelected));
         _notifyShowVideoGalleryChanged();
         _notifySelectedSessionTitleChanged();
+        _notifyCanShowRecordButtonChanged();
     }
 
     private async Task SelectRemoteSessionAsync(RemoteSessionListItem? sessionItem)
@@ -3058,20 +3107,22 @@ public class RemoteLibraryViewModel : ObservableObject
 
     // ==================== REMOTE VIDEO LESSONS ====================
 
-    private async Task LoadRemoteVideoLessonsAsync()
+    /// <summary>
+    /// Carga las videolecciones de organización desde la BD local.
+    /// Se puede llamar externamente (p.ej. desde DashboardViewModel) para pre-cargar.
+    /// Usa reemplazo de instancia de colección para evitar N re-renders del CollectionView.
+    /// </summary>
+    public async Task LoadRemoteVideoLessonsAsync()
     {
         try
         {
-            await MainThread.InvokeOnMainThreadAsync(() => RemoteVideoLessons.Clear());
-
             var lessons = await _databaseService.GetRemoteVideoLessonsAsync();
             var sessionNameCache = new Dictionary<int, string?>();
 
             var thumbnailsDir = Path.Combine(FileSystem.AppDataDirectory, "videoLessonThumbs");
             Directory.CreateDirectory(thumbnailsDir);
 
-            var thumbnailService = Application.Current?.Handler?.MauiContext?.Services.GetService<ThumbnailService>();
-
+            // Hidratar datos en background (sin tocar UI)
             foreach (var lesson in lessons)
             {
                 if (!sessionNameCache.TryGetValue(lesson.SessionId, out var sessionName))
@@ -3084,13 +3135,26 @@ public class RemoteLibraryViewModel : ObservableObject
 
                 var thumbPath = Path.Combine(thumbnailsDir, $"lesson_{lesson.Id}.jpg");
                 lesson.LocalThumbnailPath = File.Exists(thumbPath) ? thumbPath : null;
+            }
 
-                await MainThread.InvokeOnMainThreadAsync(() => RemoteVideoLessons.Add(lesson));
+            // Reemplazo atómico de la colección en el main thread (un solo re-render)
+            var newCollection = new ObservableCollection<VideoLesson>(lessons);
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                RemoteVideoLessons = newCollection;
+                RemoteVideoLessonsCount = lessons.Count.ToString();
+            });
 
-                // Generar thumbnail en background si no existe
-                if (!File.Exists(thumbPath) && thumbnailService != null)
+            System.Diagnostics.Debug.WriteLine($"[Remote] Cargadas {lessons.Count} videolecciones de organización (batch)");
+
+            // Generar thumbnails pendientes en background sin bloquear
+            var thumbnailService = Application.Current?.Handler?.MauiContext?.Services.GetService<ThumbnailService>();
+            if (thumbnailService != null)
+            {
+                foreach (var lesson in lessons.Where(l => l.LocalThumbnailPath == null))
                 {
                     var lessonRef = lesson;
+                    var thumbPath = Path.Combine(thumbnailsDir, $"lesson_{lessonRef.Id}.jpg");
                     _ = Task.Run(async () =>
                     {
                         try
@@ -3111,9 +3175,6 @@ public class RemoteLibraryViewModel : ObservableObject
                     });
                 }
             }
-
-            RemoteVideoLessonsCount = lessons.Count.ToString();
-            System.Diagnostics.Debug.WriteLine($"[Remote] Cargadas {lessons.Count} videolecciones de organización");
         }
         catch (Exception ex)
         {

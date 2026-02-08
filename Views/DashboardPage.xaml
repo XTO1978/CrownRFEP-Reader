@@ -477,6 +477,173 @@
                             </Grid>
                         </Border>
 
+                        <!--  Item padre: Sesiones (expandible)  -->
+                        <Border
+                            x:Name="SessionsHeaderBorder"
+                            Style="{StaticResource SidebarMenuItemBorder}">
+                            <Border.Padding>
+                                <OnPlatform x:TypeArguments="Thickness">
+                                    <On Platform="iOS" Value="10,8,4,8" />
+                                    <On Platform="Default" Value="10,6,4,6" />
+                                </OnPlatform>
+                            </Border.Padding>
+                            <Border.Behaviors>
+                                <behaviors:SidebarHoverBehavior />
+                            </Border.Behaviors>
+                            <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" VerticalOptions="Center" HorizontalOptions="Fill">
+                                <Grid.GestureRecognizers>
+                                    <TapGestureRecognizer Buttons="Secondary" Tapped="OnSessionsMenuTapped">
+                                        <TapGestureRecognizer.NumberOfTapsRequired>
+                                            <OnPlatform x:TypeArguments="x:Int32">
+                                                <On Platform="iOS" Value="99" />
+                                                <On Platform="MacCatalyst,WinUI" Value="1" />
+                                            </OnPlatform>
+                                        </TapGestureRecognizer.NumberOfTapsRequired>
+                                    </TapGestureRecognizer>
+                                </Grid.GestureRecognizers>
+                                <!-- Expansion toggle button (oculto en Windows por ahora) -->
+                                <Border
+                                    Grid.Column="0"
+                                    Padding="2"
+                                    BackgroundColor="Transparent"
+                                    StrokeThickness="0">
+                                    <Border.IsVisible>
+                                        <OnPlatform x:TypeArguments="x:Boolean">
+                                            <On Platform="WinUI" Value="False" />
+                                            <On Platform="iOS,MacCatalyst,Android" Value="True" />
+                                        </OnPlatform>
+                                    </Border.IsVisible>
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Command="{Binding Layout.ToggleSessionsListExpandedCommand}" />
+                                    </Border.GestureRecognizers>
+                                    <controls:SymbolIcon
+                                        HeightRequest="{StaticResource IconSizeSmall}"
+                                        WidthRequest="{StaticResource IconSizeSmall}"
+                                        TintColor="#FF888888"
+                                        VerticalOptions="Center">
+                                        <controls:SymbolIcon.Triggers>
+                                            <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding Layout.IsSessionsListExpanded}" Value="True">
+                                                <Setter Property="SymbolName" Value="chevron.down" />
+                                            </DataTrigger>
+                                            <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding Layout.IsSessionsListExpanded}" Value="False">
+                                                <Setter Property="SymbolName" Value="chevron.right" />
+                                            </DataTrigger>
+                                        </controls:SymbolIcon.Triggers>
+                                    </controls:SymbolIcon>
+                                </Border>
+                                <controls:SymbolIcon
+                                    Grid.Column="1"
+                                    Margin="4,0,0,0"
+                                    HeightRequest="{StaticResource IconSizeSidebarMenu}"
+                                    SymbolName="clock"
+                                    TintColor="White"
+                                    VerticalOptions="Center"
+                                    WidthRequest="{StaticResource IconSizeSidebarMenu}" />
+                                <Label
+                                    Grid.Column="2"
+                                    Margin="8,0,0,0"
+                                    Style="{StaticResource SidebarMenuItemLabel}"
+                                    Text="Sesiones" />
+                                <!-- Add button - visible on hover via behavior -->
+                                <Border
+                                    x:Name="SessionsImportAddButton"
+                                    Grid.Column="3"
+                                    Margin="8,0,0,0"
+                                    Padding="2"
+                                    BackgroundColor="Transparent"
+                                    Stroke="Transparent"
+                                    StrokeShape="RoundRectangle 4"
+                                    HorizontalOptions="End"
+                                    VerticalOptions="Center">
+                                    <Border.Opacity>
+                                        <OnPlatform x:TypeArguments="x:Double">
+                                            <On Platform="iOS" Value="1" />
+                                            <On Platform="Default" Value="0" />
+                                        </OnPlatform>
+                                    </Border.Opacity>
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="OnSessionsMenuTapped" />
+                                    </Border.GestureRecognizers>
+                                    <controls:SymbolIcon
+                                        HeightRequest="{StaticResource IconSizeSmall}"
+                                        SymbolName="plus"
+                                        TintColor="#FF888888"
+                                        WidthRequest="{StaticResource IconSizeSmall}" />
+                                </Border>
+                            </Grid>
+                        </Border>
+
+                        <!--  Item de sesión en importación (con barra de progreso)  -->
+                        <Border
+                            x:Name="ImportingSessionBorder"
+                            Margin="0,4,0,0"
+                            Padding="0"
+                            BackgroundColor="#FF1A1A1A"
+                            Stroke="#FF0066"
+                            StrokeThickness="1"
+                            StrokeShape="RoundRectangle 6"
+                            IsVisible="{Binding IsBackgroundImporting}">
+                            <Grid RowDefinitions="Auto,4">
+                                <!--  Contenido del item  -->
+                                <HorizontalStackLayout
+                                    Grid.Row="0"
+                                    Padding="16,10"
+                                    Spacing="8"
+                                    VerticalOptions="Center">
+                                    <ActivityIndicator
+                                        HeightRequest="18"
+                                        WidthRequest="18"
+                                        IsRunning="True"
+                                        Color="#FF0066" />
+                                    <VerticalStackLayout Spacing="2" VerticalOptions="Center">
+                                        <Label
+                                            FontFamily="{StaticResource AppFontBody}"
+                                            FontSize="13"
+                                            Text="{Binding ImportingSessionName}"
+                                            TextColor="#FF0066"
+                                            LineBreakMode="TailTruncation"
+                                            MaximumWidthRequest="220" />
+                                        <Label
+                                            FontFamily="{StaticResource AppFontBody}"
+                                            FontSize="10"
+                                            Text="{Binding ImportingCurrentFile}"
+                                            TextColor="#FF888888"
+                                            LineBreakMode="TailTruncation"
+                                            MaximumWidthRequest="220" />
+                                    </VerticalStackLayout>
+                                    <Label
+                                        FontFamily="{StaticResource AppFontBody}"
+                                        FontSize="11"
+                                        FontAttributes="None"
+                                        Text="{Binding BackgroundImportProgress, StringFormat='{0}%'}"
+                                        TextColor="#FF0066"
+                                        VerticalOptions="Center"
+                                        HorizontalOptions="EndAndExpand" />
+                                </HorizontalStackLayout>
+                                <!--  Barra de progreso  -->
+                                <ProgressBar
+                                    Grid.Row="1"
+                                    Margin="0"
+                                    Progress="{Binding BackgroundImportProgressNormalized}"
+                                    ProgressColor="#FF0066"
+                                    BackgroundColor="#FF404040"
+                                    HeightRequest="4" />
+                            </Grid>
+                        </Border>
+
+                        <!--  Lista de sesiones usando BindableLayout  -->
+                        <VerticalStackLayout
+                            x:Name="SidebarSessionsList"
+                            BindableLayout.ItemsSource="{Binding SessionRows}"
+                            BindableLayout.ItemTemplateSelector="{StaticResource SessionsListRowTemplateSelector}">
+                            <VerticalStackLayout.Spacing>
+                                <OnPlatform x:TypeArguments="x:Double">
+                                    <On Platform="iOS" Value="2" />
+                                    <On Platform="Default" Value="{StaticResource SpacingXSmall}" />
+                                </OnPlatform>
+                            </VerticalStackLayout.Spacing>
+                        </VerticalStackLayout>
+
                         <Border
                             x:Name="VideoLessonsHeaderBorder"
                             Style="{StaticResource SidebarMenuItemBorder}">
@@ -994,172 +1161,6 @@
                             </Grid>
                         </Border>
 
-                        <!--  Item padre: Sesiones (expandible)  -->
-                        <Border
-                            x:Name="SessionsHeaderBorder"
-                            Style="{StaticResource SidebarMenuItemBorder}">
-                            <Border.Padding>
-                                <OnPlatform x:TypeArguments="Thickness">
-                                    <On Platform="iOS" Value="10,8,4,8" />
-                                    <On Platform="Default" Value="10,6,4,6" />
-                                </OnPlatform>
-                            </Border.Padding>
-                            <Border.Behaviors>
-                                <behaviors:SidebarHoverBehavior />
-                            </Border.Behaviors>
-                            <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" VerticalOptions="Center" HorizontalOptions="Fill">
-                                <Grid.GestureRecognizers>
-                                    <TapGestureRecognizer Buttons="Secondary" Tapped="OnSessionsMenuTapped">
-                                        <TapGestureRecognizer.NumberOfTapsRequired>
-                                            <OnPlatform x:TypeArguments="x:Int32">
-                                                <On Platform="iOS" Value="99" />
-                                                <On Platform="MacCatalyst,WinUI" Value="1" />
-                                            </OnPlatform>
-                                        </TapGestureRecognizer.NumberOfTapsRequired>
-                                    </TapGestureRecognizer>
-                                </Grid.GestureRecognizers>
-                                <!-- Expansion toggle button (oculto en Windows por ahora) -->
-                                <Border
-                                    Grid.Column="0"
-                                    Padding="2"
-                                    BackgroundColor="Transparent"
-                                    StrokeThickness="0">
-                                    <Border.IsVisible>
-                                        <OnPlatform x:TypeArguments="x:Boolean">
-                                            <On Platform="WinUI" Value="False" />
-                                            <On Platform="iOS,MacCatalyst,Android" Value="True" />
-                                        </OnPlatform>
-                                    </Border.IsVisible>
-                                    <Border.GestureRecognizers>
-                                        <TapGestureRecognizer Command="{Binding Layout.ToggleSessionsListExpandedCommand}" />
-                                    </Border.GestureRecognizers>
-                                    <controls:SymbolIcon
-                                        HeightRequest="{StaticResource IconSizeSmall}"
-                                        WidthRequest="{StaticResource IconSizeSmall}"
-                                        TintColor="#FF888888"
-                                        VerticalOptions="Center">
-                                        <controls:SymbolIcon.Triggers>
-                                            <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding Layout.IsSessionsListExpanded}" Value="True">
-                                                <Setter Property="SymbolName" Value="chevron.down" />
-                                            </DataTrigger>
-                                            <DataTrigger TargetType="controls:SymbolIcon" Binding="{Binding Layout.IsSessionsListExpanded}" Value="False">
-                                                <Setter Property="SymbolName" Value="chevron.right" />
-                                            </DataTrigger>
-                                        </controls:SymbolIcon.Triggers>
-                                    </controls:SymbolIcon>
-                                </Border>
-                                <controls:SymbolIcon
-                                    Grid.Column="1"
-                                    Margin="4,0,0,0"
-                                    HeightRequest="{StaticResource IconSizeSidebarMenu}"
-                                    SymbolName="clock"
-                                    TintColor="White"
-                                    VerticalOptions="Center"
-                                    WidthRequest="{StaticResource IconSizeSidebarMenu}" />
-                                <Label
-                                    Grid.Column="2"
-                                    Margin="8,0,0,0"
-                                    Style="{StaticResource SidebarMenuItemLabel}"
-                                    Text="Sesiones" />
-                                <!-- Add button - visible on hover via behavior -->
-                                <Border
-                                    x:Name="SessionsImportAddButton"
-                                    Grid.Column="3"
-                                    Margin="8,0,0,0"
-                                    Padding="2"
-                                    BackgroundColor="Transparent"
-                                    Stroke="Transparent"
-                                    StrokeShape="RoundRectangle 4"
-                                    HorizontalOptions="End"
-                                    VerticalOptions="Center">
-                                    <Border.Opacity>
-                                        <OnPlatform x:TypeArguments="x:Double">
-                                            <On Platform="iOS" Value="1" />
-                                            <On Platform="Default" Value="0" />
-                                        </OnPlatform>
-                                    </Border.Opacity>
-                                    <Border.GestureRecognizers>
-                                        <TapGestureRecognizer Tapped="OnSessionsMenuTapped" />
-                                    </Border.GestureRecognizers>
-                                    <controls:SymbolIcon
-                                        HeightRequest="{StaticResource IconSizeSmall}"
-                                        SymbolName="plus"
-                                        TintColor="#FF888888"
-                                        WidthRequest="{StaticResource IconSizeSmall}" />
-                                </Border>
-                            </Grid>
-                        </Border>
-
-                        <!--  Item de sesión en importación (con barra de progreso)  -->
-                        <Border
-                            x:Name="ImportingSessionBorder"
-                            Margin="0,4,0,0"
-                            Padding="0"
-                            BackgroundColor="#FF1A1A1A"
-                            Stroke="#FF0066"
-                            StrokeThickness="1"
-                            StrokeShape="RoundRectangle 6"
-                            IsVisible="{Binding IsBackgroundImporting}">
-                            <Grid RowDefinitions="Auto,4">
-                                <!--  Contenido del item  -->
-                                <HorizontalStackLayout
-                                    Grid.Row="0"
-                                    Padding="16,10"
-                                    Spacing="8"
-                                    VerticalOptions="Center">
-                                    <ActivityIndicator
-                                        HeightRequest="18"
-                                        WidthRequest="18"
-                                        IsRunning="True"
-                                        Color="#FF0066" />
-                                    <VerticalStackLayout Spacing="2" VerticalOptions="Center">
-                                        <Label
-                                            FontFamily="{StaticResource AppFontBody}"
-                                            FontSize="13"
-                                            Text="{Binding ImportingSessionName}"
-                                            TextColor="#FF0066"
-                                            LineBreakMode="TailTruncation"
-                                            MaximumWidthRequest="220" />
-                                        <Label
-                                            FontFamily="{StaticResource AppFontBody}"
-                                            FontSize="10"
-                                            Text="{Binding ImportingCurrentFile}"
-                                            TextColor="#FF888888"
-                                            LineBreakMode="TailTruncation"
-                                            MaximumWidthRequest="220" />
-                                    </VerticalStackLayout>
-                                    <Label
-                                        FontFamily="{StaticResource AppFontBody}"
-                                        FontSize="11"
-                                        FontAttributes="None"
-                                        Text="{Binding BackgroundImportProgress, StringFormat='{0}%'}"
-                                        TextColor="#FF0066"
-                                        VerticalOptions="Center"
-                                        HorizontalOptions="EndAndExpand" />
-                                </HorizontalStackLayout>
-                                <!--  Barra de progreso  -->
-                                <ProgressBar
-                                    Grid.Row="1"
-                                    Margin="0"
-                                    Progress="{Binding BackgroundImportProgressNormalized}"
-                                    ProgressColor="#FF0066"
-                                    BackgroundColor="#FF404040"
-                                    HeightRequest="4" />
-                            </Grid>
-                        </Border>
-            </VerticalStackLayout>
-
-            <!--  Lista de sesiones usando BindableLayout  -->
-            <VerticalStackLayout
-                x:Name="SidebarSessionsList"
-                BindableLayout.ItemsSource="{Binding SessionRows}"
-                BindableLayout.ItemTemplateSelector="{StaticResource SessionsListRowTemplateSelector}">
-                <VerticalStackLayout.Spacing>
-                    <OnPlatform x:TypeArguments="x:Double">
-                        <On Platform="iOS" Value="2" />
-                        <On Platform="Default" Value="{StaticResource SpacingXSmall}" />
-                    </OnPlatform>
-                </VerticalStackLayout.Spacing>
             </VerticalStackLayout>
 
             </VerticalStackLayout>

@@ -1883,6 +1883,16 @@ public class VideosViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// Pre-carga las videolecciones personales en la colección VideoLessons
+    /// sin cambiar el estado de selección del panel.
+    /// Se invoca desde DashboardViewModel para tener los datos listos antes de que el usuario navegue.
+    /// </summary>
+    public async Task PreloadVideoLessonsAsync()
+    {
+        await LoadVideoLessonsAsync(CancellationToken.None);
+    }
+
     private async Task LoadVideoLessonsAsync(CancellationToken ct)
     {
         await MainThread.InvokeOnMainThreadAsync(() => VideoLessons.Clear());
@@ -2564,7 +2574,9 @@ public class VideosViewModel : ObservableObject
             _filteredVideosCache = null;
             HasMoreVideos = false;
 
-            await LoadVideoLessonsAsync(ct);
+            // Solo recargar si no hay datos pre-cargados
+            if (VideoLessons.Count == 0)
+                await LoadVideoLessonsAsync(ct);
         }
         catch (Exception ex)
         {
