@@ -1,10 +1,31 @@
 import express from 'express';
+import { S3Client, ListObjectsV2Command, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import db from '../db/database.js';
 
 const router = express.Router();
 
 // Roles con permisos de escritura de sesiones
 const WRITE_ROLES = ['admin', 'org_admin', 'coach'];
+
+// Cliente S3 lazy
+let s3Client = null;
+function getS3Client() {
+  if (!s3Client) {
+    s3Client = new S3Client({
+      region: process.env.WASABI_REGION || 'eu-west-2',
+      endpoint: process.env.WASABI_ENDPOINT || 'https://s3.eu-west-2.wasabisys.com',
+      credentials: {
+        accessKeyId: process.env.WASABI_ACCESS_KEY,
+        secretAccessKey: process.env.WASABI_SECRET_KEY
+      },
+      forcePathStyle: true
+    });
+  }
+  return s3Client;
+}
+function getBucket() {
+  return process.env.WASABI_BUCKET || 'crownanalyzer';
+}
 
 // ─── GET /api/sessions ───────────────────────────────────────────
 // Lista todas las sesiones del equipo del usuario autenticado
@@ -414,6 +435,83 @@ router.put('/:id', (req, res) => {
   } catch (err) {
     console.error('[Sessions] Error actualizando sesión:', err);
     res.status(500).json({ error: 'Error al actualizar sesión' });
+  }
+});
+
+// ─── DELETE /api/sessions/:id/cascade ─────────────────────────────
+// Eliminación en cascada: archivos S3 + hard-delete en BD
+router.delete('/:id/cascade', async (req, res) => {
+  try {
+    const role = req.user.role;
+    if (!WRITE_ROLES.includes(role)) {
+      return res.status(403).json({ error: 'No tienes permisos para eliminar sesiones' });
+    }
+
+    const teamId = req.user.teamId;
+    const sessionId = parseInt(req.params.id);
+
+    const existing = db.prepare(
+      'SELECT * FROM sessions WHERE id = ? AND team_id = ?'
+    ).get(sessionId, teamId);
+
+    if (!existing) {
+      return res.status(404).json({ error: 'Sesión no encontrada' });
+    }
+
+    const userFolder = req.user.wasabiFolder || 'CrownRFEP';
+    const prefix = `${userFolder}/sessions/${sessionId}/`;
+    let deletedFiles = 0;
+    let errors = [];
+
+    // 1. Listar y eliminar todos los archivos S3 de esta sesión
+    try {
+      let continuationToken = undefined;
+      do {
+        const listCommand = new ListObjectsV2Command({
+          Bucket: getBucket(),
+          Prefix: prefix,
+          MaxKeys: 1000,
+          ContinuationToken: continuationToken
+        });
+        const listResponse = await getS3Client().send(listCommand);
+
+        if (listResponse.Contents && listResponse.Contents.length > 0) {
+          for (const obj of listResponse.Contents) {
+            try {
+              await getS3Client().send(new DeleteObjectCommand({
+                Bucket: getBucket(),
+                Key: obj.Key
+              }));
+              deletedFiles++;
+            } catch (delErr) {
+              errors.push(`Error eliminando ${obj.Key}: ${delErr.message}`);
+              console.error(`[Sessions] Error eliminando S3 ${obj.Key}:`, delErr.message);
+            }
+          }
+        }
+
+        continuationToken = listResponse.IsTruncated ? listResponse.NextContinuationToken : undefined;
+      } while (continuationToken);
+    } catch (s3Err) {
+      console.error(`[Sessions] Error listando S3 prefix ${prefix}:`, s3Err.message);
+      errors.push(`Error listando archivos S3: ${s3Err.message}`);
+    }
+
+    // 2. Hard-delete de la sesión en la BD
+    db.prepare('DELETE FROM sessions WHERE id = ? AND team_id = ?').run(sessionId, teamId);
+
+    console.log(`[Sessions] Sesión ${sessionId} eliminada en cascada (${deletedFiles} archivos S3, hard-delete BD)`);
+
+    res.json({
+      success: true,
+      message: 'Sesión eliminada en cascada',
+      deletedFiles,
+      errors: errors.length > 0 ? errors : undefined
+    });
+
+  } catch (err) {
+    console.error('[Sessions] Error en cascade delete:', err);
+    res.status(500).json({ error: 'Error al eliminar sesión en cascada' });
   }
 });
 
