@@ -57,6 +57,11 @@ public interface ICloudBackendService
     Task<bool> RefreshTokenIfNeededAsync();
 
     /// <summary>
+    /// Recupera el perfil de usuario desde el servidor y actualiza CurrentUserRole.
+    /// </summary>
+    Task RefreshUserProfileAsync();
+
+    /// <summary>
     /// Obtiene la lista de archivos en una carpeta del equipo.
     /// </summary>
     Task<CloudFileListResult> ListFilesAsync(string folderPath = "", int maxItems = 100, string? continuationToken = null);
@@ -127,7 +132,21 @@ Task<RemoteSessionBatchResult> SyncSessionsBatchAsync(List<RemoteSessionPayload>
 /// Elimina (soft-delete) una sesión en el backend.
 /// </summary>
 Task<bool> DeleteRemoteSessionAsync(int remoteSessionId);
+
+/// <summary>
+/// Eliminación en cascada: borra archivos S3 de la sesión + hard-delete en la BD del backend.
+/// </summary>
+Task<CascadeDeleteResult> DeleteRemoteSessionCascadeAsync(int remoteSessionId);
 }
+
+/// <summary>
+/// Resultado de la eliminación en cascada de una sesión remota.
+/// </summary>
+public record CascadeDeleteResult(
+    bool Success,
+    string? ErrorMessage = null,
+    int DeletedFiles = 0
+);
 
 /// <summary>
 /// Resultado del health check del backend.

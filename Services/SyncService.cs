@@ -114,6 +114,9 @@ public class SyncService
             video.IsSynced = 1;
             video.LastSyncUtc = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             video.Source = "both";
+            // Actualizar ClipPath a la ruta remota canónica para que el enlace
+            // local ↔ remoto funcione al listar archivos de S3.
+            video.ClipPath = remotePath;
             await _databaseService.UpdateVideoClipAsync(video);
 
             // Subir metadatos asociados

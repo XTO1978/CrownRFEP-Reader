@@ -319,18 +319,13 @@ public class RemoteLibraryViewModel : ObservableObject
     public ObservableCollection<RemoteVideoItem> RemoteGalleryItems
     {
         get => _remoteGalleryDisplayItems;
-        private set
-        {
-            if (_remoteGalleryDisplayItems == value) return;
-            _remoteGalleryDisplayItems = value;
-            OnPropertyChanged(nameof(RemoteGalleryItems));
-        }
     }
 
     /// <summary>
     /// Reconstruye la colección de items visibles en la galería remota.
-    /// Se reemplaza la instancia de ObservableCollection para forzar
-    /// un re-render completo sin romper el binding XAML.
+    /// Se modifica la colección in-place para que el CollectionView de MAUI
+    /// reciba los eventos CollectionChanged y actualice la UI correctamente.
+    /// (Reemplazar la instancia completa puede no funcionar con CollectionView en MAUI.)
     /// </summary>
     private void RefreshRemoteGalleryDisplayItems()
     {
@@ -338,14 +333,23 @@ public class RemoteLibraryViewModel : ObservableObject
             ? RemoteVideos.Where(v => v.SessionId == SelectedRemoteSessionId).ToList()
             : RemoteVideos.ToList();
 
+        System.Diagnostics.Debug.WriteLine($"[RemoteGallery] RefreshDisplayItems: SelectedSession={SelectedRemoteSessionId}, RemoteVideos.Count={RemoteVideos.Count}, Matched={items.Count}");
+
+        void UpdateCollection()
+        {
+            _remoteGalleryDisplayItems.Clear();
+            foreach (var item in items)
+                _remoteGalleryDisplayItems.Add(item);
+            OnPropertyChanged(nameof(RemoteGalleryItems));
+        }
+
         if (MainThread.IsMainThread)
         {
-            RemoteGalleryItems = new ObservableCollection<RemoteVideoItem>(items);
+            UpdateCollection();
         }
         else
         {
-            MainThread.BeginInvokeOnMainThread(() =>
-                RemoteGalleryItems = new ObservableCollection<RemoteVideoItem>(items));
+            MainThread.BeginInvokeOnMainThread(UpdateCollection);
         }
     }
 
@@ -734,24 +738,34 @@ public class RemoteLibraryViewModel : ObservableObject
 
     private async Task LoadRemoteGalleryAsync()
     {
-        if (IsLoadingRemoteVideos) return;
+        if (IsLoadingRemoteVideos)
+        {
+            Console.WriteLine("[LoadRemoteGallery] ⚠️ GUARD: IsLoadingRemoteVideos=true, RETORNANDO SIN HACER NADA");
+            return;
+        }
 
         try
         {
             IsLoadingRemoteVideos = true;
             RemoteVideos.Clear();
 
+            Console.WriteLine("[LoadRemoteGallery] Iniciando ListFilesAsync('sessions/')...");
             System.Diagnostics.Debug.WriteLine("[Remote] Cargando galería remota...");
 
             var result = await _cloudBackendService.ListFilesAsync("sessions/", maxItems: 1000);
+            Console.WriteLine($"[LoadRemoteGallery] ListFilesAsync resultado: Success={result.Success}, FileCount={result.Files?.Count ?? 0}, Error={result.ErrorMessage ?? "ninguno"}");
 
             if (!result.Success)
             {
+                Console.WriteLine($"[LoadRemoteGallery] ❌ ListFilesAsync FALLÓ: {result.ErrorMessage}");
                 System.Diagnostics.Debug.WriteLine($"[Remote] Error: {result.ErrorMessage}");
                 return;
             }
 
             var files = result.Files ?? new List<CloudFileInfo>();
+            Console.WriteLine($"[LoadRemoteGallery] Archivos totales recibidos: {files.Count}");
+            foreach (var f in files.Take(5))
+                Console.WriteLine($"  - {f.Key} ({f.Size} bytes, isFolder={f.IsFolder})");
             _remoteFilesCache = files;
 
             var remoteSessionMetadata = await LoadRemoteSessionMetadataAsync(files);
@@ -761,17 +775,20 @@ public class RemoteLibraryViewModel : ObservableObject
                 .OrderByDescending(f => f.LastModified)
                 .ToList();
 
+            Console.WriteLine($"[LoadRemoteGallery] Videos .mp4 encontrados: {videoFiles.Count}");
             System.Diagnostics.Debug.WriteLine($"[Remote] Encontrados {videoFiles.Count} videos");
 
             var localVideos = await _databaseService.GetAllVideoClipsAsync();
             var localVideosByRemotePath = localVideos
                 .Where(v => !string.IsNullOrEmpty(v.ClipPath))
-                .ToDictionary(v => v.ClipPath!, v => v, StringComparer.OrdinalIgnoreCase);
+                .GroupBy(v => v.ClipPath!, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
             var metadataFiles = files
                 .Where(f => !f.IsFolder && f.Key.EndsWith(".json", StringComparison.OrdinalIgnoreCase)
                     && f.Key.Contains("/metadata/", StringComparison.OrdinalIgnoreCase))
-                .ToDictionary(f => NormalizeCloudKey(f.Key), f => f, StringComparer.OrdinalIgnoreCase);
+                .GroupBy(f => NormalizeCloudKey(f.Key), StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
             var remotePaths = new HashSet<string>(
                 videoFiles.Select(f => f.Key.StartsWith("CrownRFEP/", StringComparison.OrdinalIgnoreCase)
@@ -828,6 +845,11 @@ public class RemoteLibraryViewModel : ObservableObject
             // Reemplazo atómico de la colección (un solo re-render)
             RemoteVideos = new ObservableCollection<RemoteVideoItem>(batchItems);
 
+            // Log detallado de los videos cargados por sesión
+            var videosBySession = batchItems.GroupBy(v => v.SessionId).OrderBy(g => g.Key);
+            foreach (var g in videosBySession)
+                System.Diagnostics.Debug.WriteLine($"[RemoteGallery] S3 Videos: SessionId={g.Key}, Count={g.Count()}, Keys=[{string.Join(", ", g.Select(v => v.Key ?? "?").Take(3))}]");
+
             // Cargar thumbnails en background después del reemplazo
             foreach (var item in thumbnailQueue)
             {
@@ -844,9 +866,13 @@ public class RemoteLibraryViewModel : ObservableObject
             var remoteSessionItems = await BuildRemoteSessionListAsync(remoteSessionMetadata);
 
             RemoteSessions = new ObservableCollection<RemoteSessionListItem>(remoteSessionItems);
+            Console.WriteLine($"[LoadRemoteGallery] RemoteSessions construidas: {remoteSessionItems.Count}, RemoteVideos: {RemoteVideos.Count}");
             System.Diagnostics.Debug.WriteLine($"[RemoteSessions] Built {remoteSessionItems.Count} session items:");
             foreach (var s in remoteSessionItems)
                 System.Diagnostics.Debug.WriteLine($"  Session {s.SessionId}: {s.Title}, Videos={s.VideoCount}, Place={s.Place}");
+
+            // Cargar thumbnails representativos para cada tarjeta de sesión
+            _ = LoadSessionThumbnailsAsync(remoteSessionItems);
 
             if (SelectedRemoteSessionId > 0 && !RemoteSessions.Any(s => s.SessionId == SelectedRemoteSessionId))
             {
@@ -871,10 +897,12 @@ public class RemoteLibraryViewModel : ObservableObject
         }
         catch (Exception ex)
         {
+            Console.WriteLine($"[LoadRemoteGallery] ❌ EXCEPCIÓN: {ex.Message}\n{ex.StackTrace}");
             System.Diagnostics.Debug.WriteLine($"[Remote] Error cargando galería: {ex.Message}");
         }
         finally
         {
+            Console.WriteLine($"[LoadRemoteGallery] FINALIZADO. RemoteSessions={RemoteSessions.Count}, RemoteVideos={RemoteVideos.Count}");
             IsLoadingRemoteVideos = false;
         }
     }
@@ -893,8 +921,10 @@ public class RemoteLibraryViewModel : ObservableObject
         try
         {
             var backendResult = await _cloudBackendService.GetRemoteSessionsAsync();
+            Console.WriteLine($"[BuildRemoteSessions] GetRemoteSessionsAsync: Success={backendResult.Success}, Count={backendResult.Sessions?.Count ?? 0}, Error={backendResult.ErrorMessage ?? "ninguno"}");
             if (backendResult.Success && backendResult.Sessions != null)
             {
+                Console.WriteLine($"[BuildRemoteSessions] Backend DB: {backendResult.Sessions.Count} sesiones");
                 System.Diagnostics.Debug.WriteLine($"[RemoteSessions] Backend DB: {backendResult.Sessions.Count} sesiones");
 
                 foreach (var dto in backendResult.Sessions)
@@ -931,7 +961,8 @@ public class RemoteLibraryViewModel : ObservableObject
         }
 
         // ── 2. Enriquecer/añadir desde S3 metadata + video grouping (fallback) ────
-        var localSessions = await _databaseService.GetAllSessionsAsync();
+        // Incluir sesiones IsRemoteOnly para que las importadas para la org también aporten metadatos
+        var localSessions = await _databaseService.GetAllSessionsIncludingRemoteOnlyAsync();
         var localSessionsById = localSessions.ToDictionary(s => s.Id, s => s);
 
         var s3Groups = RemoteVideos
@@ -1157,6 +1188,47 @@ public class RemoteLibraryViewModel : ObservableObject
         };
     }
 
+    /// <summary>
+    /// Para cada sesión remota, busca el primer video con thumbnail disponible y firma la URL.
+    /// Primero intenta usar thumbnails locales ya conocidos; si no, firma la URL de S3.
+    /// </summary>
+    private async Task LoadSessionThumbnailsAsync(List<RemoteSessionListItem> sessions)
+    {
+        foreach (var session in sessions)
+        {
+            try
+            {
+                // Primero buscar si algún RemoteVideoItem de esta sesión ya tiene thumbnail local o URL
+                var videoWithThumb = RemoteVideos
+                    .Where(v => v.SessionId == session.SessionId)
+                    .FirstOrDefault(v => !string.IsNullOrWhiteSpace(v.EffectiveThumbnailSource));
+
+                if (videoWithThumb != null)
+                {
+                    MainThread.BeginInvokeOnMainThread(() =>
+                        session.ThumbnailSource = videoWithThumb.EffectiveThumbnailSource);
+                    continue;
+                }
+
+                // Si no hay thumbnail cargado aún, firmar la URL del primer video de la sesión
+                var firstVideo = RemoteVideos.FirstOrDefault(v => v.SessionId == session.SessionId && v.VideoId > 0);
+                if (firstVideo == null) continue;
+
+                var thumbPath = $"sessions/{session.SessionId}/thumbnails/{firstVideo.VideoId}.jpg";
+                var signResult = await _cloudBackendService.GetDownloadUrlAsync(thumbPath, expirationMinutes: 60);
+                if (signResult.Success && !string.IsNullOrWhiteSpace(signResult.Url))
+                {
+                    MainThread.BeginInvokeOnMainThread(() =>
+                        session.ThumbnailSource = signResult.Url);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Remote] Error thumbnail sesión {session.SessionId}: {ex.Message}");
+            }
+        }
+    }
+
     private async Task LoadRemoteThumbnailAsync(RemoteVideoItem remoteItem)
     {
         try
@@ -1236,7 +1308,8 @@ public class RemoteLibraryViewModel : ObservableObject
     {
         var metadataFiles = files
             .Where(f => !f.IsFolder && f.Key.EndsWith(".json", StringComparison.OrdinalIgnoreCase) && f.Key.Contains("/metadata/", StringComparison.OrdinalIgnoreCase))
-            .ToDictionary(f => NormalizeCloudKey(f.Key), f => f);
+            .GroupBy(f => NormalizeCloudKey(f.Key), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
         if (metadataFiles.Count == 0)
         {
@@ -1603,7 +1676,8 @@ public class RemoteLibraryViewModel : ObservableObject
         if (matched != null)
             return matched;
 
-        var allSessions = await _databaseService.GetAllSessionsAsync();
+        // Incluir sesiones IsRemoteOnly para encontrar coincidencias de sesiones de la organización
+        var allSessions = await _databaseService.GetAllSessionsIncludingRemoteOnlyAsync();
         return allSessions.FirstOrDefault(s => IsMatchingSession(s, sessionName, sessionDate, sessionPlace));
     }
 
@@ -1987,26 +2061,15 @@ public class RemoteLibraryViewModel : ObservableObject
 
         try
         {
-            var prefix = $"sessions/{sessionId}/";
-            var result = await _cloudBackendService.ListFilesAsync(prefix, maxItems: 5000);
-            if (!result.Success || result.Files == null)
+            // 1. Eliminar en cascada en el backend (archivos S3 + registro BD)
+            var cascadeResult = await _cloudBackendService.DeleteRemoteSessionCascadeAsync(sessionId);
+            if (!cascadeResult.Success)
             {
-                await Shell.Current.DisplayAlert("Error", "No se pudieron listar los archivos de la sesión.", "OK");
+                await Shell.Current.DisplayAlert("Error", cascadeResult.ErrorMessage ?? "No se pudo eliminar la sesión.", "OK");
                 return;
             }
 
-            foreach (var file in result.Files.Where(f => !f.IsFolder))
-            {
-                try
-                {
-                    await _cloudBackendService.DeleteFileAsync(file.Key);
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[Remote] Error eliminando archivo {file.Key}: {ex.Message}");
-                }
-            }
-
+            // 2. Limpiar datos locales vinculados
             var removedVideos = RemoteVideos.Where(v => v.SessionId == sessionId).ToList();
             var removedSession = RemoteSessions.FirstOrDefault(s => s.SessionId == sessionId);
 
@@ -2022,6 +2085,7 @@ public class RemoteLibraryViewModel : ObservableObject
 
             await _removeLocalSessionIfEmptyAsync(sessionId);
 
+            // 3. Actualizar UI
             await MainThread.InvokeOnMainThreadAsync(() =>
             {
                 foreach (var video in removedVideos)
@@ -2039,6 +2103,8 @@ public class RemoteLibraryViewModel : ObservableObject
                 }
             });
 
+            // 4. Limpiar caché de archivos remotos
+            var prefix = $"sessions/{sessionId}/";
             if (_remoteFilesCache != null)
             {
                 _remoteFilesCache = _remoteFilesCache
@@ -2046,7 +2112,8 @@ public class RemoteLibraryViewModel : ObservableObject
                     .ToList();
             }
 
-            await Shell.Current.DisplayAlert("Sesión eliminada", "La sesión se eliminó de la biblioteca de organización.", "OK");
+            var filesMsg = cascadeResult.DeletedFiles > 0 ? $" ({cascadeResult.DeletedFiles} archivos)" : "";
+            await Shell.Current.DisplayAlert("Sesión eliminada", $"La sesión y todos sus datos se eliminaron de la organización{filesMsg}.", "OK");
         }
         catch (Exception ex)
         {
@@ -2376,6 +2443,8 @@ public class RemoteLibraryViewModel : ObservableObject
     {
         if (sessionItem == null) return;
 
+        System.Diagnostics.Debug.WriteLine($"[RemoteGallery] SelectRemoteSession: SessionId={sessionItem.SessionId}, Title='{sessionItem.Title}'");
+
         ClearRemoteVideoSelection();
         _clearLocalSelection();
 
@@ -2394,12 +2463,44 @@ public class RemoteLibraryViewModel : ObservableObject
         IsRemoteTrashSelected = false;
         SelectedRemoteSessionId = sessionItem.SessionId;
 
-        // Si no hay videos cargados aún, cargar la galería completa
-        // (el setter de SelectedRemoteSessionId ya llamó RefreshRemoteGalleryDisplayItems)
-        if (RemoteVideos.Count == 0)
+        System.Diagnostics.Debug.WriteLine($"[RemoteGallery] SelectRemoteSession: RemoteVideos.Count={RemoteVideos.Count}, IsLoadingRemoteVideos={IsLoadingRemoteVideos}");
+        // Listar los SessionId de todos los RemoteVideos para diagnóstico
+        var sessionIds = RemoteVideos.Select(v => v.SessionId).Distinct().OrderBy(x => x).ToList();
+        System.Diagnostics.Debug.WriteLine($"[RemoteGallery] SelectRemoteSession: SessionIds en RemoteVideos: [{string.Join(", ", sessionIds)}]");
+
+        // Si no hay videos cargados aún, o la sesión seleccionada no tiene
+        // videos en el caché actual, recargar la galería completa desde S3.
+        // Esto resuelve el caso en que se importó una sesión después de la precarga inicial.
+        var hasVideosForSession = RemoteVideos.Any(v => v.SessionId == sessionItem.SessionId);
+        System.Diagnostics.Debug.WriteLine($"[RemoteGallery] SelectRemoteSession: hasVideosForSession={hasVideosForSession}");
+
+        if (RemoteVideos.Count == 0 || !hasVideosForSession)
         {
-            await LoadRemoteGalleryAsync();
+            // Esperar a que termine cualquier carga concurrente
+            var waitAttempts = 0;
+            while (IsLoadingRemoteVideos && waitAttempts < 30)
+            {
+                await Task.Delay(200);
+                waitAttempts++;
+            }
+
+            // Después de esperar, verificar de nuevo si ya se cargaron los videos
+            hasVideosForSession = RemoteVideos.Any(v => v.SessionId == sessionItem.SessionId);
+            System.Diagnostics.Debug.WriteLine($"[RemoteGallery] SelectRemoteSession: afterWait hasVideosForSession={hasVideosForSession}, RemoteVideos.Count={RemoteVideos.Count}");
+            if (!hasVideosForSession)
+            {
+                System.Diagnostics.Debug.WriteLine($"[RemoteGallery] SelectRemoteSession: Forzando LoadRemoteGalleryAsync...");
+                await LoadRemoteGalleryAsync();
+                System.Diagnostics.Debug.WriteLine($"[RemoteGallery] SelectRemoteSession: Tras reload RemoteVideos.Count={RemoteVideos.Count}");
+                var sessionIdsAfter = RemoteVideos.Select(v => v.SessionId).Distinct().OrderBy(x => x).ToList();
+                System.Diagnostics.Debug.WriteLine($"[RemoteGallery] SelectRemoteSession: SessionIds tras reload: [{string.Join(", ", sessionIdsAfter)}]");
+            }
+
+            // Actualizar la galería visible tras la recarga
+            RefreshRemoteGalleryDisplayItems();
         }
+
+        System.Diagnostics.Debug.WriteLine($"[RemoteGallery] SelectRemoteSession: Final RemoteGalleryItems.Count={RemoteGalleryItems.Count}");
     }
 
     private void ClearRemoteSessionSelection()
@@ -2739,17 +2840,30 @@ public class RemoteLibraryViewModel : ObservableObject
         string sessionName,
         IProgress<(int current, int total, string message)>? progress = null)
     {
+        Console.WriteLine($"\n[PASO 7] SyncImportedSessionToOrganizationAsync INICIADO");
+        Console.WriteLine($"  sessionId={sessionId}, sessionName={sessionName}");
+
         if (_syncService == null)
         {
+            Console.WriteLine($"[PASO 7] ❌ _syncService es NULL");
             await Shell.Current.DisplayAlert("Error", "Servicio de sincronización no disponible", "OK");
             return false;
         }
 
+        Console.WriteLine($"[PASO 7] IsAuthenticated={_cloudBackendService.IsAuthenticated}");
         if (!_cloudBackendService.IsAuthenticated)
         {
-            await Shell.Current.DisplayAlert("No autenticado",
-                "Inicia sesión en el servidor para importar a la biblioteca de organización.", "OK");
-            return false;
+            Console.WriteLine($"[PASO 7] No autenticado, intentando refresh...");
+            var refreshed = await _cloudBackendService.RefreshTokenIfNeededAsync();
+            Console.WriteLine($"[PASO 7] Refresh result: refreshed={refreshed}, IsAuthenticated={_cloudBackendService.IsAuthenticated}");
+            if (!refreshed || !_cloudBackendService.IsAuthenticated)
+            {
+                Console.WriteLine($"[PASO 7] ❌ Sigue sin autenticación tras refresh");
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                    Shell.Current.DisplayAlert("No autenticado",
+                        "Inicia sesión en el servidor para importar a la biblioteca de organización.", "OK"));
+                return false;
+            }
         }
 
         try
@@ -2758,29 +2872,89 @@ public class RemoteLibraryViewModel : ObservableObject
             SyncStatusText = $"Subiendo sesión '{sessionName}' a la organización...";
 
             // 1) Subir todos los videos de la sesión a S3
+            Console.WriteLine($"[PASO 7a] Subiendo videos a S3 (SyncSessionAsync Upload)...");
             var syncResult = await _syncService.SyncSessionAsync(sessionId, SyncDirection.Upload, progress);
+            Console.WriteLine($"[PASO 7a] SyncSessionAsync resultado: Success={syncResult.Success}, SuccessCount={syncResult.SuccessCount}, FailedCount={syncResult.FailedCount}, TotalCount={syncResult.TotalCount}");
 
             if (!syncResult.Success)
             {
                 SyncStatusText = $"Errores al subir: {syncResult.FailedCount} de {syncResult.TotalCount}";
-                System.Diagnostics.Debug.WriteLine($"[Remote] Error sincronizando sesión {sessionId} a org: {string.Join(", ", syncResult.Errors)}");
+                Console.WriteLine($"[PASO 7a] ❌ Errores: {string.Join(", ", syncResult.Errors)}");
+
+                if (syncResult.Errors.Count > 0)
+                {
+                    var topErrors = string.Join("\n• ", syncResult.Errors.Take(5));
+                    await MainThread.InvokeOnMainThreadAsync(() =>
+                        Shell.Current.DisplayAlert(
+                            "Errores al subir",
+                            $"Se produjeron errores subiendo videos:\n• {topErrors}",
+                            "OK"));
+                }
             }
             else
             {
                 SyncStatusText = $"Videos subidos: {syncResult.SuccessCount}";
+                Console.WriteLine($"[PASO 7a] ✅ Videos subidos OK: {syncResult.SuccessCount}");
             }
 
             // 2) Sincronizar metadatos de la sesión con el backend DB
+            Console.WriteLine($"[PASO 7b] Sincronizando metadatos (SyncSessionToBackendAsync)...");
             SyncStatusText = "Sincronizando metadatos con la organización...";
             var dbSyncOk = await _syncService.SyncSessionToBackendAsync(sessionId);
+            Console.WriteLine($"[PASO 7b] SyncSessionToBackendAsync resultado: dbSyncOk={dbSyncOk}");
             if (!dbSyncOk)
             {
-                System.Diagnostics.Debug.WriteLine($"[Remote] No se pudieron sincronizar metadatos de sesión {sessionId} al backend");
+                Console.WriteLine($"[PASO 7b] ❌ No se pudieron sincronizar metadatos");
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                    Shell.Current.DisplayAlert(
+                        "Sincronización incompleta",
+                        "No se pudieron sincronizar los metadatos de la sesión con la organización.",
+                        "OK"));
             }
 
             // 3) Refrescar la lista de sesiones remotas y videos
+            Console.WriteLine($"[PASO 7c] Refrescando galería remota (LoadRemoteGalleryAsync)...");
             SyncStatusText = "Actualizando biblioteca de organización...";
+
+            // Esperar a que termine cualquier carga concurrente antes de refrescar
+            var waitAttempts = 0;
+            while (IsLoadingRemoteVideos && waitAttempts < 50)
+            {
+                await Task.Delay(200);
+                waitAttempts++;
+            }
             await LoadRemoteGalleryAsync();
+            Console.WriteLine($"[PASO 7c] LoadRemoteGalleryAsync completado. RemoteSessions.Count={RemoteSessions.Count}");
+
+            // Fallback: si la sesión no apareció en RemoteSessions (p.ej. por carga
+            // concurrente que retornó antes de que los datos estuvieran en el servidor),
+            // añadirla manualmente para que sea visible de inmediato.
+            if (!RemoteSessions.Any(s => s.SessionId == sessionId))
+            {
+                Console.WriteLine($"[PASO 7c] ⚠️ Sesión {sessionId} NO encontrada en RemoteSessions, añadiendo manualmente (fallback)");
+                var localSession = await _databaseService.GetSessionByIdAsync(sessionId);
+                var videoCount = RemoteVideos.Count(v => v.SessionId == sessionId);
+                if (videoCount == 0)
+                    videoCount = (await _databaseService.GetVideoClipsBySessionAsync(sessionId)).Count;
+
+                var newItem = new RemoteSessionListItem(
+                    sessionId,
+                    sessionName,
+                    localSession?.Lugar,
+                    localSession != null
+                        ? DateTimeOffset.FromUnixTimeSeconds(localSession.Fecha).LocalDateTime
+                        : DateTime.Now,
+                    localSession?.Coach,
+                    videoCount,
+                    DateTime.UtcNow);
+
+                await MainThread.InvokeOnMainThreadAsync(() => RemoteSessions.Insert(0, newItem));
+                Console.WriteLine($"[PASO 7c] ✅ Sesión {sessionId} añadida manualmente. RemoteSessions.Count={RemoteSessions.Count}");
+            }
+            else
+            {
+                Console.WriteLine($"[PASO 7c] ✅ Sesión {sessionId} encontrada en RemoteSessions tras LoadRemoteGalleryAsync");
+            }
 
             SyncStatusText = syncResult.Success
                 ? $"Sesión '{sessionName}' importada a la organización"
@@ -2792,7 +2966,8 @@ public class RemoteLibraryViewModel : ObservableObject
         catch (Exception ex)
         {
             SyncStatusText = $"Error: {ex.Message}";
-            System.Diagnostics.Debug.WriteLine($"[Remote] Error en SyncImportedSessionToOrganizationAsync: {ex.Message}");
+            Console.WriteLine($"[PASO 7] ❌ EXCEPCIÓN en SyncImportedSessionToOrganizationAsync: {ex.Message}");
+            Console.WriteLine($"[PASO 7] StackTrace: {ex.StackTrace}");
             return false;
         }
         finally

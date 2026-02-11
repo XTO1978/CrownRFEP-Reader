@@ -159,7 +159,25 @@ public class CloudBackendService : ICloudBackendService
             {
                 _httpClient.DefaultRequestHeaders.Authorization = 
                     new AuthenticationHeaderValue("Bearer", _accessToken);
-                System.Diagnostics.Debug.WriteLine($"[CloudBackend] Sesión restaurada para {CurrentUserName}");
+
+                // Si el rol está vacío, extraerlo del JWT directamente
+                if (string.IsNullOrWhiteSpace(CurrentUserRole))
+                {
+                    var jwtRole = ExtractClaimFromJwt(_accessToken, "role");
+                    if (!string.IsNullOrEmpty(jwtRole))
+                    {
+                        CurrentUserRole = jwtRole;
+                        SaveSession();
+                        System.Diagnostics.Debug.WriteLine($"[CloudBackend] Rol recuperado del JWT en restore: '{jwtRole}'");
+                    }
+                    else
+                    {
+                        // Último recurso: pedir al servidor
+                        _ = RefreshUserProfileAsync();
+                    }
+                }
+
+                System.Diagnostics.Debug.WriteLine($"[CloudBackend] Sesión restaurada para {CurrentUserName}, rol='{CurrentUserRole}'");
             }
         }
         catch (Exception ex)
@@ -341,6 +359,23 @@ public class CloudBackendService : ICloudBackendService
             TeamName = loginResponse.User?.TeamName ?? "Equipo";
             CurrentUserRole = loginResponse.User?.Role ?? string.Empty;
 
+            // Si el rol vino vacío en la respuesta JSON, extraerlo del payload JWT
+            if (string.IsNullOrWhiteSpace(CurrentUserRole) && !string.IsNullOrEmpty(_accessToken))
+            {
+                var jwtRole = ExtractClaimFromJwt(_accessToken, "role");
+                if (!string.IsNullOrEmpty(jwtRole))
+                {
+                    CurrentUserRole = jwtRole;
+                    System.Diagnostics.Debug.WriteLine($"[CloudBackend] Rol extraído del JWT: '{jwtRole}'");
+                }
+            }
+
+            // Si aún vacío, intentar con /auth/me como último recurso
+            if (string.IsNullOrWhiteSpace(CurrentUserRole))
+            {
+                await RefreshUserProfileAsync();
+            }
+
             _httpClient.DefaultRequestHeaders.Authorization = 
                 new AuthenticationHeaderValue("Bearer", _accessToken);
 
@@ -427,8 +462,20 @@ public class CloudBackendService : ICloudBackendService
             }
 
             _accessToken = refreshResponse.AccessToken;
-            _refreshToken = refreshResponse.RefreshToken;
+            if (!string.IsNullOrEmpty(refreshResponse.RefreshToken))
+                _refreshToken = refreshResponse.RefreshToken;
             _tokenExpiresAt = DateTime.UtcNow.AddSeconds(refreshResponse.ExpiresIn);
+
+            // Actualizar datos de usuario si el refresh los incluye
+            if (refreshResponse.User != null)
+            {
+                if (!string.IsNullOrEmpty(refreshResponse.User.Role))
+                    CurrentUserRole = refreshResponse.User.Role;
+                if (!string.IsNullOrEmpty(refreshResponse.User.Name))
+                    CurrentUserName = refreshResponse.User.Name;
+                if (!string.IsNullOrEmpty(refreshResponse.User.TeamName))
+                    TeamName = refreshResponse.User.TeamName;
+            }
 
             _httpClient.DefaultRequestHeaders.Authorization = 
                 new AuthenticationHeaderValue("Bearer", _accessToken);
@@ -1071,6 +1118,46 @@ public class CloudBackendService : ICloudBackendService
         }
     }
 
+    public async Task<CascadeDeleteResult> DeleteRemoteSessionCascadeAsync(int remoteSessionId)
+    {
+        if (!await EnsureAuthenticatedAsync())
+        {
+            return new CascadeDeleteResult(false, "No autenticado");
+        }
+
+        try
+        {
+            var response = await ExecuteWithRetryAsync(
+                () => _httpClient.DeleteAsync($"{_baseUrl}/sessions/{remoteSessionId}/cascade"));
+
+            var body = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorMsg = TryParseError(body) ?? $"Error {response.StatusCode}";
+                return new CascadeDeleteResult(false, errorMsg);
+            }
+
+            // Intentar leer deletedFiles del JSON de respuesta
+            int deletedFiles = 0;
+            try
+            {
+                using var doc = JsonDocument.Parse(body);
+                if (doc.RootElement.TryGetProperty("deletedFiles", out var df))
+                    deletedFiles = df.GetInt32();
+            }
+            catch { }
+
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] Cascade delete sesión {remoteSessionId}: {deletedFiles} archivos S3 eliminados");
+            return new CascadeDeleteResult(true, DeletedFiles: deletedFiles);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] Error cascade delete sesión {remoteSessionId}: {ex.Message}");
+            return new CascadeDeleteResult(false, ex.Message);
+        }
+    }
+
     private async Task<bool> EnsureAuthenticatedAsync()
     {
         if (!IsAuthenticated)
@@ -1098,11 +1185,89 @@ public class CloudBackendService : ICloudBackendService
         return null;
     }
 
+    /// <summary>
+    /// Extrae un claim del payload de un JWT sin verificar la firma.
+    /// El JWT tiene formato: header.payload.signature, cada parte en Base64Url.
+    /// </summary>
+    private static string? ExtractClaimFromJwt(string jwt, string claimName)
+    {
+        try
+        {
+            var parts = jwt.Split('.');
+            if (parts.Length != 3) return null;
+
+            // Decodificar payload (parte 2, index 1)
+            var payload = parts[1];
+            // Base64Url → Base64 estándar
+            payload = payload.Replace('-', '+').Replace('_', '/');
+            switch (payload.Length % 4)
+            {
+                case 2: payload += "=="; break;
+                case 3: payload += "="; break;
+            }
+
+            var jsonBytes = Convert.FromBase64String(payload);
+            var jsonString = Encoding.UTF8.GetString(jsonBytes);
+            
+            using var doc = JsonDocument.Parse(jsonString);
+            if (doc.RootElement.TryGetProperty(claimName, out var value))
+            {
+                return value.GetString();
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] Error extrayendo claim '{claimName}' del JWT: {ex.Message}");
+        }
+        return null;
+    }
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
+
+    /// <summary>Recupera el perfil de usuario desde /auth/me y actualiza CurrentUserRole.</summary>
+    public async Task RefreshUserProfileAsync()
+    {
+        try
+        {
+            // Asegurar que el access token está vigente
+            var ok = await RefreshTokenIfNeededAsync();
+            if (!ok || string.IsNullOrEmpty(_accessToken)) return;
+
+            var response = await _httpClient.GetAsync($"{_baseUrl}/auth/me");
+            if (!response.IsSuccessStatusCode)
+            {
+                if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                {
+                    ClearSession();
+                }
+                return;
+            }
+
+            var body = await response.Content.ReadAsStringAsync();
+            var me = JsonSerializer.Deserialize<UserDto>(body, JsonOptions);
+            if (me == null) return;
+
+            if (!string.IsNullOrEmpty(me.Role))
+            {
+                CurrentUserRole = me.Role;
+                System.Diagnostics.Debug.WriteLine($"[CloudBackend] Rol recuperado desde /auth/me: '{CurrentUserRole}'");
+            }
+            if (!string.IsNullOrEmpty(me.Name))
+                CurrentUserName = me.Name;
+            if (!string.IsNullOrEmpty(me.TeamName))
+                TeamName = me.TeamName;
+
+            SaveSession();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] Error en RefreshUserProfileAsync: {ex.Message}");
+        }
+    }
 
     // DTOs para deserialización
     private class LoginResponseDto

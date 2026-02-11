@@ -1205,6 +1205,7 @@ public class ImportViewModel : BaseViewModel
             ImportProgressValue = 100;
 
             // Notificar al servicio que la importación terminó
+            Console.WriteLine($"[PASO 3] ImportViewModel: CompleteImport con session.Id={session.Id}");
             _importProgressService.CompleteImport(session.Id);
 
             // Mostrar resumen

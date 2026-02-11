@@ -734,17 +734,24 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
         try
         {
             var isForOrg = _sessionsMenuIsForOrganization;
+            Console.WriteLine($"\n══════════════════════════════════════════════════════");
+            Console.WriteLine($"[PASO 1] OnSessionsMenuNewFromVideosTapped: isForOrg={isForOrg}");
+            Console.WriteLine($"══════════════════════════════════════════════════════");
             HideSessionsContextMenu();
 
             if (BindingContext is DashboardViewModel vm)
             {
                 if (isForOrg)
                 {
+                    Console.WriteLine($"[PASO 1] → Ejecutando CreateSessionFromVideosForOrganizationCommand");
                     if (vm.CreateSessionFromVideosForOrganizationCommand?.CanExecute(null) ?? false)
                         vm.CreateSessionFromVideosForOrganizationCommand.Execute(null);
+                    else
+                        Console.WriteLine($"[PASO 1] ⚠️ Command CanExecute=false!");
                 }
                 else
                 {
+                    Console.WriteLine($"[PASO 1] → Ejecutando CreateSessionFromVideosCommand (personal)");
                     if (vm.CreateSessionFromVideosCommand?.CanExecute(null) ?? false)
                         vm.CreateSessionFromVideosCommand.Execute(null);
                 }
@@ -1479,8 +1486,17 @@ public partial class DashboardPage : ContentPage, IShellNavigatingCleanup
 
             if (!vm.Remote.CanDeleteRemoteSessions)
             {
-                await DisplayAlert("Permisos", "No tienes permisos para eliminar sesiones de la organización.", "OK");
-                return;
+                var backend = IPlatformApplication.Current?.Services?.GetService<ICloudBackendService>();
+                if (backend != null && string.IsNullOrWhiteSpace(backend.CurrentUserRole))
+                {
+                    await backend.RefreshUserProfileAsync();
+                }
+
+                if (!vm.Remote.CanDeleteRemoteSessions)
+                {
+                    await DisplayAlert("Permisos", "No tienes permisos para eliminar sesiones de la organización.", "OK");
+                    return;
+                }
             }
 
             var confirm = await DisplayAlert(

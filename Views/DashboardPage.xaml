@@ -1179,6 +1179,214 @@
             DragStarting="OnDragStarting"
             RemoteVideoContextMenu="OnRemoteVideoContextMenu" />
 
+        <!--  Columna 4: Galería de videos remotos (Biblioteca de Organización)  -->
+        <Grid
+            Grid.Row="1"
+            Grid.Column="4"
+            Padding="20"
+            BackgroundColor="#FF1E1E1E"
+            IsVisible="{Binding Remote.ShowRemoteGallery}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!--  Header  -->
+            <Label
+                Grid.Row="0"
+                FontSize="{StaticResource FontSizeTitle}"
+                LineBreakMode="TailTruncation"
+                Text="{Binding SelectedSessionTitle}"
+                TextColor="White"
+                VerticalOptions="Center" />
+
+            <!--  Multi-select toolbar  -->
+            <HorizontalStackLayout
+                Grid.Row="1"
+                Spacing="8"
+                Margin="0,8,0,0"
+                IsVisible="{Binding Remote.IsRemoteMultiSelectMode}">
+                <Border
+                    Padding="8,4"
+                    BackgroundColor="#FF333333"
+                    StrokeThickness="0"
+                    StrokeShape="RoundRectangle 4">
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding Remote.ToggleRemoteSelectAllCommand}" />
+                    </Border.GestureRecognizers>
+                    <HorizontalStackLayout Spacing="4">
+                        <controls:SymbolIcon HeightRequest="14" WidthRequest="14" SymbolName="checkmark.circle" TintColor="White" VerticalOptions="Center" />
+                        <Label Text="Seleccionar todo" FontSize="12" TextColor="White" VerticalOptions="Center" />
+                    </HorizontalStackLayout>
+                </Border>
+                <Label Text="{Binding Remote.SelectedRemoteVideoCount, StringFormat='{0} seleccionados'}" FontSize="12" TextColor="#AAAAAA" VerticalOptions="Center" />
+            </HorizontalStackLayout>
+
+            <!--  Galería de videos remotos  -->
+            <CollectionView
+                x:Name="OrgRemoteVideoGallery"
+                Grid.Row="2"
+                ItemsSource="{Binding Remote.RemoteGalleryItems}"
+                SelectionMode="None"
+                Margin="0,12,0,0"
+                ItemSizingStrategy="MeasureFirstItem">
+                <CollectionView.ItemsLayout>
+                    <GridItemsLayout
+                        HorizontalItemSpacing="{StaticResource SpacingLarge}"
+                        Orientation="Vertical"
+                        Span="{Binding Videos.VideoGalleryColumnSpan}"
+                        VerticalItemSpacing="50" />
+                </CollectionView.ItemsLayout>
+
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="models:RemoteVideoItem">
+                        <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="4">
+                            <!--  Fila 0: Thumbnail con Border  -->
+                            <Border
+                                Grid.Row="0"
+                                BackgroundColor="#FF2A2A2A"
+                                Stroke="Transparent"
+                                StrokeShape="RoundRectangle 10"
+                                StrokeThickness="0">
+                                <Border.Triggers>
+                                    <DataTrigger TargetType="Border" Binding="{Binding IsSelected}" Value="True">
+                                        <Setter Property="Stroke" Value="#FF0066" />
+                                        <Setter Property="StrokeThickness" Value="3" />
+                                    </DataTrigger>
+                                </Border.Triggers>
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer
+                                        Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.Remote.ToggleRemoteVideoSelectionCommand}"
+                                        CommandParameter="{Binding .}"
+                                        NumberOfTapsRequired="1" />
+                                    <TapGestureRecognizer
+                                        Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.Remote.PlayRemoteVideoCommand}"
+                                        CommandParameter="{Binding .}"
+                                        NumberOfTapsRequired="2" />
+                                    <TapGestureRecognizer
+                                        Buttons="Secondary"
+                                        Tapped="OnRemoteVideoContextMenu"
+                                        NumberOfTapsRequired="1" />
+                                </Border.GestureRecognizers>
+                                <controls:AspectRatioContainer AspectRatio="1.777">
+                                    <Grid>
+                                        <Border BackgroundColor="#FF333333" StrokeThickness="0">
+                                            <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="8">
+                                                <controls:SymbolIcon
+                                                    HeightRequest="48" WidthRequest="48"
+                                                    SymbolName="{Binding StatusIcon}"
+                                                    TintColor="{Binding StatusColor}"
+                                                    HorizontalOptions="Center" />
+                                                <Label
+                                                    FontSize="{StaticResource FontSizeCaption}"
+                                                    Text="{Binding SizeFormatted}"
+                                                    TextColor="#888888"
+                                                    HorizontalOptions="Center" />
+                                            </VerticalStackLayout>
+                                        </Border>
+
+                                        <Image
+                                            Aspect="AspectFill"
+                                            Source="{Binding EffectiveThumbnailSource}"
+                                            IsVisible="{Binding EffectiveThumbnailSource, Converter={StaticResource NotNullOrEmptyBoolConverter}}" />
+
+                                        <Border
+                                            BackgroundColor="#80000000"
+                                            IsVisible="{Binding IsDownloading}">
+                                            <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="8">
+                                                <ActivityIndicator Color="#FF0066" IsRunning="{Binding IsDownloading}" HeightRequest="32" WidthRequest="32" />
+                                                <ProgressBar Progress="{Binding DownloadProgress}" ProgressColor="#FF0066" WidthRequest="100" />
+                                            </VerticalStackLayout>
+                                        </Border>
+
+                                        <Border
+                                            Margin="8"
+                                            BackgroundColor="{Binding StatusColor}"
+                                            HorizontalOptions="End"
+                                            Padding="8,3"
+                                            StrokeShape="RoundRectangle 12"
+                                            StrokeThickness="0"
+                                            VerticalOptions="Start">
+                                            <HorizontalStackLayout Spacing="4">
+                                                <controls:SymbolIcon HeightRequest="12" WidthRequest="12" SymbolName="{Binding StatusIcon}" TintColor="White" />
+                                                <Label FontSize="10" Text="{Binding StatusText}" TextColor="White" VerticalOptions="Center" />
+                                            </HorizontalStackLayout>
+                                        </Border>
+
+                                        <Border
+                                            Margin="8"
+                                            HeightRequest="28" WidthRequest="28"
+                                            HorizontalOptions="Start" VerticalOptions="Start"
+                                            StrokeShape="RoundRectangle 14"
+                                            StrokeThickness="2" Stroke="White"
+                                            BackgroundColor="#80000000"
+                                            IsVisible="{Binding Source={x:Reference ThisPage}, Path=BindingContext.Remote.IsRemoteMultiSelectMode}">
+                                            <Border.Triggers>
+                                                <DataTrigger TargetType="Border" Binding="{Binding IsSelected}" Value="True">
+                                                    <Setter Property="BackgroundColor" Value="#FF0066" />
+                                                    <Setter Property="Stroke" Value="#FF0066" />
+                                                </DataTrigger>
+                                            </Border.Triggers>
+                                            <controls:SymbolIcon
+                                                HeightRequest="16" WidthRequest="16"
+                                                SymbolName="checkmark" TintColor="White"
+                                                HorizontalOptions="Center" VerticalOptions="Center"
+                                                IsVisible="{Binding IsSelected}" />
+                                        </Border>
+
+                                        <Border
+                                            Margin="8"
+                                            HeightRequest="28" WidthRequest="28"
+                                            HorizontalOptions="End" VerticalOptions="End"
+                                            BackgroundColor="#66000000"
+                                            StrokeThickness="0" StrokeShape="RoundRectangle 14">
+                                            <Border.GestureRecognizers>
+                                                <TapGestureRecognizer Tapped="OnRemoteVideoContextMenu" />
+                                            </Border.GestureRecognizers>
+                                            <controls:SymbolIcon
+                                                HeightRequest="14" WidthRequest="14"
+                                                SymbolName="ellipsis.circle" TintColor="White"
+                                                HorizontalOptions="Center" VerticalOptions="Center" />
+                                        </Border>
+                                    </Grid>
+                                </controls:AspectRatioContainer>
+                            </Border>
+
+                            <Label Grid.Row="1" FontSize="{StaticResource FontSizeSubtitle}" FontAttributes="Bold"
+                                   HorizontalTextAlignment="Center" LineBreakMode="TailTruncation"
+                                   Text="{Binding FileName}" TextColor="White" />
+                            <Label Grid.Row="2" FontSize="{StaticResource FontSizeBody}"
+                                   HorizontalTextAlignment="Center" LineBreakMode="TailTruncation"
+                                   Text="{Binding SessionName}" TextColor="#AAAAAA" />
+                            <Label Grid.Row="3" FontSize="{StaticResource FontSizeSmall}"
+                                   HorizontalTextAlignment="Center"
+                                   Text="{Binding LastModified, StringFormat='{0:dd/MM/yyyy HH:mm}'}" TextColor="#888888" />
+                            <HorizontalStackLayout Grid.Row="4" HorizontalOptions="Center" Spacing="4" IsVisible="{Binding HasTagsSummary}">
+                                <controls:SymbolIcon HeightRequest="{StaticResource IconSizeSmall}" SymbolName="tag.fill" TintColor="White" VerticalOptions="Center" WidthRequest="{StaticResource IconSizeSmall}" />
+                                <Label FontSize="{StaticResource FontSizeSmall}" LineBreakMode="TailTruncation" Text="{Binding TagsSummary}" TextColor="White" VerticalOptions="Center" />
+                            </HorizontalStackLayout>
+                        </Grid>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+
+                <CollectionView.EmptyView>
+                    <VerticalStackLayout Padding="40" HorizontalOptions="Center" VerticalOptions="Center">
+                        <controls:SymbolIcon HeightRequest="64" WidthRequest="64" SymbolName="video" TintColor="Gray" HorizontalOptions="Center" Margin="0,0,0,16" />
+                        <Label FontSize="{StaticResource FontSizeTitle}" HorizontalOptions="Center" Text="Selecciona una sesión" TextColor="Gray" />
+                        <Label FontSize="{StaticResource FontSizeBody}" HorizontalOptions="Center" Text="Los videos de la sesión aparecerán aquí" TextColor="#666666" Margin="0,8,0,0" />
+                    </VerticalStackLayout>
+                </CollectionView.EmptyView>
+
+                <CollectionView.Header>
+                    <ActivityIndicator HeightRequest="32" WidthRequest="32"
+                                       IsRunning="{Binding Remote.IsLoadingRemoteVideos}"
+                                       IsVisible="{Binding Remote.IsLoadingRemoteVideos}"
+                                       Color="#FF0066" HorizontalOptions="Center" Margin="0,20,0,0" />
+                </CollectionView.Header>
+            </CollectionView>
+        </Grid>
+
         <!--  Columna 4 (quinta): estadísticas de la sesión seleccionada  -->
         <ScrollView
             Grid.Row="1"
@@ -1186,7 +1394,10 @@
             Padding="20"
             BackgroundColor="#FF1E1E1E">
             <ScrollView.IsVisible>
-                <Binding Path="IsVideoLessonsSelected" Converter="{toolkit:InvertedBoolConverter}" />
+                <MultiBinding Converter="{StaticResource AllTrueConverter}">
+                    <Binding Path="IsVideoLessonsSelected" Converter="{toolkit:InvertedBoolConverter}" />
+                    <Binding Path="Remote.ShowRemoteGallery" Converter="{toolkit:InvertedBoolConverter}" />
+                </MultiBinding>
             </ScrollView.IsVisible>
             <VerticalStackLayout Spacing="12">
 

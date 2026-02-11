@@ -570,6 +570,14 @@ public class DashboardViewModel : BaseViewModel
             RightSplitterWidth = new GridLength(0);
             RightPanelWidth = new GridLength(0);
         }
+        else if (Remote.ShowRemoteGallery)
+        {
+            // Biblioteca de organización: columnas central y derecha con misma anchura.
+            // Central muestra tarjetas de sesión, derecha muestra video items.
+            MainPanelWidth = new GridLength(1, GridUnitType.Star);
+            RightSplitterWidth = new GridLength(8);
+            RightPanelWidth = new GridLength(1, GridUnitType.Star);
+        }
         else if (IsDiaryViewSelected)
         {
             // En Diario, el modo aislado no aplica.
@@ -1591,7 +1599,7 @@ public class DashboardViewModel : BaseViewModel
             () => SelectedSession,
             session => SelectedSession = session,
             Videos.ClearLocalSelectionForRemote,
-            () => Videos.NotifySelectionChanged(),
+            () => { Videos.NotifySelectionChanged(); UpdateRightPanelLayout(); },
             () => { OnPropertyChanged(nameof(SelectedSessionTitle)); OnPropertyChanged(nameof(CanShowRecordButton)); },
             () => Videos.LoadAllVideosAsync(),
             session => Videos.LoadSelectedSessionVideosAsync(session),
@@ -1842,25 +1850,31 @@ public class DashboardViewModel : BaseViewModel
     /// </summary>
     private async void OnImportCompleted(object? sender, ImportTask task)
     {
-        System.Diagnostics.Debug.WriteLine($"[DashboardViewModel] OnImportCompleted llamado. HasError={task.HasError}, SessionId={task.CreatedSessionId}");
+        Console.WriteLine($"\n══════════════════════════════════════════════════════");
+        Console.WriteLine($"[PASO 4] OnImportCompleted LLAMADO");
+        Console.WriteLine($"  HasError={task.HasError}, SessionId={task.CreatedSessionId}");
+        Console.WriteLine($"  _pendingOrgSyncAfterImport={_pendingOrgSyncAfterImport}");
+        Console.WriteLine($"══════════════════════════════════════════════════════");
         
         // Capturar y resetear el flag de sincronización a org antes de cualquier await
         var shouldSyncToOrg = _pendingOrgSyncAfterImport;
         _pendingOrgSyncAfterImport = false;
 
+        Console.WriteLine($"[PASO 4] shouldSyncToOrg={shouldSyncToOrg}, SessionId={task.CreatedSessionId}, HasError={task.HasError}");
+
         if (task.HasError)
         {
             IsBackgroundImporting = false;
-            System.Diagnostics.Debug.WriteLine($"[DashboardViewModel] Importación fallida: {task.ErrorMessage}");
+            Console.WriteLine($"[PASO 4] ❌ Importación fallida: {task.ErrorMessage}");
             return;
         }
 
-        System.Diagnostics.Debug.WriteLine($"[DashboardViewModel] Importación completada: {task.Name}, SessionId={task.CreatedSessionId}");
+        Console.WriteLine($"[PASO 4] Importación completada: {task.Name}, SessionId={task.CreatedSessionId}");
         
         try
         {
             // Forzar recarga de sesiones directamente para evitar conflictos con IsBusy
-            System.Diagnostics.Debug.WriteLine($"[DashboardViewModel] Recargando sesiones... IsBusy={IsBusy}");
+            Console.WriteLine($"[PASO 4] Recargando sesiones... IsBusy={IsBusy}");
             
             var stats = await _statisticsService.GetDashboardStatsAsync();
             
@@ -1884,7 +1898,7 @@ public class DashboardViewModel : BaseViewModel
 
                 SyncVisibleSessionRows();
 
-                System.Diagnostics.Debug.WriteLine($"[DashboardViewModel] Sesiones recargadas: {RecentSessions.Count} total, filas={SessionRows.Count}");
+                Console.WriteLine($"[PASO 4] Sesiones recargadas: {RecentSessions.Count} total, filas={SessionRows.Count}");
             });
             
             // Ahora ocultamos el indicador de importación
@@ -1895,25 +1909,25 @@ public class DashboardViewModel : BaseViewModel
             {
                 var newSession = await _databaseService.GetSessionByIdAsync(task.CreatedSessionId.Value);
 
+                // Siempre seleccionar la nueva sesión (igual que en la Biblioteca Personal)
+                if (newSession != null)
+                {
+                    Console.WriteLine($"[PASO 4] Seleccionando nueva sesión: {newSession.DisplayName}");
+                    SelectedSession = newSession;
+                }
+
                 // Si la importación fue iniciada desde la Biblioteca de Organización,
-                // marcar como IsRemoteOnly y subir a S3 en background
+                // subir a S3/backend en background y mover a org al finalizar
                 if (shouldSyncToOrg)
                 {
-                    if (newSession != null)
-                    {
-                        newSession.IsRemoteOnly = 1;
-                        await _databaseService.SaveSessionAsync(newSession);
-                    }
-
-                    System.Diagnostics.Debug.WriteLine($"[DashboardViewModel] Sincronizando sesión importada {task.CreatedSessionId.Value} a la organización...");
+                    Console.WriteLine($"[PASO 5] ✅ shouldSyncToOrg=true → Iniciando subida a organización para sesión {task.CreatedSessionId.Value}");
                     var sessionName = newSession?.DisplayName ?? task.Name;
                     _ = UploadImportedSessionToOrgInBackgroundAsync(
-                        task.CreatedSessionId.Value, sessionName, 0, 0);
+                        task.CreatedSessionId.Value, sessionName, 0, 0, moveToOrgAfterSync: true);
                 }
-                else if (newSession != null)
+                else
                 {
-                    System.Diagnostics.Debug.WriteLine($"[DashboardViewModel] Seleccionando nueva sesión: {newSession.DisplayName}");
-                    SelectedSession = newSession;
+                    Console.WriteLine($"[PASO 5] ⚠️ shouldSyncToOrg=false → NO se subirá a organización");
                 }
             }
             
@@ -1923,8 +1937,8 @@ public class DashboardViewModel : BaseViewModel
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[DashboardViewModel] Error al procesar importación completada: {ex.Message}");
-            System.Diagnostics.Debug.WriteLine($"[DashboardViewModel] Stack trace: {ex.StackTrace}");
+            Console.WriteLine($"[PASO 4] ❌ Error al procesar importación completada: {ex.Message}");
+            Console.WriteLine($"[PASO 4] Stack trace: {ex.StackTrace}");
             IsBackgroundImporting = false;
         }
     }
@@ -2697,14 +2711,6 @@ public class DashboardViewModel : BaseViewModel
                 return;
             }
 
-            // 2) Marcar la sesión como "solo organización" para que NO aparezca en el sidebar personal
-            var session = await _databaseService.GetSessionByIdAsync(result.SessionId);
-            if (session != null)
-            {
-                session.IsRemoteOnly = 1;
-                await _databaseService.SaveSessionAsync(session);
-            }
-
             // Liberar la UI inmediatamente — el usuario puede seguir trabajando
             MainThread.BeginInvokeOnMainThread(() =>
             {
@@ -2716,7 +2722,7 @@ public class DashboardViewModel : BaseViewModel
             // 3) Lanzar la subida a S3 + backend en background, con progreso en el AppFooter
             _ = UploadImportedSessionToOrgInBackgroundAsync(
                 result.SessionId, result.SessionName ?? "Sesión importada",
-                result.VideosImported, result.AthletesImported);
+                result.VideosImported, result.AthletesImported, moveToOrgAfterSync: true);
         }
         catch (Exception ex)
         {
@@ -2739,8 +2745,10 @@ public class DashboardViewModel : BaseViewModel
     /// El progreso se muestra en el AppFooter a través del StatusBarService.
     /// </summary>
     private async Task UploadImportedSessionToOrgInBackgroundAsync(
-        int sessionId, string sessionName, int videosImported, int athletesImported)
+        int sessionId, string sessionName, int videosImported, int athletesImported, bool moveToOrgAfterSync = false)
     {
+        Console.WriteLine($"\n[PASO 6] UploadImportedSessionToOrgInBackgroundAsync INICIADO");
+        Console.WriteLine($"  sessionId={sessionId}, sessionName={sessionName}, moveToOrgAfterSync={moveToOrgAfterSync}");
         StatusBarService? statusBar = null;
         try
         {
@@ -2756,11 +2764,39 @@ public class DashboardViewModel : BaseViewModel
                 });
             });
 
+            Console.WriteLine($"[PASO 6] Llamando Remote.SyncImportedSessionToOrganizationAsync...");
             var syncOk = await Remote.SyncImportedSessionToOrganizationAsync(
                 sessionId, sessionName, syncProgress);
 
+            Console.WriteLine($"[PASO 6] SyncImportedSessionToOrganizationAsync resultado: syncOk={syncOk}");
+            AppLog.Info("DashboardVM", $"UploadToOrg: syncOk={syncOk}, moveToOrg={moveToOrgAfterSync}, sessionId={sessionId}, RemoteSessions={Remote.RemoteSessions?.Count}");
+
             if (syncOk)
             {
+                Console.WriteLine($"[PASO 6] ✅ Sync exitoso. moveToOrgAfterSync={moveToOrgAfterSync}");
+                if (moveToOrgAfterSync)
+                {
+                    var session = await _databaseService.GetSessionByIdAsync(sessionId);
+                    if (session != null)
+                    {
+                        session.IsRemoteOnly = 1;
+                        await _databaseService.SaveSessionAsync(session);
+                        Console.WriteLine($"[PASO 6] ✅ Sesión {sessionId} marcada como IsRemoteOnly=1");
+                    }
+
+                    await MainThread.InvokeOnMainThreadAsync(() =>
+                    {
+                        var toRemove = RecentSessions.FirstOrDefault(s => s.Id == sessionId);
+                        if (toRemove != null)
+                            RecentSessions.Remove(toRemove);
+
+                        if (SelectedSession?.Id == sessionId)
+                            SelectedSession = null;
+
+                        SyncVisibleSessionRows();
+                    });
+                }
+
                 statusBar?.EndOperation($"'{sessionName}' subida a la organización ({videosImported} videos)");
             }
             else
@@ -2770,7 +2806,8 @@ public class DashboardViewModel : BaseViewModel
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[OrgImport] Error background: {ex.Message}");
+            Console.WriteLine($"[PASO 6] ❌ ERROR en UploadImportedSessionToOrgInBackgroundAsync: {ex.Message}");
+            Console.WriteLine($"[PASO 6] StackTrace: {ex.StackTrace}");
             statusBar?.EndOperation($"Error subiendo '{sessionName}'");
         }
     }
@@ -2783,7 +2820,10 @@ public class DashboardViewModel : BaseViewModel
     {
         // Activar el flag para que al completarse la importación se sincronice a la org
         _pendingOrgSyncAfterImport = true;
+        Console.WriteLine($"[PASO 2] OpenImportPageForVideosForOrganizationAsync: _pendingOrgSyncAfterImport={_pendingOrgSyncAfterImport}");
+        Console.WriteLine($"[PASO 2] Navegando a ImportPage...");
         await Shell.Current.GoToAsync(nameof(ImportPage));
+        Console.WriteLine($"[PASO 2] Navegación a ImportPage completada");
     }
 
     private async Task ViewSessionAsync(Session? session)

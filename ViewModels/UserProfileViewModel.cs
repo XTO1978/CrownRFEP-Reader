@@ -293,7 +293,10 @@ public class UserProfileViewModel : BaseViewModel
             }
 
             CloudPassword = string.Empty;
-            CloudStatusMessage = "Sesión iniciada correctamente.";
+            var role = _cloudBackendService.CurrentUserRole;
+            CloudStatusMessage = string.IsNullOrWhiteSpace(role)
+                ? $"Login OK pero rol vacío. User='{_cloudBackendService.CurrentUserName}'"
+                : $"Conectado como {_cloudBackendService.CurrentUserName} ({role})";
             NotifyCloudStateChanged();
         }
         catch (Exception ex)
