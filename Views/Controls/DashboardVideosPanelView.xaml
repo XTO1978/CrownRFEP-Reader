@@ -535,17 +535,20 @@
                                     </Border>
                                 </Grid>
 
-                                <!--  Row 1: Lugar + Nombre (centrado)  -->
-                                <VerticalStackLayout Grid.Row="1" VerticalOptions="Center" HorizontalOptions="Center" Spacing="4">
+                                <!--  Row 1: Lugar + Nombre (centrado, con margen inferior para no solapar Row 2)  -->
+                                <VerticalStackLayout Grid.Row="1" VerticalOptions="Center" HorizontalOptions="Fill" Spacing="4" Margin="0,0,0,60">
                                     <Label
-                                        FontSize="26"
                                         FontAttributes="Bold"
                                         Text="{Binding PlaceDisplay}"
                                         TextColor="{Binding CardPlaceTextColor}"
                                         HorizontalTextAlignment="Center"
                                         LineBreakMode="TailTruncation"
                                         MaxLines="2"
-                                        IsVisible="{Binding HasPlace}" />
+                                        IsVisible="{Binding HasPlace}">
+                                        <Label.Behaviors>
+                                            <behaviors:AutoFitFontBehavior MaxFontSize="40" MinFontSize="12" />
+                                        </Label.Behaviors>
+                                    </Label>
                                     <Label
                                         FontSize="16"
                                         Text="{Binding Title}"
