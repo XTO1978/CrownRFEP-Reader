@@ -68,8 +68,10 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   try {
     const { email, password, deviceId, devicePlatform, deviceName } = req.body;
+    console.log(`[Auth] Login attempt - email: ${email ? email : '<empty>'}, hasPassword: ${!!password}, contentType: ${req.headers['content-type']}`);
 
     if (!email || !password) {
+      console.log(`[Auth] Login rejected: missing email or password. Body keys: ${Object.keys(req.body || {}).join(', ')}`);
       return res.status(400).json({ error: 'Email y contraseña son requeridos' });
     }
 

@@ -614,10 +614,14 @@ public class RemoteLibraryViewModel : ObservableObject
             IsCloudLoginBusy = true;
             CloudLoginStatusMessage = "Iniciando sesión...";
 
+            // Guardar credenciales antes de limpiar el estado (ResetAllRemoteState borra los campos del formulario)
+            var email = CloudLoginEmail.Trim();
+            var password = CloudLoginPassword;
+
             // Limpiar datos de cualquier organización anterior antes de autenticar
             ResetAllRemoteState();
 
-            var result = await _cloudBackendService.LoginAsync(CloudLoginEmail.Trim(), CloudLoginPassword);
+            var result = await _cloudBackendService.LoginAsync(email, password);
 
             if (!result.Success)
             {

@@ -330,14 +330,20 @@ public class CloudBackendService : ICloudBackendService
                 deviceName
             };
 
+            var jsonBody = JsonSerializer.Serialize(requestBody);
             var content = new StringContent(
-                JsonSerializer.Serialize(requestBody),
+                jsonBody,
                 Encoding.UTF8,
                 "application/json"
             );
 
-            var response = await _httpClient.PostAsync($"{_baseUrl}/auth/login", content);
+            var loginUrl = $"{_baseUrl}/auth/login";
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] POST {loginUrl}");
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] Body: {jsonBody}");
+
+            var response = await _httpClient.PostAsync(loginUrl, content);
             var responseBody = await response.Content.ReadAsStringAsync();
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] Response {(int)response.StatusCode}: {responseBody}");
 
             if (!response.IsSuccessStatusCode)
             {
