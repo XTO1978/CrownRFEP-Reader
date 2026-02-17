@@ -78,11 +78,27 @@ async function api(path) {
   return res.json();
 }
 
+async function readErrorMessage(res) {
+  try {
+    const text = await res.text();
+    if (!text) return 'Error de servidor';
+    try {
+      const data = JSON.parse(text);
+      return data.error || text;
+    } catch {
+      return text;
+    }
+  } catch {
+    return 'Error de servidor';
+  }
+}
+
 async function loadAll() {
   try {
     setStatus('Cargando...', '');
     console.log('[Admin] Cargando datos...');
-    const [usersRes, teamsRes, statsRes, metricsRes, rolesRes] = await Promise.all([
+    const labels = ['users', 'teams', 'wasabi', 'metrics', 'roles'];
+    const results = await Promise.allSettled([
       api('/api/admin/users'),
       api('/api/admin/teams'),
       api('/api/admin/wasabi/stats'),
@@ -90,22 +106,52 @@ async function loadAll() {
       api('/api/admin/roles')
     ]);
 
-    console.log('[Admin] Datos recibidos:', { users: usersRes.users?.length, teams: teamsRes.teams?.length, roles: rolesRes.roles?.length });
-    
-    renderOrgs(teamsRes.teams || []);
-    renderTeamSelect(teamsRes.teams || []);
-    renderRoles(rolesRes.roles || []);
-    renderRoleSelect(rolesRes.roles || []);
-    renderUsers(usersRes.users || []);
-    renderTeams(statsRes.teams || []);
+    const resolved = results.map((result, index) => {
+      if (result.status === 'fulfilled') return result.value;
+      console.error(`[Admin] Error cargando ${labels[index]}:`, result.reason);
+      return null;
+    });
 
-    totalUsers.textContent = metricsRes.totals?.users ?? '-';
-    totalTeams.textContent = metricsRes.totals?.teams ?? '-';
-    totalObjects.textContent = statsRes.totals?.totalObjects ?? '-';
-    totalBytes.textContent = formatBytes(statsRes.totals?.totalBytes ?? 0);
+    const [usersRes, teamsRes, statsRes, metricsRes, rolesRes] = resolved;
+    const hadErrors = results.some(result => result.status === 'rejected');
 
-    setStatus('Conectado', 'ok');
-    console.log('[Admin] Carga completada');
+    if (teamsRes) {
+      renderOrgs(teamsRes.teams || []);
+      renderTeamSelect(teamsRes.teams || []);
+    } else {
+      renderOrgs([]);
+      renderTeamSelect([]);
+    }
+
+    if (rolesRes) {
+      renderRoles(rolesRes.roles || []);
+      renderRoleSelect(rolesRes.roles || []);
+    } else {
+      renderRoles([]);
+      renderRoleSelect([]);
+    }
+
+    if (usersRes) {
+      renderUsers(usersRes.users || []);
+    } else {
+      renderUsers([]);
+    }
+
+    if (statsRes) {
+      renderTeams(statsRes.teams || []);
+      totalObjects.textContent = statsRes.totals?.totalObjects ?? '-';
+      totalBytes.textContent = formatBytes(statsRes.totals?.totalBytes ?? 0);
+    } else {
+      renderTeams([]);
+      totalObjects.textContent = '-';
+      totalBytes.textContent = formatBytes(0);
+    }
+
+    totalUsers.textContent = metricsRes?.totals?.users ?? '-';
+    totalTeams.textContent = metricsRes?.totals?.teams ?? '-';
+
+    setStatus(hadErrors ? 'Conectado (parcial)' : 'Conectado', hadErrors ? 'err' : 'ok');
+    console.log('[Admin] Carga completada', { hadErrors });
   } catch (err) {
     console.error('[Admin] Error en loadAll:', err);
     setStatus('Error: ' + err.message, 'err');
@@ -343,15 +389,25 @@ function renderOrgs(teams) {
       const id = btn.getAttribute('data-org-save');
       const name = orgsTableBody.querySelector(`[data-org-name="${id}"]`).value;
       const wasabiFolder = orgsTableBody.querySelector(`[data-org-wasabi="${id}"]`).value;
-      await fetch(`/api/admin/teams/${id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem(tokenKey)}`
-        },
-        body: JSON.stringify({ name, wasabiFolder })
-      });
-      await loadAll();
+      try {
+        const res = await fetch(`/api/admin/teams/${id}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${localStorage.getItem(tokenKey)}`
+          },
+          body: JSON.stringify({ name, wasabiFolder })
+        });
+        if (!res.ok) {
+          const message = await readErrorMessage(res);
+          alert(message || 'Error actualizando organización');
+          return;
+        }
+        await loadAll();
+      } catch (err) {
+        console.error('[Admin] Error guardando organización:', err);
+        alert('Error actualizando organización');
+      }
     });
   });
 
@@ -359,15 +415,21 @@ function renderOrgs(teams) {
     btn.addEventListener('click', async () => {
       const id = btn.getAttribute('data-org-delete');
       if (!confirm('¿Eliminar organización? Asegúrate de que no hay usuarios asignados.')) return;
-      const res = await fetch(`/api/admin/teams/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${localStorage.getItem(tokenKey)}` }
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        alert(data.error || 'Error eliminando organización');
+      try {
+        const res = await fetch(`/api/admin/teams/${id}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${localStorage.getItem(tokenKey)}` }
+        });
+        if (!res.ok) {
+          const message = await readErrorMessage(res);
+          alert(message || 'Error eliminando organización');
+          return;
+        }
+        await loadAll();
+      } catch (err) {
+        console.error('[Admin] Error eliminando organización:', err);
+        alert('Error eliminando organización');
       }
-      await loadAll();
     });
   });
 }
@@ -462,24 +524,30 @@ orgForm.addEventListener('submit', async (e) => {
   };
   if (!payload.id || !payload.name || !payload.wasabiFolder) return;
 
-  const res = await fetch('/api/admin/teams', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${localStorage.getItem(tokenKey)}`
-    },
-    body: JSON.stringify(payload)
-  });
+  try {
+    const res = await fetch('/api/admin/teams', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${localStorage.getItem(tokenKey)}`
+      },
+      body: JSON.stringify(payload)
+    });
 
-  if (!res.ok) {
-    const data = await res.json();
-    alert(data.error || 'Error creando organización');
+    if (!res.ok) {
+      const message = await readErrorMessage(res);
+      alert(message || 'Error creando organización');
+      return;
+    }
+
+    orgId.value = '';
+    orgName.value = '';
+    orgWasabi.value = '';
+    await loadAll();
+  } catch (err) {
+    console.error('[Admin] Error creando organización:', err);
+    alert('Error creando organización');
   }
-
-  orgId.value = '';
-  orgName.value = '';
-  orgWasabi.value = '';
-  await loadAll();
 });
 
 roleForm.addEventListener('submit', async (e) => {
