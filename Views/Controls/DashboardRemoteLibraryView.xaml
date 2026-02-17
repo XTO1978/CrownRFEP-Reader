@@ -255,6 +255,7 @@
 
             <Border
                 x:Name="RemoteSessionsHeaderBorder"
+                IsVisible="False"
                 Style="{StaticResource SidebarMenuItemBorder}">
                 <Border.Padding>
                     <OnPlatform x:TypeArguments="Thickness">
@@ -333,7 +334,7 @@
             <VerticalStackLayout
                 Spacing="{StaticResource SpacingXSmall}"
                 HorizontalOptions="Fill"
-                IsVisible="{Binding Layout.IsRemoteSessionsListExpanded}"
+                IsVisible="False"
                 BindableLayout.ItemsSource="{Binding Remote.RemoteSessions}">
                 <VerticalStackLayout.Margin>
                     <OnPlatform x:TypeArguments="Thickness">
@@ -412,6 +413,7 @@
 
             <Border
                 x:Name="RemoteSmartFoldersHeaderBorder"
+                IsVisible="False"
                 Style="{StaticResource SidebarMenuItemBorder}">
                 <Border.Padding>
                     <OnPlatform x:TypeArguments="Thickness">
@@ -465,7 +467,7 @@
             <VerticalStackLayout
                 Spacing="{StaticResource SpacingXSmall}"
                 HorizontalOptions="Fill"
-                IsVisible="{Binding Layout.IsRemoteSmartFoldersExpanded}"
+                IsVisible="False"
                 BindableLayout.ItemsSource="{Binding Remote.RemoteSmartFolders}">
                 <VerticalStackLayout.Margin>
                     <OnPlatform x:TypeArguments="Thickness">
