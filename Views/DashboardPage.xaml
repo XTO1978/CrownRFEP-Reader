@@ -383,7 +383,7 @@
                                         FontFamily="{StaticResource AppFontEmphasis}"
                                         FontSize="{StaticResource FontSizeBody}"
                                         FontAttributes="Bold"
-                                        Text="Biblioteca personal"
+                                        Text="{markup:Translate Sidebar_PersonalLibrary}"
                                         TextColor="White"
                                         VerticalOptions="Center" />
                                 </Grid>
@@ -463,7 +463,7 @@
                                     Grid.Column="1"
                                     Margin="8,0,0,0"
                                     Style="{StaticResource SidebarMenuItemLabel}"
-                                    Text="Galería General" />
+                                    Text="{markup:Translate Sidebar_GeneralGallery}" />
                                 <Label
                                     Grid.Column="2"
                                     Margin="0,0,8,0"
@@ -543,7 +543,7 @@
                                     Grid.Column="2"
                                     Margin="8,0,0,0"
                                     Style="{StaticResource SidebarMenuItemLabel}"
-                                    Text="Sesiones" />
+                                    Text="{markup:Translate Sidebar_Sessions}" />
                                 <!-- Add button - visible on hover via behavior -->
                                 <Border
                                     x:Name="SessionsImportAddButton"
@@ -680,7 +680,7 @@
                                     Grid.Column="1"
                                     Margin="8,0,0,0"
                                     Style="{StaticResource SidebarMenuItemLabel}"
-                                    Text="Videolecciones" />
+                                    Text="{markup:Translate Sidebar_VideoLessons}" />
                                 <Label
                                     Grid.Column="2"
                                     Margin="0,0,8,0"
@@ -743,7 +743,7 @@
                                     Grid.Column="2"
                                     Margin="8,0,0,0"
                                     Style="{StaticResource SidebarMenuItemLabel}"
-                                    Text="Favoritos" />
+                                    Text="{markup:Translate Sidebar_Favorites}" />
                             </Grid>
                         </Border>
 
@@ -782,7 +782,7 @@
                                         Grid.Column="1"
                                         Margin="8,0,0,0"
                                         Style="{StaticResource SidebarMenuSubItemLabel}"
-                                        Text="Sesiones" />
+                                        Text="{markup:Translate Sidebar_Sessions}" />
                                     <Label
                                         Grid.Column="2"
                                         Margin="0,0,8,0"
@@ -894,7 +894,7 @@
                                         Grid.Column="1"
                                         Margin="8,0,0,0"
                                         Style="{StaticResource SidebarMenuSubItemLabel}"
-                                        Text="Videos" />
+                                        Text="{markup:Translate Sidebar_Videos}" />
                                     <Label
                                         Grid.Column="2"
                                         Margin="0,0,8,0"
@@ -937,7 +937,7 @@
                                     Grid.Column="1"
                                     Margin="8,0,0,0"
                                     Style="{StaticResource SidebarMenuItemLabel}"
-                                    Text="Papelera" />
+                                    Text="{markup:Translate Sidebar_Trash}" />
                                 <Label
                                     Grid.Column="2"
                                     Margin="0,0,8,0"
@@ -1001,7 +1001,7 @@
                                     Grid.Column="2"
                                     Margin="8,0,0,0"
                                     Style="{StaticResource SidebarMenuItemLabel}"
-                                    Text="Carpeta inteligente" />
+                                    Text="{markup:Translate Sidebar_SmartFolder}" />
                                 <!-- Add button - visible on hover via behavior -->
                                 <Border
                                     x:Name="SmartFolderAddButton"
@@ -1157,7 +1157,7 @@
                                     Grid.Column="1"
                                     Margin="8,0,0,0"
                                     Style="{StaticResource SidebarMenuItemLabel}"
-                                    Text="Diario" />
+                                    Text="{markup:Translate Sidebar_Diary}" />
                             </Grid>
                         </Border>
 
@@ -1217,10 +1217,10 @@
                     </Border.GestureRecognizers>
                     <HorizontalStackLayout Spacing="4">
                         <controls:SymbolIcon HeightRequest="14" WidthRequest="14" SymbolName="checkmark.circle" TintColor="White" VerticalOptions="Center" />
-                        <Label Text="Seleccionar todo" FontSize="12" TextColor="White" VerticalOptions="Center" />
+                        <Label Text="{markup:Translate Main_SelectAll}" FontSize="12" TextColor="White" VerticalOptions="Center" />
                     </HorizontalStackLayout>
                 </Border>
-                <Label Text="{Binding Remote.SelectedRemoteVideoCount, StringFormat='{0} seleccionados'}" FontSize="12" TextColor="#AAAAAA" VerticalOptions="Center" />
+                <Label Text="{Binding Remote.SelectedRemoteVideoCount, Converter={StaticResource TranslatedStringFormatConverter}, ConverterParameter=Format_Selected}" FontSize="12" TextColor="#AAAAAA" VerticalOptions="Center" />
             </HorizontalStackLayout>
 
             <!--  Galería de videos remotos  -->
@@ -1373,8 +1373,8 @@
                 <CollectionView.EmptyView>
                     <VerticalStackLayout Padding="40" HorizontalOptions="Center" VerticalOptions="Center">
                         <controls:SymbolIcon HeightRequest="64" WidthRequest="64" SymbolName="video" TintColor="Gray" HorizontalOptions="Center" Margin="0,0,0,16" />
-                        <Label FontSize="{StaticResource FontSizeTitle}" HorizontalOptions="Center" Text="Selecciona una sesión" TextColor="Gray" />
-                        <Label FontSize="{StaticResource FontSizeBody}" HorizontalOptions="Center" Text="Los videos de la sesión aparecerán aquí" TextColor="#666666" Margin="0,8,0,0" />
+                        <Label FontSize="{StaticResource FontSizeTitle}" HorizontalOptions="Center" Text="{markup:Translate Main_SelectSession}" TextColor="Gray" />
+                        <Label FontSize="{StaticResource FontSizeBody}" HorizontalOptions="Center" Text="{markup:Translate Main_SessionVideosHere}" TextColor="#666666" Margin="0,8,0,0" />
                     </VerticalStackLayout>
                 </CollectionView.EmptyView>
 
@@ -1438,7 +1438,7 @@
                                 </controls:SymbolIcon.IsVisible>
                             </controls:SymbolIcon>
                             <!-- Otras plataformas: Texto -->
-                            <Label Text="Acciones y Análisis" TextColor="White" HorizontalOptions="Center">
+                            <Label Text="{markup:Translate RightPanel_ActionsAnalysis}" TextColor="White" HorizontalOptions="Center">
                                 <Label.IsVisible>
                                     <OnPlatform x:TypeArguments="x:Boolean">
                                         <On Platform="iOS" Value="False" />
@@ -1487,7 +1487,7 @@
                                 </controls:SymbolIcon.IsVisible>
                             </controls:SymbolIcon>
                             <!-- Otras plataformas: Texto -->
-                            <Label Text="Filtros y Estadísticas" TextColor="White" HorizontalOptions="Center">
+                            <Label Text="{markup:Translate RightPanel_FiltersStats}" TextColor="White" HorizontalOptions="Center">
                                 <Label.IsVisible>
                                     <OnPlatform x:TypeArguments="x:Boolean">
                                         <On Platform="iOS" Value="False" />
@@ -1537,7 +1537,7 @@
                                 </controls:SymbolIcon.IsVisible>
                             </controls:SymbolIcon>
                             <!-- Otras plataformas: Texto -->
-                            <Label Text="Diario de Sesión" TextColor="White" HorizontalOptions="Center">
+                            <Label Text="{markup:Translate RightPanel_SessionDiary}" TextColor="White" HorizontalOptions="Center">
                                 <Label.IsVisible>
                                     <OnPlatform x:TypeArguments="x:Boolean">
                                         <On Platform="iOS" Value="False" />
@@ -1585,14 +1585,14 @@
                             WidthRequest="{StaticResource IconSizeLarge}" />
                         <Label
                             FontSize="{StaticResource FontSizeHeader}"
-                            Text="Acciones en lote"
+                            Text="{markup:Translate Batch_BatchActions}"
                             TextColor="White" />
                     </HorizontalStackLayout>
 
                     <!--  Toggles de selección  -->
                     <Label
                         FontSize="{StaticResource FontSizeBody}"
-                        Text="Selección de vídeos"
+                        Text="{markup:Translate Batch_VideoSelection}"
                         TextColor="#FFCCCCCC" />
 
                     <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
@@ -1623,7 +1623,7 @@
                                         </DataTrigger>
                                     </controls:SymbolIcon.Triggers>
                                 </controls:SymbolIcon>
-                                <Label Text="Seleccionar" TextColor="White" VerticalOptions="Center" />
+                                <Label Text="{markup:Translate Batch_Select}" TextColor="White" VerticalOptions="Center" />
                             </HorizontalStackLayout>
                         </Border>
 
@@ -1655,7 +1655,7 @@
                                         </DataTrigger>
                                     </controls:SymbolIcon.Triggers>
                                 </controls:SymbolIcon>
-                                <Label Text="Todos" TextColor="White" VerticalOptions="Center" />
+                                <Label Text="{markup:Translate Batch_All}" TextColor="White" VerticalOptions="Center" />
                             </HorizontalStackLayout>
                         </Border>
                     </Grid>
@@ -1664,7 +1664,7 @@
                     <Label
                         Margin="0,12,0,0"
                         FontSize="{StaticResource FontSizeBody}"
-                        Text="Acciones en lote"
+                        Text="{markup:Translate Batch_BatchActions}"
                         TextColor="#FFCCCCCC" />
 
                     <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="8">
@@ -1686,7 +1686,7 @@
                                     TintColor="White"
                                     WidthRequest="{StaticResource IconSizeMedium}"
                                     VerticalOptions="Center" />
-                                <Label Text="Playlist" TextColor="White" VerticalOptions="Center" />
+                                <Label Text="{markup:Translate Batch_Playlist}" TextColor="White" VerticalOptions="Center" />
                             </HorizontalStackLayout>
                         </Border>
 
@@ -1708,7 +1708,7 @@
                                     TintColor="White"
                                     WidthRequest="{StaticResource IconSizeMedium}"
                                     VerticalOptions="Center" />
-                                <Label Text="Editar" TextColor="White" VerticalOptions="Center" />
+                                <Label Text="{markup:Translate Batch_Edit}" TextColor="White" VerticalOptions="Center" />
                             </HorizontalStackLayout>
                         </Border>
 
@@ -1730,7 +1730,7 @@
                                     TintColor="#FF0066"
                                     WidthRequest="{StaticResource IconSizeMedium}"
                                     VerticalOptions="Center" />
-                                <Label Text="Compartir" TextColor="#FF0066" VerticalOptions="Center" />
+                                <Label Text="{markup:Translate Batch_Share}" TextColor="#FF0066" VerticalOptions="Center" />
                             </HorizontalStackLayout>
                         </Border>
 
@@ -1752,7 +1752,7 @@
                                     TintColor="#FFFF6B6B"
                                     WidthRequest="{StaticResource IconSizeMedium}"
                                     VerticalOptions="Center" />
-                                <Label Text="Eliminar" TextColor="#FFFF6B6B" VerticalOptions="Center" />
+                                <Label Text="{markup:Translate Batch_Delete}" TextColor="#FFFF6B6B" VerticalOptions="Center" />
                             </HorizontalStackLayout>
                         </Border>
                     </Grid>
@@ -1767,7 +1767,7 @@
                         <!--  Toggles de selección remotos  -->
                         <Label
                             FontSize="{StaticResource FontSizeBody}"
-                            Text="Selección de vídeos remotos"
+                            Text="{markup:Translate Batch_RemoteVideoSelection}"
                             TextColor="#FFCCCCCC" />
 
                         <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
@@ -1798,7 +1798,7 @@
                                             </DataTrigger>
                                         </controls:SymbolIcon.Triggers>
                                     </controls:SymbolIcon>
-                                    <Label Text="Seleccionar" TextColor="White" VerticalOptions="Center" />
+                                    <Label Text="{markup:Translate Batch_Select}" TextColor="White" VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                             </Border>
 
@@ -1830,7 +1830,7 @@
                                             </DataTrigger>
                                         </controls:SymbolIcon.Triggers>
                                     </controls:SymbolIcon>
-                                    <Label Text="Todos" TextColor="White" VerticalOptions="Center" />
+                                    <Label Text="{markup:Translate Batch_All}" TextColor="White" VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                             </Border>
                         </Grid>
@@ -1842,7 +1842,7 @@
                             TextColor="#2196F3"
                             IsVisible="{Binding Remote.IsRemoteMultiSelectMode}">
                             <Label.Text>
-                                <Binding Path="Remote.SelectedRemoteVideoCount" StringFormat="{}{0} vídeo(s) seleccionado(s)" />
+                                <Binding Path="Remote.SelectedRemoteVideoCount" Converter="{StaticResource TranslatedStringFormatConverter}" ConverterParameter="Format_VideosSelected" />
                             </Label.Text>
                         </Label>
 
@@ -1850,7 +1850,7 @@
                         <Label
                             Margin="0,8,0,0"
                             FontSize="{StaticResource FontSizeBody}"
-                            Text="Acciones en lote"
+                            Text="{markup:Translate Batch_BatchActions}"
                             TextColor="#FFCCCCCC" />
 
                         <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="8">
@@ -1872,7 +1872,7 @@
                                         TintColor="#4CAF50"
                                         WidthRequest="{StaticResource IconSizeMedium}"
                                         VerticalOptions="Center" />
-                                    <Label Text="Descargar a personal" TextColor="#4CAF50" VerticalOptions="Center" />
+                                    <Label Text="{markup:Translate Batch_DownloadToPersonal}" TextColor="#4CAF50" VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                             </Border>
 
@@ -1894,7 +1894,7 @@
                                         TintColor="#2196F3"
                                         WidthRequest="{StaticResource IconSizeMedium}"
                                         VerticalOptions="Center" />
-                                    <Label Text="Añadir a personal" TextColor="#2196F3" VerticalOptions="Center" />
+                                    <Label Text="{markup:Translate Batch_AddToPersonal}" TextColor="#2196F3" VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                             </Border>
 
@@ -1916,7 +1916,7 @@
                                         TintColor="#FFA500"
                                         WidthRequest="{StaticResource IconSizeMedium}"
                                         VerticalOptions="Center" />
-                                    <Label Text="Quitar personal" TextColor="#FFA500" VerticalOptions="Center" />
+                                    <Label Text="{markup:Translate Batch_RemovePersonal}" TextColor="#FFA500" VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                             </Border>
 
@@ -1939,7 +1939,7 @@
                                         TintColor="#FFFF6B6B"
                                         WidthRequest="{StaticResource IconSizeMedium}"
                                         VerticalOptions="Center" />
-                                    <Label Text="Eliminar nube" TextColor="#FFFF6B6B" VerticalOptions="Center" />
+                                    <Label Text="{markup:Translate Batch_DeleteCloud}" TextColor="#FFFF6B6B" VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                             </Border>
                         </Grid>
@@ -1975,7 +1975,7 @@
                             WidthRequest="{StaticResource IconSizeLarge}" />
                         <Label
                             FontSize="{StaticResource FontSizeHeader}"
-                            Text="Análisis técnico"
+                            Text="{markup:Translate Analysis_TechAnalysis}"
                             TextColor="White" />
                     </HorizontalStackLayout>
 
@@ -1990,7 +1990,7 @@
                         <Label
                             Grid.Column="0"
                             FontSize="{StaticResource FontSizeBody}"
-                            Text="Análisis rápido"
+                            Text="{markup:Translate Analysis_QuickAnalysis}"
                             TextColor="#FFCCCCCC"
                             IsVisible="{Binding Videos.IsQuickAnalysisIsolatedMode, Converter={toolkit:InvertedBoolConverter}}" />
 
@@ -2039,7 +2039,7 @@
                                         TintColor="White"
                                         WidthRequest="{StaticResource IconSizeMedium}"
                                         VerticalOptions="Center" />
-                                    <Label Text="Modo aislado" TextColor="White" VerticalOptions="Center">
+                                    <Label Text="{markup:Translate Analysis_IsolatedMode}" TextColor="White" VerticalOptions="Center">
                                         <Label.IsVisible>
                                             <OnPlatform x:TypeArguments="x:Boolean">
                                                 <On Platform="iOS" Value="False" />
@@ -2297,7 +2297,7 @@
                                     TintColor="White"
                                     WidthRequest="{StaticResource IconSizeMedium}"
                                     VerticalOptions="Center" />
-                                <Label Text="Limpiar" TextColor="White" VerticalOptions="Center" />
+                                <Label Text="{markup:Translate Analysis_Clean}" TextColor="White" VerticalOptions="Center" />
                             </HorizontalStackLayout>
                         </Border>
                     </Grid>
@@ -2334,14 +2334,14 @@
                                         WidthRequest="{StaticResource IconSizeLarge}" />
                                     <Label
                                         FontSize="{StaticResource FontSizeHeader}"
-                                        Text="Filtros"
+                                        Text="{markup:Translate Filter_Filters}"
                                         TextColor="White" VerticalOptions="Center" />
                                     <Button
                                         Padding="8,4"
                                         BackgroundColor="Transparent"
                                         Command="{Binding Videos.ClearFiltersCommand}"
                                         FontSize="{StaticResource FontSizeBody}"
-                                        Text="Limpiar"
+                                        Text="{markup:Translate Filter_Clean}"
                                         TextColor="#FF0066"
                                         VerticalOptions="Center" />
                                 </HorizontalStackLayout>
@@ -2360,7 +2360,7 @@
                                         <VerticalStackLayout Grid.Column="0">
                                             <Label
                                                 FontSize="{StaticResource FontSizeSubtitle}"
-                                                Text="Lugar"
+                                                Text="{markup:Translate Filter_Place}"
                                                 TextColor="#FFCCCCCC" />
                                             <Label
                                                 FontSize="{StaticResource FontSizeSubtitle}"
@@ -2390,7 +2390,7 @@
                                         <VerticalStackLayout Grid.Column="0">
                                             <Label
                                                 FontSize="{StaticResource FontSizeSubtitle}"
-                                                Text="Deportista"
+                                                Text="{markup:Translate Filter_Athlete}"
                                                 TextColor="#FFCCCCCC" />
                                             <Label
                                                 FontSize="{StaticResource FontSizeSubtitle}"
@@ -2420,7 +2420,7 @@
                                         <VerticalStackLayout Grid.Column="0">
                                             <Label
                                                 FontSize="{StaticResource FontSizeSubtitle}"
-                                                Text="Sección"
+                                                Text="{markup:Translate Filter_Section}"
                                                 TextColor="#FFCCCCCC" />
                                             <Label
                                                 FontSize="{StaticResource FontSizeSubtitle}"
@@ -2451,7 +2451,7 @@
                                             <Label
                                                 FontFamily="{StaticResource AppFontBody}"
                                                 FontSize="{StaticResource FontSizeSubtitle}"
-                                                Text="Tag"
+                                                Text="{markup:Translate Filter_Tag}"
                                                 TextColor="#FFCCCCCC" />
                                             <Label
                                                 FontFamily="{StaticResource AppFontBody}"
@@ -2472,7 +2472,7 @@
                                     <VerticalStackLayout Grid.Column="0" Spacing="4">
                                         <Label
                                             FontSize="{StaticResource FontSizeSubtitle}"
-                                            Text="Fecha desde"
+                                            Text="{markup:Translate Filter_DateFrom}"
                                             TextColor="#FFCCCCCC" />
                                         <Border
                                             StrokeShape="RoundRectangle 4"
@@ -2503,7 +2503,7 @@
                                     <VerticalStackLayout Grid.Column="1" Spacing="4">
                                         <Label
                                             FontSize="{StaticResource FontSizeSubtitle}"
-                                            Text="Fecha hasta"
+                                            Text="{markup:Translate Filter_DateTo}"
                                             TextColor="#FFCCCCCC" />
                                         <Border
                                             StrokeShape="RoundRectangle 4"
@@ -2733,7 +2733,7 @@
                         WidthRequest="{StaticResource IconSizeLarge}" />
                     <Label
                         FontSize="{StaticResource FontSizeHeader}"
-                        Text="Datos y Estadísticas"
+                        Text="{markup:Translate Stats_DataStats}"
                         TextColor="White" />
                 </HorizontalStackLayout>
 
@@ -2764,7 +2764,7 @@
                             <Label
                                 FontSize="{StaticResource FontSizeSmall}"
                                 HorizontalOptions="Center"
-                                Text="Vídeos"
+                                Text="{markup:Translate Stats_Videos}"
                                 TextColor="#FFCCCCCC" />
                         </VerticalStackLayout>
                     </Border>
@@ -2785,7 +2785,7 @@
                             <Label
                                 FontSize="{StaticResource FontSizeSmall}"
                                 HorizontalOptions="Center"
-                                Text="Tiempo"
+                                Text="{markup:Translate Stats_Time}"
                                 TextColor="#FFCCCCCC" />
                         </VerticalStackLayout>
                     </Border>
@@ -2806,7 +2806,7 @@
                             <Label
                                 FontSize="{StaticResource FontSizeSmall}"
                                 HorizontalOptions="Center"
-                                Text="Sesiones"
+                                Text="{markup:Translate Stats_Sessions}"
                                 TextColor="#FFCCCCCC" />
                         </VerticalStackLayout>
                     </Border>
@@ -2819,7 +2819,7 @@
                         <Label
                             FontAttributes="None"
                             FontSize="{StaticResource FontSizeSubtitle}"
-                            Text="⏱ Tiempos por Sección"
+                            Text="{markup:Translate SplitTimes_BySection}"
                             TextColor="White"
                             VerticalOptions="Center" />
                         
@@ -2843,7 +2843,7 @@
                                     VerticalOptions="Center" />
                                 <Label
                                     FontSize="{StaticResource FontSizeSmall}"
-                                    Text="Abrir"
+                                    Text="{markup:Translate SplitTimes_Open}"
                                     TextColor="#FF0066"
                                     VerticalOptions="Center" />
                             </HorizontalStackLayout>
@@ -2863,7 +2863,7 @@
                                 </Border.GestureRecognizers>
                                 <Label
                                     FontSize="{StaticResource FontSizeSmall}"
-                                    Text="Tiempos"
+                                    Text="{markup:Translate SplitTimes_Times}"
                                     HorizontalOptions="Center"
                                     TextColor="White" />
                             </Border>
@@ -2880,7 +2880,7 @@
                                 </Border.GestureRecognizers>
                                 <Label
                                     FontSize="{StaticResource FontSizeSmall}"
-                                    Text="vs Tú"
+                                    Text="{markup:Translate SplitTimes_VsYou}"
                                     HorizontalOptions="Center"
                                     TextColor="White" />
                             </Border>
@@ -2911,11 +2911,11 @@
                                         <VerticalStackLayout Spacing="4" IsVisible="{Binding Source={x:Reference ThisPage}, Path=BindingContext.Videos.ShowSectionTimesAbsolute}">
                                             <!--  Cabecera de tabla (absoluta)  -->
                                             <Grid ColumnDefinitions="2*,*,*,*,*" ColumnSpacing="4" Padding="4,2" BackgroundColor="#FF252525">
-                                                <Label Grid.Column="0" FontSize="{StaticResource FontSizeSmall}" FontAttributes="None" Text="ATLETA" TextColor="#FFCCCCCC" />
-                                                <Label Grid.Column="1" FontSize="{StaticResource FontSizeSmall}" FontAttributes="None" Text="CAT." TextColor="#FFCCCCCC" />
-                                                <Label Grid.Column="2" FontSize="{StaticResource FontSizeSmall}" FontAttributes="None" Text="TIEMPO" TextColor="#FFCCCCCC" HorizontalTextAlignment="End" />
-                                                <Label Grid.Column="3" FontSize="{StaticResource FontSizeSmall}" FontAttributes="None" Text="PENAL." TextColor="#FFCCCCCC" HorizontalTextAlignment="End" />
-                                                <Label Grid.Column="4" FontSize="{StaticResource FontSizeSmall}" FontAttributes="None" Text="TOTAL" TextColor="#FFCCCCCC" HorizontalTextAlignment="End" />
+                                                <Label Grid.Column="0" FontSize="{StaticResource FontSizeSmall}" FontAttributes="None" Text="{markup:Translate Table_Athlete}" TextColor="#FFCCCCCC" />
+                                                <Label Grid.Column="1" FontSize="{StaticResource FontSizeSmall}" FontAttributes="None" Text="{markup:Translate Table_Category}" TextColor="#FFCCCCCC" />
+                                                <Label Grid.Column="2" FontSize="{StaticResource FontSizeSmall}" FontAttributes="None" Text="{markup:Translate Table_Time}" TextColor="#FFCCCCCC" HorizontalTextAlignment="End" />
+                                                <Label Grid.Column="3" FontSize="{StaticResource FontSizeSmall}" FontAttributes="None" Text="{markup:Translate Table_Penalty}" TextColor="#FFCCCCCC" HorizontalTextAlignment="End" />
+                                                <Label Grid.Column="4" FontSize="{StaticResource FontSizeSmall}" FontAttributes="None" Text="{markup:Translate Table_Total}" TextColor="#FFCCCCCC" HorizontalTextAlignment="End" />
                                             </Grid>
                                             
                                             <!--  Filas de atletas (tiempos absolutos)  -->
@@ -2941,10 +2941,10 @@
                                         <VerticalStackLayout Spacing="4" IsVisible="{Binding Source={x:Reference ThisPage}, Path=BindingContext.Videos.ShowSectionTimesDifferences}">
                                             <!--  Cabecera de tabla (diferencias)  -->
                                             <Grid ColumnDefinitions="2*,*,*,*" ColumnSpacing="4" Padding="4,2" BackgroundColor="#FF252525">
-                                                <Label Grid.Column="0" FontSize="{StaticResource FontSizeSmall}" FontAttributes="None" Text="ATLETA" TextColor="#FFCCCCCC" />
-                                                <Label Grid.Column="1" FontSize="{StaticResource FontSizeSmall}" FontAttributes="None" Text="CAT." TextColor="#FFCCCCCC" />
-                                                <Label Grid.Column="2" FontSize="{StaticResource FontSizeSmall}" FontAttributes="None" Text="TOTAL" TextColor="#FFCCCCCC" HorizontalTextAlignment="End" />
-                                                <Label Grid.Column="3" FontSize="{StaticResource FontSizeSmall}" FontAttributes="None" Text="vs TÚ" TextColor="#FFCCCCCC" HorizontalTextAlignment="End" />
+                                                <Label Grid.Column="0" FontSize="{StaticResource FontSizeSmall}" FontAttributes="None" Text="{markup:Translate Table_Athlete}" TextColor="#FFCCCCCC" />
+                                                <Label Grid.Column="1" FontSize="{StaticResource FontSizeSmall}" FontAttributes="None" Text="{markup:Translate Table_Category}" TextColor="#FFCCCCCC" />
+                                                <Label Grid.Column="2" FontSize="{StaticResource FontSizeSmall}" FontAttributes="None" Text="{markup:Translate Table_Total}" TextColor="#FFCCCCCC" HorizontalTextAlignment="End" />
+                                                <Label Grid.Column="3" FontSize="{StaticResource FontSizeSmall}" FontAttributes="None" Text="{markup:Translate Table_VsYou}" TextColor="#FFCCCCCC" HorizontalTextAlignment="End" />
                                             </Grid>
                                             
                                             <!--  Filas de atletas (diferencias)  -->
@@ -2982,11 +2982,11 @@
                         <VerticalStackLayout Spacing="4">
                             <Label
                                 FontSize="{StaticResource FontSizeBody}"
-                                Text="Vídeos etiquetados/nombrados"
+                                Text="{markup:Translate TagStats_TaggedNamed}"
                                 TextColor="White" />
                             <Label
                                 FontSize="{StaticResource FontSizeSmall}"
-                                Text="{Binding Videos.LabeledVideosText, StringFormat='{0} vídeos con nombre asignado'}"
+                                Text="{Binding Videos.LabeledVideosText, Converter={StaticResource TranslatedStringFormatConverter}, ConverterParameter=Format_VideosNamed}"
                                 TextColor="#FFCCCCCC" />
                         </VerticalStackLayout>
                         <Label
@@ -3002,7 +3002,7 @@
                 <!--  TAGS DE EVENTOS  -->
                 <Label
                     FontSize="{StaticResource FontSizeBody}"
-                    Text="Tags de eventos"
+                    Text="{markup:Translate TagStats_EventTags}"
                     TextColor="#FFCCCCCC" />
                 <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
                     <Border
@@ -3019,7 +3019,7 @@
                                 VerticalOptions="Center" />
                             <Label
                                 FontSize="{StaticResource FontSizeSmall}"
-                                Text="eventos totales"
+                                Text="{markup:Translate TagStats_TotalEvents}"
                                 TextColor="#FF808080"
                                 VerticalOptions="Center" />
                         </HorizontalStackLayout>
@@ -3039,7 +3039,7 @@
                                 VerticalOptions="Center" />
                             <Label
                                 FontSize="{StaticResource FontSizeSmall}"
-                                Text="tipos únicos"
+                                Text="{markup:Translate TagStats_UniqueTypes}"
                                 TextColor="#FF808080"
                                 VerticalOptions="Center" />
                         </HorizontalStackLayout>
@@ -3050,7 +3050,7 @@
                 <Label
                     FontSize="{StaticResource FontSizeBody}"
                     Margin="0,4,0,0"
-                    Text="Eventos más utilizados"
+                    Text="{markup:Translate TagStats_MostUsedEvents}"
                     TextColor="#FF808080" />
                 <controls:SimplePieChart
                     MinimumHeightRequest="120"
@@ -3064,7 +3064,7 @@
                 <!--  ETIQUETAS  -->
                 <Label
                     FontSize="{StaticResource FontSizeBody}"
-                    Text="Etiquetas"
+                    Text="{markup:Translate TagStats_Labels}"
                     TextColor="#FFCCCCCC" />
                 <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
                     <Border
@@ -3082,7 +3082,7 @@
                             <Label
                                 FontSize="{StaticResource FontSizeCaption}"
                                 HorizontalOptions="Center"
-                                Text="asignadas"
+                                Text="{markup:Translate TagStats_Assigned}"
                                 TextColor="#FF808080" />
                         </VerticalStackLayout>
                     </Border>
@@ -3102,7 +3102,7 @@
                             <Label
                                 FontSize="{StaticResource FontSizeCaption}"
                                 HorizontalOptions="Center"
-                                Text="únicas"
+                                Text="{markup:Translate TagStats_Unique}"
                                 TextColor="#FF808080" />
                         </VerticalStackLayout>
                     </Border>
@@ -3122,7 +3122,7 @@
                             <Label
                                 FontSize="{StaticResource FontSizeCaption}"
                                 HorizontalOptions="Center"
-                                Text="por sesión"
+                                Text="{markup:Translate TagStats_PerSession}"
                                 TextColor="#FF808080" />
                         </VerticalStackLayout>
                     </Border>
@@ -3132,7 +3132,7 @@
                 <Label
                     FontSize="{StaticResource FontSizeBody}"
                     Margin="0,4,0,0"
-                    Text="Etiquetas más utilizadas"
+                    Text="{markup:Translate TagStats_MostUsedLabels}"
                     TextColor="#FF808080" />
                 <controls:SimplePieChart
                     MinimumHeightRequest="120"
@@ -3222,11 +3222,11 @@
                             <Label
                                 FontAttributes="None"
                                 FontSize="{StaticResource FontSizeTitle}"
-                                Text="Nueva sesión de grabación"
+                                Text="{markup:Translate RecPopup_Title}"
                                 TextColor="White" />
                             <Label
                                 FontSize="{StaticResource FontSizeSmall}"
-                                Text="Crea una sesión y graba vídeos directamente"
+                                Text="{markup:Translate RecPopup_Subtitle}"
                                 TextColor="#FF888888" />
                         </VerticalStackLayout>
                         <Border
@@ -3250,10 +3250,10 @@
                     <VerticalStackLayout Spacing="4">
                         <Label
                             FontSize="{StaticResource FontSizeSmall}"
-                            Text="Lugar *"
+                            Text="{markup:Translate RecPopup_Place}"
                             TextColor="#FFCCCCCC" />
                         <Entry
-                            Placeholder="Ej: Canal olímpico"
+                            Placeholder="{markup:Translate RecPopup_PlacePH}"
                             PlaceholderColor="#FF666666"
                             Text="{Binding NewSessionLugar}"
                             TextColor="White"
@@ -3292,10 +3292,10 @@
                     <VerticalStackLayout Spacing="4">
                         <Label
                             FontSize="{StaticResource FontSizeSmall}"
-                            Text="Nombre de sesión *"
+                            Text="{markup:Translate RecPopup_SessionName}"
                             TextColor="#FFCCCCCC" />
                         <Entry
-                            Placeholder="Ej: Entrenamiento mañana"
+                            Placeholder="{markup:Translate RecPopup_SessionNamePH}"
                             PlaceholderColor="#FF666666"
                             Text="{Binding NewSessionName}"
                             TextColor="White"
@@ -3306,7 +3306,7 @@
                     <VerticalStackLayout Spacing="8">
                         <Label
                             FontSize="{StaticResource FontSizeSmall}"
-                            Text="Tipo de sesión * (cuartos, medios, largos, etc.)"
+                            Text="{markup:Translate RecPopup_SessionType}"
                             TextColor="#FFCCCCCC" />
                         <FlexLayout
                             Wrap="Wrap"
@@ -3342,7 +3342,7 @@
                     <Grid ColumnDefinitions="*,*" ColumnSpacing="12" Margin="0,8,0,0">
                         <Button
                             Grid.Column="0"
-                            Text="Cancelar"
+                            Text="{markup:Translate Common_Cancel}"
                             BackgroundColor="#FF404040"
                             TextColor="#FFCCCCCC"
                             CornerRadius="8"
@@ -3350,7 +3350,7 @@
                             Command="{Binding CancelNewSessionSidebarPopupCommand}" />
                         <Button
                             Grid.Column="1"
-                            Text="Crear y grabar"
+                            Text="{markup:Translate RecPopup_CreateRecord}"
                             BackgroundColor="#FFFF3B30"
                             TextColor="White"
                             FontAttributes="None"
@@ -3389,7 +3389,7 @@
                                 TextColor="White" />
                             <Label
                                 FontSize="{StaticResource FontSizeSmall}"
-                                Text="Define criterios para agrupar vídeos automáticamente"
+                                Text="{markup:Translate SmartFolder_Subtitle}"
                                 TextColor="#FF888888" />
                         </VerticalStackLayout>
                         <Border
@@ -3413,10 +3413,10 @@
                     <VerticalStackLayout Spacing="4">
                         <Label
                             FontSize="{StaticResource FontSizeSmall}"
-                            Text="Nombre"
+                            Text="{markup:Translate SmartFolder_Name}"
                             TextColor="#FFCCCCCC" />
                         <Entry
-                            Placeholder="Ej: Técnica - tags"
+                            Placeholder="{markup:Translate SmartFolder_NamePlaceholder}"
                             PlaceholderColor="#FF666666"
                             Text="{Binding SmartFolders.NewSmartFolderName}"
                             TextColor="White"
@@ -3427,7 +3427,7 @@
                     <VerticalStackLayout Spacing="8">
                         <Label
                             FontSize="{StaticResource FontSizeSmall}"
-                            Text="Condiciones"
+                            Text="{markup:Translate SmartFolder_Conditions}"
                             TextColor="#FFCCCCCC" />
                         <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
                             <Border
@@ -3441,7 +3441,7 @@
                                 </Border.GestureRecognizers>
                                 <Label
                                     FontSize="{StaticResource FontSizeSmall}"
-                                    Text="Y (AND)"
+                                    Text="{markup:Translate SmartFolder_And}"
                                     TextColor="{Binding SmartFolders.IsSmartFolderMatchAll, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF121212|#FFB1B1B1}"
                                     FontAttributes="{Binding SmartFolders.IsSmartFolderMatchAll, Converter={StaticResource BoolToFontAttributesConverter}}"
                                     HorizontalOptions="Center"
@@ -3458,7 +3458,7 @@
                                 </Border.GestureRecognizers>
                                 <Label
                                     FontSize="{StaticResource FontSizeSmall}"
-                                    Text="O (OR)"
+                                    Text="{markup:Translate SmartFolder_Or}"
                                     TextColor="{Binding SmartFolders.IsSmartFolderMatchAny, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF121212|#FFB1B1B1}"
                                     FontAttributes="{Binding SmartFolders.IsSmartFolderMatchAny, Converter={StaticResource BoolToFontAttributesConverter}}"
                                     HorizontalOptions="Center"
@@ -3530,7 +3530,7 @@
                                         <Entry
                                             Grid.Row="0"
                                             Grid.Column="2"
-                                            Placeholder="Valor"
+                                            Placeholder="{markup:Translate SmartFolder_ValuePH}"
                                             PlaceholderColor="#FF666666"
                                             Text="{Binding Value}"
                                             TextColor="White"
@@ -3559,7 +3559,7 @@
                                             Grid.Row="1"
                                             Grid.Column="2"
                                             IsVisible="{Binding ShowSecondValue}"
-                                            Placeholder="Segundo valor (fecha)"
+                                            Placeholder="{markup:Translate SmartFolder_SecondDatePH}"
                                             PlaceholderColor="#FF666666"
                                             Text="{Binding Value2}"
                                             TextColor="White"
@@ -3570,7 +3570,7 @@
                         </CollectionView>
 
                         <Button
-                            Text="Añadir condición"
+                            Text="{markup:Translate SmartFolder_AddCondition}"
                             BackgroundColor="#FF404040"
                             TextColor="#FFCCCCCC"
                             CornerRadius="8"
@@ -3580,14 +3580,14 @@
                         <Label
                             FontSize="{StaticResource FontSizeSmall}"
                             TextColor="#FF888888"
-                            Text="{Binding SmartFolders.NewSmartFolderLiveMatchCount, StringFormat='Coinciden: {0}'}" />
+                            Text="{Binding SmartFolders.NewSmartFolderLiveMatchCount, Converter={StaticResource TranslatedStringFormatConverter}, ConverterParameter=Format_MatchCount}" />
                     </VerticalStackLayout>
 
                     <!--  Botones  -->
                     <Grid ColumnDefinitions="*,*" ColumnSpacing="12" Margin="0,8,0,0">
                         <Button
                             Grid.Column="0"
-                            Text="Cancelar"
+                            Text="{markup:Translate Common_Cancel}"
                             BackgroundColor="#FF404040"
                             TextColor="#FFCCCCCC"
                             CornerRadius="8"
@@ -3660,7 +3660,7 @@
                     <VerticalStackLayout Spacing="8">
                         <Label
                             FontSize="{StaticResource FontSizeSmall}"
-                            Text="Color"
+                            Text="{markup:Translate Popup_Color}"
                             TextColor="#FF888888" />
                         <HorizontalStackLayout Spacing="8" HorizontalOptions="Center">
                             <!--  Círculos de color con marca de selección  -->
@@ -3853,7 +3853,7 @@
                     <VerticalStackLayout Spacing="8">
                         <Label
                             FontSize="{StaticResource FontSizeSmall}"
-                            Text="Icono"
+                            Text="{markup:Translate Popup_Icon}"
                             TextColor="#FF888888" />
                         <FlexLayout
                             Direction="Row"
@@ -3915,7 +3915,7 @@
                         <Label
                             FontAttributes="None"
                             FontSize="{StaticResource FontSizeTitle}"
-                            Text="Editar vídeos seleccionados"
+                            Text="{markup:Translate BatchEdit_Title}"
                             TextColor="White" />
                         <Border
                             Grid.Column="1"
@@ -3936,7 +3936,7 @@
 
                     <Label
                         FontSize="{StaticResource FontSizeBody}"
-                        Text="{Binding BatchEdit.SelectedVideoCount, StringFormat='Se modificarán {0} vídeos'}"
+                        Text="{Binding BatchEdit.SelectedVideoCount, Converter={StaticResource TranslatedStringFormatConverter}, ConverterParameter=Format_ModifyCount}"
                         TextColor="#FFAAAAAA" />
 
                     <!--  Atleta  -->
@@ -3949,7 +3949,7 @@
                             <Label
                                 Grid.Column="1"
                                 FontSize="{StaticResource FontSizeBody}"
-                                Text="Asignar atleta"
+                                Text="{markup:Translate BatchEdit_AssignAthlete}"
                                 TextColor="White"
                                 VerticalOptions="Center" />
                         </Grid>
@@ -3987,26 +3987,26 @@
                         <Grid ColumnDefinitions="*,*,Auto" ColumnSpacing="8">
                             <Entry
                                 BackgroundColor="#FF404040"
-                                Placeholder="Apellido"
+                                Placeholder="{markup:Translate BatchEdit_LastNamePH}"
                                 Text="{Binding BatchEdit.NewBatchAthleteSurname}"
                                 TextColor="White" />
                             <Entry
                                 Grid.Column="1"
                                 BackgroundColor="#FF404040"
-                                Placeholder="Nombre"
+                                Placeholder="{markup:Translate BatchEdit_FirstNamePH}"
                                 Text="{Binding BatchEdit.NewBatchAthleteName}"
                                 TextColor="White" />
                             <Button
                                 Grid.Column="2"
                                 BackgroundColor="#FF3A3A3A"
                                 Command="{Binding BatchEdit.AddNewBatchAthleteCommand}"
-                                Text="Añadir"
+                                Text="{markup:Translate Common_Add}"
                                 TextColor="White" />
                         </Grid>
 
                         <Label
                             FontSize="{StaticResource FontSizeSmall}"
-                            Text="No hay atletas disponibles"
+                            Text="{markup:Translate BatchEdit_NoAthletes}"
                             TextColor="#FF888888">
                             <Label.Triggers>
                                 <DataTrigger TargetType="Label" Binding="{Binding BatchEdit.BatchEditAthletes.Count}" Value="0">
@@ -4031,7 +4031,7 @@
                             <Label
                                 Grid.Column="1"
                                 FontSize="{StaticResource FontSizeBody}"
-                                Text="Asignar sección/tramo"
+                                Text="{markup:Translate BatchEdit_AssignSection}"
                                 TextColor="White"
                                 VerticalOptions="Center" />
                         </Grid>
@@ -4044,7 +4044,7 @@
                                 WidthRequest="80" />
                             <Label
                                 FontSize="{StaticResource FontSizeBody}"
-                                Text="(1-99)"
+                                Text="{markup:Translate BatchEdit_Range}"
                                 TextColor="#FF888888"
                                 VerticalOptions="Center" />
                         </HorizontalStackLayout>
@@ -4054,7 +4054,7 @@
                     <VerticalStackLayout Spacing="8">
                         <Label
                             FontSize="{StaticResource FontSizeBody}"
-                            Text="Añadir etiquetas"
+                            Text="{markup:Translate BatchEdit_AddTags}"
                             TextColor="White" />
 
                         <!--  Nueva etiqueta (no existente)  -->
@@ -4062,13 +4062,13 @@
                             <Entry
                                 BackgroundColor="#FF404040"
                                 HorizontalOptions="FillAndExpand"
-                                Placeholder="Nueva etiqueta"
+                                Placeholder="{markup:Translate BatchEdit_NewTagPH}"
                                 Text="{Binding BatchEdit.NewBatchTagText}"
                                 TextColor="White" />
                             <Button
                                 BackgroundColor="#FF3A3A3A"
                                 Command="{Binding BatchEdit.AddNewBatchTagCommand}"
-                                Text="Añadir"
+                                Text="{markup:Translate Common_Add}"
                                 TextColor="White" />
                         </HorizontalStackLayout>
 
@@ -4099,7 +4099,7 @@
                         </FlexLayout>
                         <Label
                             FontSize="{StaticResource FontSizeSmall}"
-                            Text="No hay etiquetas disponibles"
+                            Text="{markup:Translate BatchEdit_NoTags}"
                             TextColor="#FF888888">
                             <Label.Triggers>
                                 <DataTrigger TargetType="Label" Binding="{Binding BatchEdit.BatchEditTags.Count}" Value="0">
@@ -4119,13 +4119,13 @@
                         <Button
                             BackgroundColor="#FF3A3A3A"
                             Command="{Binding BatchEdit.CloseBatchEditPopupCommand}"
-                            Text="Cancelar"
+                            Text="{markup:Translate Common_Cancel}"
                             TextColor="White" />
                         <Button
                             Grid.Column="1"
                             BackgroundColor="#FF4A9FD4"
                             Command="{Binding BatchEdit.ApplyBatchEditCommand}"
-                            Text="Aplicar"
+                            Text="{markup:Translate Common_Apply}"
                             TextColor="White" />
                     </Grid>
                 </VerticalStackLayout>
@@ -4154,7 +4154,7 @@
                         <Label
                             FontAttributes="None"
                             FontSize="{StaticResource FontSizeTitle}"
-                            Text="Editar sesión"
+                            Text="{markup:Translate EditSession_Title}"
                             TextColor="White" />
                         <Border
                             Grid.Column="1"
@@ -4177,11 +4177,11 @@
                     <VerticalStackLayout Spacing="8">
                         <Label
                             FontSize="{StaticResource FontSizeBody}"
-                            Text="Nombre"
+                            Text="{markup:Translate EditSession_Name}"
                             TextColor="#FFAAAAAA" />
                         <Entry
                             BackgroundColor="#FF404040"
-                            Placeholder="Nombre de la sesión"
+                            Placeholder="{markup:Translate EditSession_NamePH}"
                             Text="{Binding SessionEditName}"
                             TextColor="White" />
                     </VerticalStackLayout>
@@ -4190,11 +4190,11 @@
                     <VerticalStackLayout Spacing="8">
                         <Label
                             FontSize="{StaticResource FontSizeBody}"
-                            Text="Lugar"
+                            Text="{markup:Translate EditSession_Place}"
                             TextColor="#FFAAAAAA" />
                         <Entry
                             BackgroundColor="#FF404040"
-                            Placeholder="Lugar de la sesión"
+                            Placeholder="{markup:Translate EditSession_PlacePH}"
                             Text="{Binding SessionEditLugar}"
                             TextColor="White" />
                     </VerticalStackLayout>
@@ -4203,11 +4203,11 @@
                     <VerticalStackLayout Spacing="8">
                         <Label
                             FontSize="{StaticResource FontSizeBody}"
-                            Text="Tipo de sesión"
+                            Text="{markup:Translate EditSession_SessionType}"
                             TextColor="#FFAAAAAA" />
                         <Entry
                             BackgroundColor="#FF404040"
-                            Placeholder="Tipo de sesión"
+                            Placeholder="{markup:Translate EditSession_SessionTypePH}"
                             Text="{Binding SessionEditTipoSesion}"
                             TextColor="White" />
                     </VerticalStackLayout>
@@ -4217,13 +4217,13 @@
                         <Button
                             BackgroundColor="#FF3A3A3A"
                             Command="{Binding CloseSessionEditPopupCommand}"
-                            Text="Cancelar"
+                            Text="{markup:Translate Common_Cancel}"
                             TextColor="White" />
                         <Button
                             Grid.Column="1"
                             BackgroundColor="#FF4A9FD4"
                             Command="{Binding ApplySessionEditCommand}"
-                            Text="Guardar"
+                            Text="{markup:Translate Common_Save}"
                             TextColor="White" />
                     </Grid>
                 </VerticalStackLayout>
@@ -4253,7 +4253,7 @@
                             <Label
                                 FontAttributes="None"
                                 FontSize="{StaticResource FontSizeTitle}"
-                                Text="Tiempos por Sección"
+                                Text="{markup:Translate SplitPopup_Title}"
                                 TextColor="White" />
                             <Label
                                 FontSize="{StaticResource FontSizeSmall}"
@@ -4332,7 +4332,7 @@
                                     VerticalOptions="Center" />
                                 <Label
                                     FontSize="{StaticResource FontSizeSubtitle}"
-                                    Text="Secciones"
+                                    Text="{markup:Translate SplitPopup_Sections}"
                                     TextColor="White"
                                     VerticalOptions="Center" />
                                 <controls:SymbolIcon
@@ -4365,7 +4365,7 @@
                                     VerticalOptions="Center" />
                                 <Label
                                     FontSize="{StaticResource FontSizeSubtitle}"
-                                    Text="HTML"
+                                    Text="{markup:Translate SplitPopup_HTML}"
                                     TextColor="White"
                                     VerticalOptions="Center" />
                             </HorizontalStackLayout>
@@ -4390,7 +4390,7 @@
                                     VerticalOptions="Center" />
                                 <Label
                                     FontSize="{StaticResource FontSizeSubtitle}"
-                                    Text="PDF"
+                                    Text="{markup:Translate SplitPopup_PDF}"
                                     TextColor="White"
                                     VerticalOptions="Center" />
                             </HorizontalStackLayout>
@@ -4440,7 +4440,7 @@
                     <Label
                         Grid.Row="2"
                         FontSize="{StaticResource FontSizeSmall}"
-                        Text="Lap = tiempo parcial · Acum. = tiempo acumulado · CV% = Coeficiente de Variación = (σ / x̄) × 100 (menor = más consistente)"
+                        Text="{markup:Translate SplitPopup_Legend}"
                         TextColor="#FFCCCCCC"
                         VerticalOptions="Center" />
                     
@@ -4511,7 +4511,7 @@
                             <Label
                                 FontAttributes="None"
                                 FontSize="{StaticResource FontSizeSubtitle}"
-                                Text="Secciones del informe"
+                                Text="{markup:Translate Report_Title}"
                                 TextColor="White" />
                             
                             <!--  Presets  -->
@@ -4526,7 +4526,7 @@
                                     </Border.GestureRecognizers>
                                     <Label
                                         FontSize="{StaticResource FontSizeSmall}"
-                                        Text="Resumen rápido"
+                                        Text="{markup:Translate Report_QuickSummary}"
                                         TextColor="#FF0066" />
                                 </Border>
                                 <Border
@@ -4539,7 +4539,7 @@
                                     </Border.GestureRecognizers>
                                     <Label
                                         FontSize="{StaticResource FontSizeSmall}"
-                                        Text="Análisis completo"
+                                        Text="{markup:Translate Report_FullAnalysis}"
                                         TextColor="#FF0066" />
                                 </Border>
                                 <Border
@@ -4552,7 +4552,7 @@
                                     </Border.GestureRecognizers>
                                     <Label
                                         FontSize="{StaticResource FontSizeSmall}"
-                                        Text="Informe atleta"
+                                        Text="{markup:Translate Report_AthleteReport}"
                                         TextColor="#FF0066" />
                                 </Border>
                             </HorizontalStackLayout>
@@ -4563,47 +4563,47 @@
                             <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="10" ColumnSpacing="16">
                                 <HorizontalStackLayout Grid.Row="0" Grid.Column="0" Spacing="8">
                                     <CheckBox IsChecked="{Binding Videos.ReportOptions.ShowSessionHeader}" Color="#FF0066" />
-                                    <Label Text="Cabecera de sesión" TextColor="White" FontSize="{StaticResource FontSizeSmall}" VerticalOptions="Center" />
+                                    <Label Text="{markup:Translate Report_SessionHeader}" TextColor="White" FontSize="{StaticResource FontSizeSmall}" VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                                 <HorizontalStackLayout Grid.Row="0" Grid.Column="1" Spacing="8">
                                     <CheckBox IsChecked="{Binding Videos.ReportOptions.ShowTrainingSummary}" Color="#FF0066" />
-                                    <Label Text="Resumen entrenamiento" TextColor="White" FontSize="{StaticResource FontSizeSmall}" VerticalOptions="Center" />
+                                    <Label Text="{markup:Translate Report_TrainingSummary}" TextColor="White" FontSize="{StaticResource FontSizeSmall}" VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                                 
                                 <HorizontalStackLayout Grid.Row="1" Grid.Column="0" Spacing="8">
                                     <CheckBox IsChecked="{Binding Videos.ReportOptions.ShowGroupConsistency}" Color="#FF0066" />
-                                    <Label Text="Consistencia grupo" TextColor="White" FontSize="{StaticResource FontSizeSmall}" VerticalOptions="Center" />
+                                    <Label Text="{markup:Translate Report_GroupConsistency}" TextColor="White" FontSize="{StaticResource FontSizeSmall}" VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                                 <HorizontalStackLayout Grid.Row="1" Grid.Column="1" Spacing="8">
                                     <CheckBox IsChecked="{Binding Videos.ReportOptions.ShowMinMaxCharts}" Color="#FF0066" />
-                                    <Label Text="Gráficos Min-Max" TextColor="White" FontSize="{StaticResource FontSizeSmall}" VerticalOptions="Center" />
+                                    <Label Text="{markup:Translate Report_MinMaxCharts}" TextColor="White" FontSize="{StaticResource FontSizeSmall}" VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                                 
                                 <HorizontalStackLayout Grid.Row="2" Grid.Column="0" Spacing="8">
                                     <CheckBox IsChecked="{Binding Videos.ReportOptions.ShowTimeTables}" Color="#FF0066" />
-                                    <Label Text="Tablas de tiempos" TextColor="White" FontSize="{StaticResource FontSizeSmall}" VerticalOptions="Center" />
+                                    <Label Text="{markup:Translate Report_TimeTables}" TextColor="White" FontSize="{StaticResource FontSizeSmall}" VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                                 <HorizontalStackLayout Grid.Row="2" Grid.Column="1" Spacing="8">
                                     <CheckBox IsChecked="{Binding Videos.ReportOptions.ShowIndividualConsistency}" Color="#FF0066" />
-                                    <Label Text="Consistencia individual" TextColor="White" FontSize="{StaticResource FontSizeSmall}" VerticalOptions="Center" />
+                                    <Label Text="{markup:Translate Report_IndConsistency}" TextColor="White" FontSize="{StaticResource FontSizeSmall}" VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                                 
                                 <HorizontalStackLayout Grid.Row="3" Grid.Column="0" Spacing="8">
                                     <CheckBox IsChecked="{Binding Videos.ReportOptions.ShowLapAnalysis}" Color="#FF0066" />
-                                    <Label Text="Análisis de parciales" TextColor="White" FontSize="{StaticResource FontSizeSmall}" VerticalOptions="Center" />
+                                    <Label Text="{markup:Translate Report_SplitAnalysis}" TextColor="White" FontSize="{StaticResource FontSizeSmall}" VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                                 <HorizontalStackLayout Grid.Row="3" Grid.Column="1" Spacing="8">
                                     <CheckBox IsChecked="{Binding Videos.ReportOptions.ShowRanking}" Color="#FF0066" />
-                                    <Label Text="Ranking" TextColor="White" FontSize="{StaticResource FontSizeSmall}" VerticalOptions="Center" />
+                                    <Label Text="{markup:Translate Report_Ranking}" TextColor="White" FontSize="{StaticResource FontSizeSmall}" VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                                 
                                 <HorizontalStackLayout Grid.Row="4" Grid.Column="0" Spacing="8">
                                     <CheckBox IsChecked="{Binding Videos.ReportOptions.ShowPenalties}" Color="#FF0066" />
-                                    <Label Text="Penalizaciones" TextColor="White" FontSize="{StaticResource FontSizeSmall}" VerticalOptions="Center" />
+                                    <Label Text="{markup:Translate Report_Penalties}" TextColor="White" FontSize="{StaticResource FontSizeSmall}" VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                                 <HorizontalStackLayout Grid.Row="4" Grid.Column="1" Spacing="8">
                                     <CheckBox IsChecked="{Binding Videos.ReportOptions.ShowAthleteProfile}" Color="#FF0066" />
-                                    <Label Text="Perfil del atleta" TextColor="White" FontSize="{StaticResource FontSizeSmall}" VerticalOptions="Center" />
+                                    <Label Text="{markup:Translate Report_AthleteProfile}" TextColor="White" FontSize="{StaticResource FontSizeSmall}" VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                             </Grid>
                             
@@ -4613,7 +4613,7 @@
                             <Button
                                 BackgroundColor="#FF0066"
                                 Command="{Binding Videos.ToggleReportOptionsPanelCommand}"
-                                Text="Aplicar"
+                                Text="{markup:Translate Common_Apply}"
                                 TextColor="#FF1E1E1E"
                                 HeightRequest="36"
                                 Padding="16,0" />
@@ -4683,7 +4683,7 @@
                                 TintColor="#FFAAAAAA"
                                 VerticalOptions="Center" />
                             <Label 
-                                Text="Crear nueva biblioteca..." 
+                                Text="{markup:Translate CtxLib_CreateNew}" 
                                 Style="{StaticResource ContextMenuItemLabel}" />
                         </HorizontalStackLayout>
                     </Border>
@@ -4707,7 +4707,7 @@
                                 TintColor="#FFAAAAAA"
                                 VerticalOptions="Center" />
                             <Label 
-                                Text="Importar otra biblioteca..." 
+                                Text="{markup:Translate CtxLib_Import}" 
                                 Style="{StaticResource ContextMenuItemLabel}" />
                         </HorizontalStackLayout>
                     </Border>
@@ -4728,7 +4728,7 @@
                                 TintColor="#FFAAAAAA"
                                 VerticalOptions="Center" />
                             <Label 
-                                Text="Vaciar caché y recargar" 
+                                Text="{markup:Translate CtxLib_ClearCache}" 
                                 Style="{StaticResource ContextMenuItemLabel}" />
                         </HorizontalStackLayout>
                     </Border>
@@ -4749,7 +4749,7 @@
                                 TintColor="#FFAAAAAA"
                                 VerticalOptions="Center" />
                             <Label 
-                                Text="Combinar con otra biblioteca..." 
+                                Text="{markup:Translate CtxLib_Merge}" 
                                 Style="{StaticResource ContextMenuItemLabel}" />
                         </HorizontalStackLayout>
                     </Border>
@@ -4795,7 +4795,7 @@
                                 TintColor="#FFAAAAAA"
                                 VerticalOptions="Center" />
                             <Label
-                                Text="Nueva sesión"
+                                Text="{markup:Translate CtxSes_NewSession}"
                                 Style="{StaticResource ContextMenuItemLabel}" />
                         </HorizontalStackLayout>
                     </Border>
@@ -4816,7 +4816,7 @@
                                 TintColor="#FFAAAAAA"
                                 VerticalOptions="Center" />
                             <Label
-                                Text="Importar desde .crown"
+                                Text="{markup:Translate CtxSes_ImportCrown}"
                                 Style="{StaticResource ContextMenuItemLabel}" />
                         </HorizontalStackLayout>
                     </Border>
@@ -4837,7 +4837,7 @@
                                 TintColor="#FFAAAAAA"
                                 VerticalOptions="Center" />
                             <Label
-                                Text="Nueva sesión desde archivos de video"
+                                Text="{markup:Translate CtxSes_NewFromFiles}"
                                 Style="{StaticResource ContextMenuItemLabel}" />
                         </HorizontalStackLayout>
                     </Border>
@@ -4889,7 +4889,7 @@
                                 TintColor="#FFAAAAAA"
                                 VerticalOptions="Center" />
                             <Label
-                                Text="Editar..."
+                                Text="{markup:Translate CtxRow_Edit}"
                                 Style="{StaticResource ContextMenuItemLabel}" />
                         </HorizontalStackLayout>
                     </Border>
@@ -4909,7 +4909,7 @@
                                 TintColor="#FFAAAAAA"
                                 VerticalOptions="Center" />
                             <Label
-                                Text="Personalizar..."
+                                Text="{markup:Translate CtxRow_Customize}"
                                 Style="{StaticResource ContextMenuItemLabel}" />
                         </HorizontalStackLayout>
                     </Border>
@@ -4932,7 +4932,7 @@
                                 TintColor="#FFAAAAAA"
                                 VerticalOptions="Center" />
                             <Label
-                                Text="Exportar"
+                                Text="{markup:Translate CtxRow_Export}"
                                 Style="{StaticResource ContextMenuItemLabel}" />
                         </HorizontalStackLayout>
                     </Border>
@@ -4952,7 +4952,7 @@
                                 TintColor="#FFFFAB40"
                                 VerticalOptions="Center" />
                             <Label
-                                Text="Agregar a favoritos"
+                                Text="{markup:Translate CtxRow_AddFavorites}"
                                 Style="{StaticResource ContextMenuItemLabel}" />
                         </HorizontalStackLayout>
                     </Border>
@@ -4981,7 +4981,7 @@
                                 TintColor="#FFFF453A"
                                 VerticalOptions="Center" />
                             <Label
-                                Text="Eliminar"
+                                Text="{markup:Translate CtxRow_Delete}"
                                 Style="{StaticResource ContextMenuItemLabel}" />
                         </HorizontalStackLayout>
                     </Border>
@@ -5014,7 +5014,7 @@
                                 TintColor="#FFAAAAAA"
                                 VerticalOptions="Center" />
                             <Label
-                                Text="Editar..."
+                                Text="{markup:Translate CtxSF_Edit}"
                                 Style="{StaticResource ContextMenuItemLabel}" />
                         </HorizontalStackLayout>
                     </Border>
@@ -5034,7 +5034,7 @@
                                 TintColor="#FFAAAAAA"
                                 VerticalOptions="Center" />
                             <Label
-                                Text="Personalizar..."
+                                Text="{markup:Translate CtxSF_Customize}"
                                 Style="{StaticResource ContextMenuItemLabel}" />
                         </HorizontalStackLayout>
                     </Border>
@@ -5063,7 +5063,7 @@
                                 TintColor="#FFFF453A"
                                 VerticalOptions="Center" />
                             <Label
-                                Text="Eliminar"
+                                Text="{markup:Translate CtxSF_Delete}"
                                 Style="{StaticResource ContextMenuItemLabel}" />
                         </HorizontalStackLayout>
                     </Border>
@@ -5096,7 +5096,7 @@
                                 TintColor="#FFAAAAAA"
                                 VerticalOptions="Center" />
                             <Label
-                                Text="Añadir a biblioteca personal"
+                                Text="{markup:Translate CtxRemSes_AddToPersonal}"
                                 Style="{StaticResource ContextMenuItemLabel}" />
                         </HorizontalStackLayout>
                     </Border>
@@ -5125,7 +5125,7 @@
                                 TintColor="#FFFF453A"
                                 VerticalOptions="Center" />
                             <Label
-                                Text="Eliminar sesión"
+                                Text="{markup:Translate CtxRemSes_Delete}"
                                 Style="{StaticResource ContextMenuItemLabel}"
                                 TextColor="#FFFF453A" />
                         </HorizontalStackLayout>
@@ -5160,7 +5160,7 @@
                                 TintColor="#FFAAAAAA"
                                 VerticalOptions="Center" />
                             <Label
-                                Text="Abrir en reproductor"
+                                Text="{markup:Translate CtxVid_OpenPlayer}"
                                 Style="{StaticResource ContextMenuItemLabel}" />
                         </HorizontalStackLayout>
                     </Border>
@@ -5181,7 +5181,7 @@
                                 TintColor="#FFAAAAAA"
                                 VerticalOptions="Center" />
                             <Label
-                                Text="Compartir"
+                                Text="{markup:Translate CtxVid_Share}"
                                 Style="{StaticResource ContextMenuItemLabel}" />
                         </HorizontalStackLayout>
                     </Border>
@@ -5202,7 +5202,7 @@
                                 TintColor="#FFFFAB40"
                                 VerticalOptions="Center" />
                             <Label
-                                Text="Agregar a favoritos"
+                                Text="{markup:Translate CtxVid_AddFavorites}"
                                 Style="{StaticResource ContextMenuItemLabel}" />
                         </HorizontalStackLayout>
                     </Border>
@@ -5223,7 +5223,7 @@
                                 TintColor="#FF4CAF50"
                                 VerticalOptions="Center" />
                             <Label
-                                Text="Descargar (disponible offline)"
+                                Text="{markup:Translate CtxVid_DownloadOffline}"
                                 Style="{StaticResource ContextMenuItemLabel}"
                                 TextColor="#FF4CAF50" />
                         </HorizontalStackLayout>
@@ -5245,7 +5245,7 @@
                                 TintColor="#FF2196F3"
                                 VerticalOptions="Center" />
                             <Label
-                                Text="Dejar en la nube"
+                                Text="{markup:Translate CtxVid_LeaveCloud}"
                                 Style="{StaticResource ContextMenuItemLabel}"
                                 TextColor="#FF2196F3" />
                         </HorizontalStackLayout>
@@ -5276,7 +5276,7 @@
                                 TintColor="#FFFF453A"
                                 VerticalOptions="Center" />
                             <Label
-                                Text="Eliminar"
+                                Text="{markup:Translate CtxVid_Delete}"
                                 Style="{StaticResource ContextMenuItemLabel}"
                                 TextColor="#FFFF453A" />
                         </HorizontalStackLayout>
@@ -5311,7 +5311,7 @@
                                 TintColor="#FFAAAAAA"
                                 VerticalOptions="Center" />
                             <Label
-                                Text="Abrir"
+                                Text="{markup:Translate CtxRemVid_Open}"
                                 Style="{StaticResource ContextMenuItemLabel}" />
                         </HorizontalStackLayout>
                     </Border>
@@ -5332,7 +5332,7 @@
                                 TintColor="#FFAAAAAA"
                                 VerticalOptions="Center" />
                             <Label
-                                Text="+ Añadir a mi biblioteca"
+                                Text="{markup:Translate CtxRemVid_AddToLibrary}"
                                 Style="{StaticResource ContextMenuItemLabel}" />
                         </HorizontalStackLayout>
                     </Border>
@@ -5353,7 +5353,7 @@
                                 TintColor="#FFAAAAAA"
                                 VerticalOptions="Center" />
                             <Label
-                                Text="Favoritos"
+                                Text="{markup:Translate CtxRemVid_Favorites}"
                                 Style="{StaticResource ContextMenuItemLabel}" />
                         </HorizontalStackLayout>
                     </Border>
@@ -5374,7 +5374,7 @@
                                 TintColor="#FFAAAAAA"
                                 VerticalOptions="Center" />
                             <Label
-                                Text="Compartir"
+                                Text="{markup:Translate CtxRemVid_Share}"
                                 Style="{StaticResource ContextMenuItemLabel}" />
                         </HorizontalStackLayout>
                     </Border>
@@ -5404,7 +5404,7 @@
                                 TintColor="#FFFF453A"
                                 VerticalOptions="Center" />
                             <Label
-                                Text="Eliminar"
+                                Text="{markup:Translate CtxRemVid_Delete}"
                                 Style="{StaticResource ContextMenuItemLabel}"
                                 TextColor="#FFFF453A" />
                         </HorizontalStackLayout>
@@ -5434,32 +5434,32 @@
                     WidthRequest="420">
                     <VerticalStackLayout Spacing="16">
                         <Label
-                            Text="Acceso requerido"
+                            Text="{markup:Translate Login_AccessRequired}"
                             FontFamily="{StaticResource AppFontEmphasis}"
                             FontSize="{StaticResource FontSizeTitle}"
                             TextColor="White" />
                         <Label
-                            Text="Inicia sesión con tu cuenta del equipo para continuar."
+                            Text="{markup:Translate Login_Subtitle}"
                             FontFamily="{StaticResource AppFontBody}"
                             FontSize="{StaticResource FontSizeBody}"
                             TextColor="#FFB0B0B0" />
 
                         <Entry
-                            Placeholder="Email"
+                            Placeholder="{markup:Translate Login_EmailPH}"
                             Keyboard="Email"
                             Text="{Binding Remote.CloudLoginEmail}"
                             TextColor="White"
                             PlaceholderColor="#FF777777"
                             ClearButtonVisibility="WhileEditing" />
                         <Entry
-                            Placeholder="Contraseña"
+                            Placeholder="{markup:Translate Login_PasswordPH}"
                             IsPassword="True"
                             Text="{Binding Remote.CloudLoginPassword}"
                             TextColor="White"
                             PlaceholderColor="#FF777777" />
 
                         <Button
-                            Text="Iniciar sesión"
+                            Text="{markup:Translate Login_SignIn}"
                             Command="{Binding Remote.CloudLoginCommand}"
                             BackgroundColor="#FF3B82F6"
                             TextColor="White"

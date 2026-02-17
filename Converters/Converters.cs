@@ -904,3 +904,23 @@ public class BoolToStrokeColorConverter : IValueConverter
         throw new NotImplementedException();
     }
 }
+
+/// <summary>
+/// Converter que usa un StringFormat traducido.
+/// parameter = clave de traducción del formato (ej: "Format_VideosNamed").
+/// Resultado = string.Format(traducción, value).
+/// </summary>
+public class TranslatedStringFormatConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (parameter is not string key) return value?.ToString();
+        var format = Services.LocalizationService.Instance.GetString(key);
+        return string.Format(format, value);
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}

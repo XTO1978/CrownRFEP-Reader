@@ -5,6 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:behaviors="clr-namespace:CrownRFEP_Reader.Behaviors"
     xmlns:controls="clr-namespace:CrownRFEP_Reader.Views.Controls"
+    xmlns:markup="clr-namespace:CrownRFEP_Reader.Markup"
     xmlns:models="clr-namespace:CrownRFEP_Reader.Models"
     xmlns:vm="clr-namespace:CrownRFEP_Reader.ViewModels"
     x:DataType="vm:DashboardViewModel">
@@ -61,7 +62,7 @@
                             FontFamily="{StaticResource AppFontEmphasis}"
                             FontSize="{StaticResource FontSizeBody}"
                             FontAttributes="Bold"
-                            Text="Biblioteca de organización"
+                            Text="{markup:Translate Sidebar_OrgLibrary}"
                             TextColor="White"
                             VerticalOptions="Center" />
                         <Label
@@ -139,7 +140,7 @@
                         Grid.Column="1"
                         Margin="8,0,0,0"
                         Style="{StaticResource SidebarMenuItemLabel}"
-                        Text="Galería General" />
+                        Text="{markup:Translate Sidebar_GeneralGallery}" />
                     <Label
                         Grid.Column="2"
                         Margin="0,0,8,0"
@@ -189,7 +190,7 @@
                         Grid.Column="1"
                         Margin="8,0,0,0"
                         Style="{StaticResource SidebarMenuItemLabel}"
-                        Text="Videolecciones" />
+                        Text="{markup:Translate Sidebar_VideoLessons}" />
                     <Label
                         Grid.Column="2"
                         Margin="0,0,8,0"
@@ -239,7 +240,7 @@
                         Grid.Column="1"
                         Margin="8,0,0,0"
                         Style="{StaticResource SidebarMenuItemLabel}"
-                        Text="Papelera" />
+                        Text="{markup:Translate Sidebar_Trash}" />
                     <Label
                         Grid.Column="2"
                         Margin="0,0,8,0"
@@ -302,7 +303,7 @@
                         Grid.Column="2"
                         Margin="8,0,0,0"
                         Style="{StaticResource SidebarMenuItemLabel}"
-                        Text="Sesiones" />
+                        Text="{markup:Translate Sidebar_Sessions}" />
                     <Border
                         x:Name="RemoteSessionsAddButton"
                         Grid.Column="3"
@@ -460,7 +461,7 @@
                         Grid.Column="2"
                         Margin="8,0,0,0"
                         Style="{StaticResource SidebarMenuItemLabel}"
-                        Text="Carpeta inteligente" />
+                        Text="{markup:Translate Sidebar_SmartFolder}" />
                 </Grid>
             </Border>
 

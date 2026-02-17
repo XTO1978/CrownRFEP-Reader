@@ -168,6 +168,7 @@ public static class MauiProgram
 			});
 
 		// Servicios
+		builder.Services.AddSingleton(LocalizationService.Instance);
 		builder.Services.AddSingleton<DatabaseService>();
 		builder.Services.AddSingleton<ITrashService, TrashService>();
 		builder.Services.AddSingleton<UserProfileNotifier>();
