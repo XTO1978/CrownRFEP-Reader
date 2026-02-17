@@ -22,6 +22,16 @@ public class SyncService
     private readonly HttpClient _httpClient;
     private readonly HashSet<int> _sessionMetadataUploaded = new();
 
+    /// <summary>
+    /// Limpia el estado de sincronización (IDs de sesiones ya subidas).
+    /// Se usa al cerrar sesión o cambiar de organización.
+    /// </summary>
+    public void ResetSyncState()
+    {
+        _sessionMetadataUploaded.Clear();
+        System.Diagnostics.Debug.WriteLine("[SyncService] Estado de sincronización reseteado");
+    }
+
     private static readonly JsonSerializerOptions _jsonOptions = new()
     {
         WriteIndented = true,

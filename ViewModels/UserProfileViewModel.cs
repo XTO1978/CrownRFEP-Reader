@@ -15,6 +15,7 @@ public class UserProfileViewModel : BaseViewModel
     private readonly DatabaseService _databaseService;
     private readonly UserProfileNotifier _userProfileNotifier;
     private readonly ICloudBackendService _cloudBackendService;
+    private readonly RemoteLibraryViewModel _remoteLibraryViewModel;
     private UserProfile? _profile;
     private bool _isEditing;
     private string? _statusMessage;
@@ -236,11 +237,12 @@ public class UserProfileViewModel : BaseViewModel
     public ICommand CloudLoginCommand { get; }
     public ICommand CloudLogoutCommand { get; }
 
-    public UserProfileViewModel(DatabaseService databaseService, UserProfileNotifier userProfileNotifier, ICloudBackendService cloudBackendService)
+    public UserProfileViewModel(DatabaseService databaseService, UserProfileNotifier userProfileNotifier, ICloudBackendService cloudBackendService, RemoteLibraryViewModel remoteLibraryViewModel)
     {
         _databaseService = databaseService;
         _userProfileNotifier = userProfileNotifier;
         _cloudBackendService = cloudBackendService;
+        _remoteLibraryViewModel = remoteLibraryViewModel;
         Title = "Mi Perfil";
 
         // Inicializar opciones
@@ -316,6 +318,11 @@ public class UserProfileViewModel : BaseViewModel
             IsCloudBusy = true;
             CloudStatusMessage = null;
             await _cloudBackendService.LogoutAsync();
+
+            // Limpiar completamente los datos de la organización actual
+            // para evitar que persistan al iniciar sesión con otra cuenta
+            _remoteLibraryViewModel.ResetAllRemoteState();
+
             CloudStatusMessage = "Sesión cerrada.";
             NotifyCloudStateChanged();
         }

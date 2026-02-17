@@ -479,6 +479,73 @@ public class RemoteLibraryViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// Limpia completamente todo el estado de la biblioteca remota.
+    /// Se usa al cerrar sesión o cambiar de organización para evitar
+    /// que datos de una organización persistan y sean visibles en otra.
+    /// </summary>
+    public void ResetAllRemoteState()
+    {
+        System.Diagnostics.Debug.WriteLine("[Remote] ResetAllRemoteState: limpiando todos los datos de organización");
+
+        // Limpiar cachés internas
+        _remoteFilesCache = null;
+        _currentOrgConfig = null;
+
+        // Limpiar colecciones observables
+        RemoteVideos.Clear();
+        RemoteSessions = new ObservableCollection<RemoteSessionListItem>();
+        RemoteSmartFolders = new ObservableCollection<SmartFolderDefinition>();
+        RemoteVideoLessons = new ObservableCollection<VideoLesson>();
+
+        // Resetear contadores
+        RemoteAllGalleryItemCount = "—";
+        RemoteVideoLessonsCount = "—";
+        RemoteTrashItemCount = "—";
+
+        // Resetear estado de UI
+        RemoteLibraryDisplayName = "Organización";
+        IsRemoteLibraryVisible = false;
+        _setIsRemoteLibraryExpanded(false);
+        IsLoginRequired = true;
+        SelectedRemoteSessionId = 0;
+
+        // Limpiar selección
+        if (IsRemoteAllGallerySelected || IsRemoteVideoLessonsSelected || IsRemoteTrashSelected)
+        {
+            IsRemoteAllGallerySelected = false;
+            IsRemoteVideoLessonsSelected = false;
+            IsRemoteTrashSelected = false;
+            OnPropertyChanged(nameof(ShowRemoteGallery));
+            OnPropertyChanged(nameof(ShowRemoteVideoLessons));
+            OnPropertyChanged(nameof(IsAnyRemoteSectionSelected));
+            _notifyShowVideoGalleryChanged();
+            _notifySelectedSessionTitleChanged();
+            _notifyCanShowRecordButtonChanged();
+        }
+
+        // Limpiar estado de multi-selección
+        IsRemoteMultiSelectMode = false;
+
+        // Limpiar credenciales de login en formulario
+        CloudLoginEmail = string.Empty;
+        CloudLoginPassword = string.Empty;
+        CloudLoginStatusMessage = string.Empty;
+
+        // Notificar cambios de autenticación
+        OnPropertyChanged(nameof(IsCloudAuthenticated));
+        OnPropertyChanged(nameof(CanDeleteRemoteSessions));
+        OnPropertyChanged(nameof(CanWriteRemoteLibrary));
+
+        // Invalidar caché de la base de datos local
+        _databaseService.InvalidateCache();
+
+        // Limpiar el tracked set de metadata en SyncService
+        _syncService?.ResetSyncState();
+
+        System.Diagnostics.Debug.WriteLine("[Remote] ResetAllRemoteState: completado");
+    }
+
     public async Task RestoreCloudSessionAsync()
     {
         try
@@ -547,6 +614,9 @@ public class RemoteLibraryViewModel : ObservableObject
             IsCloudLoginBusy = true;
             CloudLoginStatusMessage = "Iniciando sesión...";
 
+            // Limpiar datos de cualquier organización anterior antes de autenticar
+            ResetAllRemoteState();
+
             var result = await _cloudBackendService.LoginAsync(CloudLoginEmail.Trim(), CloudLoginPassword);
 
             if (!result.Success)
@@ -561,6 +631,8 @@ public class RemoteLibraryViewModel : ObservableObject
             CloudLoginStatusMessage = $"Sesión iniciada: {result.UserName}";
             CloudLoginPassword = string.Empty;
             OnPropertyChanged(nameof(IsCloudAuthenticated));
+            OnPropertyChanged(nameof(CanDeleteRemoteSessions));
+            OnPropertyChanged(nameof(CanWriteRemoteLibrary));
 
             await LoadTeamFilesAsync();
         }
@@ -658,6 +730,9 @@ public class RemoteLibraryViewModel : ObservableObject
         {
             IsBusy = true;
 
+            // Limpiar datos de cualquier organización anterior antes de autenticar
+            ResetAllRemoteState();
+
             var result = await _cloudBackendService.LoginAsync(email, password);
 
             if (!result.Success)
@@ -670,6 +745,8 @@ public class RemoteLibraryViewModel : ObservableObject
             IsRemoteLibraryVisible = true;
             IsLoginRequired = false;
             OnPropertyChanged(nameof(IsCloudAuthenticated));
+            OnPropertyChanged(nameof(CanDeleteRemoteSessions));
+            OnPropertyChanged(nameof(CanWriteRemoteLibrary));
 
             await page.DisplayAlert("Sesión iniciada",
                 $"Bienvenido, {result.UserName}\nEquipo: {result.TeamName}",
@@ -2257,25 +2334,8 @@ public class RemoteLibraryViewModel : ObservableObject
                 System.Diagnostics.Debug.WriteLine($"[Remote] Error en logout: {ex.Message}");
             }
 
-            RemoteVideos.Clear();
-
-            IsRemoteLibraryVisible = false;
-            _setIsRemoteLibraryExpanded(false);
-            RemoteLibraryDisplayName = "Organización";
-            RemoteAllGalleryItemCount = "—";
-            IsLoginRequired = true;
-            OnPropertyChanged(nameof(IsCloudAuthenticated));
-
-            if (IsAnyRemoteSectionSelected)
-            {
-                IsRemoteAllGallerySelected = false;
-                IsRemoteVideoLessonsSelected = false;
-                IsRemoteTrashSelected = false;
-                OnPropertyChanged(nameof(ShowRemoteGallery));
-                OnPropertyChanged(nameof(IsAnyRemoteSectionSelected));
-            }
-
-            _databaseService.InvalidateCache();
+            // Limpieza completa de todo el estado remoto
+            ResetAllRemoteState();
             await CheckPendingSyncAsync();
 
             var resultPage = Application.Current?.Windows.FirstOrDefault()?.Page;
