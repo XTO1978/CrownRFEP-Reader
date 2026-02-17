@@ -965,6 +965,12 @@ public class RemoteLibraryViewModel : ObservableObject
             // Cargar configuración de la organización (smart folders compartidos, etc.)
             await LoadOrgConfigAsync();
 
+            // Sincronizar nombre de la organización desde el backend (puede haber cambiado desde el admin)
+            await _cloudBackendService.RefreshUserProfileAsync();
+            var latestTeamName = _cloudBackendService.TeamName;
+            if (!string.IsNullOrEmpty(latestTeamName) && RemoteLibraryDisplayName != latestTeamName)
+                RemoteLibraryDisplayName = latestTeamName;
+
             RemoteAllGalleryItemCount = RemoteVideos.Count.ToString();
             RefreshRemoteGalleryDisplayItems();
             OnPropertyChanged(nameof(IsAnyRemoteSectionSelected));

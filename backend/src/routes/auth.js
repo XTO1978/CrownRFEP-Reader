@@ -242,7 +242,7 @@ router.post('/refresh', async (req, res) => {
   }
 });
 
-// GET /api/auth/me - Obtener usuario actual
+// GET /api/auth/me - Obtener usuario actual (lee siempre de la DB para reflejar cambios del admin)
 router.get('/me', (req, res) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
@@ -252,13 +252,23 @@ router.get('/me', (req, res) => {
   }
 
   try {
-    const user = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Consultar la DB para obtener datos actualizados (incluyendo cambios de nombre de org)
+    const user = db.prepare(
+      'SELECT u.*, t.name as team_name FROM users u LEFT JOIN teams t ON u.team_id = t.id WHERE u.id = ?'
+    ).get(decoded.userId);
+
+    if (!user) {
+      return res.status(401).json({ error: 'Usuario no encontrado' });
+    }
+
     res.json({
-      id: user.userId,
+      id: user.id,
       email: user.email,
       name: user.name,
-      teamId: user.teamId,
-      teamName: user.teamName,
+      teamId: user.team_id,
+      teamName: user.team_name,
       role: user.role
     });
   } catch (err) {
