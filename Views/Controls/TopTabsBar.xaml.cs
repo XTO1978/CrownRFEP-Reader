@@ -125,6 +125,85 @@ public partial class TopTabsBar : Microsoft.Maui.Controls.ContentView
     private async void OnStatsClicked(object sender, EventArgs e) => await GoToRootAsync("stats");
     private async void OnImportClicked(object sender, EventArgs e) => await GoToRootAsync("import");
     
+    // ─── Settings dropdown ───────────────────────────────────────
+    private void OnSettingsTapped(object? sender, TappedEventArgs e)
+    {
+        var isOpen = SettingsDropdownPanel.IsVisible;
+        SettingsDropdownPanel.IsVisible = !isOpen;
+        SettingsDismissOverlay.IsVisible = !isOpen;
+    }
+
+    private void DismissSettingsDropdown()
+    {
+        SettingsDropdownPanel.IsVisible = false;
+        SettingsDismissOverlay.IsVisible = false;
+    }
+
+    private void OnSettingsDismissTapped(object? sender, TappedEventArgs e) => DismissSettingsDropdown();
+
+    private async void OnSettingsThemeTapped(object? sender, TappedEventArgs e)
+    {
+        DismissSettingsDropdown();
+        var page = GetParentPage();
+        if (page != null)
+            await page.DisplayAlert("Tema", "Cambio de tema claro/oscuro (próximamente)", "OK");
+    }
+
+    private async void OnSettingsLanguageTapped(object? sender, TappedEventArgs e)
+    {
+        DismissSettingsDropdown();
+        var page = GetParentPage();
+        if (page != null)
+            await page.DisplayAlert("Idioma", "Selección de idioma (próximamente)", "OK");
+    }
+
+    private async void OnSettingsStorageTapped(object? sender, TappedEventArgs e)
+    {
+        DismissSettingsDropdown();
+        var page = GetParentPage();
+        if (page != null)
+            await page.DisplayAlert("Almacenamiento", "Gestión de almacenamiento (próximamente)", "OK");
+    }
+
+    private async void OnSettingsBackupTapped(object? sender, TappedEventArgs e)
+    {
+        DismissSettingsDropdown();
+        var page = GetParentPage();
+        if (page != null)
+            await page.DisplayAlert("Datos y backup", "Export/import de datos y backups (próximamente)", "OK");
+    }
+
+    private async void OnSettingsAdminOrgTapped(object? sender, TappedEventArgs e)
+    {
+        DismissSettingsDropdown();
+        var page = GetParentPage();
+        if (page != null)
+            await page.DisplayAlert("Administración", "Panel de administración de organización (próximamente)", "OK");
+    }
+
+    private async void OnSettingsAboutTapped(object? sender, TappedEventArgs e)
+    {
+        DismissSettingsDropdown();
+        var page = GetParentPage();
+        var version = Microsoft.Maui.ApplicationModel.AppInfo.Current.VersionString;
+        var build = Microsoft.Maui.ApplicationModel.AppInfo.Current.BuildString;
+        if (page != null)
+            await page.DisplayAlert("Acerca de", $"CrownRFEP Reader\nVersión {version} ({build})", "OK");
+    }
+
+    private Page? GetParentPage()
+    {
+        Element? current = this;
+        while (current != null)
+        {
+            if (current is Page page)
+                return page;
+            current = current.Parent;
+        }
+        return null;
+    }
+
+    // ─── Profile ──────────────────────────────────────────────────
     private async void OnProfileTapped(object sender, TappedEventArgs e)
     {
         try
