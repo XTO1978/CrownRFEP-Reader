@@ -15,6 +15,7 @@ public class RemoteLibraryViewModel : ObservableObject
     private readonly DatabaseService _databaseService;
     private readonly ICloudBackendService _cloudBackendService;
     private readonly SyncService? _syncService;
+    private readonly IVideoClipUpdateNotifier? _videoClipUpdateNotifier;
     private readonly HttpClient _remoteMetadataHttpClient = new();
 
     private Func<bool> _getIsRemoteLibraryVisible = () => false;
@@ -65,6 +66,8 @@ public class RemoteLibraryViewModel : ObservableObject
     private string _remoteTrashItemCount = "—";
     private ObservableCollection<SmartFolderDefinition> _remoteSmartFolders = new();
     private ObservableCollection<RemoteSessionListItem> _remoteSessions = new();
+    private List<RemoteSessionListItem> _allRemoteSessions = new();
+    private string _sessionSearchText = string.Empty;
     private int _selectedRemoteSessionId;
     private OrgConfig? _currentOrgConfig;
 
@@ -72,6 +75,9 @@ public class RemoteLibraryViewModel : ObservableObject
     private ObservableCollection<RemoteVideoItem> _remoteGalleryDisplayItems = new();
     private bool _isLoadingRemoteVideos;
     private List<CloudFileInfo>? _remoteFilesCache;
+    private DateTime _remoteGalleryLoadedAtUtc = DateTime.MinValue;
+    private DateTime _remoteVideoLessonsLoadedAtUtc = DateTime.MinValue;
+    private static readonly TimeSpan RemoteCacheTtl = TimeSpan.FromHours(2);
 
     private ObservableCollection<VideoLesson> _remoteVideoLessons = new();
 
@@ -97,11 +103,18 @@ public class RemoteLibraryViewModel : ObservableObject
     public RemoteLibraryViewModel(
         DatabaseService databaseService,
         ICloudBackendService cloudBackendService,
+        IVideoClipUpdateNotifier? videoClipUpdateNotifier = null,
         SyncService? syncService = null)
     {
         _databaseService = databaseService;
         _cloudBackendService = cloudBackendService;
         _syncService = syncService;
+        _videoClipUpdateNotifier = videoClipUpdateNotifier;
+
+        if (_videoClipUpdateNotifier != null)
+        {
+            _videoClipUpdateNotifier.VideoClipUpdated += OnVideoClipUpdated;
+        }
 
         ConnectNasCommand = new AsyncRelayCommand(ConnectSynologyNasAsync);
         RemoteSelectAllGalleryCommand = new AsyncRelayCommand(() => HandleRemoteSectionSelectedAsync("Galería General"));
@@ -136,6 +149,80 @@ public class RemoteLibraryViewModel : ObservableObject
         RemoteVideoLessonTapCommand = new AsyncRelayCommand<VideoLesson>(OnRemoteVideoLessonTappedAsync);
         ShareRemoteVideoLessonCommand = new AsyncRelayCommand<VideoLesson>(ShareRemoteVideoLessonAsync);
         DeleteRemoteVideoLessonCommand = new AsyncRelayCommand<VideoLesson>(DeleteRemoteVideoLessonAsync);
+
+        ClearSessionSearchCommand = new RelayCommand(() => SessionSearchText = string.Empty);
+    }
+
+    /// <summary>
+    /// Maneja la notificación de que un VideoClip local fue editado (atleta, sección, tags, etc.).
+    /// Busca el RemoteVideoItem enlazado y actualiza solo sus metadatos sin recargar toda la galería.
+    /// </summary>
+    private async void OnVideoClipUpdated(object? sender, int videoClipId)
+    {
+        try
+        {
+            var remoteItem = RemoteVideos.FirstOrDefault(v => v.LinkedLocalVideo?.Id == videoClipId);
+            if (remoteItem == null) return;
+
+            var videoClip = await _databaseService.GetVideoClipByIdAsync(videoClipId);
+            if (videoClip == null) return;
+
+            // Hidratar atleta
+            if (videoClip.AtletaId > 0)
+            {
+                var athlete = await _databaseService.GetAthleteByIdAsync(videoClip.AtletaId);
+                if (athlete != null)
+                {
+                    videoClip.Atleta = athlete;
+                }
+            }
+
+            // Obtener datos de sesión para lugar
+            var session = await _databaseService.GetSessionByIdAsync(videoClip.SessionId);
+
+            // Actualizar propiedades del RemoteVideoItem en el hilo principal
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                // Nombre de atleta
+                var athleteName = string.Empty;
+                if (videoClip.Atleta != null)
+                {
+                    athleteName = BuildAthleteDisplayName(new AthleteSyncData
+                    {
+                        Nombre = videoClip.Atleta.Nombre,
+                        Apellido = videoClip.Atleta.Apellido
+                    });
+                }
+                remoteItem.AthleteName = athleteName;
+
+                // Lugar de la sesión
+                if (session != null && !string.IsNullOrWhiteSpace(session.Lugar))
+                {
+                    remoteItem.Place = session.Lugar;
+                }
+
+                // Nombre de sesión
+                if (session != null && !string.IsNullOrWhiteSpace(session.NombreSesion))
+                {
+                    remoteItem.SessionName = session.NombreSesion;
+                }
+
+                // Recalcular nombre de display
+                var displayName = BuildRemoteVideoDisplayName(
+                    videoClip.ComparisonName,
+                    athleteName,
+                    remoteItem.SessionName,
+                    remoteItem.FileName);
+                remoteItem.FileName = displayName;
+
+                // Actualizar LinkedLocalVideo para que Properties derivadas se recalculen
+                remoteItem.LinkedLocalVideo = videoClip;
+            });
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Remote] Error actualizando video {videoClipId} tras edición: {ex.Message}");
+        }
     }
 
     public void Configure(
@@ -254,6 +341,27 @@ public class RemoteLibraryViewModel : ObservableObject
         set => SetProperty(ref _remoteSessions, value);
     }
 
+    /// <summary>
+    /// Texto de búsqueda para filtrar tarjetas de sesión (por lugar, fecha, tipo de entrenamiento).
+    /// </summary>
+    public string SessionSearchText
+    {
+        get => _sessionSearchText;
+        set
+        {
+            if (SetProperty(ref _sessionSearchText, value))
+            {
+                OnPropertyChanged(nameof(HasSessionSearchText));
+                ApplySessionFilter();
+            }
+        }
+    }
+
+    /// <summary>Indica si hay texto de búsqueda activo.</summary>
+    public bool HasSessionSearchText => !string.IsNullOrWhiteSpace(SessionSearchText);
+
+    public ICommand ClearSessionSearchCommand { get; }
+
     public ObservableCollection<RemoteVideoItem> RemoteVideos
     {
         get => _remoteVideos;
@@ -354,6 +462,62 @@ public class RemoteLibraryViewModel : ObservableObject
     }
 
     public bool IsAnyRemoteSectionSelected => IsRemoteAllGallerySelected || IsRemoteVideoLessonsSelected || IsRemoteTrashSelected || IsRemoteSessionSelected;
+
+    /// <summary>
+    /// Filtra las tarjetas de sesión por el texto de búsqueda.
+    /// Coincide con título, lugar, entrenador y texto de fecha.
+    /// </summary>
+    private void ApplySessionFilter()
+    {
+        var searchText = SessionSearchText?.Trim() ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(searchText))
+        {
+            RemoteSessions = new ObservableCollection<RemoteSessionListItem>(_allRemoteSessions);
+            return;
+        }
+
+        var normalizedSearch = RemoveAccents(searchText).ToLowerInvariant();
+        var tokens = normalizedSearch.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+        var filtered = _allRemoteSessions.Where(session =>
+        {
+            // Construir texto de búsqueda concatenando todos los campos relevantes
+            var searchable = string.Join(" ",
+                session.Title ?? "",
+                session.Place ?? "",
+                session.Coach ?? "",
+                session.SessionDate.ToString("dd/MM/yyyy"),
+                session.SessionDate.ToString("MMMM"),
+                session.SessionDate.ToString("MMM"),
+                session.SessionDate.Day.ToString(),
+                session.SessionDate.Year.ToString()
+            );
+            var normalizedSearchable = RemoveAccents(searchable).ToLowerInvariant();
+
+            // TODOS los tokens deben coincidir (AND lógico)
+            return tokens.All(token => normalizedSearchable.Contains(token));
+        }).ToList();
+
+        RemoteSessions = new ObservableCollection<RemoteSessionListItem>(filtered);
+    }
+
+    /// <summary>Elimina acentos/diacríticos de un texto para búsquedas insensibles.</summary>
+    private static string RemoveAccents(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return text;
+        var normalized = text.Normalize(System.Text.NormalizationForm.FormD);
+        var sb = new System.Text.StringBuilder(normalized.Length);
+        foreach (var c in normalized)
+        {
+            if (System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c)
+                != System.Globalization.UnicodeCategory.NonSpacingMark)
+            {
+                sb.Append(c);
+            }
+        }
+        return sb.ToString().Normalize(System.Text.NormalizationForm.FormC);
+    }
 
     public bool ShowRemoteGallery => IsRemoteAllGallerySelected || IsRemoteSessionSelected;
 
@@ -491,9 +655,13 @@ public class RemoteLibraryViewModel : ObservableObject
         // Limpiar cachés internas
         _remoteFilesCache = null;
         _currentOrgConfig = null;
+        _remoteGalleryLoadedAtUtc = DateTime.MinValue;
+        _remoteVideoLessonsLoadedAtUtc = DateTime.MinValue;
 
         // Limpiar colecciones observables
         RemoteVideos.Clear();
+        _allRemoteSessions = new List<RemoteSessionListItem>();
+        SessionSearchText = string.Empty;
         RemoteSessions = new ObservableCollection<RemoteSessionListItem>();
         RemoteSmartFolders = new ObservableCollection<SmartFolderDefinition>();
         RemoteVideoLessons = new ObservableCollection<VideoLesson>();
@@ -811,9 +979,15 @@ public class RemoteLibraryViewModel : ObservableObject
     /// <summary>
     /// Pre-carga la galería de videos remotos (S3).
     /// Puede llamarse externamente (p.ej. desde DashboardViewModel) para tener los datos listos.
+    /// Omite la recarga si los datos ya están cargados y no han expirado (TTL de 3 min).
     /// </summary>
     public async Task PreloadRemoteGalleryAsync()
     {
+        if (RemoteVideos.Count > 0 && (DateTime.UtcNow - _remoteGalleryLoadedAtUtc) < RemoteCacheTtl)
+        {
+            Console.WriteLine($"[PreloadRemoteGallery] SKIP: ya hay {RemoteVideos.Count} videos cargados hace {(DateTime.UtcNow - _remoteGalleryLoadedAtUtc).TotalSeconds:F0}s (TTL={RemoteCacheTtl.TotalSeconds}s)");
+            return;
+        }
         await LoadRemoteGalleryAsync();
     }
 
@@ -946,7 +1120,8 @@ public class RemoteLibraryViewModel : ObservableObject
             // Fuente secundaria: agrupar RemoteVideos por SessionId (fallback si el backend no tiene la sesión)
             var remoteSessionItems = await BuildRemoteSessionListAsync(remoteSessionMetadata);
 
-            RemoteSessions = new ObservableCollection<RemoteSessionListItem>(remoteSessionItems);
+            _allRemoteSessions = remoteSessionItems;
+            ApplySessionFilter();
             Console.WriteLine($"[LoadRemoteGallery] RemoteSessions construidas: {remoteSessionItems.Count}, RemoteVideos: {RemoteVideos.Count}");
             System.Diagnostics.Debug.WriteLine($"[RemoteSessions] Built {remoteSessionItems.Count} session items:");
             foreach (var s in remoteSessionItems)
@@ -991,6 +1166,7 @@ public class RemoteLibraryViewModel : ObservableObject
         {
             Console.WriteLine($"[LoadRemoteGallery] FINALIZADO. RemoteSessions={RemoteSessions.Count}, RemoteVideos={RemoteVideos.Count}");
             IsLoadingRemoteVideos = false;
+            _remoteGalleryLoadedAtUtc = DateTime.UtcNow;
         }
     }
 
@@ -1461,6 +1637,13 @@ public class RemoteLibraryViewModel : ObservableObject
         ApplyRemoteVideoTags(remoteItem, metadata);
 
         var athleteName = BuildAthleteDisplayName(metadata.Athlete);
+        remoteItem.AthleteName = athleteName;
+
+        if (sessionInfo != null && !string.IsNullOrWhiteSpace(sessionInfo.Place))
+        {
+            remoteItem.Place = sessionInfo.Place;
+        }
+
         var displayName = BuildRemoteVideoDisplayName(metadata.Video?.ComparisonName, athleteName, remoteItem.SessionName, remoteItem.FileName);
         remoteItem.FileName = displayName;
 
@@ -3356,9 +3539,15 @@ public class RemoteLibraryViewModel : ObservableObject
     /// Carga las videolecciones de organización desde la BD local.
     /// Se puede llamar externamente (p.ej. desde DashboardViewModel) para pre-cargar.
     /// Usa reemplazo de instancia de colección para evitar N re-renders del CollectionView.
+    /// Omite la recarga si los datos ya están cargados y no han expirado (TTL de 3 min).
     /// </summary>
-    public async Task LoadRemoteVideoLessonsAsync()
+    public async Task LoadRemoteVideoLessonsAsync(bool forceReload = false)
     {
+        if (!forceReload && RemoteVideoLessons.Count > 0 && (DateTime.UtcNow - _remoteVideoLessonsLoadedAtUtc) < RemoteCacheTtl)
+        {
+            Console.WriteLine($"[LoadRemoteVideoLessons] SKIP: ya hay {RemoteVideoLessons.Count} lecciones cargadas hace {(DateTime.UtcNow - _remoteVideoLessonsLoadedAtUtc).TotalSeconds:F0}s");
+            return;
+        }
         try
         {
             var lessons = await _databaseService.GetRemoteVideoLessonsAsync();
@@ -3389,6 +3578,8 @@ public class RemoteLibraryViewModel : ObservableObject
                 RemoteVideoLessons = newCollection;
                 RemoteVideoLessonsCount = lessons.Count.ToString();
             });
+
+            _remoteVideoLessonsLoadedAtUtc = DateTime.UtcNow;
 
             System.Diagnostics.Debug.WriteLine($"[Remote] Cargadas {lessons.Count} videolecciones de organización (batch)");
 

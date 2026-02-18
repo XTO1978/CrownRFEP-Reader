@@ -28,6 +28,8 @@ public class RemoteVideoItem : INotifyPropertyChanged
     private string _key = string.Empty;
     private string _fileName = string.Empty;
     private string _sessionName = string.Empty;
+    private string _athleteName = string.Empty;
+    private string _place = string.Empty;
     private int _sessionId;
     private int _videoId;
     private long _size;
@@ -81,6 +83,51 @@ public class RemoteVideoItem : INotifyPropertyChanged
     }
 
     /// <summary>
+    /// Nombre del atleta asignado (ej: "GARCÍA Pablo")
+    /// </summary>
+    public string AthleteName
+    {
+        get => _athleteName;
+        set
+        {
+            if (SetProperty(ref _athleteName, value))
+            {
+                OnPropertyChanged(nameof(HasAthleteName));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Indica si el video tiene un atleta asignado
+    /// </summary>
+    public bool HasAthleteName => !string.IsNullOrWhiteSpace(AthleteName);
+
+    /// <summary>
+    /// Lugar de la sesión
+    /// </summary>
+    public string Place
+    {
+        get => _place;
+        set
+        {
+            if (SetProperty(ref _place, value))
+            {
+                OnPropertyChanged(nameof(HasPlace));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Indica si hay un lugar asignado a la sesión
+    /// </summary>
+    public bool HasPlace => !string.IsNullOrWhiteSpace(Place);
+
+    /// <summary>
+    /// Hora formateada (solo HH:mm) extraída de LastModified
+    /// </summary>
+    public string TimeFormatted => LastModified.ToString("HH:mm");
+
+    /// <summary>
     /// ID de la sesión extraído de la ruta
     /// </summary>
     public int SessionId
@@ -122,7 +169,13 @@ public class RemoteVideoItem : INotifyPropertyChanged
     public DateTime LastModified
     {
         get => _lastModified;
-        set => SetProperty(ref _lastModified, value);
+        set
+        {
+            if (SetProperty(ref _lastModified, value))
+            {
+                OnPropertyChanged(nameof(TimeFormatted));
+            }
+        }
     }
 
     /// <summary>

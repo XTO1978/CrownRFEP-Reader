@@ -1353,15 +1353,48 @@
                                 </controls:AspectRatioContainer>
                             </Border>
 
+                            <!--  Row 1: Athlete name (bold) if assigned, else FileName  -->
                             <Label Grid.Row="1" FontSize="{StaticResource FontSizeSubtitle}" FontAttributes="Bold"
                                    HorizontalTextAlignment="Center" LineBreakMode="TailTruncation"
-                                   Text="{Binding FileName}" TextColor="White" />
-                            <Label Grid.Row="2" FontSize="{StaticResource FontSizeBody}"
+                                   Text="{Binding AthleteName}" TextColor="White"
+                                   IsVisible="{Binding HasAthleteName}" />
+                            <Label Grid.Row="1" FontSize="{StaticResource FontSizeSubtitle}" FontAttributes="Bold"
                                    HorizontalTextAlignment="Center" LineBreakMode="TailTruncation"
-                                   Text="{Binding SessionName}" TextColor="#AAAAAA" />
-                            <Label Grid.Row="3" FontSize="{StaticResource FontSizeSmall}"
-                                   HorizontalTextAlignment="Center"
-                                   Text="{Binding LastModified, StringFormat='{0:dd/MM/yyyy HH:mm}'}" TextColor="#888888" />
+                                   Text="{Binding FileName}" TextColor="White"
+                                   IsVisible="{Binding HasAthleteName, Converter={toolkit:InvertedBoolConverter}}" />
+
+                            <!--  Row 2: Session name + Place  -->
+                            <HorizontalStackLayout Grid.Row="2" HorizontalOptions="Center" Spacing="6">
+                                <Label FontSize="{StaticResource FontSizeBody}"
+                                       LineBreakMode="TailTruncation"
+                                       Text="{Binding SessionName}" TextColor="#AAAAAA" />
+                                <Label FontSize="{StaticResource FontSizeBody}"
+                                       Text="·" TextColor="#666666"
+                                       IsVisible="{Binding HasPlace}" />
+                                <HorizontalStackLayout Spacing="4" IsVisible="{Binding HasPlace}">
+                                    <controls:SymbolIcon HeightRequest="{StaticResource IconSizeSmall}" WidthRequest="{StaticResource IconSizeSmall}"
+                                                         SymbolName="mappin" TintColor="#888888" VerticalOptions="Center" />
+                                    <Label FontSize="{StaticResource FontSizeBody}"
+                                           LineBreakMode="TailTruncation"
+                                           Text="{Binding Place}" TextColor="#AAAAAA" />
+                                </HorizontalStackLayout>
+                            </HorizontalStackLayout>
+
+                            <!--  Row 3: Date + Time  -->
+                            <HorizontalStackLayout Grid.Row="3" HorizontalOptions="Center" Spacing="6">
+                                <Label FontSize="{StaticResource FontSizeSmall}"
+                                       Text="{Binding LastModified, StringFormat='{0:dd/MM/yyyy}'}" TextColor="#888888" />
+                                <Label FontSize="{StaticResource FontSizeSmall}"
+                                       Text="·" TextColor="#666666" />
+                                <HorizontalStackLayout Spacing="3">
+                                    <controls:SymbolIcon HeightRequest="{StaticResource IconSizeSmall}" WidthRequest="{StaticResource IconSizeSmall}"
+                                                         SymbolName="clock" TintColor="#888888" VerticalOptions="Center" />
+                                    <Label FontSize="{StaticResource FontSizeSmall}"
+                                           Text="{Binding TimeFormatted}" TextColor="#888888" />
+                                </HorizontalStackLayout>
+                            </HorizontalStackLayout>
+
+                            <!--  Row 4: Tags  -->
                             <HorizontalStackLayout Grid.Row="4" HorizontalOptions="Center" Spacing="4" IsVisible="{Binding HasTagsSummary}">
                                 <controls:SymbolIcon HeightRequest="{StaticResource IconSizeSmall}" SymbolName="tag.fill" TintColor="White" VerticalOptions="Center" WidthRequest="{StaticResource IconSizeSmall}" />
                                 <Label FontSize="{StaticResource FontSizeSmall}" LineBreakMode="TailTruncation" Text="{Binding TagsSummary}" TextColor="White" VerticalOptions="Center" />
