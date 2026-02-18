@@ -35,6 +35,9 @@ public partial class SinglePlayerPage : ContentPage
     private bool _videoLessonCameraEnabled = true;
     private bool _videoLessonMicEnabled = true;
 
+    private int _lastLoadedVideoId = -1;
+    private string _lastLoadedVideoPath = string.Empty;
+
     // Timer para el cronómetro de grabación
     private System.Timers.Timer? _recordingTimer;
     private DateTime _recordingStartTime;
@@ -49,18 +52,24 @@ public partial class SinglePlayerPage : ContentPage
     
     // Flags para controlar el scrubbing del slider
     private bool _isDraggingSlider;
+    private bool _isUpdatingMainSlider;
     private bool _wasPlayingBeforeDrag;
 
-#if WINDOWS
-    // Throttle para seeks en Windows (evitar bloqueos)
+    // Throttle para seeks (evitar bloqueos y saturación)
     private DateTime _lastSeekTime = DateTime.MinValue;
     private const int SeekThrottleMs = 50;
-#endif
+    
+    // Throttle para actualizaciones de sliders (60fps -> ~30fps)
+    private DateTime _lastSliderUpdateTime = DateTime.MinValue;
+    private const int SliderUpdateThrottleMs = 33;
     
     // Flags para controlar el scrubbing con trackpad/mouse
     private bool _isScrubbing;
     private bool _wasPlayingBeforeScrub;
     private double _currentScrubPosition;
+    private DateTime _lastScrubSeekTimeMain = DateTime.MinValue;
+    private readonly Dictionary<int, DateTime> _lastScrubSeekTimeComparison = new();
+    private const int ScrubSeekThrottleMs = 80; // Throttle para seeks durante scrubbing
     
     // Scrubbing para reproductores de comparación
     private readonly Dictionary<int, double> _comparisonScrubPositions = new();
@@ -571,6 +580,7 @@ public partial class SinglePlayerPage : ContentPage
             StopRecordingTimer();
 
             var sessionId = _viewModel.VideoClip?.SessionId ?? 0;
+            var isFromOrgLibrary = _viewModel.VideoClip?.Source == "remote";
             if (!string.IsNullOrWhiteSpace(path)
                 && await WaitForVideoLessonFileReadyAsync(path).ConfigureAwait(false))
             {
@@ -583,14 +593,21 @@ public partial class SinglePlayerPage : ContentPage
                     SessionId = sessionId,
                     CreatedAtUtc = DateTime.UtcNow,
                     FilePath = path,
-                    Title = null
+                    Title = null,
+                    IsRemoteOnly = isFromOrgLibrary ? 1 : 0
                 };
 
                 var savedId = await _databaseService.SaveVideoLessonAsync(lesson);
-                AppLog.Info("SinglePlayerPage", $"StopVideoLessonRecordingAsync: saved VideoLesson | id={savedId} | sessionId={sessionId}");
+                AppLog.Info("SinglePlayerPage", $"StopVideoLessonRecordingAsync: saved VideoLesson | id={savedId} | sessionId={sessionId} | isRemoteOnly={lesson.IsRemoteOnly}");
 
                 // Notificar que se ha creado una videolección para actualizar la galería
                 _videoLessonNotifier.NotifyVideoLessonCreated(savedId, sessionId);
+
+                // Si el video se abrió desde la Biblioteca de Organización, subir la videolección a S3
+                if (isFromOrgLibrary)
+                {
+                    _ = UploadVideoLessonToOrgAsync(lesson);
+                }
             }
             else
             {
@@ -610,6 +627,51 @@ public partial class SinglePlayerPage : ContentPage
         {
             _currentVideoLessonPath = null;
             _isVideoLessonStartStopInProgress = false;
+        }
+    }
+
+    /// <summary>
+    /// Sube una videolección a la Biblioteca de Organización (S3) en background.
+    /// Se invoca cuando la videolección se graba desde un video de la org library.
+    /// </summary>
+    private async Task UploadVideoLessonToOrgAsync(VideoLesson lesson)
+    {
+        try
+        {
+            var syncService = Application.Current?.Handler?.MauiContext?.Services.GetService<SyncService>();
+            if (syncService == null)
+            {
+                AppLog.Warn("SinglePlayerPage", "UploadVideoLessonToOrgAsync: SyncService no disponible");
+                return;
+            }
+
+            var statusBar = Application.Current?.Handler?.MauiContext?.Services.GetService<StatusBarService>();
+            statusBar?.StartOperation($"Subiendo videolección a la organización...");
+
+            var progress = new Progress<double>(p =>
+            {
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    statusBar?.UpdateProgress(p, $"Subiendo videolección... {p:P0}");
+                });
+            });
+
+            var ok = await syncService.UploadVideoLessonAsync(lesson, progress);
+
+            if (ok)
+            {
+                statusBar?.EndOperation("Videolección subida a la organización");
+                AppLog.Info("SinglePlayerPage", $"UploadVideoLessonToOrgAsync: videolección {lesson.Id} subida correctamente");
+            }
+            else
+            {
+                statusBar?.EndOperation("Error subiendo videolección");
+                AppLog.Warn("SinglePlayerPage", $"UploadVideoLessonToOrgAsync: error subiendo videolección {lesson.Id}");
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("SinglePlayerPage", $"UploadVideoLessonToOrgAsync: error: {ex.Message}", ex);
         }
     }
 
@@ -1241,6 +1303,7 @@ public partial class SinglePlayerPage : ContentPage
         {
             var pathToSave = _currentVideoLessonPath;
             var sessionIdToSave = _viewModel.VideoClip?.SessionId ?? 0;
+            var isFromOrgLibrary = _viewModel.VideoClip?.Source == "remote";
 
             AppLog.Info("SinglePlayerPage", $"CleanupResources: leaving while recording | path='{pathToSave}' | sessionId={sessionIdToSave}");
 
@@ -1263,10 +1326,17 @@ public partial class SinglePlayerPage : ContentPage
                             SessionId = sessionIdToSave,
                             CreatedAtUtc = DateTime.UtcNow,
                             FilePath = pathToSave,
-                            Title = null
+                            Title = null,
+                            IsRemoteOnly = isFromOrgLibrary ? 1 : 0
                         };
                         var savedId = await _databaseService.SaveVideoLessonAsync(lesson).ConfigureAwait(false);
-                        AppLog.Info("SinglePlayerPage", $"CleanupResources: saved VideoLesson | id={savedId} | sessionId={sessionIdToSave}");
+                        AppLog.Info("SinglePlayerPage", $"CleanupResources: saved VideoLesson | id={savedId} | sessionId={sessionIdToSave} | isRemoteOnly={lesson.IsRemoteOnly}");
+
+                        // Si el video se abrió desde la Biblioteca de Organización, subir a S3
+                        if (isFromOrgLibrary)
+                        {
+                            await UploadVideoLessonToOrgAsync(lesson).ConfigureAwait(false);
+                        }
                     }
                     else
                     {
@@ -1726,12 +1796,40 @@ public partial class SinglePlayerPage : ContentPage
     {
         if (!_isPageActive) return;
         
-        if (sender is PrecisionVideoPlayer player && player.Duration > TimeSpan.Zero)
+        if (sender is PrecisionVideoPlayer player)
         {
             MainThread.BeginInvokeOnMainThread(() =>
             {
                 if (!_isPageActive) return;
-                _viewModel.Duration = player.Duration;
+                
+                // Actualizar duración si está disponible
+                if (player.Duration > TimeSpan.Zero)
+                {
+                    _viewModel.Duration = player.Duration;
+                    System.Diagnostics.Debug.WriteLine($"[SinglePlayerPage] OnMediaOpened: Duration = {player.Duration}");
+                }
+                else
+                {
+                    // Esperar un poco y reintentar obtener duración
+                    _ = Task.Run(async () =>
+                    {
+                        await Task.Delay(200);
+                        await MainThread.InvokeOnMainThreadAsync(() =>
+                        {
+                            if (!_isPageActive) return;
+                            if (player.Duration > TimeSpan.Zero)
+                            {
+                                _viewModel.Duration = player.Duration;
+                                ApplyMainSliderMaximum(GetEffectiveMaxSeconds());
+                                UpdateMainProgressSlider();
+                                System.Diagnostics.Debug.WriteLine($"[SinglePlayerPage] OnMediaOpened (delayed): Duration = {player.Duration}");
+                            }
+                        });
+                    });
+                }
+                
+                ApplyMainSliderMaximum(GetEffectiveMaxSeconds());
+                UpdateMainProgressSlider();
             });
         }
     }
@@ -1770,6 +1868,9 @@ public partial class SinglePlayerPage : ContentPage
     {
         var position = _viewModel.CurrentPosition.TotalSeconds;
 
+        if (position <= 0 && MediaPlayer?.Position.TotalSeconds > 0)
+            position = MediaPlayer.Position.TotalSeconds;
+
         if (_viewModel.IsMultiVideoLayout)
         {
             if (_viewModel.HasComparisonVideo2)
@@ -1783,17 +1884,59 @@ public partial class SinglePlayerPage : ContentPage
         return position;
     }
 
+    private double GetEffectiveMaxSeconds()
+    {
+        var maxSeconds = _viewModel.SliderMaximumSeconds;
+        if (maxSeconds <= 1 && MediaPlayer?.Duration.TotalSeconds > 1)
+            maxSeconds = MediaPlayer.Duration.TotalSeconds;
+
+        if (_viewModel.IsMultiVideoLayout)
+        {
+            if (MediaPlayer2?.Duration.TotalSeconds > 0)
+                maxSeconds = Math.Max(maxSeconds, MediaPlayer2.Duration.TotalSeconds);
+            if (MediaPlayer3?.Duration.TotalSeconds > 0)
+                maxSeconds = Math.Max(maxSeconds, MediaPlayer3.Duration.TotalSeconds);
+            if (MediaPlayer4?.Duration.TotalSeconds > 0)
+                maxSeconds = Math.Max(maxSeconds, MediaPlayer4.Duration.TotalSeconds);
+        }
+
+        return Math.Max(1, maxSeconds);
+    }
+
+    private void ApplyMainSliderMaximum(double maxSeconds)
+    {
+        if (ProgressSlider != null)
+            ProgressSlider.Maximum = maxSeconds;
+#if IOS
+        if (ProgressSliderIOS != null)
+            ProgressSliderIOS.Maximum = maxSeconds;
+#endif
+#if WINDOWS || MACCATALYST
+        if (ProgressSliderWindows != null)
+            ProgressSliderWindows.Maximum = maxSeconds;
+#endif
+    }
+
     private void UpdateMainProgressSlider()
     {
-        if (!_isPageActive || _isDraggingSlider || _isScrubbing)
+        if (!_isPageActive || _isDraggingSlider)
             return;
 
-        var maxSeconds = _viewModel.SliderMaximumSeconds;
+        // Throttle para evitar sobrecarga cuando hay múltiples players
+        var now = DateTime.UtcNow;
+        if ((now - _lastSliderUpdateTime).TotalMilliseconds < SliderUpdateThrottleMs)
+            return;
+        _lastSliderUpdateTime = now;
+
+        var maxSeconds = GetEffectiveMaxSeconds();
         if (maxSeconds <= 0)
             return;
 
+        ApplyMainSliderMaximum(maxSeconds);
+
         var positionSeconds = Math.Max(0, Math.Min(GetMainSliderPositionSeconds(), maxSeconds));
 
+        _isUpdatingMainSlider = true;
         if (ProgressSlider != null)
             ProgressSlider.Value = positionSeconds;
 #if IOS
@@ -1804,6 +1947,7 @@ public partial class SinglePlayerPage : ContentPage
         if (ProgressSliderWindows != null)
             ProgressSliderWindows.Value = positionSeconds;
 #endif
+        _isUpdatingMainSlider = false;
     }
 
     private void SeekAllPlayersToGlobalPosition(double positionSeconds)
@@ -2162,6 +2306,8 @@ public partial class SinglePlayerPage : ContentPage
         _isDraggingSlider = true;
         _viewModel.IsDraggingSlider = true; // Notificar al ViewModel para evitar actualizar Progress
         _wasPlayingBeforeDrag = _viewModel.IsPlaying;
+        if (MediaPlayer != null)
+            MediaPlayer.SeekToleranceSeconds = 0.08; // Menor que 0.1 para usar seeks con callback
         if (_wasPlayingBeforeDrag)
         {
             // Pausar todos los players en modo comparación
@@ -2172,10 +2318,11 @@ public partial class SinglePlayerPage : ContentPage
 
     private void OnSliderValueChanged(object? sender, ValueChangedEventArgs e)
     {
-        if (!_isDraggingSlider) return;
+        if (_isUpdatingMainSlider)
+            return;
 
         // Calcular la posición objetivo
-        var maxSeconds = _viewModel.SliderMaximumSeconds;
+        var maxSeconds = GetEffectiveMaxSeconds();
         if (maxSeconds <= 0)
             return;
 
@@ -2186,8 +2333,7 @@ public partial class SinglePlayerPage : ContentPage
         // Actualizar el texto de tiempo
         _viewModel.CurrentPosition = position;
         
-#if WINDOWS
-        // En Windows, throttle seeks para evitar bloqueos
+        // Throttle seeks para evitar bloqueos y saturación en todas las plataformas
         var now = DateTime.UtcNow;
         if ((now - _lastSeekTime).TotalMilliseconds >= SeekThrottleMs)
         {
@@ -2195,12 +2341,6 @@ public partial class SinglePlayerPage : ContentPage
             // Seek en todos los players en modo comparación
             SeekAllPlayersToGlobalPosition(positionSeconds);
         }
-#else
-        // En MacCatalyst/iOS: hacer seek para mostrar el frame actual
-        // El parpadeo ya no ocurre porque eliminamos el binding del slider
-        // Seek en todos los players en modo comparación
-        SeekAllPlayersToGlobalPosition(positionSeconds);
-#endif
     }
 
     private void OnSliderDragCompleted(object? sender, EventArgs e)
@@ -2217,16 +2357,23 @@ public partial class SinglePlayerPage : ContentPage
         }
 
         var maxSeconds = _viewModel.SliderMaximumSeconds;
-        if (maxSeconds <= 0)
-            return;
         
-        // Primero hacer el seek al frame deseado en todos los players
-        var positionSeconds = Math.Max(0, Math.Min(maxSeconds, sliderValue));
-        SeekAllPlayersToGlobalPosition(positionSeconds);
+        // Siempre resetear flags aunque maxSeconds sea inválido
+        // para evitar dejar el estado inconsistente
+        var shouldSeek = maxSeconds > 0;
+        
+        if (shouldSeek)
+        {
+            // Hacer seek final asegurado al terminar el drag
+            var positionSeconds = Math.Max(0, Math.Min(maxSeconds, sliderValue));
+            SeekAllPlayersToGlobalPosition(positionSeconds);
+        }
         
         // Después desactivar los flags para que Progress se actualice normalmente
         _isDraggingSlider = false;
         _viewModel.IsDraggingSlider = false;
+        if (MediaPlayer != null)
+            MediaPlayer.SeekToleranceSeconds = 0.0;
         
         // Mantener el reproductor en pausa mostrando el frame seleccionado
         // El usuario debe pulsar play manualmente para reanudar
@@ -2260,6 +2407,9 @@ public partial class SinglePlayerPage : ContentPage
             _isScrubbing = true;
             _wasPlayingBeforeScrub = _viewModel.IsPlaying;
             _currentScrubPosition = GetMainSliderPositionSeconds() * 1000.0;
+            _lastScrubSeekTimeMain = DateTime.MinValue;
+            if (MediaPlayer != null)
+                MediaPlayer.SeekToleranceSeconds = 0.15;
             
             if (_wasPlayingBeforeScrub)
             {
@@ -2274,13 +2424,22 @@ public partial class SinglePlayerPage : ContentPage
             
             // Limitar al máximo global (duración más larga)
             var maxMs = _viewModel.SliderMaximumSeconds * 1000.0;
+            if (maxMs <= 0)
+                return;
             _currentScrubPosition = Math.Max(0, Math.Min(_currentScrubPosition, maxMs));
             
             var positionSeconds = _currentScrubPosition / 1000.0;
             var mainPositionSeconds = Math.Min(_viewModel.Duration.TotalSeconds, positionSeconds);
             var newPosition = TimeSpan.FromSeconds(mainPositionSeconds);
-            MediaPlayer?.SeekTo(newPosition);
             _viewModel.CurrentPosition = newPosition;
+
+            // Throttle seeks para evitar saturación
+            var now = DateTime.UtcNow;
+            if ((now - _lastScrubSeekTimeMain).TotalMilliseconds >= ScrubSeekThrottleMs)
+            {
+                _lastScrubSeekTimeMain = now;
+                MediaPlayer?.SeekTo(newPosition);
+            }
             
             UpdateMainProgressSlider();
         }
@@ -2304,6 +2463,8 @@ public partial class SinglePlayerPage : ContentPage
             // Inicializar posición de scrubbing para este reproductor
             var currentPos = player.Position.TotalMilliseconds;
             _comparisonScrubPositions[e.VideoIndex] = currentPos;
+            _lastScrubSeekTimeComparison[e.VideoIndex] = DateTime.MinValue;
+            player.SeekToleranceSeconds = 0.15;
             player.Pause();
         }
         else
@@ -2316,10 +2477,21 @@ public partial class SinglePlayerPage : ContentPage
             
             // Limitar a los bordes del video
             var maxMs = player.Duration.TotalMilliseconds;
+            if (maxMs <= 0)
+                return;
             _comparisonScrubPositions[e.VideoIndex] = Math.Max(0, Math.Min(_comparisonScrubPositions[e.VideoIndex], maxMs));
             
-            var newPosition = TimeSpan.FromMilliseconds(_comparisonScrubPositions[e.VideoIndex]);
-            player.SeekTo(newPosition);
+            // Throttle seeks
+            var now = DateTime.UtcNow;
+            var lastSeek = _lastScrubSeekTimeComparison.TryGetValue(e.VideoIndex, out var last)
+                ? last
+                : DateTime.MinValue;
+            if ((now - lastSeek).TotalMilliseconds >= ScrubSeekThrottleMs)
+            {
+                _lastScrubSeekTimeComparison[e.VideoIndex] = now;
+                var newPosition = TimeSpan.FromMilliseconds(_comparisonScrubPositions[e.VideoIndex]);
+                player.SeekTo(newPosition);
+            }
         }
     }
 
@@ -2331,18 +2503,37 @@ public partial class SinglePlayerPage : ContentPage
             {
                 // Reproductor principal
                 _isScrubbing = false;
-                
-                // Reanudar reproducción si estaba reproduciendo antes
-                if (_wasPlayingBeforeScrub)
+                if (MediaPlayer != null)
                 {
-                    MediaPlayer?.Play();
-                    _viewModel.IsPlaying = true;
+                    MediaPlayer.SeekToleranceSeconds = 0.0;
+                    // Seek final preciso
+                    MediaPlayer.SeekTo(TimeSpan.FromMilliseconds(_currentScrubPosition));
                 }
+                
+                // Siempre dejar en pausa al terminar scrubbing
+                _viewModel.IsPlaying = false;
             }
             else
             {
                 // Reproductores de comparación: limpiar estado de scrubbing
+                var hasFinalMs = _comparisonScrubPositions.TryGetValue(e.VideoIndex, out var finalMs);
                 _comparisonScrubPositions.Remove(e.VideoIndex);
+                _lastScrubSeekTimeComparison.Remove(e.VideoIndex);
+                var player = e.VideoIndex switch
+                {
+                    2 => MediaPlayer2,
+                    3 => MediaPlayer3,
+                    4 => MediaPlayer4,
+                    _ => null
+                };
+                if (player != null)
+                {
+                    if (hasFinalMs)
+                    {
+                        player.SeekToleranceSeconds = 0.0;
+                        player.SeekTo(TimeSpan.FromMilliseconds(finalMs));
+                    }
+                }
             }
         });
     }
@@ -2358,6 +2549,35 @@ public partial class SinglePlayerPage : ContentPage
         MainThread.BeginInvokeOnMainThread(() =>
         {
             if (!_isPageActive) return;
+
+            var newPath = newVideo.LocalClipPath ?? newVideo.ClipPath ?? string.Empty;
+            var normalizedNewPath = NormalizeVideoPathForComparison(newPath);
+            
+            // Guard: si es el mismo video que ya tenemos cargado, no hacer nada
+            // Esto evita que OnVideoChanged interrumpa un video que ya está reproduciéndose
+            if (newVideo.Id == _lastLoadedVideoId && string.Equals(_lastLoadedVideoPath, normalizedNewPath, StringComparison.Ordinal))
+            {
+                AppLog.Info("SinglePlayerPage", $"OnVideoChanged SKIP (same video) id={newVideo.Id}");
+                return;
+            }
+            
+            // Guard adicional: si el player ya tiene este Source cargado, no reiniciar
+            var currentSource = MediaPlayer?.Source;
+            if (!string.IsNullOrEmpty(currentSource))
+            {
+                var normalizedCurrentSource = NormalizeVideoPathForComparison(currentSource);
+                if (string.Equals(normalizedCurrentSource, normalizedNewPath, StringComparison.Ordinal))
+                {
+                    AppLog.Info("SinglePlayerPage", $"OnVideoChanged SKIP (source already loaded) id={newVideo.Id}");
+                    _lastLoadedVideoId = newVideo.Id;
+                    _lastLoadedVideoPath = normalizedNewPath;
+                    return;
+                }
+            }
+
+            AppLog.Info("SinglePlayerPage", $"OnVideoChanged LOADING new video id={newVideo.Id}");
+            _lastLoadedVideoId = newVideo.Id;
+            _lastLoadedVideoPath = normalizedNewPath;
             
             // Detener reproducción actual
             _viewModel.IsPlaying = false;
@@ -2368,11 +2588,43 @@ public partial class SinglePlayerPage : ContentPage
             _viewModel.Duration = TimeSpan.Zero;
             
             // Cargar nuevo video (el binding de Source ya está actualizado)
-            if (!string.IsNullOrEmpty(newVideo.LocalClipPath) && MediaPlayer != null)
+            if (MediaPlayer != null)
             {
-                MediaPlayer.Source = newVideo.LocalClipPath;
+                // Reforzar el binding para evitar que se rompa al cambiar de video
+                MediaPlayer.SetBinding(PrecisionVideoPlayer.SourceProperty, nameof(SinglePlayerViewModel.VideoPath));
             }
         });
+    }
+
+    private static string NormalizeVideoPathForComparison(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return string.Empty;
+
+        var trimmed = path.Trim();
+        if (trimmed.StartsWith("file://", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                if (Uri.TryCreate(trimmed, UriKind.Absolute, out var uri) && uri.IsFile)
+                    trimmed = uri.LocalPath;
+            }
+            catch
+            {
+                // Ignorar y seguir con el string original
+            }
+        }
+
+        try
+        {
+            trimmed = Uri.UnescapeDataString(trimmed);
+        }
+        catch
+        {
+            // Ignorar
+        }
+
+        return trimmed.Replace('\\', '/');
     }
     
     private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -2485,17 +2737,26 @@ public partial class SinglePlayerPage : ContentPage
     {
         MainThread.BeginInvokeOnMainThread(() =>
         {
-            // Detener el reproductor correspondiente cuando se limpia el slot
+            // Detener y limpiar el reproductor correspondiente cuando se limpia el slot
             switch (slot)
             {
                 case 2:
+                    MediaPlayer2?.PrepareForCleanup();
                     MediaPlayer2?.Stop();
+                    if (MediaPlayer2 != null)
+                        MediaPlayer2.SetBinding(PrecisionVideoPlayer.SourceProperty, nameof(SinglePlayerViewModel.ComparisonVideo2Path));
                     break;
                 case 3:
+                    MediaPlayer3?.PrepareForCleanup();
                     MediaPlayer3?.Stop();
+                    if (MediaPlayer3 != null)
+                        MediaPlayer3.SetBinding(PrecisionVideoPlayer.SourceProperty, nameof(SinglePlayerViewModel.ComparisonVideo3Path));
                     break;
                 case 4:
+                    MediaPlayer4?.PrepareForCleanup();
                     MediaPlayer4?.Stop();
+                    if (MediaPlayer4 != null)
+                        MediaPlayer4.SetBinding(PrecisionVideoPlayer.SourceProperty, nameof(SinglePlayerViewModel.ComparisonVideo4Path));
                     break;
             }
         });

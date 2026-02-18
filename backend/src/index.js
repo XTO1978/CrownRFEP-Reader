@@ -4,6 +4,8 @@ import dotenv from 'dotenv';
 import authRoutes from './routes/auth.js';
 import filesRoutes from './routes/files.js';
 import adminRoutes from './routes/admin.js';
+import teamRoutes from './routes/team.js';
+import sessionsRoutes from './routes/sessions.js';
 import { authenticateToken, requireAdmin } from './middleware/auth.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -109,7 +111,15 @@ if (adminEmail && adminPassword) {
 
 // Admin UI estática (protegida por Basic Auth)
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-app.use('/admin', adminBasicAuth, express.static(path.join(__dirname, 'admin')));
+app.use(
+  '/admin',
+  adminBasicAuth,
+  express.static(path.join(__dirname, 'admin'), {
+    setHeaders: (res) => {
+      res.setHeader('Cache-Control', 'no-store');
+    }
+  })
+);
 
 // Rutas públicas
 app.get('/', (req, res) => {
@@ -144,6 +154,12 @@ app.use('/api/auth', authRoutes);
 
 // Rutas de archivos (protegidas)
 app.use('/api/files', authenticateToken, filesRoutes);
+
+// Rutas de equipo (protegidas)
+app.use('/api/team', authenticateToken, teamRoutes);
+
+// Rutas de sesiones (protegidas)
+app.use('/api/sessions', authenticateToken, sessionsRoutes);
 
 // Rutas de administración (solo admin)
 app.use('/api/admin', authenticateToken, requireAdmin, adminRoutes);

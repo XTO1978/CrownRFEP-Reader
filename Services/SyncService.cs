@@ -7,6 +7,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using CrownRFEP_Reader.Models;
+using Microsoft.Maui.Storage;
 
 namespace CrownRFEP_Reader.Services;
 
@@ -20,6 +21,16 @@ public class SyncService
     private readonly DatabaseService _databaseService;
     private readonly HttpClient _httpClient;
     private readonly HashSet<int> _sessionMetadataUploaded = new();
+
+    /// <summary>
+    /// Limpia el estado de sincronización (IDs de sesiones ya subidas).
+    /// Se usa al cerrar sesión o cambiar de organización.
+    /// </summary>
+    public void ResetSyncState()
+    {
+        _sessionMetadataUploaded.Clear();
+        System.Diagnostics.Debug.WriteLine("[SyncService] Estado de sincronización reseteado");
+    }
 
     private static readonly JsonSerializerOptions _jsonOptions = new()
     {
@@ -54,8 +65,10 @@ public class SyncService
                 return result;
             }
 
-            // Obtener ruta local absoluta
-            var localPath = _pathService.ToAbsoluteLocalPath(video.ClipPath ?? video.LocalClipPath ?? "");
+            // Obtener ruta local absoluta.
+            // Priorizar LocalClipPath (ruta absoluta de extracción) sobre ClipPath (ruta relativa que puede no resolver
+            // correctamente para archivos importados desde .crown).
+            var localPath = ResolveLocalVideoPath(video);
             if (!File.Exists(localPath))
             {
                 result.Success = false;
@@ -111,6 +124,9 @@ public class SyncService
             video.IsSynced = 1;
             video.LastSyncUtc = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             video.Source = "both";
+            // Actualizar ClipPath a la ruta remota canónica para que el enlace
+            // local ↔ remoto funcione al listar archivos de S3.
+            video.ClipPath = remotePath;
             await _databaseService.UpdateVideoClipAsync(video);
 
             // Subir metadatos asociados
@@ -136,6 +152,69 @@ public class SyncService
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Sube una videolección al servidor remoto (S3) en la carpeta lessons/{lessonId}.mp4
+    /// </summary>
+    public async Task<bool> UploadVideoLessonAsync(VideoLesson lesson, IProgress<double>? progress = null)
+    {
+        try
+        {
+            if (!_cloudService.IsAuthenticated)
+            {
+                System.Diagnostics.Debug.WriteLine("[Sync] UploadVideoLessonAsync: no autenticado");
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(lesson.FilePath) || !File.Exists(lesson.FilePath))
+            {
+                System.Diagnostics.Debug.WriteLine($"[Sync] UploadVideoLessonAsync: archivo no encontrado: {lesson.FilePath}");
+                return false;
+            }
+
+            var remotePath = _pathService.GetRemoteLessonPath(lesson.Id);
+            progress?.Report(0.1);
+
+            var signResult = await _cloudService.GetUploadUrlAsync(remotePath, "video/mp4");
+            if (!signResult.Success || string.IsNullOrEmpty(signResult.Url))
+            {
+                System.Diagnostics.Debug.WriteLine($"[Sync] UploadVideoLessonAsync: no se pudo obtener URL de subida: {signResult.ErrorMessage}");
+                return false;
+            }
+
+            progress?.Report(0.2);
+
+            var fileBytes = await File.ReadAllBytesAsync(lesson.FilePath);
+            var content = new ByteArrayContent(fileBytes);
+            content.Headers.ContentType = new MediaTypeHeaderValue("video/mp4");
+
+            if (signResult.Headers != null)
+            {
+                foreach (var header in signResult.Headers)
+                {
+                    content.Headers.TryAddWithoutValidation(header.Key, header.Value);
+                }
+            }
+
+            progress?.Report(0.5);
+
+            var response = await _httpClient.PutAsync(signResult.Url, content);
+            if (!response.IsSuccessStatusCode)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Sync] UploadVideoLessonAsync: error HTTP {response.StatusCode}");
+                return false;
+            }
+
+            progress?.Report(1.0);
+            System.Diagnostics.Debug.WriteLine($"[Sync] Videolección {lesson.Id} subida a {remotePath}");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Sync] Error subiendo videolección {lesson.Id}: {ex.Message}");
+            return false;
+        }
     }
 
     private async Task UploadSessionMetadataAsync(int sessionId)
@@ -204,6 +283,9 @@ public class SyncService
             {
                 _sessionMetadataUploaded.Add(sessionId);
                 System.Diagnostics.Debug.WriteLine($"[Sync] Metadatos de sesión {sessionId} subidos: {remotePath}");
+
+                // También sincronizar la sesión al backend DB para replicación entre dispositivos
+                _ = SyncSessionToBackendAsync(sessionId);
             }
             else
             {
@@ -227,6 +309,129 @@ public class SyncService
     }
 
     /// <summary>
+    /// Sincroniza los metadatos de una sesión con la base de datos del backend.
+    /// Esto permite que otros dispositivos de la organización vean la sesión.
+    /// </summary>
+    public async Task<bool> SyncSessionToBackendAsync(int sessionId)
+    {
+        try
+        {
+            if (!_cloudService.IsAuthenticated) return false;
+
+            var session = await _databaseService.GetSessionByIdAsync(sessionId);
+            if (session == null) return false;
+
+            var videoCount = (await _databaseService.GetVideoClipsBySessionAsync(sessionId)).Count;
+
+            var payload = new RemoteSessionPayload
+            {
+                LocalSessionId = session.Id,
+                DeviceId = await GetDeviceIdAsync(),
+                SessionName = session.NombreSesion ?? session.DisplayName,
+                Place = session.Lugar,
+                Coach = session.Coach,
+                SessionType = session.TipoSesion,
+                SessionDateUtc = session.Fecha,
+                Participants = session.Participantes,
+                IsMerged = session.IsMerged,
+                Icon = session.Icon,
+                IconColor = session.IconColor,
+                VideoCount = videoCount
+            };
+
+            var result = await _cloudService.SyncSessionToRemoteAsync(payload);
+            if (result.Success)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Sync] Sesión {sessionId} sincronizada al backend (remoteId={result.Session?.Id}, isNew={result.IsNew})");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"[Sync] Error sincronizando sesión {sessionId} al backend: {result.ErrorMessage}");
+            }
+
+            return result.Success;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Sync] Error en SyncSessionToBackendAsync({sessionId}): {ex.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Sincroniza todas las sesiones locales con el backend en una sola operación batch.
+    /// </summary>
+    public async Task<RemoteSessionBatchResult?> SyncAllSessionsToBackendAsync()
+    {
+        try
+        {
+            if (!_cloudService.IsAuthenticated) return null;
+
+            var sessions = await _databaseService.GetAllSessionsAsync();
+            if (sessions == null || sessions.Count == 0) return null;
+
+            var deviceId = await GetDeviceIdAsync();
+            var payloads = new List<RemoteSessionPayload>();
+
+            foreach (var session in sessions)
+            {
+                if (session.IsDeleted == 1) continue;
+
+                var videoCount = (await _databaseService.GetVideoClipsBySessionAsync(session.Id)).Count;
+
+                payloads.Add(new RemoteSessionPayload
+                {
+                    LocalSessionId = session.Id,
+                    DeviceId = deviceId,
+                    SessionName = session.NombreSesion ?? session.DisplayName,
+                    Place = session.Lugar,
+                    Coach = session.Coach,
+                    SessionType = session.TipoSesion,
+                    SessionDateUtc = session.Fecha,
+                    Participants = session.Participantes,
+                    IsMerged = session.IsMerged,
+                    Icon = session.Icon,
+                    IconColor = session.IconColor,
+                    VideoCount = videoCount
+                });
+            }
+
+            if (payloads.Count == 0) return null;
+
+            var result = await _cloudService.SyncSessionsBatchAsync(payloads);
+            if (result.Success)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Sync] Batch session sync: {result.Created} creadas, {result.Updated} actualizadas de {result.Total}");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"[Sync] Error en batch session sync: {result.ErrorMessage}");
+            }
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Sync] Error en SyncAllSessionsToBackendAsync: {ex.Message}");
+            return null;
+        }
+    }
+
+    private static async Task<string> GetDeviceIdAsync()
+    {
+        try
+        {
+            var stored = await SecureStorage.GetAsync("CloudBackend_DeviceId");
+            if (!string.IsNullOrWhiteSpace(stored))
+                return stored;
+        }
+        catch { }
+
+        var fallback = Preferences.Get("CloudBackend_DeviceId", string.Empty);
+        return string.IsNullOrWhiteSpace(fallback) ? "unknown" : fallback;
+    }
+
+    /// <summary>
     /// Descarga un video del servidor remoto
     /// </summary>
     public async Task<SyncResult> DownloadVideoAsync(VideoClip video, IProgress<double>? progress = null)
@@ -242,40 +447,40 @@ public class SyncService
                 return result;
             }
 
-            // Generar ruta remota
+            // Generar ruta remota: usar ClipPath si existe, sino reconstruir desde IDs
             var remotePath = video.ClipPath ?? _pathService.GetRemoteVideoPath(video.SessionId, video.Id);
+            var canonicalPath = _pathService.GetRemoteVideoPath(video.SessionId, video.Id);
+
+            System.Diagnostics.Debug.WriteLine($"[Sync] Descarga video {video.Id}: ClipPath='{video.ClipPath}', remotePath='{remotePath}', canonical='{canonicalPath}', Source='{video.Source}'");
 
             progress?.Report(0.1);
 
-            // Obtener URL firmada para descargar
-            var signResult = await _cloudService.GetDownloadUrlAsync(remotePath);
+            // Intentar descargar con remotePath primero, luego con canonicalPath si falla
+            var downloadResult = await TryDownloadFromPathAsync(remotePath, progress);
 
-            if (!signResult.Success || string.IsNullOrEmpty(signResult.Url))
+            // Si falla con 404 y tenemos una ruta canónica diferente, intentar con ella
+            if (!downloadResult.Success && downloadResult.StatusCode == System.Net.HttpStatusCode.NotFound
+                && !string.Equals(remotePath, canonicalPath, StringComparison.OrdinalIgnoreCase))
             {
-                result.Success = false;
-                result.ErrorMessage = signResult.ErrorMessage ?? "No se pudo obtener URL de descarga";
-                return result;
+                System.Diagnostics.Debug.WriteLine($"[Sync] Ruta '{remotePath}' no encontrada, reintentando con ruta canónica '{canonicalPath}'");
+                downloadResult = await TryDownloadFromPathAsync(canonicalPath, progress);
             }
 
-            progress?.Report(0.2);
-
-            // Preparar ruta local
-            _pathService.EnsureSessionDirectoryExists(video.SessionId);
-            var localPath = _pathService.GetLocalVideoPath(video.SessionId, video.Id);
-
-            // Descargar el archivo
-            var response = await _httpClient.GetAsync(signResult.Url);
-            if (!response.IsSuccessStatusCode)
+            if (!downloadResult.Success)
             {
                 result.Success = false;
-                result.ErrorMessage = $"Error al descargar: {response.StatusCode}";
+                result.ErrorMessage = downloadResult.ErrorMessage;
+                System.Diagnostics.Debug.WriteLine($"[Sync] Error descargando video {video.Id}: {downloadResult.ErrorMessage}");
                 return result;
             }
 
             progress?.Report(0.5);
 
-            var fileBytes = await response.Content.ReadAsByteArrayAsync();
-            await File.WriteAllBytesAsync(localPath, fileBytes);
+            // Preparar ruta local
+            _pathService.EnsureSessionDirectoryExists(video.SessionId);
+            var localPath = _pathService.GetLocalVideoPath(video.SessionId, video.Id);
+
+            await File.WriteAllBytesAsync(localPath, downloadResult.FileBytes!);
 
             progress?.Report(0.9);
 
@@ -285,8 +490,16 @@ public class SyncService
             video.IsSynced = 1;
             video.LastSyncUtc = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             video.Source = "both";
-            video.ClipSize = fileBytes.Length;
+            video.ClipSize = downloadResult.FileBytes!.Length;
             await _databaseService.UpdateVideoClipAsync(video);
+
+            // Notificar cambios en UI
+            video.OnPropertyChanged(nameof(video.Source));
+            video.OnPropertyChanged(nameof(video.IsLocalAvailable));
+            video.OnPropertyChanged(nameof(video.SyncStatusIcon));
+            video.OnPropertyChanged(nameof(video.SyncStatusColor));
+            video.OnPropertyChanged(nameof(video.SyncStatusText));
+            video.OnPropertyChanged(nameof(video.ShowSyncBadge));
 
             // Descargar y aplicar metadatos asociados
             await DownloadAndApplyVideoMetadataAsync(video);
@@ -311,6 +524,48 @@ public class SyncService
     }
 
     /// <summary>
+    /// Intenta descargar un archivo desde una ruta remota específica
+    /// </summary>
+    private async Task<(bool Success, string? ErrorMessage, byte[]? FileBytes, System.Net.HttpStatusCode? StatusCode)> TryDownloadFromPathAsync(
+        string remotePath, IProgress<double>? progress)
+    {
+        try
+        {
+            var signResult = await _cloudService.GetDownloadUrlAsync(remotePath);
+
+            if (!signResult.Success || string.IsNullOrEmpty(signResult.Url))
+            {
+                System.Diagnostics.Debug.WriteLine($"[Sync] Error obteniendo URL para '{remotePath}': {signResult.ErrorMessage}");
+                // Si el error contiene "no encontrado" o "not found", indicar 404 para activar fallback
+                var isNotFound = signResult.ErrorMessage?.Contains("no encontrado", StringComparison.OrdinalIgnoreCase) == true
+                    || signResult.ErrorMessage?.Contains("not found", StringComparison.OrdinalIgnoreCase) == true;
+                return (false, signResult.ErrorMessage ?? "No se pudo obtener URL de descarga", null,
+                    isNotFound ? System.Net.HttpStatusCode.NotFound : null);
+            }
+
+            System.Diagnostics.Debug.WriteLine($"[Sync] URL firmada obtenida para '{remotePath}': {signResult.Url?.Substring(0, Math.Min(signResult.Url?.Length ?? 0, 120))}...");
+
+            progress?.Report(0.2);
+
+            var response = await _httpClient.GetAsync(signResult.Url);
+            if (!response.IsSuccessStatusCode)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Sync] HTTP {response.StatusCode} descargando '{remotePath}'");
+                return (false, $"Error al descargar: {response.StatusCode} (ruta: {remotePath})", null, response.StatusCode);
+            }
+
+            var fileBytes = await response.Content.ReadAsByteArrayAsync();
+            System.Diagnostics.Debug.WriteLine($"[Sync] Descargados {fileBytes.Length} bytes para '{remotePath}'");
+            return (true, null, fileBytes, response.StatusCode);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Sync] Excepción descargando '{remotePath}': {ex.Message}");
+            return (false, $"Error: {ex.Message}", null, null);
+        }
+    }
+
+    /// <summary>
     /// Sube el thumbnail de un video
     /// </summary>
     public async Task<SyncResult> UploadThumbnailAsync(VideoClip video)
@@ -326,7 +581,8 @@ public class SyncService
                 return result;
             }
 
-            var localThumbPath = _pathService.ToAbsoluteLocalPath(video.ThumbnailPath ?? video.LocalThumbnailPath ?? "");
+            // Priorizar LocalThumbnailPath (ruta absoluta real) sobre ThumbnailPath.
+            var localThumbPath = ResolveLocalThumbnailPath(video);
             if (!File.Exists(localThumbPath))
             {
                 result.Success = false;
@@ -744,6 +1000,57 @@ public class SyncService
         }
 
         return files;
+    }
+
+    /// <summary>
+    /// Resuelve la ruta local real de un video.
+    /// Prioriza LocalClipPath (ruta absoluta de extracción/.crown) sobre ClipPath.
+    /// </summary>
+    private string ResolveLocalVideoPath(VideoClip video)
+    {
+        // 1) LocalClipPath suele ser una ruta absoluta real (extraída de .crown, grabada, etc.)
+        if (!string.IsNullOrEmpty(video.LocalClipPath))
+        {
+            if (Path.IsPathRooted(video.LocalClipPath) && File.Exists(video.LocalClipPath))
+                return video.LocalClipPath;
+        }
+
+        // 2) ClipPath puede ser relativa al media root – resolverla
+        if (!string.IsNullOrEmpty(video.ClipPath))
+        {
+            var resolved = _pathService.ToAbsoluteLocalPath(video.ClipPath);
+            if (File.Exists(resolved))
+                return resolved;
+        }
+
+        // 3) Fallback: intentar LocalClipPath sin verificar existencia (para que el mensaje de error sea útil)
+        return !string.IsNullOrEmpty(video.LocalClipPath)
+            ? video.LocalClipPath
+            : _pathService.ToAbsoluteLocalPath(video.ClipPath ?? "");
+    }
+
+    /// <summary>
+    /// Resuelve la ruta local real de un thumbnail.
+    /// Prioriza LocalThumbnailPath sobre ThumbnailPath.
+    /// </summary>
+    private string ResolveLocalThumbnailPath(VideoClip video)
+    {
+        if (!string.IsNullOrEmpty(video.LocalThumbnailPath))
+        {
+            if (Path.IsPathRooted(video.LocalThumbnailPath) && File.Exists(video.LocalThumbnailPath))
+                return video.LocalThumbnailPath;
+        }
+
+        if (!string.IsNullOrEmpty(video.ThumbnailPath))
+        {
+            var resolved = _pathService.ToAbsoluteLocalPath(video.ThumbnailPath);
+            if (File.Exists(resolved))
+                return resolved;
+        }
+
+        return !string.IsNullOrEmpty(video.LocalThumbnailPath)
+            ? video.LocalThumbnailPath
+            : _pathService.ToAbsoluteLocalPath(video.ThumbnailPath ?? "");
     }
 
     /// <summary>

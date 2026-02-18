@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView
+    x:Class="CrownRFEP_Reader.Views.Controls.DashboardNewSessionSidebarPopupView"
+    x:Name="ThisPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:converters="clr-namespace:CrownRFEP_Reader.Converters"
+    xmlns:controls="clr-namespace:CrownRFEP_Reader.Views.Controls"
+    xmlns:vm="clr-namespace:CrownRFEP_Reader.ViewModels"
+    x:DataType="vm:DashboardViewModel"
+    IsVisible="{Binding ShowNewSessionSidebarPopup, FallbackValue=False, TargetNullValue=False}">
+
+    <ContentView.Resources>
+        <ResourceDictionary>
+            <converters:BoolToColorConverter x:Key="BoolToColorConverter" />
+            <converters:BoolToFontAttributesConverter x:Key="BoolToFontAttributesConverter" />
+        </ResourceDictionary>
+    </ContentView.Resources>
+
+    <!--  Popup de nueva sesión desde barra lateral (solo iOS)  -->
+    <Grid BackgroundColor="#CC000000">
+        <Border
+            Padding="24"
+            BackgroundColor="#FF1E1E1E"
+            HorizontalOptions="Center"
+            Stroke="#FF3A3A3A"
+            StrokeShape="RoundRectangle 12"
+            StrokeThickness="1"
+            VerticalOptions="Center"
+            WidthRequest="400">
+            <VerticalStackLayout Spacing="16">
+                <!--  Título  -->
+                <Grid ColumnDefinitions="*,Auto">
+                    <VerticalStackLayout Grid.Column="0">
+                        <Label
+                            FontAttributes="None"
+                            FontSize="{StaticResource FontSizeTitle}"
+                            Text="Nueva sesión de grabación"
+                            TextColor="White" />
+                        <Label
+                            FontSize="{StaticResource FontSizeSmall}"
+                            Text="Crea una sesión y graba vídeos directamente"
+                            TextColor="#FF888888" />
+                    </VerticalStackLayout>
+                    <Border
+                        Grid.Column="1"
+                        Padding="4"
+                        BackgroundColor="Transparent"
+                        Stroke="Transparent"
+                        StrokeShape="RoundRectangle 4">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding CancelNewSessionSidebarPopupCommand}" />
+                        </Border.GestureRecognizers>
+                        <controls:SymbolIcon
+                            HeightRequest="{StaticResource IconSizeLarge}"
+                            SymbolName="xmark"
+                            TintColor="#FF888888"
+                            WidthRequest="{StaticResource IconSizeLarge}" />
+                    </Border>
+                </Grid>
+
+                <!--  Lugar  -->
+                <VerticalStackLayout Spacing="4">
+                    <Label
+                        FontSize="{StaticResource FontSizeSmall}"
+                        Text="Lugar *"
+                        TextColor="#FFCCCCCC" />
+                    <Entry
+                        Placeholder="Ej: Canal olímpico"
+                        PlaceholderColor="#FF666666"
+                        Text="{Binding NewSessionLugar}"
+                        TextColor="White"
+                        BackgroundColor="#FF404040" />
+                    <FlexLayout
+                        Wrap="Wrap"
+                        JustifyContent="Start"
+                        BindableLayout.ItemsSource="{Binding SessionPlaceOptions}">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate x:DataType="vm:PlaceOption">
+                                <Border
+                                    Margin="0,0,8,8"
+                                    Padding="12,6"
+                                    StrokeShape="RoundRectangle 6"
+                                    StrokeThickness="0"
+                                    BackgroundColor="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF0066|#FF2A2A2A}"
+                                    Stroke="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF0066|#FF404040}">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer
+                                            Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.SelectPlaceOptionCommand}"
+                                            CommandParameter="{Binding .}" />
+                                    </Border.GestureRecognizers>
+                                    <Label
+                                        FontSize="{StaticResource FontSizeSmall}"
+                                        Text="{Binding Name}"
+                                        TextColor="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF121212|#FFB1B1B1}"
+                                        FontAttributes="{Binding IsSelected, Converter={StaticResource BoolToFontAttributesConverter}}"
+                                        VerticalOptions="Center" />
+                                </Border>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </FlexLayout>
+                </VerticalStackLayout>
+
+                <!--  Nombre de la sesión  -->
+                <VerticalStackLayout Spacing="4">
+                    <Label
+                        FontSize="{StaticResource FontSizeSmall}"
+                        Text="Nombre de sesión *"
+                        TextColor="#FFCCCCCC" />
+                    <Entry
+                        Placeholder="Ej: Entrenamiento mañana"
+                        PlaceholderColor="#FF666666"
+                        Text="{Binding NewSessionName}"
+                        TextColor="White"
+                        BackgroundColor="#FF404040" />
+                </VerticalStackLayout>
+
+                <!--  Tipo de sesión  -->
+                <VerticalStackLayout Spacing="8">
+                    <Label
+                        FontSize="{StaticResource FontSizeSmall}"
+                        Text="Tipo de sesión * (cuartos, medios, largos, etc.)"
+                        TextColor="#FFCCCCCC" />
+                    <FlexLayout
+                        Wrap="Wrap"
+                        JustifyContent="Start"
+                        BindableLayout.ItemsSource="{Binding SessionTypeOptions}">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate x:DataType="vm:SessionTypeOption">
+                                <Border
+                                    Margin="0,0,8,8"
+                                    Padding="12,6"
+                                    StrokeShape="RoundRectangle 6"
+                                    StrokeThickness="0"
+                                    BackgroundColor="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF0066|#FF2A2A2A}"
+                                    Stroke="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF0066|#FF404040}">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer
+                                            Command="{Binding Source={x:Reference ThisPage}, Path=BindingContext.SelectSessionTypeCommand}"
+                                            CommandParameter="{Binding .}" />
+                                    </Border.GestureRecognizers>
+                                    <Label
+                                        FontSize="{StaticResource FontSizeSmall}"
+                                        Text="{Binding Name}"
+                                        TextColor="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter=#FF121212|#FFB1B1B1}"
+                                        FontAttributes="{Binding IsSelected, Converter={StaticResource BoolToFontAttributesConverter}}"
+                                        VerticalOptions="Center" />
+                                </Border>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </FlexLayout>
+                </VerticalStackLayout>
+
+                <!--  Botones  -->
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="12" Margin="0,8,0,0">
+                    <Button
+                        Grid.Column="0"
+                        Text="Cancelar"
+                        BackgroundColor="#FF404040"
+                        TextColor="#FFCCCCCC"
+                        CornerRadius="8"
+                        HeightRequest="{StaticResource ElementHeightLarge}"
+                        Command="{Binding CancelNewSessionSidebarPopupCommand}" />
+                    <Button
+                        Grid.Column="1"
+                        Text="Crear y grabar"
+                        BackgroundColor="#FFFF3B30"
+                        TextColor="White"
+                        FontAttributes="None"
+                        CornerRadius="8"
+                        HeightRequest="{StaticResource ElementHeightLarge}"
+                        Command="{Binding CreateSessionAndRecordCommand}" />
+                </Grid>
+            </VerticalStackLayout>
+        </Border>
+    </Grid>
+</ContentView>

@@ -13,6 +13,7 @@ namespace CrownRFEP_Reader.ViewModels;
 public class AthleteDetailViewModel : BaseViewModel
 {
     private readonly DatabaseService _databaseService;
+    private readonly IVideoClipUpdateNotifier _videoClipUpdateNotifier;
 
     private int _athleteId;
     private Athlete? _athlete;
@@ -63,29 +64,30 @@ public class AthleteDetailViewModel : BaseViewModel
     public ICommand RefreshCommand { get; }
     public ICommand PlayVideoCommand { get; }
 
-    public AthleteDetailViewModel(DatabaseService databaseService)
+    public AthleteDetailViewModel(DatabaseService databaseService, IVideoClipUpdateNotifier videoClipUpdateNotifier)
     {
         _databaseService = databaseService;
+        _videoClipUpdateNotifier = videoClipUpdateNotifier;
 
         RefreshCommand = new AsyncRelayCommand(LoadAthleteAsync);
         PlayVideoCommand = new AsyncRelayCommand<VideoClip>(PlayVideoAsync);
 
         // Refrescar lista si un video cambia (p.ej. reasignación de atleta desde SinglePlayer)
-        MessagingCenter.Subscribe<SinglePlayerViewModel, int>(this, "VideoClipUpdated", (sender, videoId) =>
-        {
-            if (AthleteId == 0) return;
-            _ = Task.Run(async () =>
-            {
-                var wasInList = Videos.Any(v => v.Id == videoId);
-                var updated = await _databaseService.GetVideoClipByIdAsync(videoId);
-                var shouldReload = wasInList || (updated != null && updated.AtletaId == AthleteId);
-                if (!shouldReload) return;
+        _videoClipUpdateNotifier.VideoClipUpdated += HandleVideoClipUpdated;
+    }
 
-                MainThread.BeginInvokeOnMainThread(async () =>
-                {
-                    await LoadAthleteAsync();
-                });
-            });
+    private async void HandleVideoClipUpdated(object? sender, int videoClipId)
+    {
+        if (AthleteId == 0) return;
+
+        var wasInList = Videos.Any(v => v.Id == videoClipId);
+        var updated = await _databaseService.GetVideoClipByIdAsync(videoClipId);
+        var shouldReload = wasInList || (updated != null && updated.AtletaId == AthleteId);
+        if (!shouldReload) return;
+
+        MainThread.BeginInvokeOnMainThread(async () =>
+        {
+            await LoadAthleteAsync();
         });
     }
 

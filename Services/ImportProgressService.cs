@@ -178,10 +178,16 @@ public class ImportProgressService : IDisposable
     {
         if (_currentTask != null)
         {
+            Console.WriteLine($"[PASO 3b] NotifyImportCompleted: disparando evento. SessionId={_currentTask.CreatedSessionId}, HasError={_currentTask.HasError}");
             MainThread.BeginInvokeOnMainThread(() =>
             {
+                Console.WriteLine($"[PASO 3c] ImportCompleted.Invoke ejecutándose en MainThread. Listeners={ImportCompleted?.GetInvocationList()?.Length ?? 0}");
                 ImportCompleted?.Invoke(this, _currentTask);
             });
+        }
+        else
+        {
+            Console.WriteLine($"[PASO 3b] ⚠️ NotifyImportCompleted: _currentTask es NULL, no se dispara evento");
         }
     }
 

@@ -16,6 +16,9 @@ public class VideoLesson
 
     public string? Title { get; set; }
 
+    /// <summary>1 = videolección generada desde la biblioteca de organización.</summary>
+    public int IsRemoteOnly { get; set; }
+
     [Ignore]
     public string DisplayTitle => !string.IsNullOrWhiteSpace(Title) ? Title! : $"Videolección {Id}";
 
@@ -24,4 +27,7 @@ public class VideoLesson
 
     [Ignore]
     public string? LocalThumbnailPath { get; set; }
+
+    [Ignore]
+    public string? EffectiveThumbnailPath => LocalThumbnailPath;
 }

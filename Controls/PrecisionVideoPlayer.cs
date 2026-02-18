@@ -63,6 +63,12 @@ public class PrecisionVideoPlayer : View, INotifyPropertyChanged
         Aspect.AspectFit,
         propertyChanged: OnAspectChanged);
 
+    public static readonly BindableProperty SeekToleranceSecondsProperty = BindableProperty.Create(
+        nameof(SeekToleranceSeconds),
+        typeof(double),
+        typeof(PrecisionVideoPlayer),
+        0.0);
+
     #endregion
 
     #region Properties
@@ -107,6 +113,15 @@ public class PrecisionVideoPlayer : View, INotifyPropertyChanged
     {
         get => (Aspect)GetValue(AspectProperty);
         set => SetValue(AspectProperty, value);
+    }
+
+    /// <summary>
+    /// Tolerancia de seek en segundos (0 = preciso, >0 = seek aproximado más fluido)
+    /// </summary>
+    public double SeekToleranceSeconds
+    {
+        get => (double)GetValue(SeekToleranceSecondsProperty);
+        set => SetValue(SeekToleranceSecondsProperty, value);
     }
 
     /// <summary>

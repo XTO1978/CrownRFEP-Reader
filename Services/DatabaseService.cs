@@ -517,7 +517,7 @@ public class DatabaseService
     {
         var db = await GetConnectionAsync();
         var sessions = await db.Table<Session>()
-            .Where(s => s.IsDeleted == 0)
+            .Where(s => s.IsDeleted == 0 && s.IsRemoteOnly == 0)
             .OrderByDescending(s => s.Fecha)
             .ToListAsync();
         
@@ -529,6 +529,28 @@ public class DatabaseService
                 .CountAsync();
         }
         
+        return sessions;
+    }
+
+    /// <summary>
+    /// Devuelve TODAS las sesiones no eliminadas, incluidas las marcadas como IsRemoteOnly.
+    /// Se usa para enlazar sesiones remotas con sus copias locales en la Biblioteca de Organización.
+    /// </summary>
+    public async Task<List<Session>> GetAllSessionsIncludingRemoteOnlyAsync()
+    {
+        var db = await GetConnectionAsync();
+        var sessions = await db.Table<Session>()
+            .Where(s => s.IsDeleted == 0)
+            .OrderByDescending(s => s.Fecha)
+            .ToListAsync();
+
+        foreach (var session in sessions)
+        {
+            session.VideoCount = await db.Table<VideoClip>()
+                .Where(v => v.SessionId == session.Id && v.IsDeleted == 0)
+                .CountAsync();
+        }
+
         return sessions;
     }
 
@@ -602,11 +624,49 @@ public class DatabaseService
             .OrderByDescending(v => v.CreatedAtUtc)
             .ToListAsync();
     }
-    
+
+    /// <summary>Videolecciones de biblioteca personal (IsRemoteOnly != 1).</summary>
+    public async Task<List<VideoLesson>> GetLocalVideoLessonsAsync()
+    {
+        var db = await GetConnectionAsync();
+        return await db.Table<VideoLesson>()
+            .Where(v => v.IsRemoteOnly != 1)
+            .OrderByDescending(v => v.CreatedAtUtc)
+            .ToListAsync();
+    }
+
+    /// <summary>Videolecciones de biblioteca de organización (IsRemoteOnly == 1).</summary>
+    public async Task<List<VideoLesson>> GetRemoteVideoLessonsAsync()
+    {
+        var db = await GetConnectionAsync();
+        return await db.Table<VideoLesson>()
+            .Where(v => v.IsRemoteOnly == 1)
+            .OrderByDescending(v => v.CreatedAtUtc)
+            .ToListAsync();
+    }
+
     public async Task<int> GetVideoLessonsCountAsync()
     {
         var db = await GetConnectionAsync();
         return await db.Table<VideoLesson>().CountAsync();
+    }
+
+    /// <summary>Cuenta de videolecciones personales (IsRemoteOnly != 1).</summary>
+    public async Task<int> GetLocalVideoLessonsCountAsync()
+    {
+        var db = await GetConnectionAsync();
+        return await db.Table<VideoLesson>()
+            .Where(v => v.IsRemoteOnly != 1)
+            .CountAsync();
+    }
+
+    /// <summary>Cuenta de videolecciones de organización (IsRemoteOnly == 1).</summary>
+    public async Task<int> GetRemoteVideoLessonsCountAsync()
+    {
+        var db = await GetConnectionAsync();
+        return await db.Table<VideoLesson>()
+            .Where(v => v.IsRemoteOnly == 1)
+            .CountAsync();
     }
 
     public async Task<List<VideoLesson>> GetVideoLessonsBySessionAsync(int sessionId)
@@ -1765,6 +1825,7 @@ public class DatabaseService
         await db.ExecuteAsync("DELETE FROM videoClip WHERE SessionID = ?;", sessionId);
         await db.ExecuteAsync("DELETE FROM \"input\" WHERE SessionID = ?;", sessionId);
         await db.ExecuteAsync("DELETE FROM valoracion WHERE SessionID = ?;", sessionId);
+        await db.ExecuteAsync("DELETE FROM \"SessionDiary\" WHERE SessionId = ?;", sessionId);
 
         // Borrar sesión (la tabla real es "sesion" y la PK es "id")
         await db.ExecuteAsync("DELETE FROM sesion WHERE id = ?;", sessionId);

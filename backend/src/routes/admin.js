@@ -128,7 +128,7 @@ router.get('/users', (req, res) => {
 
 router.post('/users', async (req, res) => {
   try {
-    const { email, password, name, role = 'user', teamId = 'rfep' } = req.body;
+    const { email, password, name, role = 'athlete', teamId = 'rfep' } = req.body;
 
     if (!email || !password || !name) {
       return res.status(400).json({ error: 'Email, contraseña y nombre son requeridos' });

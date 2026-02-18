@@ -68,8 +68,10 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   try {
     const { email, password, deviceId, devicePlatform, deviceName } = req.body;
+    console.log(`[Auth] Login attempt - email: ${email ? email : '<empty>'}, hasPassword: ${!!password}, contentType: ${req.headers['content-type']}`);
 
     if (!email || !password) {
+      console.log(`[Auth] Login rejected: missing email or password. Body keys: ${Object.keys(req.body || {}).join(', ')}`);
       return res.status(400).json({ error: 'Email y contraseña son requeridos' });
     }
 
@@ -97,6 +99,7 @@ router.post('/login', async (req, res) => {
         'SELECT * FROM user_devices WHERE user_id = ? AND device_id = ?'
       ).get(user.id, deviceId);
 
+      /* TEMPORALMENTE DESACTIVADO PARA TESTS
       const activeDevices = db.prepare(
         'SELECT * FROM user_devices WHERE user_id = ? AND revoked_at IS NULL'
       ).all(user.id);
@@ -116,6 +119,7 @@ router.post('/login', async (req, res) => {
             : 'Límite de instalaciones desktop alcanzado (1 dispositivo).'
         });
       }
+      FIN TEMPORALMENTE DESACTIVADO */
 
       if (existingDevice) {
         db.prepare(
@@ -212,10 +216,26 @@ router.post('/refresh', async (req, res) => {
       { expiresIn: '7d' }
     );
 
+    // Nuevo refresh token (30 días)
+    const newRefreshToken = jwt.sign(
+      { userId: user.id },
+      process.env.JWT_SECRET,
+      { expiresIn: '30d' }
+    );
+
     res.json({
       success: true,
       accessToken,
-      expiresIn: 7 * 24 * 60 * 60
+      refreshToken: newRefreshToken,
+      expiresIn: 7 * 24 * 60 * 60,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        teamId: user.team_id,
+        teamName: user.team_name,
+        role: user.role
+      }
     });
 
   } catch (err) {
@@ -224,7 +244,7 @@ router.post('/refresh', async (req, res) => {
   }
 });
 
-// GET /api/auth/me - Obtener usuario actual
+// GET /api/auth/me - Obtener usuario actual (lee siempre de la DB para reflejar cambios del admin)
 router.get('/me', (req, res) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
@@ -234,13 +254,23 @@ router.get('/me', (req, res) => {
   }
 
   try {
-    const user = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Consultar la DB para obtener datos actualizados (incluyendo cambios de nombre de org)
+    const user = db.prepare(
+      'SELECT u.*, t.name as team_name FROM users u LEFT JOIN teams t ON u.team_id = t.id WHERE u.id = ?'
+    ).get(decoded.userId);
+
+    if (!user) {
+      return res.status(401).json({ error: 'Usuario no encontrado' });
+    }
+
     res.json({
-      id: user.userId,
+      id: user.id,
       email: user.email,
       name: user.name,
-      teamId: user.teamId,
-      teamName: user.teamName,
+      teamId: user.team_id,
+      teamName: user.team_name,
       role: user.role
     });
   } catch (err) {

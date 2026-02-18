@@ -1,0 +1,297 @@
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Globalization;
+using System.Runtime.CompilerServices;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Threading;
+using System.Windows.Input;
+using CrownRFEP_Reader.Models;
+using CrownRFEP_Reader.Services;
+using CrownRFEP_Reader.Views;
+using Microsoft.Maui.Controls;
+using Microsoft.Maui.Devices;
+using Microsoft.Maui.Storage;
+
+namespace CrownRFEP_Reader.ViewModels;
+
+/// <summary>
+/// Modelo que combina una sesión con su diario asociado para la vista del calendario
+/// </summary>
+public class SessionTypeOption : INotifyPropertyChanged
+{
+    private bool _isSelected;
+    
+    public string Name { get; set; } = "";
+    
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set
+        {
+            if (_isSelected != value)
+            {
+                _isSelected = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+    
+    public event PropertyChangedEventHandler? PropertyChanged;
+    protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+}
+
+public class PlaceOption : INotifyPropertyChanged
+{
+    private bool _isSelected;
+
+    public string Name { get; set; } = "";
+
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set
+        {
+            if (_isSelected != value)
+            {
+                _isSelected = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+    protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+}
+
+public class SessionWithDiary : INotifyPropertyChanged
+{
+    private SessionDiary? _diary;
+    private int _editValoracionFisica = 3;
+    private int _editValoracionMental = 3;
+    private int _editValoracionTecnica = 3;
+    private string _editNotas = "";
+    private ObservableCollection<VideoClip> _videos = new();
+
+    public Session Session { get; set; } = null!;
+    
+    /// <summary>Vídeos de la sesión (máximo 6 para la mini galería)</summary>
+    public ObservableCollection<VideoClip> Videos
+    {
+        get => _videos;
+        set
+        {
+            _videos = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(HasVideos));
+            OnPropertyChanged(nameof(VideoCount));
+            OnPropertyChanged(nameof(ExtraVideosCount));
+            OnPropertyChanged(nameof(HasExtraVideos));
+        }
+    }
+    
+    public bool HasVideos => Videos.Count > 0;
+    public int VideoCount { get; set; }
+    public int ExtraVideosCount => Math.Max(0, VideoCount - 6);
+    public bool HasExtraVideos => ExtraVideosCount > 0;
+    
+    public SessionDiary? Diary
+    {
+        get => _diary;
+        set
+        {
+            _diary = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(HasDiary));
+            OnPropertyChanged(nameof(HasValoraciones));
+            // Inicializar valores de edición desde el diario existente
+            if (_diary != null)
+            {
+                EditValoracionFisica = _diary.ValoracionFisica > 0 ? _diary.ValoracionFisica : 3;
+                EditValoracionMental = _diary.ValoracionMental > 0 ? _diary.ValoracionMental : 3;
+                EditValoracionTecnica = _diary.ValoracionTecnica > 0 ? _diary.ValoracionTecnica : 3;
+                EditNotas = _diary.Notas ?? "";
+            }
+        }
+    }
+
+    public bool HasDiary => Diary != null;
+    public bool HasValoraciones => Diary != null && 
+        (Diary.ValoracionFisica > 0 || Diary.ValoracionMental > 0 || Diary.ValoracionTecnica > 0);
+    public bool HasNotas => Diary != null && !string.IsNullOrWhiteSpace(Diary.Notas);
+
+    // Propiedades para el formulario de edición
+    public int EditValoracionFisica
+    {
+        get => _editValoracionFisica;
+        set { _editValoracionFisica = value; OnPropertyChanged(); }
+    }
+
+    public int EditValoracionMental
+    {
+        get => _editValoracionMental;
+        set { _editValoracionMental = value; OnPropertyChanged(); }
+    }
+
+    public int EditValoracionTecnica
+    {
+        get => _editValoracionTecnica;
+        set { _editValoracionTecnica = value; OnPropertyChanged(); }
+    }
+
+    public string EditNotas
+    {
+        get => _editNotas;
+        set { _editNotas = value; OnPropertyChanged(); }
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+    protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+}
+
+/// <summary>
+/// Modelo para los iconos del picker con estado de selección
+/// </summary>
+public class IconPickerItem : INotifyPropertyChanged
+{
+    private bool _isSelected;
+    
+    public string Name { get; set; } = "";
+    
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set
+        {
+            if (_isSelected != value)
+            {
+                _isSelected = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+    protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+}
+
+/// <summary>
+/// ViewModel para la página principal / Dashboard
+/// </summary>
+public class DashboardViewModel : BaseViewModel
+{
+    private readonly DatabaseService _databaseService;
+    private readonly ITrashService _trashService;
+        private int _trashItemCount;
+        private int _videoLessonsCount;
+    private readonly CrownFileService _crownFileService;
+    private readonly StatisticsService _statisticsService;
+    private readonly ThumbnailService _thumbnailService;
+    private readonly IHealthKitService _healthKitService;
+    private readonly ITableExportService _tableExportService;
+    private readonly ImportProgressService? _importProgressService;
+
+    private DashboardStats? _stats;
+    private Session? _selectedSession;
+    private bool _isAllGallerySelected;
+    private bool _isVideoLessonsSelected;
+    private bool _isDiaryViewSelected;
+    private bool _isUserLibraryExpanded = true;
+    private bool _isRemoteLibraryVisible = true; // Siempre visible, conectamos al equipo automáticamente
+    private bool _isRemoteLibraryExpanded = true;
+    private bool _isRemoteAllGallerySelected;
+    private bool _isRemoteVideoLessonsSelected;
+    private bool _isRemoteTrashSelected;
+    private bool _isRemoteSmartFoldersExpanded = true;
+    private bool _isRemoteSessionsListExpanded = true;
+    private string _remoteLibraryDisplayName = "Organización";
+    private string _remoteAllGalleryItemCount = "—";
+    private string _remoteVideoLessonsCount = "—";
+    private string _remoteTrashItemCount = "—";
+    private ObservableCollection<SmartFolderDefinition> _remoteSmartFolders = new();
+    private ObservableCollection<RemoteSessionListItem> _remoteSessions = new();
+    private int _selectedRemoteSessionId;
+    private bool _isSessionsListExpanded = true;
+    private bool _isFavoritesExpanded = true;
+    private bool _isFavoriteSessionsSelected;
+    private bool _isFavoriteVideosSelected;
+    private int _favoriteSessionsCount;
+    private int _favoriteVideosCount;
+    private bool _isLoadingSelectedSessionVideos;
+
+    // Videos remotos (de Wasabi)
+    private ObservableCollection<RemoteVideoItem> _remoteVideos = new();
+    private bool _isLoadingRemoteVideos;
+    private List<CloudFileInfo>? _remoteFilesCache;
+    private List<VideoClip>? _favoriteVideosCache;
+    private readonly HttpClient _remoteMetadataHttpClient = new();
+    private bool _isLoginRequired;
+    private bool _isCloudLoginBusy;
+    private string _cloudLoginEmail = "";
+    private string _cloudLoginPassword = "";
+    private string _cloudLoginStatusMessage = "";
+    
+    // Selección múltiple de videos remotos
+    private bool _isRemoteMultiSelectMode;
+    private bool _isRemoteSelectAllActive;
+
+    private GridLength _mainPanelWidth = new(2.5, GridUnitType.Star);
+    private GridLength _rightPanelWidth = new(1.2, GridUnitType.Star);
+    private GridLength _rightSplitterWidth = new(8);
+    private string _importProgressText = "";
+
+    // Importación en segundo plano
+    private bool _isBackgroundImporting;
+    private int _backgroundImportProgress;
+    private string _backgroundImportText = "";
+    private string _importingSessionName = "";
+    private string _importingCurrentFile = "";
+
+    private readonly Dictionary<string, bool> _sessionGroupExpandedState = new();
+
+    // Vista Diario (calendario)
+    private DateTime _selectedDiaryDate = DateTime.Today;
+    private List<SessionDiary> _diaryEntriesForMonth = new();
+    private List<Session> _sessionsForMonth = new();
+    private List<DailyWellness> _wellnessDataForMonth = new();
+    private SessionDiary? _selectedDateDiary;
+    private ObservableCollection<SessionWithDiary> _selectedDateSessionsWithDiary = new();
+    private int _importProgressValue;
+    private bool _isImporting;
+
+    // Nueva sesión manual
+    private bool _isAddingNewSession;
+    private string _newSessionName = "";
+    private string _newSessionType = "Gimnasio";
+    private string _newSessionLugar = "";
+    private bool _showNewSessionSidebarPopup;
+
+    // Carpetas inteligentes (galería)
+    private const string SmartFoldersPreferencesKey = "SmartFolders";
+    private readonly ICloudBackendService _cloudBackendService;
+    private readonly SyncService? _syncService;
+    private readonly StorageMigrationService? _migrationService;
+    private bool _showSmartFolderSidebarPopup;
+    private string _newSmartFolderName = "";
+    private string _newSmartFolderMatchMode = "All"; // All=AND, Any=OR
+    private int _newSmartFolderLiveMatchCount;
+    private SmartFolderDefinition? _activeSmartFolder;
+    private List<VideoClip>? _smartFolderFilteredVideosCache;
+
+    // Evita que al limpiar filtros se disparen ApplyFiltersAsync múltiples veces.
+    private bool _suppressFilterSelectionChanged;
+    // Versión para descartar cálculos de filtros fuera de orden (race conditions).
+    private int _filtersVersion;
+
+    // Popup de personalización de icono/color
+    private bool _showIconColorPickerPopup;
+    private SmartFolderDefinition? _iconColorPickerTargetSmartFolder;
+    private SessionRow? _iconColorPickerTargetSession;
+
+    // HealthKit / Datos de Salud (solo iOS) y Bienestar manual
+    private DailyHealthData? _selectedDateHealthData;
+    private bool _isHealthKitAuthorized;

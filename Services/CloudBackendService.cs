@@ -159,7 +159,25 @@ public class CloudBackendService : ICloudBackendService
             {
                 _httpClient.DefaultRequestHeaders.Authorization = 
                     new AuthenticationHeaderValue("Bearer", _accessToken);
-                System.Diagnostics.Debug.WriteLine($"[CloudBackend] Sesión restaurada para {CurrentUserName}");
+
+                // Si el rol está vacío, extraerlo del JWT directamente
+                if (string.IsNullOrWhiteSpace(CurrentUserRole))
+                {
+                    var jwtRole = ExtractClaimFromJwt(_accessToken, "role");
+                    if (!string.IsNullOrEmpty(jwtRole))
+                    {
+                        CurrentUserRole = jwtRole;
+                        SaveSession();
+                        System.Diagnostics.Debug.WriteLine($"[CloudBackend] Rol recuperado del JWT en restore: '{jwtRole}'");
+                    }
+                    else
+                    {
+                        // Último recurso: pedir al servidor
+                        _ = RefreshUserProfileAsync();
+                    }
+                }
+
+                System.Diagnostics.Debug.WriteLine($"[CloudBackend] Sesión restaurada para {CurrentUserName}, rol='{CurrentUserRole}'");
             }
         }
         catch (Exception ex)
@@ -312,14 +330,20 @@ public class CloudBackendService : ICloudBackendService
                 deviceName
             };
 
+            var jsonBody = JsonSerializer.Serialize(requestBody);
             var content = new StringContent(
-                JsonSerializer.Serialize(requestBody),
+                jsonBody,
                 Encoding.UTF8,
                 "application/json"
             );
 
-            var response = await _httpClient.PostAsync($"{_baseUrl}/auth/login", content);
+            var loginUrl = $"{_baseUrl}/auth/login";
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] POST {loginUrl}");
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] Body: {jsonBody}");
+
+            var response = await _httpClient.PostAsync(loginUrl, content);
             var responseBody = await response.Content.ReadAsStringAsync();
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] Response {(int)response.StatusCode}: {responseBody}");
 
             if (!response.IsSuccessStatusCode)
             {
@@ -340,6 +364,23 @@ public class CloudBackendService : ICloudBackendService
             CurrentUserName = loginResponse.User?.Name ?? email;
             TeamName = loginResponse.User?.TeamName ?? "Equipo";
             CurrentUserRole = loginResponse.User?.Role ?? string.Empty;
+
+            // Si el rol vino vacío en la respuesta JSON, extraerlo del payload JWT
+            if (string.IsNullOrWhiteSpace(CurrentUserRole) && !string.IsNullOrEmpty(_accessToken))
+            {
+                var jwtRole = ExtractClaimFromJwt(_accessToken, "role");
+                if (!string.IsNullOrEmpty(jwtRole))
+                {
+                    CurrentUserRole = jwtRole;
+                    System.Diagnostics.Debug.WriteLine($"[CloudBackend] Rol extraído del JWT: '{jwtRole}'");
+                }
+            }
+
+            // Si aún vacío, intentar con /auth/me como último recurso
+            if (string.IsNullOrWhiteSpace(CurrentUserRole))
+            {
+                await RefreshUserProfileAsync();
+            }
 
             _httpClient.DefaultRequestHeaders.Authorization = 
                 new AuthenticationHeaderValue("Bearer", _accessToken);
@@ -427,8 +468,20 @@ public class CloudBackendService : ICloudBackendService
             }
 
             _accessToken = refreshResponse.AccessToken;
-            _refreshToken = refreshResponse.RefreshToken;
+            if (!string.IsNullOrEmpty(refreshResponse.RefreshToken))
+                _refreshToken = refreshResponse.RefreshToken;
             _tokenExpiresAt = DateTime.UtcNow.AddSeconds(refreshResponse.ExpiresIn);
+
+            // Actualizar datos de usuario si el refresh los incluye
+            if (refreshResponse.User != null)
+            {
+                if (!string.IsNullOrEmpty(refreshResponse.User.Role))
+                    CurrentUserRole = refreshResponse.User.Role;
+                if (!string.IsNullOrEmpty(refreshResponse.User.Name))
+                    CurrentUserName = refreshResponse.User.Name;
+                if (!string.IsNullOrEmpty(refreshResponse.User.TeamName))
+                    TeamName = refreshResponse.User.TeamName;
+            }
 
             _httpClient.DefaultRequestHeaders.Authorization = 
                 new AuthenticationHeaderValue("Bearer", _accessToken);
@@ -452,7 +505,7 @@ public class CloudBackendService : ICloudBackendService
 
         try
         {
-            var url = $"{_baseUrl}/files/list?path={Uri.EscapeDataString(folderPath)}&max={maxItems}";
+            var url = $"{_baseUrl}/files/list?prefix={Uri.EscapeDataString(folderPath)}&maxKeys={maxItems}";
             if (!string.IsNullOrEmpty(continuationToken))
             {
                 url += $"&token={Uri.EscapeDataString(continuationToken)}";
@@ -523,7 +576,9 @@ public class CloudBackendService : ICloudBackendService
 
             if (!response.IsSuccessStatusCode)
             {
-                return new PresignedUrlResult(false, TryParseError(responseBody) ?? "Error al obtener URL");
+                var errorMsg = TryParseError(responseBody) ?? "Error al obtener URL";
+                System.Diagnostics.Debug.WriteLine($"[CloudBackend] GetDownloadUrl falló para '{filePath}': HTTP {response.StatusCode} - {errorMsg}");
+                return new PresignedUrlResult(false, errorMsg);
             }
 
             var urlResponse = JsonSerializer.Deserialize<PresignedUrlResponseDto>(responseBody, JsonOptions);
@@ -708,7 +763,7 @@ public class CloudBackendService : ICloudBackendService
                 m.Id ?? "",
                 m.Name ?? "",
                 m.Email ?? "",
-                m.Role ?? "member"
+                m.Role ?? "athlete"
             ));
 
             return new TeamInfoResult(
@@ -761,6 +816,74 @@ public class CloudBackendService : ICloudBackendService
         {
             System.Diagnostics.Debug.WriteLine($"[CloudBackend] Health check error: {ex.Message}");
             return new BackendHealthResult(false, $"Error: {ex.Message}");
+        }
+    }
+
+    public async Task<OrgConfigResult> GetOrgConfigAsync()
+    {
+        if (!await EnsureAuthenticatedAsync())
+        {
+            return new OrgConfigResult(false, "No autenticado");
+        }
+
+        try
+        {
+            var response = await ExecuteWithRetryAsync(() => _httpClient.GetAsync($"{_baseUrl}/team/org-config"));
+            var responseBody = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return new OrgConfigResult(false, TryParseError(responseBody) ?? "Error al obtener configuración");
+            }
+
+            var config = JsonSerializer.Deserialize<OrgConfig>(responseBody, JsonOptions);
+            if (config == null)
+            {
+                return new OrgConfigResult(false, "Respuesta inválida");
+            }
+
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] OrgConfig cargado: v{config.Version}, {config.SmartFolders.Count} smart folders");
+            return new OrgConfigResult(true, null, config);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] Error obteniendo org-config: {ex.Message}");
+            return new OrgConfigResult(false, $"Error: {ex.Message}");
+        }
+    }
+
+    public async Task<OrgConfigSaveResult> SaveOrgConfigAsync(OrgConfig config)
+    {
+        if (!await EnsureAuthenticatedAsync())
+        {
+            return new OrgConfigSaveResult(false, "No autenticado");
+        }
+
+        try
+        {
+            var content = new StringContent(
+                JsonSerializer.Serialize(config, JsonOptions),
+                Encoding.UTF8,
+                "application/json"
+            );
+
+            var response = await ExecuteWithRetryAsync(
+                () => _httpClient.PutAsync($"{_baseUrl}/team/org-config", content));
+            var responseBody = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return new OrgConfigSaveResult(false, TryParseError(responseBody) ?? "Error al guardar configuración");
+            }
+
+            var result = JsonSerializer.Deserialize<OrgConfigSaveResponseDto>(responseBody, JsonOptions);
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] OrgConfig guardado: v{result?.Version}");
+            return new OrgConfigSaveResult(true, null, result?.Version ?? 0, result?.UpdatedAt);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] Error guardando org-config: {ex.Message}");
+            return new OrgConfigSaveResult(false, $"Error: {ex.Message}");
         }
     }
 
@@ -836,6 +959,211 @@ public class CloudBackendService : ICloudBackendService
         }
     }
 
+    // ─── Session sync methods ─────────────────────────────────────
+
+    public async Task<RemoteSessionListResult> GetRemoteSessionsAsync(DateTime? since = null)
+    {
+        if (!await EnsureAuthenticatedAsync())
+        {
+            return new RemoteSessionListResult(false, "No autenticado");
+        }
+
+        try
+        {
+            var url = $"{_baseUrl}/sessions";
+            if (since.HasValue)
+            {
+                url += $"?since={Uri.EscapeDataString(since.Value.ToString("O"))}";
+            }
+
+            var response = await ExecuteWithRetryAsync(() => _httpClient.GetAsync(url));
+            var responseBody = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return new RemoteSessionListResult(false, TryParseError(responseBody) ?? "Error al obtener sesiones");
+            }
+
+            var listResponse = JsonSerializer.Deserialize<RemoteSessionListResponseDto>(responseBody, JsonOptions);
+            if (listResponse == null)
+            {
+                return new RemoteSessionListResult(false, "Respuesta inválida");
+            }
+
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] Sesiones remotas: {listResponse.Count} encontradas");
+
+            return new RemoteSessionListResult(
+                true,
+                null,
+                listResponse.Sessions,
+                listResponse.Count
+            );
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] Error obteniendo sesiones remotas: {ex.Message}");
+            return new RemoteSessionListResult(false, $"Error: {ex.Message}");
+        }
+    }
+
+    public async Task<RemoteSessionSyncResult> SyncSessionToRemoteAsync(RemoteSessionPayload session)
+    {
+        if (!await EnsureAuthenticatedAsync())
+        {
+            return new RemoteSessionSyncResult(false, "No autenticado");
+        }
+
+        try
+        {
+            var content = new StringContent(
+                JsonSerializer.Serialize(session, JsonOptions),
+                Encoding.UTF8,
+                "application/json"
+            );
+
+            var response = await ExecuteWithRetryAsync(
+                () => _httpClient.PostAsync($"{_baseUrl}/sessions", content));
+            var responseBody = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return new RemoteSessionSyncResult(false, TryParseError(responseBody) ?? "Error al sincronizar sesión");
+            }
+
+            var syncResponse = JsonSerializer.Deserialize<RemoteSessionSyncResponseDto>(responseBody, JsonOptions);
+            if (syncResponse == null)
+            {
+                return new RemoteSessionSyncResult(false, "Respuesta inválida");
+            }
+
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] Sesión {session.LocalSessionId} sincronizada (isNew={syncResponse.IsNew})");
+
+            return new RemoteSessionSyncResult(
+                true,
+                null,
+                syncResponse.Session,
+                syncResponse.IsNew
+            );
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] Error sincronizando sesión: {ex.Message}");
+            return new RemoteSessionSyncResult(false, $"Error: {ex.Message}");
+        }
+    }
+
+    public async Task<RemoteSessionBatchResult> SyncSessionsBatchAsync(List<RemoteSessionPayload> sessions)
+    {
+        if (!await EnsureAuthenticatedAsync())
+        {
+            return new RemoteSessionBatchResult(false, "No autenticado");
+        }
+
+        try
+        {
+            var requestBody = new { sessions };
+            var content = new StringContent(
+                JsonSerializer.Serialize(requestBody, JsonOptions),
+                Encoding.UTF8,
+                "application/json"
+            );
+
+            var response = await ExecuteWithRetryAsync(
+                () => _httpClient.PostAsync($"{_baseUrl}/sessions/batch", content));
+            var responseBody = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return new RemoteSessionBatchResult(false, TryParseError(responseBody) ?? "Error en batch sync");
+            }
+
+            var batchResponse = JsonSerializer.Deserialize<RemoteSessionBatchResponseDto>(responseBody, JsonOptions);
+            if (batchResponse == null)
+            {
+                return new RemoteSessionBatchResult(false, "Respuesta inválida");
+            }
+
+            var results = batchResponse.Results?.ConvertAll(r =>
+                new RemoteSessionBatchItem(r.LocalSessionId, r.RemoteId, r.IsNew));
+
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] Batch session sync: {batchResponse.Created} creadas, {batchResponse.Updated} actualizadas");
+
+            return new RemoteSessionBatchResult(
+                true,
+                null,
+                batchResponse.Created,
+                batchResponse.Updated,
+                batchResponse.Total,
+                results
+            );
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] Error en batch session sync: {ex.Message}");
+            return new RemoteSessionBatchResult(false, $"Error: {ex.Message}");
+        }
+    }
+
+    public async Task<bool> DeleteRemoteSessionAsync(int remoteSessionId)
+    {
+        if (!await EnsureAuthenticatedAsync())
+        {
+            return false;
+        }
+
+        try
+        {
+            var response = await ExecuteWithRetryAsync(
+                () => _httpClient.DeleteAsync($"{_baseUrl}/sessions/{remoteSessionId}"));
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] Error eliminando sesión remota {remoteSessionId}: {ex.Message}");
+            return false;
+        }
+    }
+
+    public async Task<CascadeDeleteResult> DeleteRemoteSessionCascadeAsync(int remoteSessionId)
+    {
+        if (!await EnsureAuthenticatedAsync())
+        {
+            return new CascadeDeleteResult(false, "No autenticado");
+        }
+
+        try
+        {
+            var response = await ExecuteWithRetryAsync(
+                () => _httpClient.DeleteAsync($"{_baseUrl}/sessions/{remoteSessionId}/cascade"));
+
+            var body = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorMsg = TryParseError(body) ?? $"Error {response.StatusCode}";
+                return new CascadeDeleteResult(false, errorMsg);
+            }
+
+            // Intentar leer deletedFiles del JSON de respuesta
+            int deletedFiles = 0;
+            try
+            {
+                using var doc = JsonDocument.Parse(body);
+                if (doc.RootElement.TryGetProperty("deletedFiles", out var df))
+                    deletedFiles = df.GetInt32();
+            }
+            catch { }
+
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] Cascade delete sesión {remoteSessionId}: {deletedFiles} archivos S3 eliminados");
+            return new CascadeDeleteResult(true, DeletedFiles: deletedFiles);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] Error cascade delete sesión {remoteSessionId}: {ex.Message}");
+            return new CascadeDeleteResult(false, ex.Message);
+        }
+    }
+
     private async Task<bool> EnsureAuthenticatedAsync()
     {
         if (!IsAuthenticated)
@@ -863,11 +1191,89 @@ public class CloudBackendService : ICloudBackendService
         return null;
     }
 
+    /// <summary>
+    /// Extrae un claim del payload de un JWT sin verificar la firma.
+    /// El JWT tiene formato: header.payload.signature, cada parte en Base64Url.
+    /// </summary>
+    private static string? ExtractClaimFromJwt(string jwt, string claimName)
+    {
+        try
+        {
+            var parts = jwt.Split('.');
+            if (parts.Length != 3) return null;
+
+            // Decodificar payload (parte 2, index 1)
+            var payload = parts[1];
+            // Base64Url → Base64 estándar
+            payload = payload.Replace('-', '+').Replace('_', '/');
+            switch (payload.Length % 4)
+            {
+                case 2: payload += "=="; break;
+                case 3: payload += "="; break;
+            }
+
+            var jsonBytes = Convert.FromBase64String(payload);
+            var jsonString = Encoding.UTF8.GetString(jsonBytes);
+            
+            using var doc = JsonDocument.Parse(jsonString);
+            if (doc.RootElement.TryGetProperty(claimName, out var value))
+            {
+                return value.GetString();
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] Error extrayendo claim '{claimName}' del JWT: {ex.Message}");
+        }
+        return null;
+    }
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
+
+    /// <summary>Recupera el perfil de usuario desde /auth/me y actualiza CurrentUserRole.</summary>
+    public async Task RefreshUserProfileAsync()
+    {
+        try
+        {
+            // Asegurar que el access token está vigente
+            var ok = await RefreshTokenIfNeededAsync();
+            if (!ok || string.IsNullOrEmpty(_accessToken)) return;
+
+            var response = await _httpClient.GetAsync($"{_baseUrl}/auth/me");
+            if (!response.IsSuccessStatusCode)
+            {
+                if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                {
+                    ClearSession();
+                }
+                return;
+            }
+
+            var body = await response.Content.ReadAsStringAsync();
+            var me = JsonSerializer.Deserialize<UserDto>(body, JsonOptions);
+            if (me == null) return;
+
+            if (!string.IsNullOrEmpty(me.Role))
+            {
+                CurrentUserRole = me.Role;
+                System.Diagnostics.Debug.WriteLine($"[CloudBackend] Rol recuperado desde /auth/me: '{CurrentUserRole}'");
+            }
+            if (!string.IsNullOrEmpty(me.Name))
+                CurrentUserName = me.Name;
+            if (!string.IsNullOrEmpty(me.TeamName))
+                TeamName = me.TeamName;
+
+            SaveSession();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[CloudBackend] Error en RefreshUserProfileAsync: {ex.Message}");
+        }
+    }
 
     // DTOs para deserialización
     private class LoginResponseDto
@@ -934,5 +1340,43 @@ public class CloudBackendService : ICloudBackendService
         public string? Status { get; set; }
         public string? Version { get; set; }
         public string? Timestamp { get; set; }
+    }
+
+    private class OrgConfigSaveResponseDto
+    {
+        public bool Success { get; set; }
+        public int Version { get; set; }
+        public string? UpdatedAt { get; set; }
+    }
+
+    // DTOs para sesiones remotas
+    private class RemoteSessionListResponseDto
+    {
+        public bool Success { get; set; }
+        public List<RemoteSessionDto>? Sessions { get; set; }
+        public int Count { get; set; }
+    }
+
+    private class RemoteSessionSyncResponseDto
+    {
+        public bool Success { get; set; }
+        public RemoteSessionDto? Session { get; set; }
+        public bool IsNew { get; set; }
+    }
+
+    private class RemoteSessionBatchResponseDto
+    {
+        public bool Success { get; set; }
+        public List<RemoteSessionBatchItemDto>? Results { get; set; }
+        public int Created { get; set; }
+        public int Updated { get; set; }
+        public int Total { get; set; }
+    }
+
+    private class RemoteSessionBatchItemDto
+    {
+        public int LocalSessionId { get; set; }
+        public int RemoteId { get; set; }
+        public bool IsNew { get; set; }
     }
 }

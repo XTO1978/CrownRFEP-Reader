@@ -54,6 +54,13 @@ public class Session : INotifyPropertyChanged
     [Column("is_favorite")]
     public int IsFavorite { get; set; }
 
+    /// <summary>
+    /// Indica que la sesión se importó exclusivamente para la Biblioteca de Organización.
+    /// Estas sesiones no se muestran en la biblioteca personal del sidebar.
+    /// </summary>
+    [Column("is_remote_only")]
+    public int IsRemoteOnly { get; set; }
+
     // Propiedades computadas
     [Ignore]
     public DateTime FechaDateTime => DateTimeOffset.FromUnixTimeSeconds(Fecha).LocalDateTime;

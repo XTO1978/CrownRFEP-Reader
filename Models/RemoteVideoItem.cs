@@ -28,6 +28,8 @@ public class RemoteVideoItem : INotifyPropertyChanged
     private string _key = string.Empty;
     private string _fileName = string.Empty;
     private string _sessionName = string.Empty;
+    private string _athleteName = string.Empty;
+    private string _place = string.Empty;
     private int _sessionId;
     private int _videoId;
     private long _size;
@@ -81,6 +83,51 @@ public class RemoteVideoItem : INotifyPropertyChanged
     }
 
     /// <summary>
+    /// Nombre del atleta asignado (ej: "GARCÍA Pablo")
+    /// </summary>
+    public string AthleteName
+    {
+        get => _athleteName;
+        set
+        {
+            if (SetProperty(ref _athleteName, value))
+            {
+                OnPropertyChanged(nameof(HasAthleteName));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Indica si el video tiene un atleta asignado
+    /// </summary>
+    public bool HasAthleteName => !string.IsNullOrWhiteSpace(AthleteName);
+
+    /// <summary>
+    /// Lugar de la sesión
+    /// </summary>
+    public string Place
+    {
+        get => _place;
+        set
+        {
+            if (SetProperty(ref _place, value))
+            {
+                OnPropertyChanged(nameof(HasPlace));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Indica si hay un lugar asignado a la sesión
+    /// </summary>
+    public bool HasPlace => !string.IsNullOrWhiteSpace(Place);
+
+    /// <summary>
+    /// Hora formateada (solo HH:mm) extraída de LastModified
+    /// </summary>
+    public string TimeFormatted => LastModified.ToString("HH:mm");
+
+    /// <summary>
     /// ID de la sesión extraído de la ruta
     /// </summary>
     public int SessionId
@@ -122,7 +169,13 @@ public class RemoteVideoItem : INotifyPropertyChanged
     public DateTime LastModified
     {
         get => _lastModified;
-        set => SetProperty(ref _lastModified, value);
+        set
+        {
+            if (SetProperty(ref _lastModified, value))
+            {
+                OnPropertyChanged(nameof(TimeFormatted));
+            }
+        }
     }
 
     /// <summary>
@@ -156,7 +209,7 @@ public class RemoteVideoItem : INotifyPropertyChanged
         => LinkedLocalVideo?.EffectiveThumbnailPath ?? ThumbnailUrl;
 
     /// <summary>
-    /// Indica si el video está disponible localmente
+    /// Indica si el video está disponible localmente (tiene archivo descargado)
     /// </summary>
     public bool IsLocallyAvailable
     {
@@ -165,6 +218,7 @@ public class RemoteVideoItem : INotifyPropertyChanged
         {
             if (SetProperty(ref _isLocallyAvailable, value))
             {
+                OnPropertyChanged(nameof(IsDownloadedLocally));
                 OnPropertyChanged(nameof(StatusColor));
                 OnPropertyChanged(nameof(StatusIcon));
                 OnPropertyChanged(nameof(StatusText));
@@ -205,8 +259,31 @@ public class RemoteVideoItem : INotifyPropertyChanged
     public VideoClip? LinkedLocalVideo
     {
         get => _linkedLocalVideo;
-        set => SetProperty(ref _linkedLocalVideo, value);
+        set
+        {
+            if (SetProperty(ref _linkedLocalVideo, value))
+            {
+                OnPropertyChanged(nameof(IsAddedToLibrary));
+                OnPropertyChanged(nameof(IsDownloadedLocally));
+                OnPropertyChanged(nameof(StatusColor));
+                OnPropertyChanged(nameof(StatusIcon));
+                OnPropertyChanged(nameof(StatusText));
+                OnPropertyChanged(nameof(EffectiveThumbnailSource));
+            }
+        }
     }
+
+    /// <summary>
+    /// El video está registrado en la biblioteca personal (referencia o descargado)
+    /// </summary>
+    public bool IsAddedToLibrary => LinkedLocalVideo != null;
+
+    /// <summary>
+    /// El video tiene una copia local descargada (Source == "both")
+    /// </summary>
+    public bool IsDownloadedLocally =>
+        LinkedLocalVideo != null
+        && string.Equals(LinkedLocalVideo.Source, "both", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Tags asignadas al video (no eventos)
@@ -297,19 +374,46 @@ public class RemoteVideoItem : INotifyPropertyChanged
     public string SessionNameFallback => $"Sesión {SessionId}";
 
     /// <summary>
-    /// Color de estado: verde si local, azul si solo remoto
+    /// Color de estado: verde=descargado, naranja=solo referencia, azul=solo nube
     /// </summary>
-    public string StatusColor => IsLocallyAvailable ? "#4CAF50" : "#2196F3";
+    public string StatusColor
+    {
+        get
+        {
+            if (IsDownloadedLocally) return "#4CAF50";   // Verde: descargado
+            if (IsAddedToLibrary) return "#FF9800";       // Naranja: referencia en personal
+            return "#2196F3";                              // Azul: solo en nube de org
+        }
+    }
 
     /// <summary>
-    /// Icono de estado
+    /// SF Symbol de estado:
+    /// - checkmark.icloud.fill  → descargado localmente
+    /// - person.crop.circle.badge.plus → añadido a biblioteca personal (referencia)
+    /// - icloud → solo en la nube de la organización
     /// </summary>
-    public string StatusIcon => IsLocallyAvailable ? "checkmark.circle.fill" : "icloud";
+    public string StatusIcon
+    {
+        get
+        {
+            if (IsDownloadedLocally) return "checkmark.icloud.fill";
+            if (IsAddedToLibrary) return "person.crop.circle.badge.plus";
+            return "icloud";
+        }
+    }
 
     /// <summary>
-    /// Texto de estado
+    /// Texto de estado para tooltip / accesibilidad
     /// </summary>
-    public string StatusText => IsLocallyAvailable ? "Disponible en personal" : "Solo en organización";
+    public string StatusText
+    {
+        get
+        {
+            if (IsDownloadedLocally) return "Descargado";
+            if (IsAddedToLibrary) return "En tu biblioteca";
+            return "Solo en organización";
+        }
+    }
 
     /// <summary>
     /// Crea un RemoteVideoItem desde un CloudFileInfo
